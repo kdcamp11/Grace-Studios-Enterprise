@@ -8,14 +8,18 @@ export const maxDuration = 300;
 
 // Concept roles: 1=front, 2=back, 3=detail (logo/collar), 4=detail (sleeve/panel)
 const CONCEPT_SUFFIXES = [
-  "front view, full garment visible, flat lay on dark background",
-  "back view, full garment visible, flat lay on dark background",
-  "close-up detail shot of collar, neckline, and logo placement area",
-  "close-up detail shot of sleeve, side panel, and hem area",
+  "front view, full garment visible, clean technical flat render, dark background",
+  "back view, full garment visible, clean technical flat render, dark background",
+  "close-up detail shot of collar, neckline, and logo placement, dark background",
+  "close-up detail shot of sleeve, side panel, or hem area, dark background",
 ];
 
+// Style reference image always passed to Claude for consistent spec-board output.
+// File must exist at public/reference/spec-board-reference.jpg
+const SPEC_BOARD_REFERENCE_URL = `${process.env.NEXT_PUBLIC_APP_URL ?? "https://gs-first-pass.vercel.app"}/reference/spec-board-reference.jpg`;
+
 const IMAGE_PREFIX =
-  "professional apparel product photography, sports uniform, clean studio lighting, dark background —";
+  "clean technical apparel flat render, sports uniform product board art, professional garment illustration, crisp detail on dark background —";
 
 export interface DesignMetadata {
   garmentType: string;
@@ -52,7 +56,9 @@ function buildPrompt(brief: Record<string, unknown>, client: Record<string, unkn
   const negative = brief.negative_references ? `Do not include: ${brief.negative_references}.` : "";
   const vision = brief.vision_prompt ? `Client vision: ${brief.vision_prompt}` : "";
 
-  return `You are a professional sports uniform designer creating a product board for ${teamName} from ${city}.
+  return `You are a professional sports uniform designer creating a technical apparel spec board for ${teamName} from ${city}.
+
+The attached reference image shows the exact spec-board style and level of detail expected. Your output populates that structured layout.
 
 Design a ${designSystem} style ${sport} uniform. ${colorInstruction} ${refInstruction}
 
@@ -62,13 +68,19 @@ Return ONLY valid JSON (no markdown, no code fences) with this exact structure:
 {
   "garmentType": "short garment type label e.g. Baseball Jersey, Basketball Uniform",
   "colorway": [
-    {"role": "Primary", "name": "color name", "hex": "#xxxxxx", "pantone": "Pantone X C"},
-    {"role": "Secondary", "name": "color name", "hex": "#xxxxxx", "pantone": "Pantone X C"}
+    {"role": "Primary", "name": "color name", "hex": "#xxxxxx", "pantone": "Pantone XXXX C"},
+    {"role": "Secondary", "name": "color name", "hex": "#xxxxxx", "pantone": "Pantone XXXX C"}
   ],
-  "materials": ["material line 1", "material line 2"],
-  "features": ["feature 1", "feature 2", "feature 3", "feature 4", "feature 5"],
-  "logoPlacement": "brief placement description",
-  "description": "Detailed visual description of the uniform — colors, panel layout, graphic elements, number style, logo locations, and overall energy. Specific enough for an image generator to render accurately."
+  "materials": ["e.g. Shell: 100% Nylon", "e.g. Lining: 100% Polyester Mesh", "e.g. Weight: 110GSM"],
+  "features": [
+    "Short, specific feature label suitable for a callout panel — e.g. Full Zip Jacket",
+    "Raglan Sleeve",
+    "Elastic Cuffs & Hem",
+    "Contrast Zipper",
+    "Logo Print"
+  ],
+  "logoPlacement": "Precise placement — e.g. Grace Athletics Crest Centered On Upper Chest, Below Team Name",
+  "description": "Detailed visual description of the uniform for an image generator: exact colors, panel layout, graphic elements, number style, stripe or piping details, logo locations, cut silhouette, and overall energy. Be specific — e.g. bold crimson red body with white side panels and a diagonal gold stripe from shoulder to hip, arched team name across chest in white tackle twill, number centered front and back."
 }`.trim();
 }
 
@@ -131,7 +143,8 @@ export async function POST(req: NextRequest) {
       ? (brief.reference_image_urls as string[]).filter(validUrl)
       : validUrl(brief.reference_image_url) ? [brief.reference_image_url as string] : [];
 
-    const allImageUrls = [...logoUrls, ...refUrls].slice(0, 20);
+    // Logo and client reference images (max 19 to leave slot for spec-board reference)
+    const allImageUrls = [...logoUrls, ...refUrls].slice(0, 19);
 
     // 4. Generate design description via Anthropic
     const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -140,21 +153,28 @@ export async function POST(req: NextRequest) {
     type TextBlock = { type: "text"; text: string };
     type ContentBlock = ImageBlock | TextBlock;
 
-    const imageBlocks: ContentBlock[] = allImageUrls.map((url) => ({
+    // Always include the spec-board reference as the FIRST image so Claude
+    // understands the target layout and presentation style.
+    const specBoardBlock: ImageBlock = {
+      type: "image" as const,
+      source: { type: "url" as const, url: SPEC_BOARD_REFERENCE_URL },
+    };
+
+    const clientImageBlocks: ContentBlock[] = allImageUrls.map((url) => ({
       type: "image" as const,
       source: { type: "url" as const, url },
     }));
 
-    const promptPrefix = logoUrls.length > 0 || refUrls.length > 0
-      ? [
-          logoUrls.length > 0 ? `The first ${logoUrls.length} image(s) are team logo(s). Use them to extract brand colors and identity.` : "",
-          refUrls.length > 0 ? `The next ${refUrls.length} image(s) are reference/inspiration images. Use them for style and aesthetic direction.` : "",
-        ].filter(Boolean).join(" ")
-      : "";
+    const imageCountNote = [
+      `The first image is a Grace Athletics spec-board style reference. Match this level of technical detail and structured presentation in your metadata output.`,
+      logoUrls.length > 0 ? `The next ${logoUrls.length} image(s) are team logo(s). Extract brand colors and identity from them.` : "",
+      refUrls.length > 0 ? `The following ${refUrls.length} image(s) are client reference/inspiration images. Use them for style and aesthetic direction.` : "",
+    ].filter(Boolean).join(" ");
 
     const content: ContentBlock[] = [
-      ...imageBlocks,
-      ...(promptPrefix ? [{ type: "text" as const, text: promptPrefix }] : []),
+      specBoardBlock,
+      ...clientImageBlocks,
+      { type: "text" as const, text: imageCountNote },
       { type: "text" as const, text: designPrompt },
     ];
 
