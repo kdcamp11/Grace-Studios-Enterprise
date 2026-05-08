@@ -21,30 +21,32 @@ interface BoardData {
   concepts: Concept[];
 }
 
-// ─── Product Board ────────────────────────────────────────────────────────────
+// ─── Color Swatch ─────────────────────────────────────────────────────────────
 
 function ColorSwatch({ role, name, hex, pantone }: { role: string; name: string; hex: string; pantone?: string }) {
   return (
-    <div className="flex items-start gap-2.5 mb-3">
+    <div className="flex items-center gap-3 mb-3">
       <div
-        className="w-7 h-7 rounded-sm border border-black/10 flex-shrink-0 mt-0.5"
+        className="w-8 h-8 rounded-sm border border-black/10 flex-shrink-0"
         style={{ backgroundColor: hex || "#cccccc" }}
       />
       <div>
-        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-800 leading-tight">{role}</p>
-        <p className="text-[9px] text-gray-500 leading-tight">{pantone || name}</p>
+        <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-gray-700 leading-tight">{role}</p>
+        <p className="text-[9px] text-gray-500 leading-tight mt-0.5">{pantone || name}</p>
       </div>
     </div>
   );
 }
 
+// ─── Board Image ──────────────────────────────────────────────────────────────
+
 function BoardImage({ url, alt, className }: { url?: string; alt: string; className?: string }) {
   const [loaded, setLoaded] = useState(false);
-  const [error, setError]   = useState(false);
+  const [error, setError] = useState(false);
 
   if (!url) return (
     <div className={`bg-[#111] flex items-center justify-center ${className ?? ""}`}>
-      <span className="text-white/20 text-[10px] font-barlow">No image</span>
+      <span className="text-white/20 text-[10px]">No image</span>
     </div>
   );
 
@@ -55,7 +57,7 @@ function BoardImage({ url, alt, className }: { url?: string; alt: string; classN
       )}
       {error ? (
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-white/20 text-[10px] font-barlow">Unavailable</span>
+          <span className="text-white/20 text-[10px]">Unavailable</span>
         </div>
       ) : (
         // eslint-disable-next-line @next/next/no-img-element
@@ -71,53 +73,61 @@ function BoardImage({ url, alt, className }: { url?: string; alt: string; classN
   );
 }
 
+// ─── Product Board ────────────────────────────────────────────────────────────
+
 function ProductBoard({ data }: { data: BoardData }) {
   const { teamName, orderNumber, metadata, concepts } = data;
 
-  const front  = concepts.find(c => c.concept_number === 1);
-  const back   = concepts.find(c => c.concept_number === 2);
+  const front   = concepts.find(c => c.concept_number === 1);
+  const back    = concepts.find(c => c.concept_number === 2);
   const detail1 = concepts.find(c => c.concept_number === 3);
   const detail2 = concepts.find(c => c.concept_number === 4);
 
-  const garmentType   = metadata?.garmentType  ?? "Sports Uniform";
-  const colorway      = metadata?.colorway     ?? [];
-  const materials     = metadata?.materials    ?? [];
-  const features      = metadata?.features     ?? [];
+  const garmentType   = metadata?.garmentType   ?? "Sports Uniform";
+  const colorway      = metadata?.colorway      ?? [];
+  const materials     = metadata?.materials     ?? [];
+  const features      = metadata?.features      ?? [];
   const logoPlacement = metadata?.logoPlacement ?? "";
 
-  return (
-    <div className="bg-[#f5f3ee] rounded-2xl overflow-hidden shadow-xl border border-gray-200">
+  // Derive right-column detail labels from features list when available
+  const detailLabel1 = features[0] ? features[0].replace(/^[•\-–]\s*/, "").split(" ").slice(0, 4).join(" ") : "Logo & Collar";
+  const detailLabel2 = features[1] ? features[1].replace(/^[•\-–]\s*/, "").split(" ").slice(0, 4).join(" ") : "Sleeve & Panel";
 
-      {/* Board header bar */}
-      <div className="px-6 py-3 bg-white border-b border-gray-200 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-px h-5 bg-gray-300" />
-          <span className="text-[9px] font-display uppercase tracking-[0.25em] text-gray-400">
+  return (
+    <div
+      className="rounded-xl overflow-hidden border border-gray-300 shadow-lg"
+      style={{ backgroundColor: "#f0ede6", fontFamily: "inherit" }}
+    >
+      {/* ── Top header ── */}
+      <div className="border-b border-gray-300 bg-white px-6 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <div className="w-0.5 h-5 bg-gray-800" />
+          <span className="text-[9px] font-bold uppercase tracking-[0.3em] text-gray-500">
             Grace Athletics — AI Concept
           </span>
         </div>
-        <span className="text-[9px] font-mono text-gray-400">{orderNumber}</span>
+        <span className="text-[9px] font-mono text-gray-400 tracking-widest">{orderNumber}</span>
       </div>
 
-      {/* Main board body */}
-      <div className="flex min-h-[520px]">
+      {/* ── Body ── */}
+      <div className="flex" style={{ minHeight: 560 }}>
 
-        {/* ── LEFT PANEL: Metadata ── */}
-        <div className="w-[220px] flex-shrink-0 border-r border-gray-200 p-5 space-y-5 bg-white/60">
-
-          {/* Team + Garment */}
-          <div>
-            <p className="font-display font-bold uppercase text-lg leading-tight tracking-wide text-gray-900">
-              {teamName}
-            </p>
-            <p className="text-[10px] uppercase tracking-[0.2em] text-gray-500 mt-0.5">{garmentType}</p>
-            <div className="w-12 h-0.5 bg-gray-800 mt-3" />
+        {/* LEFT: Metadata panel */}
+        <div
+          className="flex-shrink-0 border-r border-gray-300 flex flex-col"
+          style={{ width: 210, backgroundColor: "#f8f6f1" }}
+        >
+          {/* Brand + garment header */}
+          <div className="px-5 pt-5 pb-4 border-b border-gray-200">
+            <p className="text-[8px] uppercase tracking-[0.3em] text-gray-400 font-bold mb-1">Grace Athletics</p>
+            <p className="text-base font-bold uppercase tracking-wider text-gray-900 leading-tight">{teamName}</p>
+            <p className="text-[9px] uppercase tracking-[0.18em] text-gray-500 mt-1">{garmentType}</p>
           </div>
 
           {/* Colorway */}
           {colorway.length > 0 && (
-            <div>
-              <p className="text-[9px] uppercase tracking-[0.2em] text-gray-400 mb-3 font-semibold">Colorway</p>
+            <div className="px-5 py-4 border-b border-gray-200">
+              <p className="text-[8px] uppercase tracking-[0.28em] text-gray-400 font-bold mb-3">Colorway</p>
               {colorway.map((c, i) => (
                 <ColorSwatch key={i} {...c} />
               ))}
@@ -126,37 +136,42 @@ function ProductBoard({ data }: { data: BoardData }) {
 
           {/* Material */}
           {materials.length > 0 && (
-            <div className="border-t border-gray-200 pt-4">
-              <p className="text-[9px] uppercase tracking-[0.2em] text-gray-400 mb-2 font-semibold">Material</p>
+            <div className="px-5 py-4 border-b border-gray-200">
+              <p className="text-[8px] uppercase tracking-[0.28em] text-gray-400 font-bold mb-2">Material</p>
               {materials.map((m, i) => (
-                <p key={i} className="text-[10px] text-gray-600 font-barlow leading-relaxed">{m}</p>
+                <p key={i} className="text-[9px] text-gray-600 leading-relaxed">{m}</p>
               ))}
             </div>
           )}
 
           {/* Features */}
           {features.length > 0 && (
-            <div className="border-t border-gray-200 pt-4">
-              <p className="text-[9px] uppercase tracking-[0.2em] text-gray-400 mb-2 font-semibold">Features</p>
+            <div className="px-5 py-4 border-b border-gray-200">
+              <p className="text-[8px] uppercase tracking-[0.28em] text-gray-400 font-bold mb-2">Features</p>
               {features.map((f, i) => (
-                <p key={i} className="text-[10px] text-gray-600 font-barlow leading-snug">• {f}</p>
+                <p key={i} className="text-[9px] text-gray-600 leading-snug mb-1">
+                  • {f}
+                </p>
               ))}
             </div>
           )}
 
-          {/* Logo placement */}
+          {/* Logo */}
           {logoPlacement && (
-            <div className="border-t border-gray-200 pt-4">
-              <p className="text-[9px] uppercase tracking-[0.2em] text-gray-400 mb-1.5 font-semibold">Logo</p>
-              <p className="text-[10px] text-gray-600 font-barlow capitalize">{logoPlacement.replace(/_/g, " ")}</p>
+            <div className="px-5 py-4">
+              <p className="text-[8px] uppercase tracking-[0.28em] text-gray-400 font-bold mb-1.5">Logo</p>
+              <p className="text-[9px] text-gray-600 capitalize leading-snug">
+                {logoPlacement.replace(/_/g, " ")}
+              </p>
             </div>
           )}
         </div>
 
-        {/* ── CENTER: Front + Back renders ── */}
-        <div className="flex-1 bg-[#0f0f0f] flex items-stretch gap-px">
-          <div className="flex-1 flex flex-col">
-            <p className="text-[9px] uppercase tracking-[0.2em] text-white/30 text-center pt-3 pb-1 font-semibold">
+        {/* CENTER: Front + Back renders */}
+        <div className="flex-1 flex bg-[#0f0f0f]">
+          {/* Front */}
+          <div className="flex-1 flex flex-col border-r border-white/5">
+            <p className="text-[8px] uppercase tracking-[0.28em] text-white/25 text-center py-2.5 font-bold">
               Front
             </p>
             <BoardImage
@@ -165,9 +180,9 @@ function ProductBoard({ data }: { data: BoardData }) {
               className="flex-1"
             />
           </div>
-          <div className="w-px bg-white/5" />
+          {/* Back */}
           <div className="flex-1 flex flex-col">
-            <p className="text-[9px] uppercase tracking-[0.2em] text-white/30 text-center pt-3 pb-1 font-semibold">
+            <p className="text-[8px] uppercase tracking-[0.28em] text-white/25 text-center py-2.5 font-bold">
               Back
             </p>
             <BoardImage
@@ -178,34 +193,48 @@ function ProductBoard({ data }: { data: BoardData }) {
           </div>
         </div>
 
-        {/* ── RIGHT PANEL: Detail callouts ── */}
-        <div className="w-[160px] flex-shrink-0 border-l border-gray-200 bg-white/60 flex flex-col divide-y divide-gray-200">
-          {[
-            { concept: detail1, label: "Detail — Logo & Collar" },
-            { concept: detail2, label: "Detail — Sleeve & Panel" },
-          ].map(({ concept, label }, i) => (
-            <div key={i} className="flex-1 p-3 flex flex-col">
-              <p className="text-[8px] uppercase tracking-[0.15em] text-gray-400 mb-2 font-semibold leading-tight">
-                {label}
-              </p>
-              <div className="flex-1 rounded overflow-hidden">
-                <BoardImage
-                  url={concept?.image_url}
-                  alt={label}
-                  className="w-full h-full min-h-[100px]"
-                />
-              </div>
+        {/* RIGHT: Detail callout panels */}
+        <div
+          className="flex-shrink-0 border-l border-gray-300 flex flex-col divide-y divide-gray-200"
+          style={{ width: 168, backgroundColor: "#f8f6f1" }}
+        >
+          {/* Detail 1 */}
+          <div className="flex-1 flex flex-col p-3">
+            <p className="text-[7px] uppercase tracking-[0.22em] text-gray-400 font-bold mb-2 leading-tight">
+              {detailLabel1}
+            </p>
+            <div className="flex-1 rounded overflow-hidden bg-[#111]" style={{ minHeight: 120 }}>
+              <BoardImage
+                url={detail1?.image_url}
+                alt={detailLabel1}
+                className="w-full h-full"
+              />
             </div>
-          ))}
+          </div>
+
+          {/* Detail 2 */}
+          <div className="flex-1 flex flex-col p-3">
+            <p className="text-[7px] uppercase tracking-[0.22em] text-gray-400 font-bold mb-2 leading-tight">
+              {detailLabel2}
+            </p>
+            <div className="flex-1 rounded overflow-hidden bg-[#111]" style={{ minHeight: 120 }}>
+              <BoardImage
+                url={detail2?.image_url}
+                alt={detailLabel2}
+                className="w-full h-full"
+              />
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Disclaimer footer */}
-      <div className="border-t border-gray-200 bg-white/40 px-5 py-2.5 flex items-center justify-between">
-        <p className="text-[9px] text-gray-400 font-barlow italic leading-relaxed max-w-lg">
-          AI concept is for visual direction only and may not exactly match final production artwork. Colors, proportions, and details are subject to change during production.
+      {/* ── Footer ── */}
+      <div className="border-t border-gray-300 px-5 py-2.5 flex items-center justify-between bg-white/50">
+        <p className="text-[8px] text-gray-400 italic leading-relaxed max-w-lg">
+          AI concept is for visual direction only and may not exactly match final production artwork.
+          Colors, proportions, and details are subject to change during production.
         </p>
-        <div className="flex-shrink-0 ml-4 opacity-40">
+        <div className="flex-shrink-0 ml-4 opacity-30">
           <GraceLogo className="h-4" />
         </div>
       </div>
@@ -225,12 +254,10 @@ export default function ConceptsPage() {
   const [loading, setLoading]         = useState(true);
   const [generating, setGenerating]   = useState(false);
   const [approving, setApproving]     = useState(false);
-  const [retrying, setRetrying]       = useState(false);
   const [isAdminView, setIsAdminView] = useState(false);
   const pollRef = useRef<NodeJS.Timeout | null>(null);
 
   const fetchBoard = useCallback(async (): Promise<boolean> => {
-    // Fetch concepts
     const { data: conceptRows } = await supabase
       .from("concepts")
       .select("id, concept_number, image_url, selected")
@@ -239,7 +266,6 @@ export default function ConceptsPage() {
 
     if (!conceptRows || conceptRows.length === 0) return false;
 
-    // Fetch order + client + brief in parallel
     const [{ data: orderRow }, { data: briefRow }] = await Promise.all([
       supabase
         .from("orders")
@@ -259,12 +285,10 @@ export default function ConceptsPage() {
     const teamName    = (clientData as { name?: string })?.name ?? "Your Team";
     const orderNumber = orderRow?.order_number ?? order_id.slice(0, 8).toUpperCase();
 
-    // Parse metadata JSON (if available)
     let metadata: DesignMetadata | null = null;
     if (briefRow?.ai_prompt) {
       try {
         metadata = JSON.parse(briefRow.ai_prompt) as DesignMetadata;
-        // Validate it has the expected shape (not old plain-text)
         if (typeof metadata.description !== "string") metadata = null;
       } catch {
         metadata = null;
@@ -309,18 +333,10 @@ export default function ConceptsPage() {
   async function handleApprove() {
     if (!boardData?.concepts.length) return;
     setApproving(true);
-    // Mark concept 1 as the selected concept
     const concept1 = boardData.concepts.find(c => c.concept_number === 1) ?? boardData.concepts[0];
     await supabase.from("concepts").update({ selected: false }).eq("order_id", order_id);
     await supabase.from("concepts").update({ selected: true }).eq("id", concept1.id);
     router.push(`/orders/${order_id}/approve`);
-  }
-
-  async function handleRetry() {
-    setRetrying(true);
-    setBoardData(null);
-    await triggerGeneration();
-    setRetrying(false);
   }
 
   async function signOut() {
@@ -335,20 +351,43 @@ export default function ConceptsPage() {
       {isAdminView && (
         <div className="bg-amber-50 border-b border-amber-200 px-6 py-2 flex items-center gap-2">
           <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-          <span className="text-xs font-display font-bold uppercase tracking-widest text-amber-700">Admin View — Client Portal</span>
+          <span className="text-xs font-display font-bold uppercase tracking-widest text-amber-700">
+            Admin View — Client Portal
+          </span>
         </div>
       )}
+
       <header className="border-b border-gs-border px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <GraceLogo className="h-7" href="/portal" />
-          <a href="/portal" className="text-xs font-display font-bold uppercase tracking-widest text-gs-gold hover:text-gs-gold-light transition-colors">
+          <a
+            href="/portal"
+            className="text-xs font-display font-bold uppercase tracking-widest text-gs-gold hover:text-gs-gold-light transition-colors"
+          >
             Client Portal
           </a>
         </div>
         <div className="flex items-center gap-5">
-          <a href="/portal" className="text-xs font-display font-bold uppercase tracking-wider text-gs-muted hover:text-gs-gold transition-colors">Home</a>
-          <button type="button" onClick={() => router.back()} className="text-xs font-display font-bold uppercase tracking-wider text-gs-muted hover:text-gs-gold transition-colors">← Back</button>
-          <button type="button" onClick={signOut} className="text-xs font-display font-bold uppercase tracking-wider text-gs-muted hover:text-gs-gold transition-colors">Sign Out</button>
+          <a
+            href="/portal"
+            className="text-xs font-display font-bold uppercase tracking-wider text-gs-muted hover:text-gs-gold transition-colors"
+          >
+            Home
+          </a>
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className="text-xs font-display font-bold uppercase tracking-wider text-gs-muted hover:text-gs-gold transition-colors"
+          >
+            ← Back
+          </button>
+          <button
+            type="button"
+            onClick={signOut}
+            className="text-xs font-display font-bold uppercase tracking-wider text-gs-muted hover:text-gs-gold transition-colors"
+          >
+            Sign Out
+          </button>
         </div>
       </header>
 
@@ -402,16 +441,10 @@ export default function ConceptsPage() {
               </div>
               <div>
                 <p className="text-gs-white font-barlow font-medium">No concept generated yet</p>
-                <p className="text-xs text-gs-muted font-barlow mt-1">Generation may still be in progress or encountered an issue.</p>
+                <p className="text-xs text-gs-muted font-barlow mt-1">
+                  Generation may still be in progress or encountered an issue.
+                </p>
               </div>
-              <button
-                type="button"
-                onClick={handleRetry}
-                disabled={retrying}
-                className="px-5 py-2.5 rounded-lg border border-gs-border text-xs font-display uppercase tracking-wider text-gs-muted hover:border-gs-gold hover:text-gs-gold transition-colors disabled:opacity-50"
-              >
-                {retrying ? "Retrying…" : "Retry Generation"}
-              </button>
             </div>
           )}
 
@@ -422,14 +455,21 @@ export default function ConceptsPage() {
 
               {/* Action row */}
               <div className="flex items-center justify-between pt-1">
-                <button
-                  type="button"
-                  onClick={handleRetry}
-                  disabled={retrying || approving}
-                  className="text-xs font-display uppercase tracking-wider text-gs-muted hover:text-gs-gold transition-colors disabled:opacity-40"
-                >
-                  {retrying ? "Regenerating…" : "↺ Regenerate"}
-                </button>
+
+                {/* Regenerate — disabled, locked for review */}
+                <div className="flex flex-col gap-1">
+                  <button
+                    type="button"
+                    disabled
+                    className="text-xs font-display uppercase tracking-wider text-gs-muted/40 cursor-not-allowed"
+                    title="Regeneration is not available at this stage"
+                  >
+                    ↺ Regenerate
+                  </button>
+                  <span className="text-[9px] text-gs-muted/40 font-barlow leading-tight max-w-[220px]">
+                    Regeneration coming soon. Current concept is locked for review.
+                  </span>
+                </div>
 
                 <button
                   type="button"
