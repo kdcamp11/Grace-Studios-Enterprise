@@ -6,15 +6,25 @@ import { sendConceptsReady } from "@/lib/email";
 
 export const maxDuration = 300;
 
+// Concept roles: 1=front, 2=back, 3=detail (logo/collar), 4=detail (sleeve/panel)
 const CONCEPT_SUFFIXES = [
-  "Home colorway",
-  "Away colorway alternative",
-  "Bold graphic variation",
-  "Minimal clean variation",
+  "front view, full garment visible, flat lay on dark background",
+  "back view, full garment visible, flat lay on dark background",
+  "close-up detail shot of collar, neckline, and logo placement area",
+  "close-up detail shot of sleeve, side panel, and hem area",
 ];
 
 const IMAGE_PREFIX =
-  "flat lay product shot of a sports jersey on a dark background, front facing, full garment visible, professional apparel photography —";
+  "professional apparel product photography, sports uniform, clean studio lighting, dark background —";
+
+export interface DesignMetadata {
+  garmentType: string;
+  colorway: { role: string; name: string; hex: string; pantone?: string }[];
+  materials: string[];
+  features: string[];
+  logoPlacement: string;
+  description: string;
+}
 
 function buildPrompt(brief: Record<string, unknown>, client: Record<string, unknown>): string {
   const designSystem = brief.design_system ?? "bold";
@@ -26,29 +36,40 @@ function buildPrompt(brief: Record<string, unknown>, client: Record<string, unkn
   const refUrls: string[] = Array.isArray(brief.reference_image_urls) ? (brief.reference_image_urls as string[]) : brief.reference_image_url ? [brief.reference_image_url as string] : [];
 
   const colorInstruction = logoUrls.length > 0
-    ? `Extract the team's primary and secondary colors directly from the uploaded team logo${logoUrls.length > 1 ? "s" : ""}.`
-    : "Choose a strong, sport-appropriate color palette that fits the design system.";
+    ? `Extract the team's primary and secondary colors directly from the uploaded team logo${logoUrls.length > 1 ? "s" : ""}. Return exact hex codes.`
+    : "Choose a strong, sport-appropriate color palette. Return exact hex codes.";
 
   const refInstruction = refUrls.length > 0
-    ? `${refUrls.length} reference image${refUrls.length > 1 ? "s have" : " has"} been provided for visual direction — use them for style, energy, and aesthetic inspiration.`
+    ? `${refUrls.length} reference image${refUrls.length > 1 ? "s have" : " has"} been provided for visual direction.`
     : "";
 
   const construction = brief.sublimated === true ? "sublimated" : brief.sublimated === false ? "tackle twill" : "sublimated";
   const cut = brief.jersey_cut ?? "standard";
-  const numberStyle = brief.number_style ? `The number style is ${brief.number_style}.` : "";
-  const logoPlacement = brief.gs_logo_placement ?? "chest";
-  const logos = brief.logos_to_include ? `Include the following logos: ${brief.logos_to_include}.` : "";
+  const numberStyle = brief.number_style ? `Number style: ${brief.number_style}.` : "";
+  const logoPlacementRaw = (brief.gs_logo_placement as string) ?? "chest";
+  const logos = brief.logos_to_include ? `Logos to include: ${brief.logos_to_include}.` : "";
   const sponsor = brief.sponsor_text ? `Sponsor text/patch: ${brief.sponsor_text}.` : "";
   const negative = brief.negative_references ? `Do not include: ${brief.negative_references}.` : "";
-  const vision = brief.vision_prompt ? `\n\nAdditional vision from the client: ${brief.vision_prompt}` : "";
+  const vision = brief.vision_prompt ? `Client vision: ${brief.vision_prompt}` : "";
 
-  return `You are a professional sports uniform designer. Design a ${designSystem} style ${sport} jersey for ${teamName} based in ${city}.
+  return `You are a professional sports uniform designer creating a product board for ${teamName} from ${city}.
 
-${colorInstruction} ${refInstruction}
+Design a ${designSystem} style ${sport} uniform. ${colorInstruction} ${refInstruction}
 
-The jersey is ${construction}, ${cut} cut. ${numberStyle} ${logos} ${sponsor} The Grace Studios logo must be placed at the ${logoPlacement} and must remain visible when the jersey is tucked in. ${negative}${vision}
+Construction: ${construction}, ${cut} cut. ${numberStyle} ${logos} ${sponsor} Grace Studios logo placement: ${logoPlacementRaw}. ${negative} ${vision}
 
-Describe exactly what this jersey looks like — colors, panel layout, graphic elements, number placement, logo placement, and overall visual energy. Be specific enough that an image generator can render it accurately. Return only the design description, nothing else.`.trim();
+Return ONLY valid JSON (no markdown, no code fences) with this exact structure:
+{
+  "garmentType": "short garment type label e.g. Baseball Jersey, Basketball Uniform",
+  "colorway": [
+    {"role": "Primary", "name": "color name", "hex": "#xxxxxx", "pantone": "Pantone X C"},
+    {"role": "Secondary", "name": "color name", "hex": "#xxxxxx", "pantone": "Pantone X C"}
+  ],
+  "materials": ["material line 1", "material line 2"],
+  "features": ["feature 1", "feature 2", "feature 3", "feature 4", "feature 5"],
+  "logoPlacement": "brief placement description",
+  "description": "Detailed visual description of the uniform — colors, panel layout, graphic elements, number style, logo locations, and overall energy. Specific enough for an image generator to render accurately."
+}`.trim();
 }
 
 function validUrl(url: unknown): url is string {
@@ -144,15 +165,35 @@ export async function POST(req: NextRequest) {
       stream: false,
     });
 
-    const designDescription =
+    const rawText =
       "content" in aiResponse && aiResponse.content[0].type === "text"
         ? aiResponse.content[0].text
         : "";
 
-    // Save ai_prompt back to brief
+    // Parse structured JSON from Claude; fall back gracefully
+    let metadata: DesignMetadata;
+    try {
+      // Strip any accidental markdown fences
+      const cleaned = rawText.replace(/^```json\s*/i, "").replace(/```\s*$/i, "").trim();
+      metadata = JSON.parse(cleaned) as DesignMetadata;
+    } catch {
+      // Fallback: treat raw text as description, build minimal metadata
+      metadata = {
+        garmentType: (brief.jersey_cut as string) ?? "Sports Uniform",
+        colorway: [],
+        materials: [],
+        features: [],
+        logoPlacement: (brief.gs_logo_placement as string) ?? "",
+        description: rawText,
+      };
+    }
+
+    const designDescription = metadata.description || rawText;
+
+    // Save full metadata JSON to ai_prompt
     await supabase
       .from("briefs")
-      .update({ ai_prompt: designDescription })
+      .update({ ai_prompt: JSON.stringify(metadata) })
       .eq("order_id", order_id);
 
     // 5. Generate 4 concept images via Replicate (with placeholder fallback)
