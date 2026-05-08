@@ -113,7 +113,7 @@ export async function POST(req: NextRequest) {
     const allImageUrls = [...logoUrls, ...refUrls].slice(0, 20);
 
     // 4. Generate design description via Anthropic
-    const anthropic = new Anthropic({ apiKey: process.env.GS_ANTHROPIC_API_KEY });
+    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
     type ImageBlock = { type: "image"; source: { type: "url"; url: string } };
     type TextBlock = { type: "text"; text: string };
