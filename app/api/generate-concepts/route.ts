@@ -11,7 +11,6 @@ import {
   buildReferenceAnnotation,
   SYSTEM_VISUAL_LANGUAGE,
   SYSTEM_PROMPT_SHORT,
-  toPublicUrl,
 } from "@/lib/reference-library";
 
 export const maxDuration = 300;
@@ -67,40 +66,29 @@ function validUrl(url: unknown): url is string {
 }
 
 /**
- * Calls Replicate flux-dev (img2img when initImageUrl is provided).
- * On 429 reads retry_after and waits, then retries. Max 4 attempts.
+ * Generates the spec-board image using flux-schnell (text-to-image).
+ * The layout structure is driven by the prompt (Claude has seen the reference
+ * and writes the description field accordingly). On 429 reads retry_after
+ * and waits, then retries. Max 4 attempts.
  */
 async function generateSpecBoard(
-  replicate:    Replicate,
-  prompt:       string,
-  initImageUrl: string | null,
+  replicate: Replicate,
+  prompt:    string,
 ): Promise<string> {
   const MAX_ATTEMPTS    = 4;
-  const DEFAULT_RETRY_MS = 20_000; // flux-dev is slower; be generous
+  const DEFAULT_RETRY_MS = 12_000;
 
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     try {
-      // Use flux-dev for img2img capability (layout inheritance from reference)
-      const input: Record<string, unknown> = {
-        prompt,
-        num_outputs:    1,
-        output_format:  "webp",
-        output_quality: 95,
-        num_inference_steps: 28,
-        guidance: 3.5,
-        go_fast: true,
-      };
-
-      if (initImageUrl) {
-        // img2img: reference spec-board provides the layout scaffold
-        input.image            = initImageUrl;
-        input.prompt_strength  = 0.60; // 40% layout from reference, 60% new design
-      } else {
-        // text-to-image fallback
-        input.aspect_ratio = "4:3";
-      }
-
-      const result = await replicate.run("black-forest-labs/flux-dev", { input });
+      const result = await replicate.run("black-forest-labs/flux-schnell", {
+        input: {
+          prompt,
+          num_outputs:    1,
+          aspect_ratio:   "4:3",   // landscape — matches spec-board proportions
+          output_format:  "webp",
+          output_quality: 90,
+        },
+      });
       return extractImageUrl(result);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -232,21 +220,21 @@ Return ONLY valid JSON — no markdown fences:
     "Match the exact feature list style shown in the spec-board reference image"
   ],
   "logoPlacement": "One precise sentence: Grace Athletics logo placement zone description",
-  "description": "REPLICATE RENDER DIRECTIVE (max 90 words): Write this as a garment design description for the image model — NOT a spec-board layout description (the layout comes from the init image). Include: (1) exact hex colors for each garment zone, (2) panel geometry and cut angles following the ${designSystem} system, (3) key graphic elements specific to the ${designSystem} system, (4) logo zone as 'clean empty logo zone on [location]' only — no logo artwork. This text controls what design REPLACES the reference's red/white Warriors design."
+  "description": "GARMENT DESIGN DIRECTIVE (max 80 words): Describe ONLY the jersey and shorts design — not the layout. Include: (1) exact hex colors for each panel zone, (2) panel geometry and angles following the ${designSystem} system visual language, (3) key construction details (side panels, collar, waistband style), (4) one sentence: 'Clean logo zone on [location]' — no logo artwork. This text is used inside a larger spec-board prompt. Be precise and technical. No storytelling."
 }`.trim();
 }
 
 // ─── Spec-board Replicate prompt builder ──────────────────────────────────────
 
 /**
- * Builds the single Replicate prompt for the complete spec-board.
+ * Builds the COMPLETE Replicate prompt for the spec-board image.
  *
- * When used with flux-dev img2img (prompt_strength 0.60):
- *   - The reference init image provides the board LAYOUT (column positions,
- *     garment arrangement, detail box structure).
- *   - This prompt drives the DESIGN CONTENT (colors, paneling, team identity).
- *
- * Keep prompt under ~100 words — FLUX focuses attention best in this range.
+ * Because we use flux-schnell (text-to-image), the LAYOUT must be described
+ * explicitly in the prompt. The structure mirrors the Grace Athletics basketball
+ * spec-board reference exactly:
+ *   LEFT COLUMN:  brand header, team name, colorway swatches, material, features, logo
+ *   CENTER (2×2): jersey front/back, shorts front/back — flat ghost mannequin
+ *   RIGHT COLUMN: 5 detail callout boxes (collar, logo zone, side panel, vent, waistband)
  */
 function buildSpecBoardPrompt(
   metadata:     DesignMetadata,
@@ -255,6 +243,7 @@ function buildSpecBoardPrompt(
 ): string {
   const system = designSystem.toLowerCase();
 
+  // Color string: e.g. "primary #1A3055, secondary #C41230, accent #FFFFFF"
   const colors = metadata.colorway
     .slice(0, 3)
     .map((c) => `${c.role.toLowerCase()} ${c.hex}`)
@@ -262,22 +251,31 @@ function buildSpecBoardPrompt(
 
   const systemShort = SYSTEM_PROMPT_SHORT[system] ?? SYSTEM_PROMPT_SHORT["bold"];
 
-  // Logo zone — use metadata or fall back to a safe generic
-  const logoZone = metadata.logoPlacement
-    ? `clean empty logo zone on ${metadata.logoPlacement.split(".")[0].toLowerCase().replace(/grace athletics/gi, "").trim().slice(0, 60)}`
-    : "clean empty logo zones on jersey chest and shorts";
+  // Claude's garment design directive (≤80 words of controlled design description)
+  const garmentDesc = (metadata.description ?? "").slice(0, 350);
 
-  // Claude's controlled garment render directive (already ≤90 words)
-  const garmentDesc = (metadata.description ?? "").slice(0, 400);
+  // Logo zone label (strip "grace athletics" prefix, keep just placement location)
+  const logoZoneRaw = (metadata.logoPlacement ?? "upper chest")
+    .replace(/grace athletics/gi, "").replace(/\./g, "").trim().slice(0, 60) || "upper chest";
 
   return [
-    `basketball uniform specification board for ${teamName}`,
+    // Document type + team identity
+    `professional basketball uniform technical specification board, ${teamName} program`,
+
+    // Explicit three-column layout — FLUX needs this spelled out since there's no init image
+    "off-white background, three-column grid layout matching a Nike or Adidas apparel tech pack",
+    "LEFT COLUMN narrow: GRACE ATHLETICS brand header, team program name, three color swatches labeled PRIMARY SECONDARY ACCENT with Pantone codes, MATERIAL specifications list three lines, FEATURES bullet list eight items, LOGO section with Grace Athletics brand mark zone",
+    "CENTER SECTION wide: four basketball garment flat renders in 2-by-2 grid arrangement. Top row left basketball jersey front view, top row right basketball jersey back view. Bottom row left basketball shorts front view, bottom row right basketball shorts back view. All garments ghost mannequin flat lay technical illustration style. No people wearing garments",
+    "RIGHT COLUMN narrow: five stacked rectangular labeled detail callout boxes. Box one RIB KNIT COLLAR closeup. Box two LOGO PRINT zone. Box three SIDE PANEL DETAIL seam closeup. Box four SIDE VENT DETAIL. Box five ELASTIC WAIST WITH DRAWCORD closeup",
+
+    // Design content
     `${system} design system: ${systemShort}`,
-    colors ? `colors: ${colors}` : "",
+    colors ? `garment colors: ${colors}` : "",
     garmentDesc,
-    logoZone + ", no logos rendered, no Nike, no Jordan, no Adidas, no hallucinated brand marks",
-    "Grace Athletics spec-board layout, flat technical garment illustrations, ghost mannequin style, no people, no lifestyle photography, no cinematic lighting",
-    "off-white background, professional apparel manufacturer presentation",
+
+    // Hard constraints
+    `clean empty logo zone on ${logoZoneRaw}, no logos generated, no Nike swoosh, no Jordan jumpman, no Adidas stripes, no brand hallucinations, no invented sponsor marks`,
+    "flat technical vector-style garment illustrations, clean precise lines, apparel manufacturer quality, no cinematic lighting, no people, no lifestyle photography, subtle drop shadow only",
   ]
     .filter(Boolean)
     .join(". ");
@@ -342,24 +340,19 @@ export async function POST(req: NextRequest) {
     const teamName     = (client.name as string) ?? "Team";
     const garmentLabel = getGarmentTypeLabel(sport);
 
-    // ── 3. Resolve reference library ──────────────────────────────────────────
+    // ── 3. Resolve reference library (used by Claude, not Replicate) ────────────
+    //   Reference images are passed to Claude so it can analyze the spec-board
+    //   layout and write a controlled garment description. Replicate uses
+    //   text-to-image only (flux-schnell) — the layout is encoded in the prompt.
 
-    const refs    = resolveReferenceFiles(sport, designSystem);
-    const appUrl  = process.env.NEXT_PUBLIC_APP_URL ?? "https://gs-first-pass.vercel.app";
-
-    // spec-board init URL (used for flux-dev img2img)
-    const specBoardInitUrl: string | null = refs.specBoard
-      ? toPublicUrl(appUrl, refs.specBoard)
-      : null;
-
-    // Additional reference images for Claude (front, back, details)
+    const refs          = resolveReferenceFiles(sport, designSystem);
+    const appUrl        = process.env.NEXT_PUBLIC_APP_URL ?? "https://gs-first-pass.vercel.app";
     const allRefUrls    = getReferenceUrls(refs, appUrl);
     const refAnnotation = buildReferenceAnnotation(refs);
 
     console.log(
       `[generate-concepts] ${sport}/${designSystem} — ` +
-      `specBoard: ${!!specBoardInitUrl}, refs: ${allRefUrls.length}, ` +
-      `initUrl: ${specBoardInitUrl?.split("/").pop()}`,
+      `refs for Claude: ${allRefUrls.length} (specBoard: ${!!refs.specBoard})`,
     );
 
     // ── 4. Mark queued ────────────────────────────────────────────────────────
@@ -466,7 +459,6 @@ export async function POST(req: NextRequest) {
 
     const replicatePrompt = buildSpecBoardPrompt(metadata, designSystem, teamName);
     console.log(`[generate-concepts] Replicate prompt (${replicatePrompt.length} chars): ${replicatePrompt.slice(0, 120)}…`);
-    console.log(`[generate-concepts] Init image: ${specBoardInitUrl ?? "none (text-to-image fallback)"}`);
 
     // ── 9. Generate the single spec-board image ───────────────────────────────
 
@@ -474,7 +466,7 @@ export async function POST(req: NextRequest) {
 
     let boardImageUrl: string;
     try {
-      boardImageUrl = await generateSpecBoard(replicate, replicatePrompt, specBoardInitUrl);
+      boardImageUrl = await generateSpecBoard(replicate, replicatePrompt);
       console.log(`[generate-concepts] spec-board generated: ${boardImageUrl.slice(0, 80)}`);
     } catch (imgErr: unknown) {
       const msg = imgErr instanceof Error ? imgErr.message : String(imgErr);
@@ -538,10 +530,9 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({
-      status:       "completed",
+      status:      "completed",
       order_id,
-      boardFormat:  "specboard",
-      initImage:    specBoardInitUrl ? "reference" : "text-only",
+      boardFormat: "specboard",
     });
 
   } catch (err: unknown) {
