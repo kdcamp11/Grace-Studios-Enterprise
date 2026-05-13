@@ -288,23 +288,9 @@ export async function POST(req: NextRequest) {
     }
     variations = variations.slice(0, 4);
 
-    // ── 5. Generate 16 images via Replicate (4 concepts × 4 views) ────────────
-
-    type ImageJob = {
-      conceptIndex: number;
-      viewIndex: number;
-      suffix: string;
-      description: string;
-    };
-
-    const imageJobs: ImageJob[] = variations.flatMap((v, ci) =>
-      VIEW_SUFFIXES.map((suffix, vi) => ({
-        conceptIndex: ci,
-        viewIndex:    vi,
-        suffix,
-        description:  v.description || "",
-      }))
-    );
+    // ── 5. Generate images via Replicate — 4 views per concept, concepts sequentially ──
+    // Running all 16 in parallel risks rate-limits; batching per concept keeps
+    // max concurrency at 4 while staying well within the 60s function timeout.
 
     // Map: conceptIndex → viewIndex → image URL
     const imageMap: Record<number, Record<number, string>> = {};
@@ -312,31 +298,35 @@ export async function POST(req: NextRequest) {
     try {
       const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN });
 
-      const results = await Promise.all(
-        imageJobs.map((job) =>
-          replicate.run("black-forest-labs/flux-schnell", {
-            input: {
-              prompt:         `${IMAGE_PREFIX} ${job.description} — ${job.suffix}`,
-              num_outputs:    1,
-              aspect_ratio:   "1:1",
-              output_format:  "webp",
-              output_quality: 90,
-            },
-          })
-        )
-      );
-
-      results.forEach((result, idx) => {
-        const { conceptIndex, viewIndex } = imageJobs[idx];
+      function extractUrl(result: unknown): string {
         const output = result as unknown[];
         const first  = Array.isArray(output) ? output[0] : result;
-        const url    =
-          first && typeof (first as { url?: () => string }).url === "function"
-            ? (first as { url: () => string }).url()
-            : String(first);
-        if (!imageMap[conceptIndex]) imageMap[conceptIndex] = {};
-        imageMap[conceptIndex][viewIndex] = url;
-      });
+        return first && typeof (first as { url?: () => string }).url === "function"
+          ? (first as { url: () => string }).url()
+          : String(first);
+      }
+
+      // Process one concept at a time, 4 views in parallel per concept
+      for (let ci = 0; ci < variations.length; ci++) {
+        const variation = variations[ci];
+        const viewResults = await Promise.all(
+          VIEW_SUFFIXES.map((suffix) =>
+            replicate.run("black-forest-labs/flux-schnell", {
+              input: {
+                prompt:         `${IMAGE_PREFIX} ${variation.description} — ${suffix}`,
+                num_outputs:    1,
+                aspect_ratio:   "1:1",
+                output_format:  "webp",
+                output_quality: 90,
+              },
+            })
+          )
+        );
+        imageMap[ci] = {};
+        viewResults.forEach((result, vi) => {
+          imageMap[ci][vi] = extractUrl(result);
+        });
+      }
     } catch (replicateErr: unknown) {
       console.warn(
         "[generate-concepts] Replicate unavailable, using placeholders:",
