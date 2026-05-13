@@ -3,6 +3,8 @@ import Anthropic from "@anthropic-ai/sdk";
 import Replicate from "replicate";
 import { createClient } from "@supabase/supabase-js";
 import { sendConceptsReady } from "@/lib/email";
+import fs from "fs";
+import path from "path";
 
 export const maxDuration = 300;
 
@@ -209,10 +211,13 @@ export async function POST(req: NextRequest) {
     type TextBlock    = { type: "text"; text: string };
     type ContentBlock = ImageBlock | TextBlock;
 
-    const specBoardBlock: ImageBlock = {
-      type: "image",
-      source: { type: "url", url: SPEC_BOARD_REFERENCE_URL },
-    };
+    // Only include the spec-board reference if the file has been placed in public/reference/
+    const refImagePath = path.join(process.cwd(), "public", "reference", "spec-board-reference.jpg");
+    const hasSpecBoardRef = fs.existsSync(refImagePath);
+
+    const specBoardBlock: ImageBlock | null = hasSpecBoardRef
+      ? { type: "image", source: { type: "url", url: SPEC_BOARD_REFERENCE_URL } }
+      : null;
 
     const clientImageBlocks: ContentBlock[] = clientImageUrls.map((url) => ({
       type: "image" as const,
@@ -220,9 +225,11 @@ export async function POST(req: NextRequest) {
     }));
 
     const imageCountNote = [
-      "The first image is a Grace Athletics spec-board style reference. Match this level of technical detail and structured presentation in your output.",
+      hasSpecBoardRef
+        ? "The first image is a Grace Athletics spec-board style reference. Match this level of technical detail and structured presentation in your output."
+        : "",
       logoUrls.length > 0
-        ? `The next ${logoUrls.length} image(s) are team logo(s). Extract brand colors from them.`
+        ? `${hasSpecBoardRef ? "The next" : "The first"} ${logoUrls.length} image(s) are team logo(s). Extract brand colors from them.`
         : "",
       refUrls.length > 0
         ? `The following ${refUrls.length} image(s) are client reference images for aesthetic direction.`
@@ -232,9 +239,9 @@ export async function POST(req: NextRequest) {
       .join(" ");
 
     const claudeContent: ContentBlock[] = [
-      specBoardBlock,
+      ...(specBoardBlock ? [specBoardBlock] : []),
       ...clientImageBlocks,
-      { type: "text", text: imageCountNote },
+      ...(imageCountNote ? [{ type: "text" as const, text: imageCountNote }] : []),
       { type: "text", text: designPrompt },
     ];
 
