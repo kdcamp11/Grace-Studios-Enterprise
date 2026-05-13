@@ -52,118 +52,91 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function extractImageUrl(result: unknown): string {
-  const output = result as unknown[];
-  const first  = Array.isArray(output) ? output[0] : result;
-  return first && typeof (first as { url?: () => string }).url === "function"
-    ? (first as { url: () => string }).url()
-    : String(first);
-}
-
 function validUrl(url: unknown): url is string {
   return typeof url === "string" && url.startsWith("http");
 }
 
 /**
- * Generates the spec-board image via the Replicate REST API directly.
+ * Generates the spec-board image via OpenAI gpt-image-1, then uploads the
+ * returned base64 PNG to Supabase Storage (bucket: "concepts") and returns
+ * the public URL.
  *
- * Bypasses replicate.run() / the SDK's SSE streaming layer entirely — the
- * eventsource-parser vendored in the SDK throws "s.slice is not a function"
- * in the Vercel runtime. Instead we POST to create a prediction, then poll
- * until succeeded/failed. Max 4 create attempts on 429; poll timeout 4 min.
+ * OpenAI gpt-image-1 always returns b64_json — there is no streaming step,
+ * so this is a single synchronous HTTP call with no polling required.
+ * Retries up to MAX_ATTEMPTS on 429 or transient 5xx.
  */
-async function generateSpecBoard(prompt: string): Promise<string> {
-  const token = process.env.REPLICATE_API_TOKEN!;
-  const MODEL = "black-forest-labs/flux-schnell";
-  const MAX_ATTEMPTS     = 4;
-  const DEFAULT_RETRY_MS = 12_000;
-  const POLL_INTERVAL_MS = 3_000;
-  const POLL_TIMEOUT_MS  = 240_000;   // 4 min
+async function generateSpecBoard(
+  prompt:   string,
+  supabase: SupabaseClient,
+  orderId:  string,
+): Promise<string> {
+  const apiKey       = process.env.OPENAI_API_KEY!;
+  const MAX_ATTEMPTS = 4;
+  const RETRY_MS     = 15_000;
 
-  let predictionId: string | null = null;
+  // ── 1. Call OpenAI image generation ──────────────────────────────────────
+  let b64: string | null = null;
 
-  // ── 1. Create prediction (retry on 429) ──────────────────────────────────
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-    const res = await fetch(`https://api.replicate.com/v1/models/${MODEL}/predictions`, {
+    const res = await fetch("https://api.openai.com/v1/images/generations", {
       method:  "POST",
       headers: {
-        "Authorization": `Bearer ${token}`,
+        "Authorization": `Bearer ${apiKey}`,
         "Content-Type":  "application/json",
-        "Prefer":        "wait=5",   // short server-side wait, avoids extra polls
       },
       body: JSON.stringify({
-        input: {
-          prompt,
-          num_outputs:    1,
-          aspect_ratio:   "4:3",
-          output_format:  "webp",
-          output_quality: 90,
-        },
+        model:           "gpt-image-1",
+        prompt,
+        n:               1,
+        size:            "1536x1024",   // landscape — spec-board proportions
+        quality:         "high",
+        output_format:   "png",
       }),
     });
 
-    if (res.status === 429) {
-      if (attempt >= MAX_ATTEMPTS) throw new Error("Replicate rate limit — max retries exceeded");
-      const body        = await res.json().catch(() => ({})) as Record<string, unknown>;
-      const retryAfterMs = typeof body.retry_after === "number"
-        ? body.retry_after * 1000
-        : DEFAULT_RETRY_MS;
-      console.log(`[generate-concepts] 429 — waiting ${retryAfterMs / 1000}s (attempt ${attempt})`);
-      await sleep(retryAfterMs);
+    if (res.status === 429 || (res.status >= 500 && res.status < 600)) {
+      if (attempt >= MAX_ATTEMPTS) {
+        const text = await res.text().catch(() => res.statusText);
+        throw new Error(`OpenAI image generation failed (${res.status}): ${text}`);
+      }
+      console.log(`[generate-concepts] OpenAI ${res.status} — waiting ${RETRY_MS / 1000}s (attempt ${attempt})`);
+      await sleep(RETRY_MS);
       continue;
     }
 
     if (!res.ok) {
       const text = await res.text().catch(() => res.statusText);
-      throw new Error(`Replicate create prediction failed (${res.status}): ${text}`);
+      throw new Error(`OpenAI image generation failed (${res.status}): ${text}`);
     }
 
-    const data = await res.json() as { id: string; status: string; output?: unknown; error?: string };
-
-    // "Prefer: wait" may return a completed prediction immediately
-    if (data.status === "succeeded" && data.output) {
-      return extractImageUrl(data.output);
-    }
-    if (data.status === "failed") {
-      throw new Error(`Replicate prediction failed immediately: ${data.error ?? "unknown"}`);
-    }
-
-    predictionId = data.id;
+    const json = await res.json() as { data: { b64_json?: string }[] };
+    b64 = json.data?.[0]?.b64_json ?? null;
+    if (!b64) throw new Error("OpenAI returned no image data");
     break;
   }
 
-  if (!predictionId) throw new Error("Failed to obtain Replicate prediction ID");
+  if (!b64) throw new Error("OpenAI image generation produced no output");
 
-  // ── 2. Poll until done ───────────────────────────────────────────────────
-  const deadline = Date.now() + POLL_TIMEOUT_MS;
+  // ── 2. Upload PNG buffer to Supabase Storage ──────────────────────────────
+  const buffer    = Buffer.from(b64, "base64");
+  const bucket    = "concepts";
+  const filePath  = `${orderId}/spec-board-${Date.now()}.png`;
 
-  while (Date.now() < deadline) {
-    await sleep(POLL_INTERVAL_MS);
+  // Ensure bucket exists (service-role client can create it; ignore if already there)
+  await supabase.storage.createBucket(bucket, { public: true }).catch(() => {/* already exists */});
 
-    const poll = await fetch(`https://api.replicate.com/v1/predictions/${predictionId}`, {
-      headers: { "Authorization": `Bearer ${token}` },
+  const { error: uploadError } = await supabase.storage
+    .from(bucket)
+    .upload(filePath, buffer, {
+      contentType: "image/png",
+      upsert:      true,
     });
 
-    if (!poll.ok) {
-      console.warn(`[generate-concepts] poll ${predictionId} returned ${poll.status}`);
-      continue;
-    }
+  if (uploadError) throw new Error(`Supabase storage upload failed: ${uploadError.message}`);
 
-    const data = await poll.json() as { status: string; output?: unknown; error?: string };
-
-    if (data.status === "succeeded" && data.output) {
-      return extractImageUrl(data.output);
-    }
-    if (data.status === "failed") {
-      throw new Error(`Replicate prediction failed: ${data.error ?? "unknown"}`);
-    }
-    if (data.status === "canceled") {
-      throw new Error("Replicate prediction was canceled");
-    }
-    // still processing — keep polling
-  }
-
-  throw new Error("Replicate prediction timed out after 4 minutes");
+  // ── 3. Return public URL ─────────────────────────────────────────────────
+  const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(filePath);
+  return urlData.publicUrl;
 }
 
 /** Merge-patch briefs.ai_prompt without wiping fields set in earlier steps. */
@@ -195,9 +168,9 @@ async function saveStatus(
  *
  * Reference images are passed as separate image blocks (see POST handler).
  * This text prompt is REFERENCE-DRIVEN: Claude is shown the exact spec-board
- * reference and must output metadata + a controlled Replicate render directive.
+ * reference and must output metadata + a controlled image-generation directive.
  *
- * The `description` field Claude returns is used verbatim as the Replicate prompt
+ * The `description` field Claude returns is used verbatim as the OpenAI image prompt
  * (prefixed with the spec-board structural framing).
  */
 function buildClaudePrompt(
@@ -285,12 +258,12 @@ Return ONLY valid JSON — no markdown fences:
 }`.trim();
 }
 
-// ─── Spec-board Replicate prompt builder ──────────────────────────────────────
+// ─── Spec-board image prompt builder ─────────────────────────────────────────
 
 /**
- * Builds the COMPLETE Replicate prompt for the spec-board image.
+ * Builds the COMPLETE image prompt for the spec-board (sent to OpenAI gpt-image-1).
  *
- * Because we use flux-schnell (text-to-image), the LAYOUT must be described
+ * Because we use gpt-image-1 (text-to-image), the LAYOUT must be described
  * explicitly in the prompt. The structure mirrors the Grace Athletics basketball
  * spec-board reference exactly:
  *   LEFT COLUMN:  brand header, team name, colorway swatches, material, features, logo
@@ -401,10 +374,10 @@ export async function POST(req: NextRequest) {
     const teamName     = (client.name as string) ?? "Team";
     const garmentLabel = getGarmentTypeLabel(sport);
 
-    // ── 3. Resolve reference library (used by Claude, not Replicate) ────────────
+    // ── 3. Resolve reference library (used by Claude, not OpenAI image gen) ─────
     //   Reference images are passed to Claude so it can analyze the spec-board
-    //   layout and write a controlled garment description. Replicate uses
-    //   text-to-image only (flux-schnell) — the layout is encoded in the prompt.
+    //   layout and write a controlled garment description. OpenAI gpt-image-1
+    //   is text-to-image — the layout is encoded in the prompt.
 
     const refs          = resolveReferenceFiles(sport, designSystem);
     const appUrl        = process.env.NEXT_PUBLIC_APP_URL ?? "https://gs-first-pass.vercel.app";
@@ -516,16 +489,16 @@ export async function POST(req: NextRequest) {
       total:    1,
     });
 
-    // ── 8. Build the Replicate spec-board prompt ──────────────────────────────
+    // ── 8. Build the OpenAI spec-board prompt ────────────────────────────────
 
-    const replicatePrompt = buildSpecBoardPrompt(metadata, designSystem, teamName);
-    console.log(`[generate-concepts] Replicate prompt (${replicatePrompt.length} chars): ${replicatePrompt.slice(0, 120)}…`);
+    const imagePrompt = buildSpecBoardPrompt(metadata, designSystem, teamName);
+    console.log(`[generate-concepts] image prompt (${imagePrompt.length} chars): ${imagePrompt.slice(0, 120)}…`);
 
-    // ── 9. Generate the single spec-board image ───────────────────────────────
+    // ── 9. Generate the single spec-board image (OpenAI gpt-image-1) ─────────
 
     let boardImageUrl: string;
     try {
-      boardImageUrl = await generateSpecBoard(replicatePrompt);
+      boardImageUrl = await generateSpecBoard(imagePrompt, supabase, order_id);
       console.log(`[generate-concepts] spec-board generated: ${boardImageUrl.slice(0, 80)}`);
     } catch (imgErr: unknown) {
       const msg = imgErr instanceof Error ? imgErr.message : String(imgErr);
