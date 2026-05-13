@@ -5,14 +5,21 @@ import { useRouter, useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { getProfile } from "@/lib/profile";
 import GraceLogo from "@/components/GraceLogo";
-import type { DesignMetadata } from "@/app/api/generate-concepts/route";
+import type { DesignMetadata, GenerationStatus } from "@/app/api/generate-concepts/route";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
+
+interface GenerationProgress {
+  status: GenerationStatus | "not_started";
+  progress: number;
+  total: number;
+  error: string | null;
+}
 
 interface BoardData {
   teamName: string;
   orderNumber: string;
-  metadata: DesignMetadata | null;
+  metadata: DesignMetadata;
 }
 
 // ─── Color Swatch ─────────────────────────────────────────────────────────────
@@ -67,17 +74,67 @@ function BoardImage({ url, alt, className }: { url?: string; alt: string; classN
   );
 }
 
+// ─── Generation Progress Bar ──────────────────────────────────────────────────
+
+const STEP_LABELS = [
+  "Analyzing brief",
+  "Generating front view",
+  "Generating back view",
+  "Generating collar & logo detail",
+  "Generating sleeve & panel detail",
+];
+
+function GeneratingState({ gen }: { gen: GenerationProgress }) {
+  // progress 0 = Claude finished, images not started
+  // progress 1-4 = images 1-4 done
+  const stepIndex  = gen.status === "generating" ? gen.progress : 0;
+  const label      = STEP_LABELS[Math.min(stepIndex, STEP_LABELS.length - 1)];
+  const pct        = Math.round((stepIndex / gen.total) * 100);
+
+  return (
+    <div className="py-20 flex flex-col items-center justify-center gap-6 max-w-sm mx-auto text-center">
+      {/* Spinner */}
+      <div className="relative w-16 h-16">
+        <div className="w-16 h-16 border border-gs-border rounded-full" />
+        <div className="absolute inset-0 border-2 border-gs-gold border-t-transparent rounded-full animate-spin" />
+      </div>
+
+      {/* Label */}
+      <div className="space-y-1">
+        <p className="text-gs-white font-barlow font-medium">Building your product board</p>
+        <p className="text-xs text-gs-gold font-display uppercase tracking-widest">{label}</p>
+        {gen.status === "generating" && (
+          <p className="text-xs text-gs-muted font-barlow">
+            Image {gen.progress + 1} of {gen.total}
+          </p>
+        )}
+      </div>
+
+      {/* Progress bar */}
+      <div className="w-full bg-gs-border rounded-full h-0.5 overflow-hidden">
+        <div
+          className="h-full bg-gs-gold transition-all duration-700 ease-out rounded-full"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+
+      <p className="text-[10px] text-gs-muted font-barlow">
+        Your board will appear here automatically. You can leave and come back.
+      </p>
+    </div>
+  );
+}
+
 // ─── Product Board ────────────────────────────────────────────────────────────
 
 function ProductBoard({ data }: { data: BoardData }) {
   const { teamName, orderNumber, metadata } = data;
-
-  const images        = metadata?.images;
-  const garmentType   = metadata?.garmentType   ?? "Sports Uniform";
-  const colorway      = metadata?.colorway      ?? [];
-  const materials     = metadata?.materials     ?? [];
-  const features      = metadata?.features      ?? [];
-  const logoPlacement = metadata?.logoPlacement ?? "";
+  const images        = metadata.images;
+  const garmentType   = metadata.garmentType   ?? "Sports Uniform";
+  const colorway      = metadata.colorway      ?? [];
+  const materials     = metadata.materials     ?? [];
+  const features      = metadata.features      ?? [];
+  const logoPlacement = metadata.logoPlacement ?? "";
 
   const detailLabel1 = features[0]
     ? features[0].replace(/^[•\-–]\s*/, "").split(" ").slice(0, 5).join(" ")
@@ -87,10 +144,8 @@ function ProductBoard({ data }: { data: BoardData }) {
     : "Sleeve & Panel";
 
   return (
-    <div
-      className="rounded-xl overflow-hidden border border-gray-300 shadow-lg"
-      style={{ backgroundColor: "#f0ede6" }}
-    >
+    <div className="rounded-xl overflow-hidden border border-gray-300 shadow-lg" style={{ backgroundColor: "#f0ede6" }}>
+
       {/* Header */}
       <div className="border-b border-gray-300 bg-white px-5 py-2.5 flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -105,11 +160,8 @@ function ProductBoard({ data }: { data: BoardData }) {
       {/* Body */}
       <div className="flex" style={{ minHeight: 540 }}>
 
-        {/* LEFT: Spec metadata */}
-        <div
-          className="flex-shrink-0 border-r border-gray-300 flex flex-col"
-          style={{ width: 210, backgroundColor: "#f8f6f1" }}
-        >
+        {/* LEFT: Metadata */}
+        <div className="flex-shrink-0 border-r border-gray-300 flex flex-col" style={{ width: 210, backgroundColor: "#f8f6f1" }}>
           <div className="px-5 pt-5 pb-4 border-b border-gray-200">
             <p className="text-[8px] uppercase tracking-[0.3em] text-gray-400 font-bold mb-1">Grace Athletics</p>
             <p className="text-base font-bold uppercase tracking-wider text-gray-900 leading-tight">{teamName}</p>
@@ -126,9 +178,7 @@ function ProductBoard({ data }: { data: BoardData }) {
           {materials.length > 0 && (
             <div className="px-5 py-4 border-b border-gray-200">
               <p className="text-[8px] uppercase tracking-[0.28em] text-gray-400 font-bold mb-2">Material</p>
-              {materials.map((m, i) => (
-                <p key={i} className="text-[9px] text-gray-600 leading-relaxed">{m}</p>
-              ))}
+              {materials.map((m, i) => <p key={i} className="text-[9px] text-gray-600 leading-relaxed">{m}</p>)}
             </div>
           )}
 
@@ -144,9 +194,7 @@ function ProductBoard({ data }: { data: BoardData }) {
           {logoPlacement && (
             <div className="px-5 py-4">
               <p className="text-[8px] uppercase tracking-[0.28em] text-gray-400 font-bold mb-1.5">Logo</p>
-              <p className="text-[9px] text-gray-600 capitalize leading-snug">
-                {logoPlacement.replace(/_/g, " ")}
-              </p>
+              <p className="text-[9px] text-gray-600 capitalize leading-snug">{logoPlacement.replace(/_/g, " ")}</p>
             </div>
           )}
         </div>
@@ -163,23 +211,16 @@ function ProductBoard({ data }: { data: BoardData }) {
           </div>
         </div>
 
-        {/* RIGHT: Detail callouts */}
-        <div
-          className="flex-shrink-0 border-l border-gray-300 flex flex-col divide-y divide-gray-200"
-          style={{ width: 168, backgroundColor: "#f8f6f1" }}
-        >
+        {/* RIGHT: Details */}
+        <div className="flex-shrink-0 border-l border-gray-300 flex flex-col divide-y divide-gray-200" style={{ width: 168, backgroundColor: "#f8f6f1" }}>
           <div className="flex-1 flex flex-col p-3">
-            <p className="text-[7px] uppercase tracking-[0.22em] text-gray-400 font-bold mb-2 leading-tight">
-              {detailLabel1}
-            </p>
+            <p className="text-[7px] uppercase tracking-[0.22em] text-gray-400 font-bold mb-2 leading-tight">{detailLabel1}</p>
             <div className="flex-1 rounded overflow-hidden" style={{ minHeight: 120 }}>
               <BoardImage url={images?.detail1} alt={detailLabel1} className="w-full h-full" />
             </div>
           </div>
           <div className="flex-1 flex flex-col p-3">
-            <p className="text-[7px] uppercase tracking-[0.22em] text-gray-400 font-bold mb-2 leading-tight">
-              {detailLabel2}
-            </p>
+            <p className="text-[7px] uppercase tracking-[0.22em] text-gray-400 font-bold mb-2 leading-tight">{detailLabel2}</p>
             <div className="flex-1 rounded overflow-hidden" style={{ minHeight: 120 }}>
               <BoardImage url={images?.detail2} alt={detailLabel2} className="w-full h-full" />
             </div>
@@ -210,15 +251,39 @@ export default function ConceptsPage() {
   const supabase      = supabaseRef.current;
 
   const [boardData, setBoardData]     = useState<BoardData | null>(null);
-  const [loading, setLoading]         = useState(true);
-  const [generating, setGenerating]   = useState(false);
+  const [gen, setGen]                 = useState<GenerationProgress>({ status: "not_started", progress: 0, total: 4, error: null });
   const [approving, setApproving]     = useState(false);
   const [isAdminView, setIsAdminView] = useState(false);
-  const pollRef = useRef<NodeJS.Timeout | null>(null);
 
-  // ── Fetch board ─────────────────────────────────────────────────────────────
+  // ── Duplicate-generation guard for React Strict Mode ─────────────────────
+  // useEffect fires twice in dev Strict Mode. This ref ensures we only ever
+  // call the generation API once per true page mount.
+  const generationFiredRef = useRef(false);
+  const pollIntervalRef    = useRef<NodeJS.Timeout | null>(null);
 
-  const fetchBoard = useCallback(async (): Promise<boolean> => {
+  // ── Poll status endpoint ──────────────────────────────────────────────────
+
+  const pollStatus = useCallback(async () => {
+    try {
+      const res  = await fetch(`/api/generate-concepts/status?order_id=${order_id}`);
+      const data = await res.json() as GenerationProgress;
+
+      setGen(data);
+
+      if (data.status === "completed") {
+        // Stop polling and fetch the full board
+        if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+        await loadBoard();
+      } else if (data.status === "failed") {
+        if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+      }
+    } catch { /* network blip — keep polling */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [order_id]);
+
+  // ── Load completed board from DB ──────────────────────────────────────────
+
+  const loadBoard = useCallback(async (): Promise<boolean> => {
     const { data: conceptRows } = await supabase
       .from("concepts")
       .select("id, concept_number, image_url, selected")
@@ -236,13 +301,12 @@ export default function ConceptsPage() {
     const teamName    = (clientData as { name?: string })?.name ?? "Your Team";
     const orderNumber = orderRow?.order_number ?? order_id.slice(0, 8).toUpperCase();
 
-    // Parse metadata — new format has embedded images; legacy format uses concepts table
     let metadata: DesignMetadata | null = null;
     if (briefRow?.ai_prompt) {
       try {
         const parsed = JSON.parse(briefRow.ai_prompt as string) as DesignMetadata;
         if (typeof parsed.description === "string") {
-          // If images aren't embedded (legacy), pull from concepts table
+          // Back-fill images from concepts table if not embedded
           if (!parsed.images) {
             parsed.images = {
               front:   conceptRows.find(r => r.concept_number === 1)?.image_url ?? "",
@@ -253,18 +317,13 @@ export default function ConceptsPage() {
           }
           metadata = parsed;
         }
-      } catch { /* leave null */ }
+      } catch { /* ignore */ }
     }
 
-    // Absolute fallback: show images from concepts table with no metadata
     if (!metadata) {
       metadata = {
-        garmentType:   "Sports Uniform",
-        colorway:      [],
-        materials:     [],
-        features:      [],
-        logoPlacement: "",
-        description:   "",
+        garmentType: "Sports Uniform", colorway: [], materials: [], features: [],
+        logoPlacement: "", description: "",
         images: {
           front:   conceptRows.find(r => r.concept_number === 1)?.image_url ?? "",
           back:    conceptRows.find(r => r.concept_number === 2)?.image_url ?? "",
@@ -275,45 +334,89 @@ export default function ConceptsPage() {
     }
 
     setBoardData({ teamName, orderNumber, metadata });
-    setGenerating(false);
-    setLoading(false);
-    if (pollRef.current) clearInterval(pollRef.current);
     return true;
-  }, [order_id, supabase]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [order_id]);
 
-  // ── Trigger generation ──────────────────────────────────────────────────────
+  // ── Trigger generation ────────────────────────────────────────────────────
 
-  async function triggerGeneration() {
-    setGenerating(true);
-    fetch("/api/generate-concepts", {
+  const triggerGeneration = useCallback(async () => {
+    if (generationFiredRef.current) return;
+    generationFiredRef.current = true;
+
+    setGen({ status: "queued", progress: 0, total: 4, error: null });
+
+    const res = await fetch("/api/generate-concepts", {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
       body:    JSON.stringify({ order_id }),
-    }).then(() => fetchBoard());
-    pollRef.current = setInterval(fetchBoard, 5000);
-  }
+    });
 
-  // ── Init ────────────────────────────────────────────────────────────────────
+    if (res.status === 409) {
+      // Already running or already completed — just start/keep polling
+      const body = await res.json();
+      if (body.status === "already_completed") {
+        await loadBoard();
+        return;
+      }
+      // already_running → fall through to poll
+    }
+
+    // Start polling every 4 seconds regardless of POST outcome
+    if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+    pollIntervalRef.current = setInterval(pollStatus, 4000);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [order_id, pollStatus, loadBoard]);
+
+  // ── Init ──────────────────────────────────────────────────────────────────
 
   useEffect(() => {
+    let cancelled = false;
+
     async function init() {
       const profile = await getProfile();
+      if (cancelled) return;
+
       if (profile) {
         if (profile.role === "supplier") { router.replace("/supplier"); return; }
         if (profile.role === "admin") setIsAdminView(true);
       }
-      const hasExisting = await fetchBoard();
-      if (!hasExisting) {
-        setLoading(false);
+
+      // Check if a completed board already exists
+      const alreadyDone = await loadBoard();
+      if (cancelled) return;
+
+      if (alreadyDone) {
+        setGen(prev => ({ ...prev, status: "completed" }));
+        return;
+      }
+
+      // Check if generation is already in progress
+      const statusRes  = await fetch(`/api/generate-concepts/status?order_id=${order_id}`);
+      const statusData = await statusRes.json() as GenerationProgress;
+      if (cancelled) return;
+
+      if (statusData.status === "generating" || statusData.status === "queued") {
+        // Pick up an in-progress generation — just poll
+        setGen(statusData);
+        generationFiredRef.current = true; // prevent re-fire
+        pollIntervalRef.current = setInterval(pollStatus, 4000);
+      } else {
+        // Nothing in progress — trigger fresh generation
         await triggerGeneration();
       }
     }
+
     init();
-    return () => { if (pollRef.current) clearInterval(pollRef.current); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
+    return () => {
+      cancelled = true;
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [order_id]);
 
-  // ── Approve ─────────────────────────────────────────────────────────────────
+  // ── Approve ───────────────────────────────────────────────────────────────
 
   async function handleApprove() {
     if (!boardData) return;
@@ -333,7 +436,9 @@ export default function ConceptsPage() {
     router.replace("/login");
   }
 
-  const hasBoard = !!boardData;
+  const isGenerating = gen.status === "generating" || gen.status === "queued";
+  const isFailed     = gen.status === "failed";
+  const hasBoard     = !!boardData;
 
   return (
     <div className="min-h-screen bg-gs-dark flex flex-col">
@@ -369,60 +474,50 @@ export default function ConceptsPage() {
               Your Design Concept
             </h1>
             <p className="mt-1.5 text-sm text-gs-muted font-barlow">
-              {generating
+              {isGenerating
                 ? "Our AI is designing your uniform — this usually takes 1–3 minutes."
                 : hasBoard
                 ? "Review your concept board below. Approve to move into production."
+                : isFailed
+                ? "Generation encountered an issue."
                 : "Preparing your concept…"}
             </p>
           </div>
 
-          {/* Generating */}
-          {generating && (
-            <div className="py-24 flex flex-col items-center justify-center gap-5">
-              <div className="relative w-16 h-16">
-                <div className="w-16 h-16 border border-gs-border rounded-full" />
-                <div className="absolute inset-0 border-2 border-gs-gold border-t-transparent rounded-full animate-spin" />
-              </div>
-              <div className="text-center space-y-1">
-                <p className="text-gs-white font-barlow font-medium">Building your product board</p>
-                <p className="text-xs text-gs-muted font-barlow">AI design in progress · Front, back & detail renders</p>
-              </div>
-              <p className="text-[10px] text-gs-muted font-barlow mt-4 text-center max-w-xs">
-                Your board will appear here automatically. You can leave and come back.
-              </p>
-            </div>
-          )}
+          {/* Generating / queued */}
+          {isGenerating && <GeneratingState gen={gen} />}
 
-          {/* Loading */}
-          {loading && !generating && (
+          {/* Initial loading (before first status check) */}
+          {!isGenerating && !hasBoard && !isFailed && (
             <div className="py-24 flex items-center justify-center">
               <div className="w-6 h-6 border-2 border-gs-gold border-t-transparent rounded-full animate-spin" />
             </div>
           )}
 
-          {/* No board */}
-          {!loading && !generating && !hasBoard && (
+          {/* Failed */}
+          {isFailed && (
             <div className="py-20 flex flex-col items-center gap-5 text-center">
-              <div className="w-12 h-12 rounded-xl border border-gs-border flex items-center justify-center">
-                <svg className="w-5 h-5 text-gs-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              <div className="w-12 h-12 rounded-xl border border-red-900/50 bg-red-900/10 flex items-center justify-center">
+                <svg className="w-5 h-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
                 </svg>
               </div>
               <div>
-                <p className="text-gs-white font-barlow font-medium">No concept generated yet</p>
-                <p className="text-xs text-gs-muted font-barlow mt-1">Generation may still be in progress or encountered an issue.</p>
+                <p className="text-gs-white font-barlow font-medium">Generation failed</p>
+                {gen.error && (
+                  <p className="text-xs text-red-400 font-barlow mt-1 max-w-sm">{gen.error}</p>
+                )}
+                <p className="text-xs text-gs-muted font-barlow mt-2">Please contact Grace Studios support to retry.</p>
               </div>
             </div>
           )}
 
-          {/* Board + actions */}
-          {!loading && !generating && hasBoard && (
+          {/* Completed board */}
+          {hasBoard && (
             <div className="space-y-5">
               <ProductBoard data={boardData!} />
 
               <div className="flex items-center justify-between pt-1">
-                {/* Regenerate — disabled */}
                 <div className="flex flex-col gap-1">
                   <button
                     type="button"

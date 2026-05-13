@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import Replicate from "replicate";
 import { createClient } from "@supabase/supabase-js";
+import { SupabaseClient } from "@supabase/supabase-js";
 import { sendConceptsReady } from "@/lib/email";
 import fs from "fs";
 import path from "path";
@@ -10,7 +11,14 @@ export const maxDuration = 300;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+export type GenerationStatus = "queued" | "generating" | "completed" | "failed";
+
 export interface DesignMetadata {
+  status?: GenerationStatus;
+  progress?: number;   // how many images have been saved (0-4)
+  total?: number;      // always 4
+  startedAt?: string;
+  error?: string;
   garmentType: string;
   colorway: { role: string; name: string; hex: string; pantone?: string }[];
   materials: string[];
@@ -21,6 +29,9 @@ export interface DesignMetadata {
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
+
+const VIEW_KEYS   = ["front", "back", "detail1", "detail2"] as const;
+const VIEW_LABELS = ["Front view", "Back view", "Collar & logo detail", "Sleeve & panel detail"];
 
 const VIEW_SUFFIXES = [
   "front view, full garment visible, clean technical flat render on dark background",
@@ -34,7 +45,91 @@ const SPEC_BOARD_REFERENCE_URL = `${
 }/reference/spec-board-reference.jpg`;
 
 const IMAGE_PREFIX =
-  "clean technical apparel flat render, sports uniform product board art, professional garment illustration, crisp detail on dark background —";
+  "clean technical apparel flat render, sports uniform product board art, " +
+  "professional garment illustration, crisp detail on dark background —";
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function extractImageUrl(result: unknown): string {
+  const output = result as unknown[];
+  const first  = Array.isArray(output) ? output[0] : result;
+  return first && typeof (first as { url?: () => string }).url === "function"
+    ? (first as { url: () => string }).url()
+    : String(first);
+}
+
+/**
+ * Calls Replicate for a single image. On 429 it reads retry_after and waits,
+ * then retries. Max 4 attempts per image.
+ */
+async function generateImageWithRetry(
+  replicate: Replicate,
+  prompt: string
+): Promise<string> {
+  const MAX_ATTEMPTS = 4;
+  const DEFAULT_RETRY_MS = 12_000;
+
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      const result = await replicate.run("black-forest-labs/flux-schnell", {
+        input: {
+          prompt,
+          num_outputs:    1,
+          aspect_ratio:   "1:1",
+          output_format:  "webp",
+          output_quality: 90,
+        },
+      });
+      return extractImageUrl(result);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+
+      if (msg.includes("429") && attempt < MAX_ATTEMPTS) {
+        // Parse retry_after out of the Replicate error body
+        const match        = msg.match(/"retry_after"\s*:\s*(\d+)/);
+        const retryAfterMs = match ? parseInt(match[1]) * 1000 : DEFAULT_RETRY_MS;
+        console.log(
+          `[generate-concepts] 429 – waiting ${retryAfterMs / 1000}s ` +
+          `before attempt ${attempt + 1}/${MAX_ATTEMPTS}`
+        );
+        await sleep(retryAfterMs);
+        continue;
+      }
+
+      throw err; // not 429, or out of retries — re-throw
+    }
+  }
+
+  throw new Error("Exceeded max retry attempts for Replicate image generation");
+}
+
+/** Write generation status back to briefs.ai_prompt so the status endpoint can serve it. */
+async function saveStatus(
+  supabase: SupabaseClient,
+  order_id: string,
+  patch: Partial<DesignMetadata>
+): Promise<void> {
+  // Read current value to merge (avoids wiping fields set earlier)
+  const { data } = await supabase
+    .from("briefs")
+    .select("ai_prompt")
+    .eq("order_id", order_id)
+    .single();
+
+  let current: Partial<DesignMetadata> = {};
+  if (data?.ai_prompt) {
+    try { current = JSON.parse(data.ai_prompt as string); } catch { /* ignore */ }
+  }
+
+  await supabase
+    .from("briefs")
+    .update({ ai_prompt: JSON.stringify({ ...current, ...patch }) })
+    .eq("order_id", order_id);
+}
 
 // ─── Prompt builder ───────────────────────────────────────────────────────────
 
@@ -56,7 +151,7 @@ function buildPrompt(
     : brief.reference_image_url ? [brief.reference_image_url as string] : [];
 
   const colorInstruction = logoUrls.length > 0
-    ? `Extract the team's primary and secondary colors from the uploaded team logo(s). Return exact hex codes.`
+    ? "Extract the team's primary and secondary colors from the uploaded team logo(s). Return exact hex codes."
     : "Choose a strong, sport-appropriate color palette. Return exact hex codes.";
 
   const refInstruction = refUrls.length > 0
@@ -64,22 +159,22 @@ function buildPrompt(
     : "";
 
   const construction     = brief.sublimated === true ? "sublimated" : brief.sublimated === false ? "tackle twill" : "sublimated";
-  const cut              = brief.jersey_cut ?? "standard";
-  const numberStyle      = brief.number_style      ? `Number style: ${brief.number_style}.`           : "";
+  const cut              = brief.jersey_cut       ?? "standard";
+  const numberStyle      = brief.number_style        ? `Number style: ${brief.number_style}.`           : "";
   const logoPlacementRaw = (brief.gs_logo_placement as string) ?? "chest";
-  const logos            = brief.logos_to_include  ? `Logos to include: ${brief.logos_to_include}.`   : "";
-  const sponsor          = brief.sponsor_text      ? `Sponsor text/patch: ${brief.sponsor_text}.`     : "";
-  const negative         = brief.negative_references ? `Do not include: ${brief.negative_references}.` : "";
-  const vision           = brief.vision_prompt     ? `Client vision: ${brief.vision_prompt}`          : "";
+  const logos            = brief.logos_to_include   ? `Logos to include: ${brief.logos_to_include}.`    : "";
+  const sponsor          = brief.sponsor_text        ? `Sponsor text/patch: ${brief.sponsor_text}.`     : "";
+  const negative         = brief.negative_references ? `Do not include: ${brief.negative_references}.`  : "";
+  const vision           = brief.vision_prompt       ? `Client vision: ${brief.vision_prompt}`          : "";
 
   return `You are a senior sportswear designer creating a technical apparel spec board for ${teamName} from ${city}.
 
-The attached reference image shows the exact Grace Athletics spec-board style. Your JSON output populates that structured layout.
+The attached reference image (if any) shows the exact Grace Athletics spec-board style. Your JSON output populates that structured layout.
 
 Design a ${designSystem} style ${sport} uniform. ${colorInstruction} ${refInstruction}
 Construction: ${construction}, ${cut} cut. ${numberStyle} ${logos} ${sponsor} Grace Studios logo placement: ${logoPlacementRaw}. ${negative} ${vision}
 
-Return ONLY valid JSON (no markdown fences) with this exact structure:
+Return ONLY valid JSON (no markdown fences):
 {
   "garmentType": "e.g. Basketball Uniform",
   "colorway": [
@@ -89,7 +184,7 @@ Return ONLY valid JSON (no markdown fences) with this exact structure:
   "materials": ["e.g. Shell: 100% Nylon", "e.g. Lining: 100% Polyester Mesh", "e.g. Weight: 110GSM"],
   "features": ["Short feature label 1", "Short feature label 2", "Short feature label 3", "Short feature label 4"],
   "logoPlacement": "Precise placement — e.g. Grace Athletics Crest Centered On Upper Chest, Below Team Name",
-  "description": "Detailed visual description of the uniform for image generation — exact colors, panel layout, graphic elements, number style, stripe/piping/texture details, logo locations, cut silhouette, overall energy. Be specific."
+  "description": "Detailed visual description for image generation — exact colors, panel layout, graphic elements, number style, stripe/piping/texture details, logo locations, cut silhouette, overall energy."
 }`.trim();
 }
 
@@ -97,7 +192,7 @@ function validUrl(url: unknown): url is string {
   return typeof url === "string" && url.startsWith("http");
 }
 
-// ─── Route handler ────────────────────────────────────────────────────────────
+// ─── Route ────────────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
   try {
@@ -110,6 +205,30 @@ export async function POST(req: NextRequest) {
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
+
+    // ── Duplicate-generation guard ────────────────────────────────────────────
+    // Prevents React Strict Mode double-fire, button spam, and page refreshes
+    // from spawning multiple concurrent generation runs.
+
+    const { data: existingBrief } = await supabase
+      .from("briefs")
+      .select("ai_prompt")
+      .eq("order_id", order_id)
+      .single();
+
+    if (existingBrief?.ai_prompt) {
+      try {
+        const existing = JSON.parse(existingBrief.ai_prompt as string) as DesignMetadata;
+        if (existing.status === "generating" || existing.status === "queued") {
+          console.log(`[generate-concepts] already running for ${order_id} — ignoring duplicate`);
+          return NextResponse.json({ status: "already_running" }, { status: 409 });
+        }
+        if (existing.status === "completed") {
+          console.log(`[generate-concepts] already completed for ${order_id} — ignoring`);
+          return NextResponse.json({ status: "already_completed" }, { status: 409 });
+        }
+      } catch { /* ai_prompt not valid JSON — proceed */ }
+    }
 
     // ── 1. Fetch brief / order / client ──────────────────────────────────────
 
@@ -131,7 +250,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Client not found" }, { status: 404 });
     }
 
-    // ── 2. Build Claude prompt ────────────────────────────────────────────────
+    // ── 2. Mark as queued ─────────────────────────────────────────────────────
+
+    await saveStatus(supabase, order_id, {
+      status:    "queued",
+      progress:  0,
+      total:     4,
+      startedAt: new Date().toISOString(),
+    });
+
+    // ── 3. Call Claude ────────────────────────────────────────────────────────
 
     const designPrompt = buildPrompt(brief, client);
 
@@ -145,16 +273,13 @@ export async function POST(req: NextRequest) {
 
     const clientImageUrls = [...logoUrls, ...refUrls].slice(0, 19);
 
-    // ── 3. Call Claude ────────────────────────────────────────────────────────
-
     const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
     type ImageBlock   = { type: "image"; source: { type: "url"; url: string } };
     type TextBlock    = { type: "text"; text: string };
     type ContentBlock = ImageBlock | TextBlock;
 
-    // Only include spec-board reference if the file has been placed in public/reference/
-    const refImagePath   = path.join(process.cwd(), "public", "reference", "spec-board-reference.jpg");
+    const refImagePath    = path.join(process.cwd(), "public", "reference", "spec-board-reference.jpg");
     const hasSpecBoardRef = fs.existsSync(refImagePath);
 
     const specBoardBlock: ImageBlock | null = hasSpecBoardRef
@@ -167,15 +292,9 @@ export async function POST(req: NextRequest) {
     }));
 
     const imageCountNote = [
-      hasSpecBoardRef
-        ? "The first image is a Grace Athletics spec-board style reference. Match this level of technical detail."
-        : "",
-      logoUrls.length > 0
-        ? `${hasSpecBoardRef ? "The next" : "The first"} ${logoUrls.length} image(s) are team logo(s). Extract brand colors from them.`
-        : "",
-      refUrls.length > 0
-        ? `The following ${refUrls.length} image(s) are client reference images for aesthetic direction.`
-        : "",
+      hasSpecBoardRef ? "The first image is a Grace Athletics spec-board style reference. Match this level of technical detail." : "",
+      logoUrls.length > 0 ? `${hasSpecBoardRef ? "The next" : "The first"} ${logoUrls.length} image(s) are team logo(s). Extract brand colors from them.` : "",
+      refUrls.length > 0 ? `The following ${refUrls.length} image(s) are client references for aesthetic direction.` : "",
     ].filter(Boolean).join(" ");
 
     const claudeContent: ContentBlock[] = [
@@ -194,16 +313,16 @@ export async function POST(req: NextRequest) {
 
     const rawText =
       "content" in aiResponse && aiResponse.content[0].type === "text"
-        ? aiResponse.content[0].text
-        : "";
+        ? aiResponse.content[0].text : "";
 
     // ── 4. Parse metadata ─────────────────────────────────────────────────────
 
     let metadata: DesignMetadata;
     try {
       const cleaned = rawText.replace(/^```json\s*/i, "").replace(/```\s*$/i, "").trim();
-      metadata = JSON.parse(cleaned) as DesignMetadata;
-      if (typeof metadata.description !== "string") throw new Error("invalid shape");
+      const parsed  = JSON.parse(cleaned) as DesignMetadata;
+      if (typeof parsed.description !== "string") throw new Error("invalid shape");
+      metadata = parsed;
     } catch {
       metadata = {
         garmentType:   (brief.jersey_cut as string) ?? "Sports Uniform",
@@ -215,50 +334,67 @@ export async function POST(req: NextRequest) {
       };
     }
 
-    // ── 5. Generate 4 images via Replicate ────────────────────────────────────
+    // Save metadata immediately so the status endpoint can serve it while images generate
+    await saveStatus(supabase, order_id, {
+      ...metadata,
+      status:   "generating",
+      progress: 0,
+      total:    4,
+      images:   { front: "", back: "", detail1: "", detail2: "" },
+    });
 
-    const PLACEHOLDER_LABELS = ["Front", "Back", "Detail 1", "Detail 2"];
-    let imageUrls: string[];
+    // ── 5. Generate images SEQUENTIALLY — one at a time, with 429 retry ──────
 
-    try {
-      const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN });
+    const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN });
+    const imageUrls: string[] = [];
+    const collectedImages: Record<string, string> = { front: "", back: "", detail1: "", detail2: "" };
 
-      const results = await Promise.all(
-        VIEW_SUFFIXES.map((suffix) =>
-          replicate.run("black-forest-labs/flux-schnell", {
-            input: {
-              prompt:         `${IMAGE_PREFIX} ${metadata.description} — ${suffix}`,
-              num_outputs:    1,
-              aspect_ratio:   "1:1",
-              output_format:  "webp",
-              output_quality: 90,
-            },
-          })
-        )
-      );
+    for (let i = 0; i < VIEW_SUFFIXES.length; i++) {
+      const prompt = `${IMAGE_PREFIX} ${metadata.description} — ${VIEW_SUFFIXES[i]}`;
 
-      imageUrls = results.map((result) => {
-        const output = result as unknown[];
-        const first  = Array.isArray(output) ? output[0] : result;
-        return first && typeof (first as { url?: () => string }).url === "function"
-          ? (first as { url: () => string }).url()
-          : String(first);
-      });
-    } catch (replicateErr: unknown) {
-      console.warn(
-        "[generate-concepts] Replicate unavailable, using placeholders:",
-        replicateErr instanceof Error ? replicateErr.message : replicateErr
-      );
-      imageUrls = PLACEHOLDER_LABELS.map(
-        (label, i) =>
-          `https://placehold.co/1024x1024/1a1a1a/C9A84C?text=Concept+${i + 1}%0A${encodeURIComponent(label)}&font=montserrat`
-      );
+      console.log(`[generate-concepts] generating image ${i + 1}/4: ${VIEW_LABELS[i]}`);
+
+      try {
+        const url = await generateImageWithRetry(replicate, prompt);
+        imageUrls.push(url);
+        collectedImages[VIEW_KEYS[i]] = url;
+
+        // Update progress in DB after each successful image
+        await saveStatus(supabase, order_id, {
+          ...metadata,
+          status:   "generating",
+          progress: i + 1,
+          total:    4,
+          images:   { ...collectedImages } as DesignMetadata["images"],
+        });
+
+        console.log(`[generate-concepts] image ${i + 1}/4 saved`);
+      } catch (imgErr: unknown) {
+        const msg = imgErr instanceof Error ? imgErr.message : String(imgErr);
+        console.error(`[generate-concepts] image ${i + 1}/4 failed:`, msg);
+
+        // Mark failed and surface error
+        await saveStatus(supabase, order_id, {
+          ...metadata,
+          status: "failed",
+          error:  `Image ${i + 1} (${VIEW_LABELS[i]}) failed: ${msg}`,
+          images: { ...collectedImages } as DesignMetadata["images"],
+        });
+
+        return NextResponse.json(
+          { error: `Image generation failed at step ${i + 1}`, detail: msg },
+          { status: 500 }
+        );
+      }
     }
 
-    // ── 6. Embed image URLs in metadata and save ──────────────────────────────
+    // ── 6. Mark completed and embed images in metadata ────────────────────────
 
-    const metadataWithImages: DesignMetadata = {
+    const finalMetadata: DesignMetadata = {
       ...metadata,
+      status:   "completed",
+      progress: 4,
+      total:    4,
       images: {
         front:   imageUrls[0] ?? "",
         back:    imageUrls[1] ?? "",
@@ -269,7 +405,7 @@ export async function POST(req: NextRequest) {
 
     await supabase
       .from("briefs")
-      .update({ ai_prompt: JSON.stringify(metadataWithImages) })
+      .update({ ai_prompt: JSON.stringify(finalMetadata) })
       .eq("order_id", order_id);
 
     // ── 7. Insert concept rows ────────────────────────────────────────────────
@@ -311,7 +447,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    return NextResponse.json({ status: "complete", order_id, concepts: conceptRows.length });
+    return NextResponse.json({ status: "completed", order_id, concepts: conceptRows.length });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     console.error("[generate-concepts] error:", message);
