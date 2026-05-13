@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import Replicate from "replicate";
 import { createClient } from "@supabase/supabase-js";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { sendConceptsReady } from "@/lib/email";
@@ -66,43 +65,105 @@ function validUrl(url: unknown): url is string {
 }
 
 /**
- * Generates the spec-board image using flux-schnell (text-to-image).
- * The layout structure is driven by the prompt (Claude has seen the reference
- * and writes the description field accordingly). On 429 reads retry_after
- * and waits, then retries. Max 4 attempts.
+ * Generates the spec-board image via the Replicate REST API directly.
+ *
+ * Bypasses replicate.run() / the SDK's SSE streaming layer entirely — the
+ * eventsource-parser vendored in the SDK throws "s.slice is not a function"
+ * in the Vercel runtime. Instead we POST to create a prediction, then poll
+ * until succeeded/failed. Max 4 create attempts on 429; poll timeout 4 min.
  */
-async function generateSpecBoard(
-  replicate: Replicate,
-  prompt:    string,
-): Promise<string> {
-  const MAX_ATTEMPTS    = 4;
+async function generateSpecBoard(prompt: string): Promise<string> {
+  const token = process.env.REPLICATE_API_TOKEN!;
+  const MODEL = "black-forest-labs/flux-schnell";
+  const MAX_ATTEMPTS     = 4;
   const DEFAULT_RETRY_MS = 12_000;
+  const POLL_INTERVAL_MS = 3_000;
+  const POLL_TIMEOUT_MS  = 240_000;   // 4 min
 
+  let predictionId: string | null = null;
+
+  // ── 1. Create prediction (retry on 429) ──────────────────────────────────
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-    try {
-      const result = await replicate.run("black-forest-labs/flux-schnell", {
+    const res = await fetch(`https://api.replicate.com/v1/models/${MODEL}/predictions`, {
+      method:  "POST",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type":  "application/json",
+        "Prefer":        "wait=5",   // short server-side wait, avoids extra polls
+      },
+      body: JSON.stringify({
         input: {
           prompt,
           num_outputs:    1,
-          aspect_ratio:   "4:3",   // landscape — matches spec-board proportions
+          aspect_ratio:   "4:3",
           output_format:  "webp",
           output_quality: 90,
         },
-      });
-      return extractImageUrl(result);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      if (msg.includes("429") && attempt < MAX_ATTEMPTS) {
-        const match        = msg.match(/"retry_after"\s*:\s*(\d+)/);
-        const retryAfterMs = match ? parseInt(match[1]) * 1000 : DEFAULT_RETRY_MS;
-        console.log(`[generate-concepts] 429 — waiting ${retryAfterMs / 1000}s before attempt ${attempt + 1}`);
-        await sleep(retryAfterMs);
-        continue;
-      }
-      throw err;
+      }),
+    });
+
+    if (res.status === 429) {
+      if (attempt >= MAX_ATTEMPTS) throw new Error("Replicate rate limit — max retries exceeded");
+      const body        = await res.json().catch(() => ({})) as Record<string, unknown>;
+      const retryAfterMs = typeof body.retry_after === "number"
+        ? body.retry_after * 1000
+        : DEFAULT_RETRY_MS;
+      console.log(`[generate-concepts] 429 — waiting ${retryAfterMs / 1000}s (attempt ${attempt})`);
+      await sleep(retryAfterMs);
+      continue;
     }
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => res.statusText);
+      throw new Error(`Replicate create prediction failed (${res.status}): ${text}`);
+    }
+
+    const data = await res.json() as { id: string; status: string; output?: unknown; error?: string };
+
+    // "Prefer: wait" may return a completed prediction immediately
+    if (data.status === "succeeded" && data.output) {
+      return extractImageUrl(data.output);
+    }
+    if (data.status === "failed") {
+      throw new Error(`Replicate prediction failed immediately: ${data.error ?? "unknown"}`);
+    }
+
+    predictionId = data.id;
+    break;
   }
-  throw new Error("Exceeded max retry attempts for spec-board generation");
+
+  if (!predictionId) throw new Error("Failed to obtain Replicate prediction ID");
+
+  // ── 2. Poll until done ───────────────────────────────────────────────────
+  const deadline = Date.now() + POLL_TIMEOUT_MS;
+
+  while (Date.now() < deadline) {
+    await sleep(POLL_INTERVAL_MS);
+
+    const poll = await fetch(`https://api.replicate.com/v1/predictions/${predictionId}`, {
+      headers: { "Authorization": `Bearer ${token}` },
+    });
+
+    if (!poll.ok) {
+      console.warn(`[generate-concepts] poll ${predictionId} returned ${poll.status}`);
+      continue;
+    }
+
+    const data = await poll.json() as { status: string; output?: unknown; error?: string };
+
+    if (data.status === "succeeded" && data.output) {
+      return extractImageUrl(data.output);
+    }
+    if (data.status === "failed") {
+      throw new Error(`Replicate prediction failed: ${data.error ?? "unknown"}`);
+    }
+    if (data.status === "canceled") {
+      throw new Error("Replicate prediction was canceled");
+    }
+    // still processing — keep polling
+  }
+
+  throw new Error("Replicate prediction timed out after 4 minutes");
 }
 
 /** Merge-patch briefs.ai_prompt without wiping fields set in earlier steps. */
@@ -462,11 +523,9 @@ export async function POST(req: NextRequest) {
 
     // ── 9. Generate the single spec-board image ───────────────────────────────
 
-    const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN });
-
     let boardImageUrl: string;
     try {
-      boardImageUrl = await generateSpecBoard(replicate, replicatePrompt);
+      boardImageUrl = await generateSpecBoard(replicatePrompt);
       console.log(`[generate-concepts] spec-board generated: ${boardImageUrl.slice(0, 80)}`);
     } catch (imgErr: unknown) {
       const msg = imgErr instanceof Error ? imgErr.message : String(imgErr);
