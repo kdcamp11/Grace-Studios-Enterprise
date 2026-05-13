@@ -28,10 +28,10 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       status:      parsed.status      ?? "not_started",
       progress:    parsed.progress    ?? 0,
-      total:       parsed.total       ?? 1,
+      total:       parsed.total       ?? 4,
       error:       parsed.error       ?? null,
       startedAt:   parsed.startedAt   ?? null,
-      boardFormat: parsed.boardFormat ?? "specboard",
+      boardFormat: parsed.boardFormat ?? "renders",
     });
   } catch {
     return NextResponse.json({ status: "not_started" as GenerationStatus });

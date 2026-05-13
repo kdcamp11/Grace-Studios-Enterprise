@@ -10,11 +10,11 @@ import type { DesignMetadata, GenerationStatus } from "@/app/api/generate-concep
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface GenerationProgress {
-  status:      GenerationStatus | "not_started";
-  progress:    number;
-  total:       number;
-  error:       string | null;
-  boardFormat?: "specboard" | "multiview";
+  status:       GenerationStatus | "not_started";
+  progress:     number;
+  total:        number;
+  error:        string | null;
+  boardFormat?: "specboard" | "multiview" | "renders";
 }
 
 interface BoardData {
@@ -23,38 +23,46 @@ interface BoardData {
   metadata:    DesignMetadata;
 }
 
-// ─── Generation state UI ──────────────────────────────────────────────────────
+// ─── Generating state UI ──────────────────────────────────────────────────────
 
 const STEP_LABELS = [
   "Analyzing brief & references",
-  "Generating spec board",
+  "Rendering jersey — front",
+  "Rendering jersey — back",
+  "Rendering shorts — front",
+  "Rendering shorts — back",
 ];
 
 function GeneratingState({ gen }: { gen: GenerationProgress }) {
-  const isGenerating = gen.status === "generating";
-  const pct          = isGenerating ? 55 : gen.status === "queued" ? 15 : 0;
-  const label        = isGenerating ? STEP_LABELS[1] : STEP_LABELS[0];
+  const total = gen.total || 4;
+  const pct   = gen.status === "queued"
+    ? 8
+    : gen.status === "generating"
+    ? Math.round(10 + (gen.progress / total) * 85)
+    : 0;
+
+  const labelIdx = gen.status === "queued"
+    ? 0
+    : Math.min(gen.progress, STEP_LABELS.length - 1);
+  const label = STEP_LABELS[labelIdx];
 
   return (
     <div className="py-20 flex flex-col items-center justify-center gap-6 max-w-sm mx-auto text-center">
-      {/* Spinner */}
       <div className="relative w-16 h-16">
         <div className="w-16 h-16 border border-gs-border rounded-full" />
         <div className="absolute inset-0 border-2 border-gs-gold border-t-transparent rounded-full animate-spin" />
       </div>
 
-      {/* Label */}
       <div className="space-y-1">
-        <p className="text-gs-white font-barlow font-medium">Building your spec board</p>
+        <p className="text-gs-white font-barlow font-medium">Building your concept board</p>
         <p className="text-xs text-gs-gold font-display uppercase tracking-widest">{label}</p>
-        {isGenerating && (
+        {gen.status === "generating" && (
           <p className="text-xs text-gs-muted font-barlow">
-            This takes 30–90 seconds — the board will appear automatically
+            Render {gen.progress} of {total} — takes 2–3 min total
           </p>
         )}
       </div>
 
-      {/* Progress bar */}
       <div className="w-full bg-gs-border rounded-full h-0.5 overflow-hidden">
         <div
           className="h-full bg-gs-gold transition-all duration-1000 ease-out rounded-full"
@@ -69,80 +77,227 @@ function GeneratingState({ gen }: { gen: GenerationProgress }) {
   );
 }
 
-// ─── Spec-board display (new single-image format) ─────────────────────────────
-
-function SpecBoardDisplay({ data }: { data: BoardData }) {
-  const { teamName, orderNumber, metadata } = data;
-  const [imgLoaded, setImgLoaded] = useState(false);
-  const [imgError, setImgError]   = useState(false);
-
-  const imageUrl = metadata.boardImage ?? metadata.images?.front ?? "";
-
-  return (
-    <div className="rounded-xl overflow-hidden border border-gray-300 shadow-lg">
-      {/* Header */}
-      <div className="border-b border-gray-300 bg-white px-5 py-2.5 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-0.5 h-5 bg-gray-800" />
-          <span className="text-[9px] font-bold uppercase tracking-[0.3em] text-gray-500">
-            Grace Athletics — Concept Board
-          </span>
-        </div>
-        <span className="text-[9px] font-mono text-gray-400 tracking-widest">{orderNumber}</span>
-      </div>
-
-      {/* Single spec-board image */}
-      <div className="relative bg-[#f0ede6]" style={{ minHeight: 300 }}>
-        {!imgLoaded && !imgError && (
-          <div className="absolute inset-0 animate-pulse bg-[#e8e5de]" />
-        )}
-        {imgError ? (
-          <div className="flex items-center justify-center py-20">
-            <p className="text-gray-400 text-sm font-barlow">Image unavailable</p>
-          </div>
-        ) : (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={imageUrl}
-            alt={`${teamName} spec board`}
-            className={`w-full block transition-opacity duration-500 ${imgLoaded ? "opacity-100" : "opacity-0"}`}
-            onLoad={() => setImgLoaded(true)}
-            onError={() => { setImgError(true); setImgLoaded(true); }}
-          />
-        )}
-      </div>
-
-      {/* Footer */}
-      <div className="border-t border-gray-300 bg-white/60 px-5 py-2.5 flex items-center justify-between">
-        <p className="text-[8px] text-gray-400 italic leading-relaxed max-w-lg">
-          AI concept is for visual direction only and may not exactly match final production artwork.
-          Colors, proportions, and details are subject to change during production.
-        </p>
-        <div className="flex-shrink-0 ml-4 opacity-25">
-          <GraceLogo className="h-4" />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Legacy multi-image board (backward compat) ───────────────────────────────
+// ─── Shared sub-components ────────────────────────────────────────────────────
 
 function ColorSwatch({ role, name, hex, pantone }: { role: string; name: string; hex: string; pantone?: string }) {
   return (
-    <div className="flex items-center gap-3 mb-2.5">
-      <div className="w-8 h-8 rounded-sm border border-black/10 flex-shrink-0" style={{ backgroundColor: hex || "#cccccc" }} />
-      <div>
-        <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-gray-700 leading-tight">{role}</p>
-        <p className="text-[9px] text-gray-500 leading-tight mt-0.5">{pantone || name}</p>
+    <div className="flex items-center gap-2.5 mb-2.5">
+      <div
+        className="w-7 h-7 rounded flex-shrink-0 border border-black/10"
+        style={{ backgroundColor: hex || "#ccc" }}
+      />
+      <div className="min-w-0">
+        <p className="text-[8px] font-bold uppercase tracking-[0.2em] text-gray-500 leading-tight truncate">{role}</p>
+        <p className="text-[9px] text-gray-700 leading-tight">{pantone || name}</p>
       </div>
     </div>
   );
 }
 
+function RenderImage({ url, alt, className }: { url?: string; alt: string; className?: string }) {
+  const [loaded, setLoaded] = useState(false);
+  const [error,  setError]  = useState(false);
+
+  if (!url) return (
+    <div className={`bg-gray-50 flex items-center justify-center ${className ?? ""}`}>
+      <span className="text-gray-300 text-[10px] font-display uppercase tracking-wider">Rendering…</span>
+    </div>
+  );
+
+  return (
+    <div className={`relative bg-gray-50 overflow-hidden ${className ?? ""}`}>
+      {!loaded && !error && (
+        <div className="absolute inset-0 animate-pulse bg-gray-100" />
+      )}
+      {error ? (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className="text-gray-300 text-[10px]">Unavailable</span>
+        </div>
+      ) : (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={url}
+          alt={alt}
+          className={`w-full h-full object-contain transition-opacity duration-500 ${loaded ? "opacity-100" : "opacity-0"}`}
+          onLoad={() => setLoaded(true)}
+          onError={() => { setError(true); setLoaded(true); }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── Premium renders board ────────────────────────────────────────────────────
+
+function RendersBoard({ data }: { data: BoardData }) {
+  const { teamName, orderNumber, metadata } = data;
+  const renders       = metadata.renders;
+  const colorway      = metadata.colorway      ?? [];
+  const materials     = metadata.materials     ?? [];
+  const features      = metadata.features      ?? [];
+  const garmentType   = metadata.garmentType   ?? "Basketball Uniform";
+  const designSystem  = (metadata.designSystem ?? "bold").toUpperCase();
+  const logoPlacement = metadata.logoPlacement ?? "";
+
+  return (
+    <div
+      className="rounded-xl overflow-hidden border border-gray-200 shadow-xl"
+      style={{ backgroundColor: "#f9f8f5" }}
+    >
+      {/* ── Header bar ─────────────────────────────────────────────────────── */}
+      <div className="border-b border-gray-200 bg-white px-5 py-2.5 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-px h-5 bg-gray-800" />
+          <span className="text-[9px] font-bold uppercase tracking-[0.3em] text-gray-400">
+            Grace Athletics — AI Concept
+          </span>
+        </div>
+        <span className="text-[9px] font-mono text-gray-300 tracking-widest">{orderNumber}</span>
+      </div>
+
+      {/* ── Three-column body ───────────────────────────────────────────────── */}
+      <div className="flex" style={{ minHeight: 560 }}>
+
+        {/* Left column — specs */}
+        <div
+          className="flex-shrink-0 border-r border-gray-200 flex flex-col"
+          style={{ width: 196, backgroundColor: "#ffffff" }}
+        >
+          {/* Team */}
+          <div className="px-5 pt-5 pb-4 border-b border-gray-100">
+            <p className="text-[7px] font-bold uppercase tracking-[0.32em] text-gray-400 mb-1">Grace Athletics</p>
+            <p className="text-sm font-bold uppercase tracking-wide text-gray-900 leading-tight break-words">{teamName}</p>
+            <p className="text-[8px] uppercase tracking-[0.18em] text-gray-400 mt-1">{garmentType}</p>
+          </div>
+
+          {/* Design system badge */}
+          <div className="px-5 py-3 border-b border-gray-100">
+            <p className="text-[7px] font-bold uppercase tracking-[0.28em] text-gray-400 mb-1.5">Design System</p>
+            <span className="inline-block px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-widest bg-gray-900 text-white">
+              {designSystem}
+            </span>
+          </div>
+
+          {/* Colorway */}
+          {colorway.length > 0 && (
+            <div className="px-5 py-4 border-b border-gray-100">
+              <p className="text-[7px] font-bold uppercase tracking-[0.28em] text-gray-400 mb-3">Colorway</p>
+              {colorway.map((c, i) => <ColorSwatch key={i} {...c} />)}
+            </div>
+          )}
+
+          {/* Materials */}
+          {materials.length > 0 && (
+            <div className="px-5 py-4 border-b border-gray-100">
+              <p className="text-[7px] font-bold uppercase tracking-[0.28em] text-gray-400 mb-2">Material</p>
+              {materials.map((m, i) => (
+                <p key={i} className="text-[8px] text-gray-600 leading-relaxed mb-0.5">{m}</p>
+              ))}
+            </div>
+          )}
+
+          {/* Features */}
+          {features.length > 0 && (
+            <div className="px-5 py-4 border-b border-gray-100">
+              <p className="text-[7px] font-bold uppercase tracking-[0.28em] text-gray-400 mb-2">Features</p>
+              {features.map((f, i) => (
+                <p key={i} className="text-[8px] text-gray-600 leading-snug mb-1.5">
+                  <span className="text-gray-400 mr-1">—</span>
+                  {f.replace(/^[•\-–]\s*/, "")}
+                </p>
+              ))}
+            </div>
+          )}
+
+          {/* Logo placement */}
+          {logoPlacement && (
+            <div className="px-5 py-4">
+              <p className="text-[7px] font-bold uppercase tracking-[0.28em] text-gray-400 mb-1.5">Logo Placement</p>
+              <p className="text-[8px] text-gray-600 leading-snug capitalize">{logoPlacement.replace(/_/g, " ")}</p>
+            </div>
+          )}
+        </div>
+
+        {/* Center — 2×2 render grid */}
+        <div className="flex-1 flex flex-col border-r border-gray-200" style={{ backgroundColor: "#f9f8f5" }}>
+          {/* Column labels */}
+          <div className="grid grid-cols-2 border-b border-gray-200">
+            <div className="border-r border-gray-200 py-2 text-center">
+              <span className="text-[7px] font-bold uppercase tracking-[0.28em] text-gray-400">Jersey</span>
+            </div>
+            <div className="py-2 text-center">
+              <span className="text-[7px] font-bold uppercase tracking-[0.28em] text-gray-400">Shorts</span>
+            </div>
+          </div>
+
+          {/* Row labels + images */}
+          <div className="flex-1 grid grid-cols-2 grid-rows-2">
+            {/* Front row label */}
+            <div className="relative border-r border-b border-gray-200 overflow-hidden" style={{ minHeight: 240 }}>
+              <span className="absolute top-2 left-2.5 text-[6px] font-bold uppercase tracking-[0.28em] text-gray-300 z-10">Front</span>
+              <RenderImage url={renders?.frontJersey} alt="Jersey front" className="w-full h-full" />
+            </div>
+            <div className="relative border-b border-gray-200 overflow-hidden" style={{ minHeight: 240 }}>
+              <span className="absolute top-2 left-2.5 text-[6px] font-bold uppercase tracking-[0.28em] text-gray-300 z-10">Front</span>
+              <RenderImage url={renders?.frontShorts} alt="Shorts front" className="w-full h-full" />
+            </div>
+            <div className="relative border-r border-gray-200 overflow-hidden" style={{ minHeight: 240 }}>
+              <span className="absolute top-2 left-2.5 text-[6px] font-bold uppercase tracking-[0.28em] text-gray-300 z-10">Back</span>
+              <RenderImage url={renders?.backJersey} alt="Jersey back" className="w-full h-full" />
+            </div>
+            <div className="relative overflow-hidden" style={{ minHeight: 240 }}>
+              <span className="absolute top-2 left-2.5 text-[6px] font-bold uppercase tracking-[0.28em] text-gray-300 z-10">Back</span>
+              <RenderImage url={renders?.backShorts} alt="Shorts back" className="w-full h-full" />
+            </div>
+          </div>
+        </div>
+
+        {/* Right column — design notes */}
+        <div
+          className="flex-shrink-0 flex flex-col divide-y divide-gray-100"
+          style={{ width: 168, backgroundColor: "#ffffff" }}
+        >
+          <div className="px-4 pt-5 pb-4">
+            <p className="text-[7px] font-bold uppercase tracking-[0.28em] text-gray-400 mb-2">Design Notes</p>
+            <p className="text-[8px] text-gray-500 leading-relaxed">
+              {(metadata.description ?? "").slice(0, 200)}
+            </p>
+          </div>
+
+          <div className="px-4 py-4">
+            <p className="text-[7px] font-bold uppercase tracking-[0.28em] text-gray-400 mb-2">Render Quality</p>
+            <p className="text-[8px] text-gray-500 leading-relaxed">
+              Semi-3D photorealistic. Logos composited in production.
+            </p>
+          </div>
+
+          <div className="px-4 py-4 flex-1 flex flex-col justify-end">
+            <div className="opacity-20 mt-auto">
+              <GraceLogo className="h-5" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Footer ─────────────────────────────────────────────────────────── */}
+      <div className="border-t border-gray-200 bg-white px-5 py-2.5 flex items-center justify-between">
+        <p className="text-[7px] text-gray-400 italic leading-relaxed max-w-lg">
+          AI concept renders are for visual direction only and may not exactly match final production.
+          Colors, proportions, and details are subject to refinement. Logos are composited separately.
+        </p>
+        <span className="text-[7px] font-mono text-gray-300 tracking-widest flex-shrink-0 ml-4">
+          GRACE ATHLETICS — CONCEPT DRAFT
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// ─── Legacy boards (backward compat) ─────────────────────────────────────────
+
 function BoardImage({ url, alt, className }: { url?: string; alt: string; className?: string }) {
   const [loaded, setLoaded] = useState(false);
-  const [error, setError]   = useState(false);
+  const [error,  setError]  = useState(false);
   if (!url) return (
     <div className={`bg-[#111] flex items-center justify-center ${className ?? ""}`}>
       <span className="text-white/20 text-[10px]">No image</span>
@@ -169,25 +324,43 @@ function BoardImage({ url, alt, className }: { url?: string; alt: string; classN
   );
 }
 
-function LegacyProductBoard({ data }: { data: BoardData }) {
-  const { teamName, orderNumber, metadata } = data;
-  const images        = metadata.images;
-  const garmentType   = metadata.garmentType   ?? "Sports Uniform";
-  const colorway      = metadata.colorway      ?? [];
-  const materials     = metadata.materials     ?? [];
-  const features      = metadata.features      ?? [];
-  const logoPlacement = metadata.logoPlacement ?? "";
+function LegacyBoard({ data }: { data: BoardData }) {
+  const { metadata, teamName, orderNumber } = data;
+  const isSingleImage = metadata.boardFormat === "specboard" || !!metadata.boardImage;
 
-  const detailLabel1 = features[0] ? features[0].replace(/^[•\-–]\s*/, "").split(" ").slice(0, 5).join(" ") : "Logo & Collar";
-  const detailLabel2 = features[1] ? features[1].replace(/^[•\-–]\s*/, "").split(" ").slice(0, 5).join(" ") : "Sleeve & Panel";
+  if (isSingleImage) {
+    const imageUrl = metadata.boardImage ?? metadata.images?.front ?? "";
+    return (
+      <div className="rounded-xl overflow-hidden border border-gray-300 shadow-lg">
+        <div className="border-b border-gray-300 bg-white px-5 py-2.5 flex items-center justify-between">
+          <span className="text-[9px] font-bold uppercase tracking-[0.3em] text-gray-500">Grace Athletics — Concept Board</span>
+          <span className="text-[9px] font-mono text-gray-400 tracking-widest">{orderNumber}</span>
+        </div>
+        <div className="relative bg-[#f0ede6]" style={{ minHeight: 300 }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={imageUrl} alt={`${teamName} spec board`} className="w-full block" />
+        </div>
+        <div className="border-t border-gray-300 bg-white/60 px-5 py-2.5 flex items-center justify-between">
+          <p className="text-[8px] text-gray-400 italic max-w-lg">
+            AI concept is for visual direction only. Colors and details subject to change.
+          </p>
+          <div className="flex-shrink-0 ml-4 opacity-25"><GraceLogo className="h-4" /></div>
+        </div>
+      </div>
+    );
+  }
+
+  // Old 4-image multiview
+  const images      = metadata.images;
+  const colorway    = metadata.colorway ?? [];
+  const materials   = metadata.materials ?? [];
+  const features    = metadata.features ?? [];
+  const garmentType = metadata.garmentType ?? "Sports Uniform";
 
   return (
     <div className="rounded-xl overflow-hidden border border-gray-300 shadow-lg" style={{ backgroundColor: "#f0ede6" }}>
       <div className="border-b border-gray-300 bg-white px-5 py-2.5 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-0.5 h-5 bg-gray-800" />
-          <span className="text-[9px] font-bold uppercase tracking-[0.3em] text-gray-500">Grace Athletics — AI Concept</span>
-        </div>
+        <span className="text-[9px] font-bold uppercase tracking-[0.3em] text-gray-500">Grace Athletics — AI Concept</span>
         <span className="text-[9px] font-mono text-gray-400 tracking-widest">{orderNumber}</span>
       </div>
       <div className="flex" style={{ minHeight: 540 }}>
@@ -210,17 +383,9 @@ function LegacyProductBoard({ data }: { data: BoardData }) {
             </div>
           )}
           {features.length > 0 && (
-            <div className="px-5 py-4 border-b border-gray-200">
-              <p className="text-[8px] uppercase tracking-[0.28em] text-gray-400 font-bold mb-2">Features</p>
-              {features.map((f, i) => (
-                <p key={i} className="text-[9px] text-gray-600 leading-snug mb-1">• {f}</p>
-              ))}
-            </div>
-          )}
-          {logoPlacement && (
             <div className="px-5 py-4">
-              <p className="text-[8px] uppercase tracking-[0.28em] text-gray-400 font-bold mb-1.5">Logo</p>
-              <p className="text-[9px] text-gray-600 capitalize leading-snug">{logoPlacement.replace(/_/g, " ")}</p>
+              <p className="text-[8px] uppercase tracking-[0.28em] text-gray-400 font-bold mb-2">Features</p>
+              {features.map((f, i) => <p key={i} className="text-[9px] text-gray-600 leading-snug mb-1">• {f}</p>)}
             </div>
           )}
         </div>
@@ -234,29 +399,10 @@ function LegacyProductBoard({ data }: { data: BoardData }) {
             <BoardImage url={images?.back} alt="Back view" className="flex-1" />
           </div>
         </div>
-        <div className="flex-shrink-0 border-l border-gray-300 flex flex-col divide-y divide-gray-200" style={{ width: 168, backgroundColor: "#f8f6f1" }}>
-          <div className="flex-1 flex flex-col p-3">
-            <p className="text-[7px] uppercase tracking-[0.22em] text-gray-400 font-bold mb-2 leading-tight">{detailLabel1}</p>
-            <div className="flex-1 rounded overflow-hidden" style={{ minHeight: 120 }}>
-              <BoardImage url={images?.detail1} alt={detailLabel1} className="w-full h-full" />
-            </div>
-          </div>
-          <div className="flex-1 flex flex-col p-3">
-            <p className="text-[7px] uppercase tracking-[0.22em] text-gray-400 font-bold mb-2 leading-tight">{detailLabel2}</p>
-            <div className="flex-1 rounded overflow-hidden" style={{ minHeight: 120 }}>
-              <BoardImage url={images?.detail2} alt={detailLabel2} className="w-full h-full" />
-            </div>
-          </div>
-        </div>
       </div>
       <div className="border-t border-gray-300 bg-white/50 px-5 py-2.5 flex items-center justify-between">
-        <p className="text-[8px] text-gray-400 italic leading-relaxed max-w-lg">
-          AI concept is for visual direction only and may not exactly match final production artwork.
-          Colors, proportions, and details are subject to change during production.
-        </p>
-        <div className="flex-shrink-0 ml-4 opacity-25">
-          <GraceLogo className="h-4" />
-        </div>
+        <p className="text-[8px] text-gray-400 italic max-w-lg">AI concept for visual direction only. Details subject to change.</p>
+        <div className="flex-shrink-0 ml-4 opacity-25"><GraceLogo className="h-4" /></div>
       </div>
     </div>
   );
@@ -271,7 +417,7 @@ export default function ConceptsPage() {
   const supabase      = supabaseRef.current;
 
   const [boardData, setBoardData]     = useState<BoardData | null>(null);
-  const [gen, setGen]                 = useState<GenerationProgress>({ status: "not_started", progress: 0, total: 1, error: null });
+  const [gen, setGen]                 = useState<GenerationProgress>({ status: "not_started", progress: 0, total: 4, error: null });
   const [approving, setApproving]     = useState(false);
   const [isAdminView, setIsAdminView] = useState(false);
 
@@ -305,16 +451,15 @@ export default function ConceptsPage() {
       .single();
 
     let metadata: DesignMetadata | null = null;
+
     if (briefRow?.ai_prompt) {
       try {
         const parsed = JSON.parse(briefRow.ai_prompt as string) as DesignMetadata;
-        if (parsed.status === "completed") {
-          metadata = parsed;
-        }
+        if (parsed.status === "completed") metadata = parsed;
       } catch { /* ignore */ }
     }
 
-    // Legacy fallback: check concepts table for old multiview format
+    // Legacy fallback: concepts table (old multiview format)
     if (!metadata) {
       const { data: conceptRows } = await supabase
         .from("concepts")
@@ -324,30 +469,50 @@ export default function ConceptsPage() {
 
       if (!conceptRows || conceptRows.length === 0) return false;
 
-      metadata = {
-        garmentType:   "Sports Uniform",
-        boardFormat:   "multiview",
-        colorway:      [],
-        materials:     [],
-        features:      [],
-        logoPlacement: "",
-        description:   "",
-        images: {
-          front:   conceptRows.find(r => r.concept_number === 1)?.image_url ?? "",
-          back:    conceptRows.find(r => r.concept_number === 2)?.image_url ?? "",
-          detail1: conceptRows.find(r => r.concept_number === 3)?.image_url ?? "",
-          detail2: conceptRows.find(r => r.concept_number === 4)?.image_url ?? "",
-        },
-      };
+      const findUrl = (n: number) => conceptRows.find(r => r.concept_number === n)?.image_url ?? "";
+
+      if (conceptRows.length >= 4) {
+        // New renders format stored in concepts table (4 rows)
+        metadata = {
+          garmentType:   "Sports Uniform",
+          boardFormat:   "renders",
+          colorway:      [],
+          materials:     [],
+          features:      [],
+          logoPlacement: "",
+          description:   "",
+          renders: {
+            frontJersey: findUrl(1),
+            backJersey:  findUrl(2),
+            frontShorts: findUrl(3),
+            backShorts:  findUrl(4),
+          },
+        };
+      } else {
+        // Old 2-image multiview
+        metadata = {
+          garmentType:   "Sports Uniform",
+          boardFormat:   "multiview",
+          colorway:      [],
+          materials:     [],
+          features:      [],
+          logoPlacement: "",
+          description:   "",
+          images: {
+            front:   findUrl(1),
+            back:    findUrl(2),
+            detail1: findUrl(3),
+            detail2: findUrl(4),
+          },
+        };
+      }
     }
 
-    // Determine if this is a spec-board or legacy board
-    // For spec-board: metadata.boardFormat === "specboard" or boardImage is set
-    // For legacy: images.front/back/detail1/detail2 are set
-
-    const [{ data: orderRow }] = await Promise.all([
-      supabase.from("orders").select("order_number, clients(name)").eq("id", order_id).single(),
-    ]);
+    const { data: orderRow } = await supabase
+      .from("orders")
+      .select("order_number, clients(name)")
+      .eq("id", order_id)
+      .single();
 
     const clientData  = Array.isArray(orderRow?.clients) ? orderRow?.clients[0] : orderRow?.clients;
     const teamName    = (clientData as { name?: string })?.name ?? "Your Team";
@@ -363,7 +528,7 @@ export default function ConceptsPage() {
   const triggerGeneration = useCallback(async () => {
     if (generationFiredRef.current) return;
     generationFiredRef.current = true;
-    setGen({ status: "queued", progress: 0, total: 1, error: null });
+    setGen({ status: "queued", progress: 0, total: 4, error: null });
 
     const res = await fetch("/api/generate-concepts", {
       method:  "POST",
@@ -374,7 +539,6 @@ export default function ConceptsPage() {
     if (res.status === 409) {
       const body = await res.json();
       if (body.status === "already_completed") { await loadBoard(); return; }
-      // already_running — fall through to poll
     }
 
     if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
@@ -449,8 +613,8 @@ export default function ConceptsPage() {
   const isFailed     = gen.status === "failed";
   const hasBoard     = !!boardData;
 
-  // Determine which board component to render
-  const isSpecBoard = boardData?.metadata.boardFormat === "specboard" || !!boardData?.metadata.boardImage;
+  // Board format routing
+  const isNewRenders = boardData?.metadata.boardFormat === "renders" || !!boardData?.metadata.renders;
 
   return (
     <div className="min-h-screen bg-gs-dark flex flex-col">
@@ -487,9 +651,9 @@ export default function ConceptsPage() {
             </h1>
             <p className="mt-1.5 text-sm text-gs-muted font-barlow">
               {isGenerating
-                ? "Our AI is building your spec board — this takes about 60–90 seconds."
+                ? "Our AI is rendering your uniform concepts — each garment takes 30–45 seconds."
                 : hasBoard
-                ? "Review your concept board below. Approve to move into production."
+                ? "Review your concept board. Approve to move into production."
                 : isFailed
                 ? "Generation encountered an issue."
                 : "Preparing your concept…"}
@@ -516,9 +680,7 @@ export default function ConceptsPage() {
               </div>
               <div>
                 <p className="text-gs-white font-barlow font-medium">Generation failed</p>
-                {gen.error && (
-                  <p className="text-xs text-red-400 font-barlow mt-1 max-w-sm">{gen.error}</p>
-                )}
+                {gen.error && <p className="text-xs text-red-400 font-barlow mt-1 max-w-sm">{gen.error}</p>}
                 <p className="text-xs text-gs-muted font-barlow mt-2">Please contact Grace Studios support to retry.</p>
               </div>
             </div>
@@ -527,9 +689,9 @@ export default function ConceptsPage() {
           {/* Board display */}
           {hasBoard && (
             <div className="space-y-5">
-              {isSpecBoard
-                ? <SpecBoardDisplay data={boardData!} />
-                : <LegacyProductBoard data={boardData!} />
+              {isNewRenders
+                ? <RendersBoard data={boardData!} />
+                : <LegacyBoard  data={boardData!} />
               }
 
               <div className="flex items-center justify-between pt-1">

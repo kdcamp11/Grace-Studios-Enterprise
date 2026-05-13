@@ -26,9 +26,16 @@ export interface DesignMetadata {
   error?:     string;
   /** "specboard" = single complete spec-board image (current)
    *  "multiview" = legacy 4-image format */
-  boardFormat?: "specboard" | "multiview";
+  boardFormat?: "specboard" | "multiview" | "renders";
   /** URL of the single spec-board image (boardFormat === "specboard") */
   boardImage?:  string;
+  /** Semi-3D garment renders (boardFormat === "renders") */
+  renders?: {
+    frontJersey: string;
+    backJersey:  string;
+    frontShorts: string;
+    backShorts:  string;
+  };
   // Design spec fields
   garmentType:   string;
   designSystem?: string;
@@ -56,19 +63,21 @@ function validUrl(url: unknown): url is string {
   return typeof url === "string" && url.startsWith("http");
 }
 
+/** View keys for the four garment renders. */
+type GarmentView = "front-jersey" | "back-jersey" | "front-shorts" | "back-shorts";
+
 /**
- * Generates the spec-board image via OpenAI gpt-image-1, then uploads the
- * returned base64 PNG to Supabase Storage (bucket: "concepts") and returns
+ * Generates a single semi-3D garment render via OpenAI gpt-image-1,
+ * uploads the PNG to Supabase Storage bucket "concepts", and returns
  * the public URL.
  *
- * OpenAI gpt-image-1 always returns b64_json — there is no streaming step,
- * so this is a single synchronous HTTP call with no polling required.
- * Retries up to MAX_ATTEMPTS on 429 or transient 5xx.
+ * Path: concepts/{orderId}/{viewKey}-{timestamp}.png
  */
-async function generateSpecBoard(
+async function generateGarmentRender(
   prompt:   string,
   supabase: SupabaseClient,
   orderId:  string,
+  viewKey:  string,
 ): Promise<string> {
   const apiKey       = process.env.OPENAI_API_KEY!;
   const MAX_ATTEMPTS = 4;
@@ -85,12 +94,12 @@ async function generateSpecBoard(
         "Content-Type":  "application/json",
       },
       body: JSON.stringify({
-        model:           "gpt-image-1",
+        model:         "gpt-image-1",
         prompt,
-        n:               1,
-        size:            "1536x1024",   // landscape — spec-board proportions
-        quality:         "high",
-        output_format:   "png",
+        n:             1,
+        size:          "1024x1024",
+        quality:       "high",
+        output_format: "png",
       }),
     });
 
@@ -99,7 +108,7 @@ async function generateSpecBoard(
         const text = await res.text().catch(() => res.statusText);
         throw new Error(`OpenAI image generation failed (${res.status}): ${text}`);
       }
-      console.log(`[generate-concepts] OpenAI ${res.status} — waiting ${RETRY_MS / 1000}s (attempt ${attempt})`);
+      console.log(`[generate-concepts] OpenAI ${res.status} on ${viewKey} — waiting ${RETRY_MS / 1000}s (attempt ${attempt})`);
       await sleep(RETRY_MS);
       continue;
     }
@@ -111,18 +120,18 @@ async function generateSpecBoard(
 
     const json = await res.json() as { data: { b64_json?: string }[] };
     b64 = json.data?.[0]?.b64_json ?? null;
-    if (!b64) throw new Error("OpenAI returned no image data");
+    if (!b64) throw new Error(`OpenAI returned no image data for ${viewKey}`);
     break;
   }
 
-  if (!b64) throw new Error("OpenAI image generation produced no output");
+  if (!b64) throw new Error(`OpenAI image generation produced no output for ${viewKey}`);
 
   // ── 2. Upload PNG buffer to Supabase Storage ──────────────────────────────
-  const buffer    = Buffer.from(b64, "base64");
-  const bucket    = "concepts";
-  const filePath  = `${orderId}/spec-board-${Date.now()}.png`;
+  const buffer   = Buffer.from(b64, "base64");
+  const bucket   = "concepts";
+  const filePath = `${orderId}/${viewKey}-${Date.now()}.png`;
 
-  // Ensure bucket exists (service-role client can create it; ignore if already there)
+  // Ensure bucket exists (service-role client; ignore if already there)
   await supabase.storage.createBucket(bucket, { public: true }).catch(() => {/* already exists */});
 
   const { error: uploadError } = await supabase.storage
@@ -132,7 +141,7 @@ async function generateSpecBoard(
       upsert:      true,
     });
 
-  if (uploadError) throw new Error(`Supabase storage upload failed: ${uploadError.message}`);
+  if (uploadError) throw new Error(`Supabase storage upload failed (${viewKey}): ${uploadError.message}`);
 
   // ── 3. Return public URL ─────────────────────────────────────────────────
   const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(filePath);
@@ -254,62 +263,135 @@ Return ONLY valid JSON — no markdown fences:
     "Match the exact feature list style shown in the spec-board reference image"
   ],
   "logoPlacement": "One precise sentence: Grace Athletics logo placement zone description",
-  "description": "GARMENT DESIGN DIRECTIVE (max 80 words): Describe ONLY the jersey and shorts design — not the layout. Include: (1) exact hex colors for each panel zone, (2) panel geometry and angles following the ${designSystem} system visual language, (3) key construction details (side panels, collar, waistband style), (4) one sentence: 'Clean logo zone on [location]' — no logo artwork. This text is used inside a larger spec-board prompt. Be precise and technical. No storytelling."
+  "description": "GARMENT DESIGN DIRECTIVE (max 80 words): Describe the basketball jersey and shorts design for semi-3D photorealistic rendering. Include: (1) exact hex colors for each panel zone, (2) panel geometry and cut angles following the ${designSystem} system visual language (be specific about diagonal cuts, side panels, yoke lines), (3) key construction details — collar style, waistband, side panel seam language. This text drives a gpt-image-1 render — be precise about fabric zones and panel cuts. No layout descriptions. No logo artwork. No numbers."
 }`.trim();
 }
 
-// ─── Spec-board image prompt builder ─────────────────────────────────────────
+// ─── Garment render prompt builder ───────────────────────────────────────────
 
 /**
- * Builds the COMPLETE image prompt for the spec-board (sent to OpenAI gpt-image-1).
+ * Builds a per-view semi-3D garment render prompt for OpenAI gpt-image-1.
+ *
+ * Each view is a single clean photorealistic render on a pure white background —
+ * NO text, NO logos, NO numbers, NO layouts. The app assembles the spec-board
+ * grid from the 4 renders.
  *
  * Because we use gpt-image-1 (text-to-image), the LAYOUT must be described
- * explicitly in the prompt. The structure mirrors the Grace Athletics basketball
- * spec-board reference exactly:
- *   LEFT COLUMN:  brand header, team name, colorway swatches, material, features, logo
- *   CENTER (2×2): jersey front/back, shorts front/back — flat ghost mannequin
- *   RIGHT COLUMN: 5 detail callout boxes (collar, logo zone, side panel, vent, waistband)
+ * explicitly. However for garment renders the instruction is the opposite:
+ * describe ONLY the garment, lighting, fabric, and design language.
  */
-function buildSpecBoardPrompt(
+function buildGarmentPrompt(
+  view:         GarmentView,
   metadata:     DesignMetadata,
   designSystem: string,
   teamName:     string,
 ): string {
-  const system = designSystem.toLowerCase();
-
-  // Color string: e.g. "primary #1A3055, secondary #C41230, accent #FFFFFF"
-  const colors = metadata.colorway
-    .slice(0, 3)
-    .map((c) => `${c.role.toLowerCase()} ${c.hex}`)
-    .join(", ");
-
+  const system      = designSystem.toLowerCase();
   const systemShort = SYSTEM_PROMPT_SHORT[system] ?? SYSTEM_PROMPT_SHORT["bold"];
+  const systemFull  = SYSTEM_VISUAL_LANGUAGE[system] ?? SYSTEM_VISUAL_LANGUAGE.bold;
 
-  // Claude's garment design directive (≤80 words of controlled design description)
-  const garmentDesc = (metadata.description ?? "").slice(0, 350);
+  // Colors from Claude metadata
+  const primary   = metadata.colorway.find(c => c.role.toLowerCase().includes("primary"));
+  const secondary = metadata.colorway.find(c => c.role.toLowerCase().includes("secondary"));
+  const accent    = metadata.colorway.find(c => c.role.toLowerCase().includes("accent"));
 
-  // Logo zone label (strip "grace athletics" prefix, keep just placement location)
-  const logoZoneRaw = (metadata.logoPlacement ?? "upper chest")
-    .replace(/grace athletics/gi, "").replace(/\./g, "").trim().slice(0, 60) || "upper chest";
+  const colorDesc = [
+    primary   ? `primary body color ${primary.hex}`                        : "",
+    secondary ? `secondary panel color ${secondary.hex}`                   : "",
+    accent    ? `accent trim and detail color ${accent.hex}`               : "",
+  ].filter(Boolean).join(", ");
+
+  // Claude's controlled garment design directive
+  const garmentDesc = (metadata.description ?? "").slice(0, 300);
+
+  // View-specific instructions
+  const VIEW_CONFIG: Record<GarmentView, {
+    subject:   string;
+    viewAngle: string;
+    details:   string;
+    blankRule: string;
+  }> = {
+    "front-jersey": {
+      subject:   "basketball jersey",
+      viewAngle: "front view, centered and floating",
+      details:   [
+        "slight forward dimensional curve showing garment depth and body",
+        "realistic ribbed-knit collar with visible collar thickness and edge detail",
+        "visible armhole seam construction, side seam stitching",
+        "authentic athletic jersey proportions and hem length",
+      ].join(", "),
+      blankRule: "BLANK CHEST: completely clean — zero text, zero logo, zero numbers, zero lettering, zero brand marks anywhere on the garment surface",
+    },
+    "back-jersey": {
+      subject:   "basketball jersey",
+      viewAngle: "back view, centered and floating",
+      details:   [
+        "back collar neckline and rib-knit detail clearly visible",
+        "shoulder seam and armhole back construction",
+        "natural hang and drape from shoulder seams",
+        "hem at bottom edge with realistic taper",
+      ].join(", "),
+      blankRule: "BLANK BACK: completely clean — zero numbers, zero name, zero text, zero lettering anywhere on garment",
+    },
+    "front-shorts": {
+      subject:   "basketball shorts",
+      viewAngle: "front view, centered and floating",
+      details:   [
+        "structured elastic waistband with exposed drawcord and visible cord-lock hardware",
+        "realistic waistband depth, thickness, and fold",
+        "natural fabric tension and slight flare at leg openings",
+        "visible side seam and panel construction with authentic proportions",
+      ].join(", "),
+      blankRule: "BLANK FRONT: completely clean — zero text, zero logo, zero lettering anywhere on garment",
+    },
+    "back-shorts": {
+      subject:   "basketball shorts",
+      viewAngle: "back view, centered and floating",
+      details:   [
+        "rear elastic waistband construction and back waistband detail",
+        "back yoke seam detail if applicable to design system",
+        "realistic hem structure at leg openings with authentic proportions",
+        "natural fabric drape and weight from waistband down",
+      ].join(", "),
+      blankRule: "BLANK BACK: completely clean — zero text, zero logo, zero numbers anywhere",
+    },
+  };
+
+  const cfg = VIEW_CONFIG[view];
 
   return [
-    // Document type + team identity
-    `professional basketball uniform technical specification board, ${teamName} program`,
+    // Subject + view
+    `Photorealistic semi-3D ${cfg.subject} product render, ${cfg.viewAngle}, ${teamName} basketball uniform`,
 
-    // Explicit three-column layout — FLUX needs this spelled out since there's no init image
-    "off-white background, three-column grid layout matching a Nike or Adidas apparel tech pack",
-    "LEFT COLUMN narrow: GRACE ATHLETICS brand header, team program name, three color swatches labeled PRIMARY SECONDARY ACCENT with Pantone codes, MATERIAL specifications list three lines, FEATURES bullet list eight items, LOGO section with Grace Athletics brand mark zone",
-    "CENTER SECTION wide: four basketball garment flat renders in 2-by-2 grid arrangement. Top row left basketball jersey front view, top row right basketball jersey back view. Bottom row left basketball shorts front view, bottom row right basketball shorts back view. All garments ghost mannequin flat lay technical illustration style. No people wearing garments",
-    "RIGHT COLUMN narrow: five stacked rectangular labeled detail callout boxes. Box one RIB KNIT COLLAR closeup. Box two LOGO PRINT zone. Box three SIDE PANEL DETAIL seam closeup. Box four SIDE VENT DETAIL. Box five ELASTIC WAIST WITH DRAWCORD closeup",
+    // Background and presentation
+    "floating on pure white studio background with subtle soft drop shadow directly below garment, no other elements in frame",
 
-    // Design content
-    `${system} design system: ${systemShort}`,
-    colors ? `garment colors: ${colors}` : "",
+    // Colors
+    colorDesc,
+
+    // Design system language
+    `${system} design system panel geometry: ${systemShort}`,
+
+    // Claude's garment directive (specific panel cuts and colors)
     garmentDesc,
 
-    // Hard constraints
-    `clean empty logo zone on ${logoZoneRaw}, no logos generated, no Nike swoosh, no Jordan jumpman, no Adidas stripes, no brand hallucinations, no invented sponsor marks`,
-    "flat technical vector-style garment illustrations, clean precise lines, apparel manufacturer quality, no cinematic lighting, no people, no lifestyle photography, subtle drop shadow only",
+    // Full design system visual language for reference
+    `design system character: ${systemFull.split(".")[0]}`,
+
+    // Fabric and material quality
+    "realistic athletic performance fabric: breathable mesh texture zones with visible weave structure, moisture-wicking fabric texture, authentic garment weight, natural fabric drape and slight dimensional depth",
+
+    // Lighting and rendering quality
+    "professional product studio lighting: soft key light from upper-left at 45 degrees creating subtle dimensional shadows across fabric, soft fill light from opposite side, realistic fabric surface sheen on mesh zones, soft cast shadow below garment only",
+
+    // View-specific structural details
+    cfg.details,
+
+    // CRITICAL: no text, no logos
+    cfg.blankRule,
+
+    // Quality bar
+    "Nike or Adidas tier premium sportswear product mockup quality, manufacturer catalog render, photorealistic athletic fabric texture, no people, no lifestyle elements, no background, pure white only",
   ]
     .filter(Boolean)
     .join(". ");
@@ -394,9 +476,9 @@ export async function POST(req: NextRequest) {
     await saveStatus(supabase, order_id, {
       status:      "queued",
       progress:    0,
-      total:       1,
+      total:       4,
       startedAt:   new Date().toISOString(),
-      boardFormat: "specboard",
+      boardFormat: "renders",
       designSystem,
     });
 
@@ -467,12 +549,12 @@ export async function POST(req: NextRequest) {
       const cleaned = rawText.replace(/^```json\s*/i, "").replace(/```\s*$/i, "").trim();
       const parsed  = JSON.parse(cleaned) as DesignMetadata;
       if (typeof parsed.description !== "string") throw new Error("invalid shape");
-      metadata = { ...parsed, designSystem, boardFormat: "specboard" };
+      metadata = { ...parsed, designSystem, boardFormat: "renders" };
     } catch {
       metadata = {
         garmentType:   garmentLabel,
         designSystem,
-        boardFormat:   "specboard",
+        boardFormat:   "renders",
         colorway:      [],
         materials:     [],
         features:      [],
@@ -486,40 +568,75 @@ export async function POST(req: NextRequest) {
       ...metadata,
       status:   "generating",
       progress: 0,
-      total:    1,
+      total:    4,
     });
 
-    // ── 8. Build the OpenAI spec-board prompt ────────────────────────────────
+    // ── 8. Generate 4 semi-3D garment renders (OpenAI gpt-image-1) ───────────
+    //   Each render is a clean photorealistic garment on white background.
+    //   The app assembles these into the spec-board grid layout — AI generates
+    //   ONLY the garments, never text/logos/layouts.
 
-    const imagePrompt = buildSpecBoardPrompt(metadata, designSystem, teamName);
-    console.log(`[generate-concepts] image prompt (${imagePrompt.length} chars): ${imagePrompt.slice(0, 120)}…`);
+    const RENDER_VIEWS: GarmentView[] = [
+      "front-jersey",
+      "back-jersey",
+      "front-shorts",
+      "back-shorts",
+    ];
 
-    // ── 9. Generate the single spec-board image (OpenAI gpt-image-1) ─────────
+    const VIEW_LABELS: Record<GarmentView, string> = {
+      "front-jersey": "Jersey Front",
+      "back-jersey":  "Jersey Back",
+      "front-shorts": "Shorts Front",
+      "back-shorts":  "Shorts Back",
+    };
 
-    let boardImageUrl: string;
-    try {
-      boardImageUrl = await generateSpecBoard(imagePrompt, supabase, order_id);
-      console.log(`[generate-concepts] spec-board generated: ${boardImageUrl.slice(0, 80)}`);
-    } catch (imgErr: unknown) {
-      const msg = imgErr instanceof Error ? imgErr.message : String(imgErr);
-      console.error("[generate-concepts] spec-board generation failed:", msg);
+    const renderUrls: Partial<Record<GarmentView, string>> = {};
+
+    for (let i = 0; i < RENDER_VIEWS.length; i++) {
+      const view   = RENDER_VIEWS[i];
+      const prompt = buildGarmentPrompt(view, metadata, designSystem, teamName);
+      console.log(`[generate-concepts] rendering ${view} (${i + 1}/4): ${prompt.slice(0, 100)}…`);
+
+      try {
+        renderUrls[view] = await generateGarmentRender(prompt, supabase, order_id, view);
+        console.log(`[generate-concepts] ${view} done: ${renderUrls[view]!.slice(0, 60)}`);
+      } catch (imgErr: unknown) {
+        const msg = imgErr instanceof Error ? imgErr.message : String(imgErr);
+        console.error(`[generate-concepts] ${VIEW_LABELS[view]} render failed:`, msg);
+        await saveStatus(supabase, order_id, {
+          ...metadata,
+          status: "failed",
+          error:  `${VIEW_LABELS[view]} render failed: ${msg}`,
+        });
+        return NextResponse.json(
+          { error: `${VIEW_LABELS[view]} render failed`, detail: msg },
+          { status: 500 },
+        );
+      }
+
+      // Progress update after each render completes
       await saveStatus(supabase, order_id, {
         ...metadata,
-        status: "failed",
-        error:  `Spec-board generation failed: ${msg}`,
+        status:   "generating",
+        progress: i + 1,
+        total:    4,
       });
-      return NextResponse.json({ error: "Spec-board generation failed", detail: msg }, { status: 500 });
     }
 
-    // ── 10. Mark completed ────────────────────────────────────────────────────
+    // ── 9. Mark completed ─────────────────────────────────────────────────────
 
     const finalMetadata: DesignMetadata = {
       ...metadata,
       status:      "completed",
-      progress:    1,
-      total:       1,
-      boardFormat: "specboard",
-      boardImage:  boardImageUrl,
+      progress:    4,
+      total:       4,
+      boardFormat: "renders",
+      renders: {
+        frontJersey: renderUrls["front-jersey"]!,
+        backJersey:  renderUrls["back-jersey"]!,
+        frontShorts: renderUrls["front-shorts"]!,
+        backShorts:  renderUrls["back-shorts"]!,
+      },
     };
 
     await supabase
@@ -527,25 +644,24 @@ export async function POST(req: NextRequest) {
       .update({ ai_prompt: JSON.stringify(finalMetadata) })
       .eq("order_id", order_id);
 
-    // ── 11. Insert single concept row ─────────────────────────────────────────
+    // ── 10. Insert concept rows (one per render for backward compat) ──────────
 
-    const { error: conceptError } = await supabase
-      .from("concepts")
-      .insert({
-        order_id,
-        concept_number: 1,
-        image_url:      boardImageUrl,
-        selected:       false,
-      });
+    await supabase.from("concepts").delete().eq("order_id", order_id);
+
+    const conceptRows = RENDER_VIEWS.map((view, i) => ({
+      order_id,
+      concept_number: i + 1,
+      image_url:      renderUrls[view]!,
+      selected:       i === 0,   // front jersey is default selected
+    }));
+
+    const { error: conceptError } = await supabase.from("concepts").insert(conceptRows);
 
     if (conceptError) {
-      return NextResponse.json(
-        { error: "Failed to save concept", detail: conceptError.message },
-        { status: 500 },
-      );
+      console.warn("[generate-concepts] concept insert warning:", conceptError.message);
     }
 
-    // ── 12. Notify client ─────────────────────────────────────────────────────
+    // ── 11. Notify client ─────────────────────────────────────────────────────
 
     try {
       if (client?.email) {
@@ -564,7 +680,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       status:      "completed",
       order_id,
-      boardFormat: "specboard",
+      boardFormat: "renders",
     });
 
   } catch (err: unknown) {
