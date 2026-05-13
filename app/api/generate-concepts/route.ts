@@ -11,6 +11,7 @@ import {
   buildReferenceAnnotation,
   SYSTEM_VISUAL_LANGUAGE,
   SYSTEM_PROMPT_SHORT,
+  toPublicUrl,
 } from "@/lib/reference-library";
 
 export const maxDuration = 300;
@@ -21,18 +22,24 @@ export type GenerationStatus = "queued" | "generating" | "completed" | "failed";
 
 export interface DesignMetadata {
   status?:    GenerationStatus;
-  progress?:  number;   // images completed (0–4)
-  total?:     number;   // always 4
+  progress?:  number;   // 0 or 1
+  total?:     number;   // always 1 for spec-board format
   startedAt?: string;
   error?:     string;
+  /** "specboard" = single complete spec-board image (current)
+   *  "multiview" = legacy 4-image format */
+  boardFormat?: "specboard" | "multiview";
+  /** URL of the single spec-board image (boardFormat === "specboard") */
+  boardImage?:  string;
   // Design spec fields
-  garmentType:    string;
-  designSystem?:  string;
-  colorway:       { role: string; name: string; hex: string; pantone?: string }[];
-  materials:      string[];
-  features:       string[];
-  logoPlacement:  string;
-  description:    string;
+  garmentType:   string;
+  designSystem?: string;
+  colorway:      { role: string; name: string; hex: string; pantone?: string }[];
+  materials:     string[];
+  features:      string[];
+  logoPlacement: string;
+  description:   string;
+  /** Legacy multi-view image URLs (boardFormat === "multiview") */
   images?: {
     front:   string;
     back:    string;
@@ -40,24 +47,6 @@ export interface DesignMetadata {
     detail2: string;
   };
 }
-
-// ─── View descriptors ─────────────────────────────────────────────────────────
-
-const VIEW_KEYS   = ["front", "back", "detail1", "detail2"] as const;
-const VIEW_LABELS = [
-  "Front view",
-  "Back view",
-  "Collar & logo detail",
-  "Sleeve & panel detail",
-];
-
-// Per-view Replicate prompt suffixes — view-specific render instructions only
-const VIEW_SUFFIXES = [
-  "full garment front view, ghost mannequin or flat lay, entire garment visible top to bottom, technical product render, dark studio background",
-  "full garment back view, ghost mannequin or flat lay, entire garment visible top to bottom, technical product render, dark studio background",
-  "close-up product detail: collar neckline and upper chest construction, fabric texture and finish visible, dark studio background",
-  "close-up product detail: side panel seam construction, sleeve attachment, or lower hem treatment, dark studio background",
-];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -78,47 +67,57 @@ function validUrl(url: unknown): url is string {
 }
 
 /**
- * Calls Replicate for a single image.
+ * Calls Replicate flux-dev (img2img when initImageUrl is provided).
  * On 429 reads retry_after and waits, then retries. Max 4 attempts.
  */
-async function generateImageWithRetry(
-  replicate: Replicate,
-  prompt: string,
+async function generateSpecBoard(
+  replicate:    Replicate,
+  prompt:       string,
+  initImageUrl: string | null,
 ): Promise<string> {
   const MAX_ATTEMPTS    = 4;
-  const DEFAULT_RETRY_MS = 12_000;
+  const DEFAULT_RETRY_MS = 20_000; // flux-dev is slower; be generous
 
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     try {
-      const result = await replicate.run("black-forest-labs/flux-schnell", {
-        input: {
-          prompt,
-          num_outputs:    1,
-          aspect_ratio:   "1:1",
-          output_format:  "webp",
-          output_quality: 90,
-        },
-      });
+      // Use flux-dev for img2img capability (layout inheritance from reference)
+      const input: Record<string, unknown> = {
+        prompt,
+        num_outputs:    1,
+        output_format:  "webp",
+        output_quality: 95,
+        num_inference_steps: 28,
+        guidance: 3.5,
+        go_fast: true,
+      };
+
+      if (initImageUrl) {
+        // img2img: reference spec-board provides the layout scaffold
+        input.image            = initImageUrl;
+        input.prompt_strength  = 0.60; // 40% layout from reference, 60% new design
+      } else {
+        // text-to-image fallback
+        input.aspect_ratio = "4:3";
+      }
+
+      const result = await replicate.run("black-forest-labs/flux-dev", { input });
       return extractImageUrl(result);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       if (msg.includes("429") && attempt < MAX_ATTEMPTS) {
         const match        = msg.match(/"retry_after"\s*:\s*(\d+)/);
         const retryAfterMs = match ? parseInt(match[1]) * 1000 : DEFAULT_RETRY_MS;
-        console.log(
-          `[generate-concepts] 429 — waiting ${retryAfterMs / 1000}s ` +
-          `before attempt ${attempt + 1}/${MAX_ATTEMPTS}`,
-        );
+        console.log(`[generate-concepts] 429 — waiting ${retryAfterMs / 1000}s before attempt ${attempt + 1}`);
         await sleep(retryAfterMs);
         continue;
       }
       throw err;
     }
   }
-  throw new Error("Exceeded max retry attempts for Replicate image generation");
+  throw new Error("Exceeded max retry attempts for spec-board generation");
 }
 
-/** Merge-patch briefs.ai_prompt — preserves fields set in earlier steps. */
+/** Merge-patch briefs.ai_prompt without wiping fields set in earlier steps. */
 async function saveStatus(
   supabase: SupabaseClient,
   order_id: string,
@@ -143,18 +142,19 @@ async function saveStatus(
 // ─── Claude prompt builder ────────────────────────────────────────────────────
 
 /**
- * Builds the Claude system design request.
+ * Builds the Claude brief-analysis prompt.
  *
- * This prompt is now REFERENCE-DRIVEN:
- *   1. Reference images are passed alongside this text (see POST handler).
- *   2. The design system's visual language is the authoritative spec.
- *   3. Logo handling is explicitly constrained — no logo invention.
- *   4. The `description` field Claude writes is used directly as the Replicate base prompt.
+ * Reference images are passed as separate image blocks (see POST handler).
+ * This text prompt is REFERENCE-DRIVEN: Claude is shown the exact spec-board
+ * reference and must output metadata + a controlled Replicate render directive.
+ *
+ * The `description` field Claude returns is used verbatim as the Replicate prompt
+ * (prefixed with the spec-board structural framing).
  */
 function buildClaudePrompt(
-  brief:          Record<string, unknown>,
-  client:         Record<string, unknown>,
-  garmentLabel:   string,
+  brief:               Record<string, unknown>,
+  client:              Record<string, unknown>,
+  garmentLabel:        string,
   referenceAnnotation: string,
 ): string {
   const designSystem = (brief.design_system as string) ?? "bold";
@@ -162,76 +162,59 @@ function buildClaudePrompt(
   const teamName     = (client.name  as string) ?? "the team";
   const city         = (client.city  as string) ?? "";
   const construction = brief.sublimated === true
-    ? "Sublimated (full-color dye into fabric, unlimited complexity)"
+    ? "Sublimated (full-color dye into fabric)"
     : brief.sublimated === false
-    ? "Tackle Twill (stitched letters and numbers, classic durable finish)"
+    ? "Tackle Twill (stitched letters and numbers)"
     : "Sublimated";
-  const cut             = (brief.jersey_cut as string)       ?? "standard";
-  const numberStyle     = brief.number_style                 ? `Number style: ${brief.number_style}.` : "";
-  const logosToInclude  = brief.logos_to_include             ? `Additional logos required: ${brief.logos_to_include}.` : "";
-  const sponsorText     = brief.sponsor_text                 ? `Sponsor text/patch: ${brief.sponsor_text}.` : "";
-  const negative        = brief.negative_references          ? `AVOID: ${brief.negative_references}.` : "";
-  const vision          = brief.vision_prompt                ? `Client vision note: ${brief.vision_prompt}` : "";
+  const cut            = (brief.jersey_cut as string) ?? "standard";
+  const numberStyle    = brief.number_style    ? `Number style: ${brief.number_style}.`           : "";
+  const logos          = brief.logos_to_include ? `Additional logos required: ${brief.logos_to_include}.` : "";
+  const sponsor        = brief.sponsor_text     ? `Sponsor text/patch: ${brief.sponsor_text}.`    : "";
+  const negative       = brief.negative_references ? `AVOID: ${brief.negative_references}.`       : "";
+  const vision         = brief.vision_prompt    ? `Client vision: ${brief.vision_prompt}`          : "";
 
   const logoUrls: string[] = Array.isArray(brief.logo_urls)
     ? (brief.logo_urls as string[]).filter(validUrl)
     : validUrl(brief.logo_url) ? [brief.logo_url as string] : [];
 
   const colorInstruction = logoUrls.length > 0
-    ? "EXTRACT the team's exact primary and secondary colors from the uploaded team logo(s). Return the precise hex codes you see — do not invent colors."
+    ? "EXTRACT the team's exact primary and secondary colors from the uploaded logo(s). Return precise hex codes — do not guess or invent."
     : brief.primary_colors
-    ? `PRIMARY COLOR: ${brief.primary_colors}. SECONDARY COLOR: ${brief.secondary_colors ?? "contrasting"}. Use these exact colors.`
+    ? `Use these exact client-specified colors — PRIMARY: ${brief.primary_colors}, SECONDARY: ${brief.secondary_colors ?? "contrasting"}.`
     : "Choose a strong sport-appropriate palette. Return precise hex codes.";
 
-  const logoHandlingRules = logoUrls.length > 0
-    ? `
-LOGO HANDLING — CRITICAL CONSTRAINT:
-Team logos are LOCKED REFERENCE ASSETS uploaded by the client.
-You MUST NOT: redraw logos, invent logos, reinterpret logos, change typography, change proportions, describe logo artwork in detail.
-In your description field write ONLY the placement zone: "Clean logo application zone — [size] on [location]".
-The logo will be composited in production. Leave the zone as a clean area.`
-    : `
-LOGO ZONES:
-Specify clean empty logo placement zones in the description.
-Write "Clean logo application zone — [size] on [location]" for each logo position.
-Do not invent or describe any logo artwork.`;
+  const logoRule = logoUrls.length > 0
+    ? `LOGO ZONE RULE: Team logos are uploaded LOCKED ASSETS. Do NOT describe logo artwork in the description field. Write ONLY "Clean logo zone — [size] on [location]". The logo is composited in production.`
+    : `LOGO ZONE RULE: Describe clean empty logo placement zones only. Write "Clean logo zone — [size] on [location]". Do not generate or describe any logo artwork.`;
 
   const systemLanguage = SYSTEM_VISUAL_LANGUAGE[designSystem] ?? SYSTEM_VISUAL_LANGUAGE.bold;
 
-  return `You are a senior sportswear technical designer at Grace Athletics creating a controlled apparel spec board.
+  return `You are a senior sportswear designer at Grace Athletics analyzing a brief to produce a controlled spec-board output.
 
 ═══ REFERENCE IMAGES PROVIDED ═══
-${referenceAnnotation || "No system reference images loaded — use design system spec below."}
+${referenceAnnotation || "No reference images loaded — follow design system spec below."}
 
-═══ DESIGN SYSTEM AUTHORITY ═══
+═══ DESIGN SYSTEM ═══
 System: ${designSystem.toUpperCase()}
-Visual language (follow exactly — do not blend systems):
+Visual language (do not blend with other systems):
 ${systemLanguage}
 
-═══ PROJECT SPECIFICATION ═══
-Client: ${teamName}, ${city}
-Sport: ${sport}
+═══ PROJECT BRIEF ═══
+Client: ${teamName}, ${city} — ${sport}
 Garment: ${garmentLabel}
-Construction: ${construction}
-Cut: ${cut}
-${numberStyle} ${logosToInclude} ${sponsorText}
-GS Logo placement: ${(brief.gs_logo_placement as string) ?? "chest"}
+Construction: ${construction}, ${cut} cut
+${numberStyle} ${logos} ${sponsor}
+Grace Studios logo placement: ${(brief.gs_logo_placement as string) ?? "chest"}
 ${negative}
 ${vision}
 
 ═══ COLOR AUTHORITY ═══
 ${colorInstruction}
 
-${logoHandlingRules}
+${logoRule}
 
-═══ OUTPUT RULES ═══
-• Follow the spec-board reference layout exactly — your JSON populates that structure
-• The "description" field is used as a controlled Replicate image generation prompt — write it as a precise technical render directive, NOT prose
-• In description: specify colors by hex, describe panel positions and angles by geometry, DO NOT invent logos
-• features[] must reflect the ${designSystem} system's construction language — 4–6 short labels
-• materials[] should list realistic performance fabric specs for the garment type
-
-Return ONLY valid JSON — no markdown fences, no explanation:
+═══ OUTPUT FORMAT ═══
+Return ONLY valid JSON — no markdown fences:
 {
   "garmentType": "${garmentLabel}",
   "colorway": [
@@ -240,65 +223,61 @@ Return ONLY valid JSON — no markdown fences, no explanation:
     {"role": "Accent",    "name": "color name", "hex": "#xxxxxx"}
   ],
   "materials": [
-    "Shell: 100% Recycled Polyester Mesh",
-    "Weight: 110 GSM",
-    "Finish: Sublimated all-over print"
+    "Shell: 100% Recycled Polyester",
+    "Lining: 100% Polyester Mesh",
+    "Weight: 160GSM Performance Knit"
   ],
   "features": [
-    "4–6 short design-system-specific feature labels, e.g. 'Diagonal chest panel cut'",
-    "Each label derived from the ${designSystem} system visual language"
+    "4–8 short feature labels following ${designSystem} system construction language",
+    "Match the exact feature list style shown in the spec-board reference image"
   ],
-  "logoPlacement": "One precise sentence: Grace Athletics logo placement on the garment",
-  "description": "RENDER DIRECTIVE (max 80 words): Describe the garment as a controlled technical render spec. Include: exact hex colors, panel geometry and angles, key graphic elements of the ${designSystem} system, logo zone location only (no artwork). This text is fed directly into an image model — write for accuracy and control, not for a human reader."
+  "logoPlacement": "One precise sentence: Grace Athletics logo placement zone description",
+  "description": "REPLICATE RENDER DIRECTIVE (max 90 words): Write this as a garment design description for the image model — NOT a spec-board layout description (the layout comes from the init image). Include: (1) exact hex colors for each garment zone, (2) panel geometry and cut angles following the ${designSystem} system, (3) key graphic elements specific to the ${designSystem} system, (4) logo zone as 'clean empty logo zone on [location]' only — no logo artwork. This text controls what design REPLACES the reference's red/white Warriors design."
 }`.trim();
 }
 
-// ─── Replicate prompt builder ─────────────────────────────────────────────────
+// ─── Spec-board Replicate prompt builder ──────────────────────────────────────
 
 /**
- * Builds a tightly controlled Replicate/FLUX prompt for one view.
+ * Builds the single Replicate prompt for the complete spec-board.
  *
- * Structure: garment identity → design system → colors → key visual → logo zone → view
- * Kept under ~80 tokens to stay in FLUX's effective attention window.
+ * When used with flux-dev img2img (prompt_strength 0.60):
+ *   - The reference init image provides the board LAYOUT (column positions,
+ *     garment arrangement, detail box structure).
+ *   - This prompt drives the DESIGN CONTENT (colors, paneling, team identity).
+ *
+ * Keep prompt under ~100 words — FLUX focuses attention best in this range.
  */
-function buildReplicatePrompt(
+function buildSpecBoardPrompt(
   metadata:     DesignMetadata,
   designSystem: string,
-  viewSuffix:   string,
+  teamName:     string,
 ): string {
   const system = designSystem.toLowerCase();
 
-  // Top 3 colors as "role hex" pairs
-  const colorStr = metadata.colorway
+  const colors = metadata.colorway
     .slice(0, 3)
     .map((c) => `${c.role.toLowerCase()} ${c.hex}`)
     .join(", ");
 
-  // Short design-system descriptor
   const systemShort = SYSTEM_PROMPT_SHORT[system] ?? SYSTEM_PROMPT_SHORT["bold"];
 
-  // Logo zone — no artwork, just a clean zone marker
-  const logoZoneRaw = metadata.logoPlacement
-    ? metadata.logoPlacement.split(".")[0].replace(/grace athletics/gi, "").trim().slice(0, 80)
-    : "upper chest";
-  const logoZone = `clean empty logo zone on ${logoZoneRaw}, no logos rendered, no text in placement area`;
+  // Logo zone — use metadata or fall back to a safe generic
+  const logoZone = metadata.logoPlacement
+    ? `clean empty logo zone on ${metadata.logoPlacement.split(".")[0].toLowerCase().replace(/grace athletics/gi, "").trim().slice(0, 60)}`
+    : "clean empty logo zones on jersey chest and shorts";
 
-  // Primary render description from Claude (trimmed to first 2 sentences for FLUX focus)
-  const descSentences = (metadata.description ?? "")
-    .split(/\.\s+/)
-    .slice(0, 2)
-    .join(". ")
-    .trim()
-    .slice(0, 200);
+  // Claude's controlled garment render directive (already ≤90 words)
+  const garmentDesc = (metadata.description ?? "").slice(0, 400);
 
   return [
-    `professional apparel product render, ${metadata.garmentType}`,
+    `basketball uniform specification board for ${teamName}`,
     `${system} design system: ${systemShort}`,
-    colorStr ? `colors ${colorStr}` : "",
-    descSentences,
-    logoZone,
-    viewSuffix,
-    "product photography, no model, no background objects, no watermarks, no text overlays",
+    colors ? `colors: ${colors}` : "",
+    garmentDesc,
+    logoZone + ", no logos rendered, no Nike, no Jordan, no Adidas, no hallucinated brand marks",
+    "Grace Athletics spec-board layout, flat technical garment illustrations, ghost mannequin style, no people, no lifestyle photography, no cinematic lighting",
+    "off-white background, professional apparel manufacturer presentation",
   ]
     .filter(Boolean)
     .join(". ");
@@ -319,7 +298,6 @@ export async function POST(req: NextRequest) {
     );
 
     // ── 1. Duplicate-generation guard ─────────────────────────────────────────
-    // Protects against React Strict Mode double-fire, button spam, and refreshes.
 
     const { data: existingBrief } = await supabase
       .from("briefs")
@@ -331,14 +309,12 @@ export async function POST(req: NextRequest) {
       try {
         const existing = JSON.parse(existingBrief.ai_prompt as string) as DesignMetadata;
         if (existing.status === "generating" || existing.status === "queued") {
-          console.log(`[generate-concepts] already running for ${order_id} — rejecting duplicate`);
           return NextResponse.json({ status: "already_running" }, { status: 409 });
         }
         if (existing.status === "completed") {
-          console.log(`[generate-concepts] already completed for ${order_id} — rejecting duplicate`);
           return NextResponse.json({ status: "already_completed" }, { status: 409 });
         }
-      } catch { /* ai_prompt not valid JSON — proceed */ }
+      } catch { /* not valid JSON — proceed */ }
     }
 
     // ── 2. Fetch brief / order / client ───────────────────────────────────────
@@ -363,39 +339,41 @@ export async function POST(req: NextRequest) {
 
     const sport        = (client.sport as string) ?? "basketball";
     const designSystem = (brief.design_system as string) ?? "bold";
+    const teamName     = (client.name as string) ?? "Team";
     const garmentLabel = getGarmentTypeLabel(sport);
 
-    // ── 3. Resolve reference library files ────────────────────────────────────
+    // ── 3. Resolve reference library ──────────────────────────────────────────
 
-    const refs           = resolveReferenceFiles(sport, designSystem);
-    const appUrl         = process.env.NEXT_PUBLIC_APP_URL ?? "https://gs-first-pass.vercel.app";
-    const refLibraryUrls = getReferenceUrls(refs, appUrl);
-    const refAnnotation  = buildReferenceAnnotation(refs);
+    const refs    = resolveReferenceFiles(sport, designSystem);
+    const appUrl  = process.env.NEXT_PUBLIC_APP_URL ?? "https://gs-first-pass.vercel.app";
+
+    // spec-board init URL (used for flux-dev img2img)
+    const specBoardInitUrl: string | null = refs.specBoard
+      ? toPublicUrl(appUrl, refs.specBoard)
+      : null;
+
+    // Additional reference images for Claude (front, back, details)
+    const allRefUrls    = getReferenceUrls(refs, appUrl);
+    const refAnnotation = buildReferenceAnnotation(refs);
 
     console.log(
       `[generate-concepts] ${sport}/${designSystem} — ` +
-      `reference files: ${refLibraryUrls.length} loaded ` +
-      `(specBoard:${!!refs.specBoard} front:${!!refs.front} back:${!!refs.back})`,
+      `specBoard: ${!!specBoardInitUrl}, refs: ${allRefUrls.length}, ` +
+      `initUrl: ${specBoardInitUrl?.split("/").pop()}`,
     );
 
-    // ── 4. Mark as queued ─────────────────────────────────────────────────────
+    // ── 4. Mark queued ────────────────────────────────────────────────────────
 
     await saveStatus(supabase, order_id, {
-      status:       "queued",
-      progress:     0,
-      total:        4,
-      startedAt:    new Date().toISOString(),
+      status:      "queued",
+      progress:    0,
+      total:       1,
+      startedAt:   new Date().toISOString(),
+      boardFormat: "specboard",
       designSystem,
     });
 
     // ── 5. Build Claude content blocks ────────────────────────────────────────
-    //
-    // Block order (important — we annotate these positions in the prompt):
-    //   1. Reference library images (spec-board, front, back, details)
-    //   2. Client-uploaded logo images
-    //   3. Client-uploaded inspiration/reference images
-    //   4. Text: annotation of what each image is
-    //   5. Text: main design brief prompt
 
     type ImageBlock   = { type: "image"; source: { type: "url"; url: string } };
     type TextBlock    = { type: "text"; text: string };
@@ -409,42 +387,37 @@ export async function POST(req: NextRequest) {
       ? (brief.reference_image_urls as string[]).filter(validUrl)
       : validUrl(brief.reference_image_url) ? [brief.reference_image_url as string] : [];
 
-    // Cap total images: reference library (up to 5) + client uploads (up to 14 = 19 max for Claude)
-    const maxClientImages = 19 - refLibraryUrls.length;
+    const maxClientImages = 19 - allRefUrls.length;
     const allClientUrls   = [...logoUrls, ...clientRefUrls].slice(0, maxClientImages);
 
-    const refLibraryBlocks: ImageBlock[] = refLibraryUrls.map((url) => ({
-      type: "image",
-      source: { type: "url", url },
+    const refImageBlocks: ImageBlock[] = allRefUrls.map((url) => ({
+      type: "image", source: { type: "url", url },
     }));
 
     const clientImageBlocks: ImageBlock[] = allClientUrls.map((url) => ({
-      type: "image",
-      source: { type: "url", url },
+      type: "image", source: { type: "url", url },
     }));
 
-    // Annotation for client-uploaded images (appended to refAnnotation)
     const clientAnnotation = [
       logoUrls.length > 0
-        ? `• Next ${logoUrls.length} image(s): CLIENT TEAM LOGOS — these are LOCKED REFERENCE ASSETS. Extract exact colors only. Do NOT redraw, reinterpret, or describe logo artwork. Write "logo zone" in the description field only.`
+        ? `• Next ${logoUrls.length} image(s): CLIENT LOGOS — LOCKED ASSETS. Extract colors only. Do NOT describe logo artwork in the description field. Write logo zones only.`
         : "",
       clientRefUrls.length > 0
-        ? `• Final ${clientRefUrls.length} image(s): CLIENT INSPIRATION REFERENCES — use for aesthetic direction and mood only, do not copy directly.`
+        ? `• Final ${clientRefUrls.length} image(s): CLIENT REFERENCES — aesthetic direction only.`
         : "",
     ].filter(Boolean).join("\n");
 
     const fullAnnotation = [refAnnotation, clientAnnotation].filter(Boolean).join("\n");
-
     const designBriefPrompt = buildClaudePrompt(brief, client, garmentLabel, fullAnnotation);
 
     const claudeContent: ContentBlock[] = [
-      ...refLibraryBlocks,
+      ...refImageBlocks,
       ...clientImageBlocks,
       ...(fullAnnotation ? [{ type: "text" as const, text: fullAnnotation }] : []),
       { type: "text" as const, text: designBriefPrompt },
     ];
 
-    // ── 6. Call Claude ────────────────────────────────────────────────────────
+    // ── 6. Call Claude — get structured metadata ──────────────────────────────
 
     const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -460,95 +433,69 @@ export async function POST(req: NextRequest) {
         ? aiResponse.content[0].text
         : "";
 
-    // ── 7. Parse metadata ─────────────────────────────────────────────────────
+    // ── 7. Parse Claude metadata ──────────────────────────────────────────────
 
     let metadata: DesignMetadata;
     try {
       const cleaned = rawText.replace(/^```json\s*/i, "").replace(/```\s*$/i, "").trim();
       const parsed  = JSON.parse(cleaned) as DesignMetadata;
       if (typeof parsed.description !== "string") throw new Error("invalid shape");
-      metadata = { ...parsed, designSystem };
+      metadata = { ...parsed, designSystem, boardFormat: "specboard" };
     } catch {
-      // Fallback if Claude returns malformed JSON
       metadata = {
         garmentType:   garmentLabel,
         designSystem,
+        boardFormat:   "specboard",
         colorway:      [],
         materials:     [],
         features:      [],
         logoPlacement: (brief.gs_logo_placement as string) ?? "",
-        description:   rawText,
+        description:   rawText.slice(0, 400),
       };
     }
 
-    // Save metadata with generating status so status endpoint can serve it
+    // Mark generating so the status endpoint shows in-progress state
     await saveStatus(supabase, order_id, {
       ...metadata,
       status:   "generating",
       progress: 0,
-      total:    4,
-      images:   { front: "", back: "", detail1: "", detail2: "" },
+      total:    1,
     });
 
-    // ── 8. Generate images SEQUENTIALLY — one at a time with 429 retry ────────
+    // ── 8. Build the Replicate spec-board prompt ──────────────────────────────
+
+    const replicatePrompt = buildSpecBoardPrompt(metadata, designSystem, teamName);
+    console.log(`[generate-concepts] Replicate prompt (${replicatePrompt.length} chars): ${replicatePrompt.slice(0, 120)}…`);
+    console.log(`[generate-concepts] Init image: ${specBoardInitUrl ?? "none (text-to-image fallback)"}`);
+
+    // ── 9. Generate the single spec-board image ───────────────────────────────
 
     const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN });
-    const imageUrls: string[]                  = [];
-    const collectedImages: Record<string, string> = {
-      front: "", back: "", detail1: "", detail2: "",
-    };
 
-    for (let i = 0; i < VIEW_SUFFIXES.length; i++) {
-      const replicatePrompt = buildReplicatePrompt(metadata, designSystem, VIEW_SUFFIXES[i]);
-
-      console.log(
-        `[generate-concepts] image ${i + 1}/4 (${VIEW_LABELS[i]}) — ` +
-        `system: ${designSystem}, prompt length: ${replicatePrompt.length}`,
-      );
-
-      try {
-        const url = await generateImageWithRetry(replicate, replicatePrompt);
-        imageUrls.push(url);
-        collectedImages[VIEW_KEYS[i]] = url;
-
-        await saveStatus(supabase, order_id, {
-          ...metadata,
-          status:   "generating",
-          progress: i + 1,
-          total:    4,
-          images:   { ...collectedImages } as DesignMetadata["images"],
-        });
-
-        console.log(`[generate-concepts] image ${i + 1}/4 saved`);
-      } catch (imgErr: unknown) {
-        const msg = imgErr instanceof Error ? imgErr.message : String(imgErr);
-        console.error(`[generate-concepts] image ${i + 1}/4 failed:`, msg);
-        await saveStatus(supabase, order_id, {
-          ...metadata,
-          status: "failed",
-          error:  `Image ${i + 1} (${VIEW_LABELS[i]}) failed: ${msg}`,
-          images: { ...collectedImages } as DesignMetadata["images"],
-        });
-        return NextResponse.json(
-          { error: `Image generation failed at step ${i + 1}`, detail: msg },
-          { status: 500 },
-        );
-      }
+    let boardImageUrl: string;
+    try {
+      boardImageUrl = await generateSpecBoard(replicate, replicatePrompt, specBoardInitUrl);
+      console.log(`[generate-concepts] spec-board generated: ${boardImageUrl.slice(0, 80)}`);
+    } catch (imgErr: unknown) {
+      const msg = imgErr instanceof Error ? imgErr.message : String(imgErr);
+      console.error("[generate-concepts] spec-board generation failed:", msg);
+      await saveStatus(supabase, order_id, {
+        ...metadata,
+        status: "failed",
+        error:  `Spec-board generation failed: ${msg}`,
+      });
+      return NextResponse.json({ error: "Spec-board generation failed", detail: msg }, { status: 500 });
     }
 
-    // ── 9. Mark completed ─────────────────────────────────────────────────────
+    // ── 10. Mark completed ────────────────────────────────────────────────────
 
     const finalMetadata: DesignMetadata = {
       ...metadata,
-      status:   "completed",
-      progress: 4,
-      total:    4,
-      images: {
-        front:   imageUrls[0] ?? "",
-        back:    imageUrls[1] ?? "",
-        detail1: imageUrls[2] ?? "",
-        detail2: imageUrls[3] ?? "",
-      },
+      status:      "completed",
+      progress:    1,
+      total:       1,
+      boardFormat: "specboard",
+      boardImage:  boardImageUrl,
     };
 
     await supabase
@@ -556,27 +503,25 @@ export async function POST(req: NextRequest) {
       .update({ ai_prompt: JSON.stringify(finalMetadata) })
       .eq("order_id", order_id);
 
-    // ── 10. Insert concept rows ───────────────────────────────────────────────
-
-    const conceptRows = imageUrls.map((url, i) => ({
-      order_id,
-      concept_number: i + 1,
-      image_url:      url,
-      selected:       false,
-    }));
+    // ── 11. Insert single concept row ─────────────────────────────────────────
 
     const { error: conceptError } = await supabase
       .from("concepts")
-      .insert(conceptRows);
+      .insert({
+        order_id,
+        concept_number: 1,
+        image_url:      boardImageUrl,
+        selected:       false,
+      });
 
     if (conceptError) {
       return NextResponse.json(
-        { error: "Failed to save concepts", detail: conceptError.message },
+        { error: "Failed to save concept", detail: conceptError.message },
         { status: 500 },
       );
     }
 
-    // ── 11. Notify client ─────────────────────────────────────────────────────
+    // ── 12. Notify client ─────────────────────────────────────────────────────
 
     try {
       if (client?.email) {
@@ -589,18 +534,14 @@ export async function POST(req: NextRequest) {
         });
       }
     } catch (emailErr) {
-      console.warn(
-        "[generate-concepts] Email notification failed:",
-        emailErr instanceof Error ? emailErr.message : emailErr,
-      );
+      console.warn("[generate-concepts] email failed:", emailErr instanceof Error ? emailErr.message : emailErr);
     }
 
     return NextResponse.json({
       status:       "completed",
       order_id,
-      concepts:     conceptRows.length,
-      designSystem,
-      refsLoaded:   refLibraryUrls.length,
+      boardFormat:  "specboard",
+      initImage:    specBoardInitUrl ? "reference" : "text-only",
     });
 
   } catch (err: unknown) {

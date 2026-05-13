@@ -26,11 +26,12 @@ export async function GET(req: NextRequest) {
   try {
     const parsed = JSON.parse(brief.ai_prompt as string) as DesignMetadata;
     return NextResponse.json({
-      status:    parsed.status    ?? "not_started",
-      progress:  parsed.progress  ?? 0,
-      total:     parsed.total     ?? 4,
-      error:     parsed.error     ?? null,
-      startedAt: parsed.startedAt ?? null,
+      status:      parsed.status      ?? "not_started",
+      progress:    parsed.progress    ?? 0,
+      total:       parsed.total       ?? 1,
+      error:       parsed.error       ?? null,
+      startedAt:   parsed.startedAt   ?? null,
+      boardFormat: parsed.boardFormat ?? "specboard",
     });
   } catch {
     return NextResponse.json({ status: "not_started" as GenerationStatus });

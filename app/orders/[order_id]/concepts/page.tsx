@@ -10,29 +10,128 @@ import type { DesignMetadata, GenerationStatus } from "@/app/api/generate-concep
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface GenerationProgress {
-  status: GenerationStatus | "not_started";
-  progress: number;
-  total: number;
-  error: string | null;
+  status:      GenerationStatus | "not_started";
+  progress:    number;
+  total:       number;
+  error:       string | null;
+  boardFormat?: "specboard" | "multiview";
 }
 
 interface BoardData {
-  teamName: string;
+  teamName:    string;
   orderNumber: string;
-  metadata: DesignMetadata;
+  metadata:    DesignMetadata;
 }
 
-// ─── Color Swatch ─────────────────────────────────────────────────────────────
+// ─── Generation state UI ──────────────────────────────────────────────────────
 
-function ColorSwatch({ role, name, hex, pantone }: {
-  role: string; name: string; hex: string; pantone?: string;
-}) {
+const STEP_LABELS = [
+  "Analyzing brief & references",
+  "Generating spec board",
+];
+
+function GeneratingState({ gen }: { gen: GenerationProgress }) {
+  const isGenerating = gen.status === "generating";
+  const pct          = isGenerating ? 55 : gen.status === "queued" ? 15 : 0;
+  const label        = isGenerating ? STEP_LABELS[1] : STEP_LABELS[0];
+
+  return (
+    <div className="py-20 flex flex-col items-center justify-center gap-6 max-w-sm mx-auto text-center">
+      {/* Spinner */}
+      <div className="relative w-16 h-16">
+        <div className="w-16 h-16 border border-gs-border rounded-full" />
+        <div className="absolute inset-0 border-2 border-gs-gold border-t-transparent rounded-full animate-spin" />
+      </div>
+
+      {/* Label */}
+      <div className="space-y-1">
+        <p className="text-gs-white font-barlow font-medium">Building your spec board</p>
+        <p className="text-xs text-gs-gold font-display uppercase tracking-widest">{label}</p>
+        {isGenerating && (
+          <p className="text-xs text-gs-muted font-barlow">
+            This takes 30–90 seconds — the board will appear automatically
+          </p>
+        )}
+      </div>
+
+      {/* Progress bar */}
+      <div className="w-full bg-gs-border rounded-full h-0.5 overflow-hidden">
+        <div
+          className="h-full bg-gs-gold transition-all duration-1000 ease-out rounded-full"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+
+      <p className="text-[10px] text-gs-muted font-barlow">
+        You can leave and come back — your board saves automatically.
+      </p>
+    </div>
+  );
+}
+
+// ─── Spec-board display (new single-image format) ─────────────────────────────
+
+function SpecBoardDisplay({ data }: { data: BoardData }) {
+  const { teamName, orderNumber, metadata } = data;
+  const [imgLoaded, setImgLoaded] = useState(false);
+  const [imgError, setImgError]   = useState(false);
+
+  const imageUrl = metadata.boardImage ?? metadata.images?.front ?? "";
+
+  return (
+    <div className="rounded-xl overflow-hidden border border-gray-300 shadow-lg">
+      {/* Header */}
+      <div className="border-b border-gray-300 bg-white px-5 py-2.5 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-0.5 h-5 bg-gray-800" />
+          <span className="text-[9px] font-bold uppercase tracking-[0.3em] text-gray-500">
+            Grace Athletics — Concept Board
+          </span>
+        </div>
+        <span className="text-[9px] font-mono text-gray-400 tracking-widest">{orderNumber}</span>
+      </div>
+
+      {/* Single spec-board image */}
+      <div className="relative bg-[#f0ede6]" style={{ minHeight: 300 }}>
+        {!imgLoaded && !imgError && (
+          <div className="absolute inset-0 animate-pulse bg-[#e8e5de]" />
+        )}
+        {imgError ? (
+          <div className="flex items-center justify-center py-20">
+            <p className="text-gray-400 text-sm font-barlow">Image unavailable</p>
+          </div>
+        ) : (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={imageUrl}
+            alt={`${teamName} spec board`}
+            className={`w-full block transition-opacity duration-500 ${imgLoaded ? "opacity-100" : "opacity-0"}`}
+            onLoad={() => setImgLoaded(true)}
+            onError={() => { setImgError(true); setImgLoaded(true); }}
+          />
+        )}
+      </div>
+
+      {/* Footer */}
+      <div className="border-t border-gray-300 bg-white/60 px-5 py-2.5 flex items-center justify-between">
+        <p className="text-[8px] text-gray-400 italic leading-relaxed max-w-lg">
+          AI concept is for visual direction only and may not exactly match final production artwork.
+          Colors, proportions, and details are subject to change during production.
+        </p>
+        <div className="flex-shrink-0 ml-4 opacity-25">
+          <GraceLogo className="h-4" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Legacy multi-image board (backward compat) ───────────────────────────────
+
+function ColorSwatch({ role, name, hex, pantone }: { role: string; name: string; hex: string; pantone?: string }) {
   return (
     <div className="flex items-center gap-3 mb-2.5">
-      <div
-        className="w-8 h-8 rounded-sm border border-black/10 flex-shrink-0"
-        style={{ backgroundColor: hex || "#cccccc" }}
-      />
+      <div className="w-8 h-8 rounded-sm border border-black/10 flex-shrink-0" style={{ backgroundColor: hex || "#cccccc" }} />
       <div>
         <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-gray-700 leading-tight">{role}</p>
         <p className="text-[9px] text-gray-500 leading-tight mt-0.5">{pantone || name}</p>
@@ -41,18 +140,14 @@ function ColorSwatch({ role, name, hex, pantone }: {
   );
 }
 
-// ─── Board Image ──────────────────────────────────────────────────────────────
-
 function BoardImage({ url, alt, className }: { url?: string; alt: string; className?: string }) {
   const [loaded, setLoaded] = useState(false);
   const [error, setError]   = useState(false);
-
   if (!url) return (
     <div className={`bg-[#111] flex items-center justify-center ${className ?? ""}`}>
       <span className="text-white/20 text-[10px]">No image</span>
     </div>
   );
-
   return (
     <div className={`relative bg-[#111] overflow-hidden ${className ?? ""}`}>
       {!loaded && !error && <div className="absolute inset-0 animate-pulse bg-[#1a1a1a]" />}
@@ -74,60 +169,7 @@ function BoardImage({ url, alt, className }: { url?: string; alt: string; classN
   );
 }
 
-// ─── Generation Progress Bar ──────────────────────────────────────────────────
-
-const STEP_LABELS = [
-  "Analyzing brief",
-  "Generating front view",
-  "Generating back view",
-  "Generating collar & logo detail",
-  "Generating sleeve & panel detail",
-];
-
-function GeneratingState({ gen }: { gen: GenerationProgress }) {
-  // progress 0 = Claude finished, images not started
-  // progress 1-4 = images 1-4 done
-  const stepIndex  = gen.status === "generating" ? gen.progress : 0;
-  const label      = STEP_LABELS[Math.min(stepIndex, STEP_LABELS.length - 1)];
-  const pct        = Math.round((stepIndex / gen.total) * 100);
-
-  return (
-    <div className="py-20 flex flex-col items-center justify-center gap-6 max-w-sm mx-auto text-center">
-      {/* Spinner */}
-      <div className="relative w-16 h-16">
-        <div className="w-16 h-16 border border-gs-border rounded-full" />
-        <div className="absolute inset-0 border-2 border-gs-gold border-t-transparent rounded-full animate-spin" />
-      </div>
-
-      {/* Label */}
-      <div className="space-y-1">
-        <p className="text-gs-white font-barlow font-medium">Building your product board</p>
-        <p className="text-xs text-gs-gold font-display uppercase tracking-widest">{label}</p>
-        {gen.status === "generating" && (
-          <p className="text-xs text-gs-muted font-barlow">
-            Image {gen.progress + 1} of {gen.total}
-          </p>
-        )}
-      </div>
-
-      {/* Progress bar */}
-      <div className="w-full bg-gs-border rounded-full h-0.5 overflow-hidden">
-        <div
-          className="h-full bg-gs-gold transition-all duration-700 ease-out rounded-full"
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-
-      <p className="text-[10px] text-gs-muted font-barlow">
-        Your board will appear here automatically. You can leave and come back.
-      </p>
-    </div>
-  );
-}
-
-// ─── Product Board ────────────────────────────────────────────────────────────
-
-function ProductBoard({ data }: { data: BoardData }) {
+function LegacyProductBoard({ data }: { data: BoardData }) {
   const { teamName, orderNumber, metadata } = data;
   const images        = metadata.images;
   const garmentType   = metadata.garmentType   ?? "Sports Uniform";
@@ -136,52 +178,37 @@ function ProductBoard({ data }: { data: BoardData }) {
   const features      = metadata.features      ?? [];
   const logoPlacement = metadata.logoPlacement ?? "";
 
-  const detailLabel1 = features[0]
-    ? features[0].replace(/^[•\-–]\s*/, "").split(" ").slice(0, 5).join(" ")
-    : "Logo & Collar";
-  const detailLabel2 = features[1]
-    ? features[1].replace(/^[•\-–]\s*/, "").split(" ").slice(0, 5).join(" ")
-    : "Sleeve & Panel";
+  const detailLabel1 = features[0] ? features[0].replace(/^[•\-–]\s*/, "").split(" ").slice(0, 5).join(" ") : "Logo & Collar";
+  const detailLabel2 = features[1] ? features[1].replace(/^[•\-–]\s*/, "").split(" ").slice(0, 5).join(" ") : "Sleeve & Panel";
 
   return (
     <div className="rounded-xl overflow-hidden border border-gray-300 shadow-lg" style={{ backgroundColor: "#f0ede6" }}>
-
-      {/* Header */}
       <div className="border-b border-gray-300 bg-white px-5 py-2.5 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-0.5 h-5 bg-gray-800" />
-          <span className="text-[9px] font-bold uppercase tracking-[0.3em] text-gray-500">
-            Grace Athletics — AI Concept
-          </span>
+          <span className="text-[9px] font-bold uppercase tracking-[0.3em] text-gray-500">Grace Athletics — AI Concept</span>
         </div>
         <span className="text-[9px] font-mono text-gray-400 tracking-widest">{orderNumber}</span>
       </div>
-
-      {/* Body */}
       <div className="flex" style={{ minHeight: 540 }}>
-
-        {/* LEFT: Metadata */}
         <div className="flex-shrink-0 border-r border-gray-300 flex flex-col" style={{ width: 210, backgroundColor: "#f8f6f1" }}>
           <div className="px-5 pt-5 pb-4 border-b border-gray-200">
             <p className="text-[8px] uppercase tracking-[0.3em] text-gray-400 font-bold mb-1">Grace Athletics</p>
             <p className="text-base font-bold uppercase tracking-wider text-gray-900 leading-tight">{teamName}</p>
             <p className="text-[9px] uppercase tracking-[0.18em] text-gray-500 mt-1">{garmentType}</p>
           </div>
-
           {colorway.length > 0 && (
             <div className="px-5 py-4 border-b border-gray-200">
               <p className="text-[8px] uppercase tracking-[0.28em] text-gray-400 font-bold mb-3">Colorway</p>
               {colorway.map((c, i) => <ColorSwatch key={i} {...c} />)}
             </div>
           )}
-
           {materials.length > 0 && (
             <div className="px-5 py-4 border-b border-gray-200">
               <p className="text-[8px] uppercase tracking-[0.28em] text-gray-400 font-bold mb-2">Material</p>
               {materials.map((m, i) => <p key={i} className="text-[9px] text-gray-600 leading-relaxed">{m}</p>)}
             </div>
           )}
-
           {features.length > 0 && (
             <div className="px-5 py-4 border-b border-gray-200">
               <p className="text-[8px] uppercase tracking-[0.28em] text-gray-400 font-bold mb-2">Features</p>
@@ -190,7 +217,6 @@ function ProductBoard({ data }: { data: BoardData }) {
               ))}
             </div>
           )}
-
           {logoPlacement && (
             <div className="px-5 py-4">
               <p className="text-[8px] uppercase tracking-[0.28em] text-gray-400 font-bold mb-1.5">Logo</p>
@@ -198,8 +224,6 @@ function ProductBoard({ data }: { data: BoardData }) {
             </div>
           )}
         </div>
-
-        {/* CENTER: Front + Back */}
         <div className="flex-1 flex bg-[#0f0f0f]">
           <div className="flex-1 flex flex-col border-r border-white/5">
             <p className="text-[8px] uppercase tracking-[0.28em] text-white/25 text-center py-2.5 font-bold">Front</p>
@@ -210,8 +234,6 @@ function ProductBoard({ data }: { data: BoardData }) {
             <BoardImage url={images?.back} alt="Back view" className="flex-1" />
           </div>
         </div>
-
-        {/* RIGHT: Details */}
         <div className="flex-shrink-0 border-l border-gray-300 flex flex-col divide-y divide-gray-200" style={{ width: 168, backgroundColor: "#f8f6f1" }}>
           <div className="flex-1 flex flex-col p-3">
             <p className="text-[7px] uppercase tracking-[0.22em] text-gray-400 font-bold mb-2 leading-tight">{detailLabel1}</p>
@@ -227,8 +249,6 @@ function ProductBoard({ data }: { data: BoardData }) {
           </div>
         </div>
       </div>
-
-      {/* Footer */}
       <div className="border-t border-gray-300 bg-white/50 px-5 py-2.5 flex items-center justify-between">
         <p className="text-[8px] text-gray-400 italic leading-relaxed max-w-lg">
           AI concept is for visual direction only and may not exactly match final production artwork.
@@ -251,27 +271,21 @@ export default function ConceptsPage() {
   const supabase      = supabaseRef.current;
 
   const [boardData, setBoardData]     = useState<BoardData | null>(null);
-  const [gen, setGen]                 = useState<GenerationProgress>({ status: "not_started", progress: 0, total: 4, error: null });
+  const [gen, setGen]                 = useState<GenerationProgress>({ status: "not_started", progress: 0, total: 1, error: null });
   const [approving, setApproving]     = useState(false);
   const [isAdminView, setIsAdminView] = useState(false);
 
-  // ── Duplicate-generation guard for React Strict Mode ─────────────────────
-  // useEffect fires twice in dev Strict Mode. This ref ensures we only ever
-  // call the generation API once per true page mount.
   const generationFiredRef = useRef(false);
   const pollIntervalRef    = useRef<NodeJS.Timeout | null>(null);
 
-  // ── Poll status endpoint ──────────────────────────────────────────────────
+  // ── Poll status ───────────────────────────────────────────────────────────
 
   const pollStatus = useCallback(async () => {
     try {
       const res  = await fetch(`/api/generate-concepts/status?order_id=${order_id}`);
       const data = await res.json() as GenerationProgress;
-
       setGen(data);
-
       if (data.status === "completed") {
-        // Stop polling and fetch the full board
         if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
         await loadBoard();
       } else if (data.status === "failed") {
@@ -281,49 +295,43 @@ export default function ConceptsPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [order_id]);
 
-  // ── Load completed board from DB ──────────────────────────────────────────
+  // ── Load board from DB ────────────────────────────────────────────────────
 
   const loadBoard = useCallback(async (): Promise<boolean> => {
-    const { data: conceptRows } = await supabase
-      .from("concepts")
-      .select("id, concept_number, image_url, selected")
+    const { data: briefRow } = await supabase
+      .from("briefs")
+      .select("ai_prompt")
       .eq("order_id", order_id)
-      .order("concept_number");
-
-    if (!conceptRows || conceptRows.length === 0) return false;
-
-    const [{ data: orderRow }, { data: briefRow }] = await Promise.all([
-      supabase.from("orders").select("order_number, clients(name)").eq("id", order_id).single(),
-      supabase.from("briefs").select("ai_prompt").eq("order_id", order_id).single(),
-    ]);
-
-    const clientData  = Array.isArray(orderRow?.clients) ? orderRow?.clients[0] : orderRow?.clients;
-    const teamName    = (clientData as { name?: string })?.name ?? "Your Team";
-    const orderNumber = orderRow?.order_number ?? order_id.slice(0, 8).toUpperCase();
+      .single();
 
     let metadata: DesignMetadata | null = null;
     if (briefRow?.ai_prompt) {
       try {
         const parsed = JSON.parse(briefRow.ai_prompt as string) as DesignMetadata;
-        if (typeof parsed.description === "string") {
-          // Back-fill images from concepts table if not embedded
-          if (!parsed.images) {
-            parsed.images = {
-              front:   conceptRows.find(r => r.concept_number === 1)?.image_url ?? "",
-              back:    conceptRows.find(r => r.concept_number === 2)?.image_url ?? "",
-              detail1: conceptRows.find(r => r.concept_number === 3)?.image_url ?? "",
-              detail2: conceptRows.find(r => r.concept_number === 4)?.image_url ?? "",
-            };
-          }
+        if (parsed.status === "completed") {
           metadata = parsed;
         }
       } catch { /* ignore */ }
     }
 
+    // Legacy fallback: check concepts table for old multiview format
     if (!metadata) {
+      const { data: conceptRows } = await supabase
+        .from("concepts")
+        .select("concept_number, image_url")
+        .eq("order_id", order_id)
+        .order("concept_number");
+
+      if (!conceptRows || conceptRows.length === 0) return false;
+
       metadata = {
-        garmentType: "Sports Uniform", colorway: [], materials: [], features: [],
-        logoPlacement: "", description: "",
+        garmentType:   "Sports Uniform",
+        boardFormat:   "multiview",
+        colorway:      [],
+        materials:     [],
+        features:      [],
+        logoPlacement: "",
+        description:   "",
         images: {
           front:   conceptRows.find(r => r.concept_number === 1)?.image_url ?? "",
           back:    conceptRows.find(r => r.concept_number === 2)?.image_url ?? "",
@@ -332,6 +340,18 @@ export default function ConceptsPage() {
         },
       };
     }
+
+    // Determine if this is a spec-board or legacy board
+    // For spec-board: metadata.boardFormat === "specboard" or boardImage is set
+    // For legacy: images.front/back/detail1/detail2 are set
+
+    const [{ data: orderRow }] = await Promise.all([
+      supabase.from("orders").select("order_number, clients(name)").eq("id", order_id).single(),
+    ]);
+
+    const clientData  = Array.isArray(orderRow?.clients) ? orderRow?.clients[0] : orderRow?.clients;
+    const teamName    = (clientData as { name?: string })?.name ?? "Your Team";
+    const orderNumber = orderRow?.order_number ?? order_id.slice(0, 8).toUpperCase();
 
     setBoardData({ teamName, orderNumber, metadata });
     return true;
@@ -343,8 +363,7 @@ export default function ConceptsPage() {
   const triggerGeneration = useCallback(async () => {
     if (generationFiredRef.current) return;
     generationFiredRef.current = true;
-
-    setGen({ status: "queued", progress: 0, total: 4, error: null });
+    setGen({ status: "queued", progress: 0, total: 1, error: null });
 
     const res = await fetch("/api/generate-concepts", {
       method:  "POST",
@@ -353,18 +372,13 @@ export default function ConceptsPage() {
     });
 
     if (res.status === 409) {
-      // Already running or already completed — just start/keep polling
       const body = await res.json();
-      if (body.status === "already_completed") {
-        await loadBoard();
-        return;
-      }
-      // already_running → fall through to poll
+      if (body.status === "already_completed") { await loadBoard(); return; }
+      // already_running — fall through to poll
     }
 
-    // Start polling every 4 seconds regardless of POST outcome
     if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
-    pollIntervalRef.current = setInterval(pollStatus, 4000);
+    pollIntervalRef.current = setInterval(pollStatus, 5000);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [order_id, pollStatus, loadBoard]);
 
@@ -376,13 +390,11 @@ export default function ConceptsPage() {
     async function init() {
       const profile = await getProfile();
       if (cancelled) return;
-
       if (profile) {
         if (profile.role === "supplier") { router.replace("/supplier"); return; }
         if (profile.role === "admin") setIsAdminView(true);
       }
 
-      // Check if a completed board already exists
       const alreadyDone = await loadBoard();
       if (cancelled) return;
 
@@ -391,18 +403,15 @@ export default function ConceptsPage() {
         return;
       }
 
-      // Check if generation is already in progress
       const statusRes  = await fetch(`/api/generate-concepts/status?order_id=${order_id}`);
       const statusData = await statusRes.json() as GenerationProgress;
       if (cancelled) return;
 
       if (statusData.status === "generating" || statusData.status === "queued") {
-        // Pick up an in-progress generation — just poll
         setGen(statusData);
-        generationFiredRef.current = true; // prevent re-fire
-        pollIntervalRef.current = setInterval(pollStatus, 4000);
+        generationFiredRef.current = true;
+        pollIntervalRef.current = setInterval(pollStatus, 5000);
       } else {
-        // Nothing in progress — trigger fresh generation
         await triggerGeneration();
       }
     }
@@ -440,6 +449,9 @@ export default function ConceptsPage() {
   const isFailed     = gen.status === "failed";
   const hasBoard     = !!boardData;
 
+  // Determine which board component to render
+  const isSpecBoard = boardData?.metadata.boardFormat === "specboard" || !!boardData?.metadata.boardImage;
+
   return (
     <div className="min-h-screen bg-gs-dark flex flex-col">
 
@@ -475,7 +487,7 @@ export default function ConceptsPage() {
             </h1>
             <p className="mt-1.5 text-sm text-gs-muted font-barlow">
               {isGenerating
-                ? "Our AI is designing your uniform — this usually takes 1–3 minutes."
+                ? "Our AI is building your spec board — this takes about 60–90 seconds."
                 : hasBoard
                 ? "Review your concept board below. Approve to move into production."
                 : isFailed
@@ -487,7 +499,7 @@ export default function ConceptsPage() {
           {/* Generating / queued */}
           {isGenerating && <GeneratingState gen={gen} />}
 
-          {/* Initial loading (before first status check) */}
+          {/* Initial loading */}
           {!isGenerating && !hasBoard && !isFailed && (
             <div className="py-24 flex items-center justify-center">
               <div className="w-6 h-6 border-2 border-gs-gold border-t-transparent rounded-full animate-spin" />
@@ -512,10 +524,13 @@ export default function ConceptsPage() {
             </div>
           )}
 
-          {/* Completed board */}
+          {/* Board display */}
           {hasBoard && (
             <div className="space-y-5">
-              <ProductBoard data={boardData!} />
+              {isSpecBoard
+                ? <SpecBoardDisplay data={boardData!} />
+                : <LegacyProductBoard data={boardData!} />
+              }
 
               <div className="flex items-center justify-between pt-1">
                 <div className="flex flex-col gap-1">

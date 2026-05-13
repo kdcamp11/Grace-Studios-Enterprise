@@ -4,19 +4,24 @@
  * Resolves the correct reference images and visual-language description
  * for a given sport + design system combination.
  *
- * Physical layout on disk:
+ * Primary spec-board authority (basketball):
+ *   public/reference/Sport/Basketball/Basketball Spec Board/basketball spec board.jpeg
+ *
+ * New reference-library folder layout (drop files here per sport+system):
  *   public/reference-library/garments/{sport-slug}/{system}/
- *     spec-board-reference.png   ← board layout authority
- *     front-reference.png        ← front design language
- *     back-reference.png         ← back design language
+ *     spec-board-reference.png
+ *     front-reference.png
+ *     back-reference.png
  *     detail-collar-reference.png
  *     detail-sleeve-reference.png
  *
- * Fallback chain for each file:
- *   1. sport-specific folder
- *   2. basketball folder (most complete reference set)
- *   3. legacy public/reference/ folder
- *   4. null (file gracefully omitted from Claude call)
+ * Fallback chain for the spec-board init image:
+ *   1. reference-library/garments/{sport}/{system}/spec-board-reference.png
+ *   2. reference-library/garments/basketball/{system}/spec-board-reference.png
+ *   3. reference/Sport/Basketball/Basketball Spec Board/basketball spec board.jpeg
+ *   4. reference/Track Suits/spec-board-reference.jpeg
+ *   5. reference/spec-board-reference.jpeg
+ *   6. null → text-to-image only (no init image)
  */
 
 import fs   from "fs";
@@ -25,66 +30,66 @@ import path from "path";
 // ─── Sport → folder slug ──────────────────────────────────────────────────────
 
 const SPORT_SLUGS: Record<string, string> = {
-  "basketball":    "basketball",
-  "football":      "football",
-  "soccer":        "soccer",
-  "baseball":      "baseball",
-  "softball":      "softball",
-  "volleyball":    "volleyball",
-  "lacrosse":      "lacrosse",
-  "hockey":        "hockey",
-  "wrestling":     "wrestling",
-  "track & field": "track-field",
+  "basketball":     "basketball",
+  "football":       "football",
+  "soccer":         "soccer",
+  "baseball":       "baseball",
+  "softball":       "softball",
+  "volleyball":     "volleyball",
+  "lacrosse":       "lacrosse",
+  "hockey":         "hockey",
+  "wrestling":      "wrestling",
+  "track & field":  "track-field",
   "track and field":"track-field",
-  "other":         "basketball",
+  "other":          "basketball",
 };
 
 // ─── Sport → garment-type label used in prompts ───────────────────────────────
 
 export const GARMENT_TYPE_LABELS: Record<string, string> = {
-  "basketball":    "Basketball Jersey & Shorts Uniform",
-  "football":      "Football Jersey & Pants Uniform",
-  "soccer":        "Soccer Jersey & Shorts Kit",
-  "baseball":      "Baseball Jersey & Pants Uniform",
-  "softball":      "Softball Jersey & Pants Uniform",
-  "volleyball":    "Volleyball Jersey & Shorts Uniform",
-  "lacrosse":      "Lacrosse Jersey & Shorts Uniform",
-  "hockey":        "Hockey Jersey & Pants Uniform",
-  "wrestling":     "Wrestling Singlet",
-  "track & field": "Track & Field Uniform",
+  "basketball":     "Basketball Jersey & Shorts Uniform",
+  "football":       "Football Jersey & Pants Uniform",
+  "soccer":         "Soccer Jersey & Shorts Kit",
+  "baseball":       "Baseball Jersey & Pants Uniform",
+  "softball":       "Softball Jersey & Pants Uniform",
+  "volleyball":     "Volleyball Jersey & Shorts Uniform",
+  "lacrosse":       "Lacrosse Jersey & Shorts Uniform",
+  "hockey":         "Hockey Jersey & Pants Uniform",
+  "wrestling":      "Wrestling Singlet",
+  "track & field":  "Track & Field Uniform",
   "track and field":"Track & Field Uniform",
-  "other":         "Sports Uniform",
+  "other":          "Sports Uniform",
 };
 
-// ─── Design-system visual language (authoritative) ────────────────────────────
+// ─── Design-system visual language ────────────────────────────────────────────
 
 /**
- * Full prose description of each system's visual DNA.
- * Used in the Claude prompt as the authoritative design-system specification.
+ * Full authoritative prose spec for each design system.
+ * Used in Claude prompt. Do not shorten — every sentence shapes the output.
  */
 export const SYSTEM_VISUAL_LANGUAGE: Record<string, string> = {
   bold: [
     "Aggressive diagonal paneling with hard geometric edge cuts",
     "Oversized, disproportionate lettering and number treatment that dominates the garment",
-    "High-contrast color blocking between primary and secondary color — minimum 3 distinct zones",
+    "High-contrast color blocking between primary and secondary — minimum 3 distinct zones",
     "Dynamic graphic energy lines cutting across chest and back at sharp angles",
-    "Maximum on-court visual impact — the garment should command attention from 50 feet",
+    "Maximum on-court visual impact — the garment commands attention from 50 feet",
   ].join(". "),
 
   gradient: [
     "Smooth continuous color fade transitioning from primary to secondary across the garment body",
     "No hard panel lines — gradients replace traditional color blocking",
-    "Premium motion-line graphics as subtle accents layered over the fade (thin, parallel, speed-line style)",
+    "Premium motion-line graphics as subtle accents layered over the fade",
     "Clean structured silhouette — the gradient is the entire visual statement",
-    "Contemporary elevated aesthetic — closer to an Adidas Parley collab than a school-issued kit",
+    "Contemporary elevated aesthetic — premium and modern athletic",
   ].join(". "),
 
   culture: [
     "Fashion-forward streetwear-influenced graphic composition with intentional asymmetry",
-    "Expressive layered typography — team name or wordmark treated as graphic art, not label",
-    "Off-balance placement: primary graphic shifted left or right, not centered",
-    "Geometric shape overlays that feel editorial, not athletic-generic",
-    "Player-driven cultural identity — the garment should feel like it could appear in a streetwear lookbook",
+    "Expressive layered typography — team name treated as graphic art, not a label",
+    "Off-balance placement: primary graphic shifted, not centered",
+    "Geometric shape overlays that feel editorial and fashion-forward",
+    "Player-driven cultural identity with a streetwear edge",
   ].join(". "),
 
   program: [
@@ -92,42 +97,37 @@ export const SYSTEM_VISUAL_LANGUAGE: Record<string, string> = {
     "Simple bold side panel or piping stripe as the primary design element",
     "Professional minimal aesthetic — collegiate or professional league tone",
     "Numbers and lettering are structured, proportional, and classically weighted",
-    "Timeless — this garment should still look correct in 10 years and reproduce cleanly across all gear types",
+    "Timeless — reproduces cleanly across all gear types",
   ].join(". "),
 };
 
 /**
- * Short (8–12 word) system descriptor for Replicate prompts.
- * Kept brief to avoid overwhelming the image model's attention.
+ * Short (8–12 word) system phrase for the Replicate prompt.
  */
 export const SYSTEM_PROMPT_SHORT: Record<string, string> = {
   bold:     "aggressive diagonal panels, high contrast color blocking, oversized graphics",
   gradient: "smooth color gradient fade, premium motion lines, clean structure",
-  culture:  "streetwear aesthetic, asymmetric layered composition, expressive typography treatment",
-  program:  "clean collegiate layout, balanced symmetric panels, structured minimal design",
+  culture:  "streetwear aesthetic, asymmetric layered composition, fashion-forward",
+  program:  "clean collegiate layout, balanced symmetric panels, minimal classic design",
 };
 
 // ─── Reference-file resolution ────────────────────────────────────────────────
 
 export interface ReferenceFiles {
-  /** URL path relative to app root (e.g. "/reference-library/garments/basketball/bold/spec-board-reference.png") */
-  specBoard:    string | null;
+  /** The PRIMARY spec-board init image — used as flux-dev img2img reference */
+  specBoard:    string | null;  // public URL path  e.g. "/reference/Sport/…"
   front:        string | null;
   back:         string | null;
   detailCollar: string | null;
   detailSleeve: string | null;
 }
 
-/** Returns the public URL path if the file exists on disk, otherwise null. */
+/** Returns the leading-slash URL path if the file exists on disk, otherwise null. */
 function probe(relativePath: string): string | null {
   const abs = path.join(process.cwd(), "public", relativePath);
   return fs.existsSync(abs) ? `/${relativePath}` : null;
 }
 
-/**
- * Try a list of candidate file paths (relative to public/).
- * Returns the first one that exists, or null.
- */
 function firstExisting(...candidates: string[]): string | null {
   for (const c of candidates) {
     const found = probe(c);
@@ -137,8 +137,8 @@ function firstExisting(...candidates: string[]): string | null {
 }
 
 /**
- * Resolves all reference files for a given sport + design system.
- * Falls back: sport-specific → basketball fallback → legacy path → null.
+ * Resolves the spec-board reference and supporting view images.
+ * Falls back gracefully — every field can be null.
  */
 export function resolveReferenceFiles(sport: string, designSystem: string): ReferenceFiles {
   const sportSlug = SPORT_SLUGS[sport.toLowerCase()] ?? "basketball";
@@ -146,31 +146,36 @@ export function resolveReferenceFiles(sport: string, designSystem: string): Refe
     ? designSystem.toLowerCase()
     : "bold";
 
-  const primary  = `reference-library/garments/${sportSlug}/${system}`;
-  const fallback = `reference-library/garments/basketball/${system}`;
+  const libPrimary  = `reference-library/garments/${sportSlug}/${system}`;
+  const libFallback = `reference-library/garments/basketball/${system}`;
 
-  function resolve(filename: string, ...altFilenames: string[]): string | null {
-    const names = [filename, ...altFilenames];
-    // Try primary folder first, then basketball fallback, then legacy
-    for (const base of [primary, fallback]) {
-      for (const name of names) {
-        const found = probe(`${base}/${name}`);
-        if (found) return found;
+  function resolve(filename: string, ...alts: string[]): string | null {
+    const names = [filename, ...alts];
+    for (const base of [libPrimary, libFallback]) {
+      for (const n of names) {
+        const f = probe(`${base}/${n}`);
+        if (f) return f;
       }
     }
     return null;
   }
 
+  // The authoritative basketball spec-board is the primary source of truth
+  const specBoard =
+    resolve("spec-board-reference.png", "spec-board-reference.jpeg", "spec-board-reference.jpg") ??
+    // Sport-specific legacy paths
+    firstExisting(
+      "reference/Sport/Basketball/Basketball Spec Board/basketball spec board.jpeg",
+      "reference/Sport/Basketball/spec-board-reference.jpeg",
+    ) ??
+    // Generic legacy fallbacks
+    firstExisting(
+      "reference/Track Suits/spec-board-reference.jpeg",
+      "reference/spec-board-reference.jpeg",
+    );
+
   return {
-    specBoard: (
-      resolve("spec-board-reference.png", "spec-board-reference.jpeg", "spec-board-reference.jpg") ??
-      // Legacy single-folder fallback
-      firstExisting(
-        "reference/Track Suits/spec-board-reference.jpeg",
-        "reference/spec-board-reference.jpeg",
-        "reference/spec-board-reference.jpg",
-      )
-    ),
+    specBoard,
     front:        resolve("front-reference.png", "front-reference.jpeg", "front-reference.jpg"),
     back:         resolve("back-reference.png",  "back-reference.jpeg",  "back-reference.jpg"),
     detailCollar: resolve(
@@ -189,30 +194,51 @@ export function getGarmentTypeLabel(sport: string): string {
   return GARMENT_TYPE_LABELS[sport.toLowerCase()] ?? GARMENT_TYPE_LABELS["other"];
 }
 
-/** Returns all non-null reference file URL paths in the canonical order
- *  (spec-board → front → back → collar → sleeve). */
-export function getReferenceUrls(refs: ReferenceFiles, appBaseUrl: string): string[] {
-  return [
-    refs.specBoard,
-    refs.front,
-    refs.back,
-    refs.detailCollar,
-    refs.detailSleeve,
-  ]
-    .filter((p): p is string => p !== null)
-    .map((p) => `${appBaseUrl.replace(/\/$/, "")}${p}`);
+/**
+ * Converts a disk-relative path (with optional spaces) to a full public URL.
+ * Each path segment is individually percent-encoded so spaces become %20.
+ */
+export function toPublicUrl(appBase: string, filePath: string): string {
+  const encoded = filePath
+    .split("/")
+    .map((segment) => encodeURIComponent(segment))
+    .join("/");
+  return `${appBase.replace(/\/$/, "")}${encoded}`;
 }
 
 /**
- * Human-readable annotation for each reference position,
- * injected into the Claude prompt so the model knows what it's looking at.
+ * Returns all non-null reference URLs in canonical order:
+ * spec-board → front → back → collar → sleeve.
+ */
+export function getReferenceUrls(refs: ReferenceFiles, appBaseUrl: string): string[] {
+  return [refs.specBoard, refs.front, refs.back, refs.detailCollar, refs.detailSleeve]
+    .filter((p): p is string => p !== null)
+    .map((p) => toPublicUrl(appBaseUrl, p));
+}
+
+/**
+ * Per-image annotation injected into the Claude prompt
+ * so the model knows what role each reference image plays.
  */
 export function buildReferenceAnnotation(refs: ReferenceFiles): string {
+  let idx = 1;
   const lines: string[] = [];
-  if (refs.specBoard)    lines.push("• Image 1: Grace Athletics SPEC-BOARD LAYOUT REFERENCE — this defines the exact presentation structure, hierarchy, and spacing your output must populate.");
-  if (refs.front)        lines.push(`• Image ${lines.length + 1}: FRONT REFERENCE — authoritative visual example of this design system's front panel structure and graphic language. Follow this exactly.`);
-  if (refs.back)         lines.push(`• Image ${lines.length + 1}: BACK REFERENCE — authoritative visual example of the back design language.`);
-  if (refs.detailCollar) lines.push(`• Image ${lines.length + 1}: COLLAR/LOGO DETAIL REFERENCE — shows the collar treatment, neckline finish, and logo zone construction.`);
-  if (refs.detailSleeve) lines.push(`• Image ${lines.length + 1}: SLEEVE/PANEL DETAIL REFERENCE — shows side panel construction, sleeve treatment, and secondary graphic detail.`);
+
+  if (refs.specBoard) {
+    lines.push(`• Image ${idx++}: SPEC-BOARD LAYOUT AUTHORITY — the Grace Athletics basketball uniform specification board. This defines the EXACT layout your output must populate: left column (brand, colorway, material, features, logo), center 2×2 garment grid (jersey front/back top row, shorts front/back bottom row), right column (detail callout boxes: collar, logo, side panel, vent, waistband). Follow this structure exactly.`);
+  }
+  if (refs.front) {
+    lines.push(`• Image ${idx++}: FRONT DESIGN REFERENCE — authoritative example of this design system's front visual language. Follow panel structure and graphic placement from this image.`);
+  }
+  if (refs.back) {
+    lines.push(`• Image ${idx++}: BACK DESIGN REFERENCE — authoritative back design language example.`);
+  }
+  if (refs.detailCollar) {
+    lines.push(`• Image ${idx++}: COLLAR/LOGO DETAIL REFERENCE — collar construction, neckline finish, and logo zone.`);
+  }
+  if (refs.detailSleeve) {
+    lines.push(`• Image ${idx++}: SLEEVE/PANEL DETAIL REFERENCE — side panel construction, sleeve, and secondary graphic detail.`);
+  }
+
   return lines.join("\n");
 }
