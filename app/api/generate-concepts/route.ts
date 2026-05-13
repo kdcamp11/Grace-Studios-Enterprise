@@ -10,28 +10,18 @@ export const maxDuration = 300;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export interface ConceptVariation {
-  direction: string;
+export interface DesignMetadata {
   garmentType: string;
   colorway: { role: string; name: string; hex: string; pantone?: string }[];
   materials: string[];
   features: string[];
   logoPlacement: string;
   description: string;
+  images?: { front: string; back: string; detail1: string; detail2: string };
 }
-
-export interface MultiConceptMetadata {
-  concepts: (ConceptVariation & {
-    images: { front: string; back: string; detail1: string; detail2: string };
-  })[];
-}
-
-// Backward-compat alias used by the page
-export type DesignMetadata = ConceptVariation;
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-// Each concept generates 4 views
 const VIEW_SUFFIXES = [
   "front view, full garment visible, clean technical flat render on dark background",
   "back view, full garment visible, clean technical flat render on dark background",
@@ -39,7 +29,6 @@ const VIEW_SUFFIXES = [
   "close-up detail: sleeve, side panel, or hem construction on dark background",
 ];
 
-// Style reference always sent to Claude so it understands the target layout
 const SPEC_BOARD_REFERENCE_URL = `${
   process.env.NEXT_PUBLIC_APP_URL ?? "https://gs-first-pass.vercel.app"
 }/reference/spec-board-reference.jpg`;
@@ -47,36 +36,16 @@ const SPEC_BOARD_REFERENCE_URL = `${
 const IMAGE_PREFIX =
   "clean technical apparel flat render, sports uniform product board art, professional garment illustration, crisp detail on dark background —";
 
-// The four mandatory design directions
-const CONCEPT_DIRECTIONS = [
-  {
-    label: "Minimal Clean",
-    tone: "stripped-back, modern, refined — minimal graphic treatment, clean silhouette, monochromatic or tight two-tone palette, understated number treatment",
-  },
-  {
-    label: "Bold Graphic",
-    tone: "aggressive, high-contrast, visually dominant — strong colorblocking, bold paneling, graphic stripe or chevron elements, oversized or layered number treatment",
-  },
-  {
-    label: "Heritage Classic",
-    tone: "timeless, institutional, traditional construction — classic color palette, clean varsity typography, minimal graphic interruption, championship-cabinet energy",
-  },
-  {
-    label: "Culture Forward",
-    tone: "streetwear-influenced, fashion-forward — unexpected colorblocking, tonal details, modern edge, distinct detail work, feels like a limited collab drop",
-  },
-] as const;
-
 // ─── Prompt builder ───────────────────────────────────────────────────────────
 
-function buildMultiConceptPrompt(
+function buildPrompt(
   brief: Record<string, unknown>,
   client: Record<string, unknown>
 ): string {
-  const designSystem = brief.design_system ?? "bold";
-  const sport        = (client.sport as string) ?? "sports";
-  const teamName     = (client.name  as string) ?? "the team";
-  const city         = (client.city  as string) ?? "";
+  const designSystem     = brief.design_system ?? "bold";
+  const sport            = (client.sport as string) ?? "sports";
+  const teamName         = (client.name  as string) ?? "the team";
+  const city             = (client.city  as string) ?? "";
 
   const logoUrls: string[] = Array.isArray(brief.logo_urls)
     ? (brief.logo_urls as string[])
@@ -86,59 +55,41 @@ function buildMultiConceptPrompt(
     ? (brief.reference_image_urls as string[])
     : brief.reference_image_url ? [brief.reference_image_url as string] : [];
 
-  const colorInstruction =
-    logoUrls.length > 0
-      ? `Extract the team's primary and secondary colors from the uploaded team logo(s). Return exact hex codes.`
-      : "Choose a strong, sport-appropriate color palette. Return exact hex codes.";
+  const colorInstruction = logoUrls.length > 0
+    ? `Extract the team's primary and secondary colors from the uploaded team logo(s). Return exact hex codes.`
+    : "Choose a strong, sport-appropriate color palette. Return exact hex codes.";
 
-  const refInstruction =
-    refUrls.length > 0
-      ? `${refUrls.length} client reference image(s) have been provided for aesthetic direction.`
-      : "";
+  const refInstruction = refUrls.length > 0
+    ? `${refUrls.length} client reference image(s) have been provided for aesthetic direction.`
+    : "";
 
-  const construction   = brief.sublimated === true ? "sublimated" : brief.sublimated === false ? "tackle twill" : "sublimated";
-  const cut            = brief.jersey_cut ?? "standard";
-  const numberStyle    = brief.number_style     ? `Number style: ${brief.number_style}.`          : "";
+  const construction     = brief.sublimated === true ? "sublimated" : brief.sublimated === false ? "tackle twill" : "sublimated";
+  const cut              = brief.jersey_cut ?? "standard";
+  const numberStyle      = brief.number_style      ? `Number style: ${brief.number_style}.`           : "";
   const logoPlacementRaw = (brief.gs_logo_placement as string) ?? "chest";
-  const logos          = brief.logos_to_include  ? `Logos to include: ${brief.logos_to_include}.`  : "";
-  const sponsor        = brief.sponsor_text       ? `Sponsor text/patch: ${brief.sponsor_text}.`   : "";
-  const negative       = brief.negative_references ? `Do not include: ${brief.negative_references}.` : "";
-  const vision         = brief.vision_prompt      ? `Client vision: ${brief.vision_prompt}`        : "";
+  const logos            = brief.logos_to_include  ? `Logos to include: ${brief.logos_to_include}.`   : "";
+  const sponsor          = brief.sponsor_text      ? `Sponsor text/patch: ${brief.sponsor_text}.`     : "";
+  const negative         = brief.negative_references ? `Do not include: ${brief.negative_references}.` : "";
+  const vision           = brief.vision_prompt     ? `Client vision: ${brief.vision_prompt}`          : "";
 
-  const directionsBlock = CONCEPT_DIRECTIONS.map(
-    (d, i) => `  Concept ${i + 1} — "${d.label}": ${d.tone}`
-  ).join("\n");
+  return `You are a senior sportswear designer creating a technical apparel spec board for ${teamName} from ${city}.
 
-  return `You are a senior sportswear designer creating a 4-concept apparel proposal for ${teamName} from ${city}.
+The attached reference image shows the exact Grace Athletics spec-board style. Your JSON output populates that structured layout.
 
-The attached reference image shows the exact Grace Athletics spec-board style. Your JSON output populates 4 SEPARATE boards using that identical layout structure.
-
-Team brief: ${designSystem} style ${sport} uniform. ${colorInstruction} ${refInstruction}
+Design a ${designSystem} style ${sport} uniform. ${colorInstruction} ${refInstruction}
 Construction: ${construction}, ${cut} cut. ${numberStyle} ${logos} ${sponsor} Grace Studios logo placement: ${logoPlacementRaw}. ${negative} ${vision}
-
-Generate 4 DISTINCT concept variations — same sport and garment type, but meaningfully different colorways, paneling, graphic treatments, and construction accents for each direction:
-
-${directionsBlock}
 
 Return ONLY valid JSON (no markdown fences) with this exact structure:
 {
-  "concepts": [
-    {
-      "direction": "Minimal Clean",
-      "garmentType": "e.g. Basketball Uniform",
-      "colorway": [
-        {"role": "Primary",   "name": "color name", "hex": "#xxxxxx", "pantone": "Pantone XXXX C"},
-        {"role": "Secondary", "name": "color name", "hex": "#xxxxxx", "pantone": "Pantone XXXX C"}
-      ],
-      "materials": ["e.g. Shell: 100% Nylon", "e.g. Lining: 100% Polyester Mesh", "e.g. Weight: 110GSM"],
-      "features": ["Short feature label 1", "Short feature label 2", "Short feature label 3", "Short feature label 4"],
-      "logoPlacement": "Precise placement — e.g. Grace Athletics Crest Centered On Upper Chest",
-      "description": "Detailed visual description specific to THIS concept variation — exact colors, panel layout, graphic elements, number style, stripe/piping/texture details, logo locations, cut silhouette. Must be distinct from all other concepts and specific enough for an image generator."
-    },
-    { "direction": "Bold Graphic",      ... },
-    { "direction": "Heritage Classic",  ... },
-    { "direction": "Culture Forward",   ... }
-  ]
+  "garmentType": "e.g. Basketball Uniform",
+  "colorway": [
+    {"role": "Primary",   "name": "color name", "hex": "#xxxxxx", "pantone": "Pantone XXXX C"},
+    {"role": "Secondary", "name": "color name", "hex": "#xxxxxx", "pantone": "Pantone XXXX C"}
+  ],
+  "materials": ["e.g. Shell: 100% Nylon", "e.g. Lining: 100% Polyester Mesh", "e.g. Weight: 110GSM"],
+  "features": ["Short feature label 1", "Short feature label 2", "Short feature label 3", "Short feature label 4"],
+  "logoPlacement": "Precise placement — e.g. Grace Athletics Crest Centered On Upper Chest, Below Team Name",
+  "description": "Detailed visual description of the uniform for image generation — exact colors, panel layout, graphic elements, number style, stripe/piping/texture details, logo locations, cut silhouette, overall energy. Be specific."
 }`.trim();
 }
 
@@ -163,35 +114,26 @@ export async function POST(req: NextRequest) {
     // ── 1. Fetch brief / order / client ──────────────────────────────────────
 
     const { data: brief, error: briefError } = await supabase
-      .from("briefs")
-      .select("*")
-      .eq("order_id", order_id)
-      .single();
+      .from("briefs").select("*").eq("order_id", order_id).single();
     if (briefError || !brief) {
       return NextResponse.json({ error: "Brief not found" }, { status: 404 });
     }
 
     const { data: order, error: orderError } = await supabase
-      .from("orders")
-      .select("client_id, order_number")
-      .eq("id", order_id)
-      .single();
+      .from("orders").select("client_id, order_number").eq("id", order_id).single();
     if (orderError || !order) {
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
 
     const { data: client, error: clientError } = await supabase
-      .from("clients")
-      .select("name, city, sport, email")
-      .eq("id", order.client_id)
-      .single();
+      .from("clients").select("name, city, sport, email").eq("id", order.client_id).single();
     if (clientError || !client) {
       return NextResponse.json({ error: "Client not found" }, { status: 404 });
     }
 
     // ── 2. Build Claude prompt ────────────────────────────────────────────────
 
-    const designPrompt = buildMultiConceptPrompt(brief, client);
+    const designPrompt = buildPrompt(brief, client);
 
     const logoUrls: string[] = Array.isArray(brief.logo_urls)
       ? (brief.logo_urls as string[]).filter(validUrl)
@@ -203,7 +145,7 @@ export async function POST(req: NextRequest) {
 
     const clientImageUrls = [...logoUrls, ...refUrls].slice(0, 19);
 
-    // ── 3. Call Claude — returns 4 concept variations ─────────────────────────
+    // ── 3. Call Claude ────────────────────────────────────────────────────────
 
     const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -211,8 +153,8 @@ export async function POST(req: NextRequest) {
     type TextBlock    = { type: "text"; text: string };
     type ContentBlock = ImageBlock | TextBlock;
 
-    // Only include the spec-board reference if the file has been placed in public/reference/
-    const refImagePath = path.join(process.cwd(), "public", "reference", "spec-board-reference.jpg");
+    // Only include spec-board reference if the file has been placed in public/reference/
+    const refImagePath   = path.join(process.cwd(), "public", "reference", "spec-board-reference.jpg");
     const hasSpecBoardRef = fs.existsSync(refImagePath);
 
     const specBoardBlock: ImageBlock | null = hasSpecBoardRef
@@ -226,7 +168,7 @@ export async function POST(req: NextRequest) {
 
     const imageCountNote = [
       hasSpecBoardRef
-        ? "The first image is a Grace Athletics spec-board style reference. Match this level of technical detail and structured presentation in your output."
+        ? "The first image is a Grace Athletics spec-board style reference. Match this level of technical detail."
         : "",
       logoUrls.length > 0
         ? `${hasSpecBoardRef ? "The next" : "The first"} ${logoUrls.length} image(s) are team logo(s). Extract brand colors from them.`
@@ -234,22 +176,20 @@ export async function POST(req: NextRequest) {
       refUrls.length > 0
         ? `The following ${refUrls.length} image(s) are client reference images for aesthetic direction.`
         : "",
-    ]
-      .filter(Boolean)
-      .join(" ");
+    ].filter(Boolean).join(" ");
 
     const claudeContent: ContentBlock[] = [
       ...(specBoardBlock ? [specBoardBlock] : []),
       ...clientImageBlocks,
       ...(imageCountNote ? [{ type: "text" as const, text: imageCountNote }] : []),
-      { type: "text", text: designPrompt },
+      { type: "text" as const, text: designPrompt },
     ];
 
     const aiResponse = await anthropic.messages.create({
-      model: "claude-sonnet-4-6",
-      max_tokens: 4000,
-      messages: [{ role: "user", content: claudeContent }],
-      stream: false,
+      model:      "claude-sonnet-4-6",
+      max_tokens: 1500,
+      messages:   [{ role: "user", content: claudeContent }],
+      stream:     false,
     });
 
     const rawText =
@@ -257,20 +197,15 @@ export async function POST(req: NextRequest) {
         ? aiResponse.content[0].text
         : "";
 
-    // ── 4. Parse 4 concept variations ─────────────────────────────────────────
+    // ── 4. Parse metadata ─────────────────────────────────────────────────────
 
-    let variations: ConceptVariation[];
+    let metadata: DesignMetadata;
     try {
       const cleaned = rawText.replace(/^```json\s*/i, "").replace(/```\s*$/i, "").trim();
-      const parsed  = JSON.parse(cleaned) as { concepts: ConceptVariation[] };
-      if (!Array.isArray(parsed.concepts) || parsed.concepts.length === 0) {
-        throw new Error("no concepts array");
-      }
-      variations = parsed.concepts;
+      metadata = JSON.parse(cleaned) as DesignMetadata;
+      if (typeof metadata.description !== "string") throw new Error("invalid shape");
     } catch {
-      // Fallback: build 4 stub variations from raw text
-      const stub: ConceptVariation = {
-        direction:     "Concept",
+      metadata = {
         garmentType:   (brief.jersey_cut as string) ?? "Sports Uniform",
         colorway:      [],
         materials:     [],
@@ -278,95 +213,71 @@ export async function POST(req: NextRequest) {
         logoPlacement: (brief.gs_logo_placement as string) ?? "",
         description:   rawText,
       };
-      variations = CONCEPT_DIRECTIONS.map((d) => ({ ...stub, direction: d.label }));
     }
 
-    // Normalise to exactly 4
-    while (variations.length < 4) {
-      const last = variations[variations.length - 1];
-      variations.push({ ...last, direction: CONCEPT_DIRECTIONS[variations.length].label });
-    }
-    variations = variations.slice(0, 4);
+    // ── 5. Generate 4 images via Replicate ────────────────────────────────────
 
-    // ── 5. Generate images via Replicate — 4 views per concept, concepts sequentially ──
-    // Running all 16 in parallel risks rate-limits; batching per concept keeps
-    // max concurrency at 4 while staying well within the 60s function timeout.
-
-    // Map: conceptIndex → viewIndex → image URL
-    const imageMap: Record<number, Record<number, string>> = {};
+    const PLACEHOLDER_LABELS = ["Front", "Back", "Detail 1", "Detail 2"];
+    let imageUrls: string[];
 
     try {
       const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN });
 
-      function extractUrl(result: unknown): string {
+      const results = await Promise.all(
+        VIEW_SUFFIXES.map((suffix) =>
+          replicate.run("black-forest-labs/flux-schnell", {
+            input: {
+              prompt:         `${IMAGE_PREFIX} ${metadata.description} — ${suffix}`,
+              num_outputs:    1,
+              aspect_ratio:   "1:1",
+              output_format:  "webp",
+              output_quality: 90,
+            },
+          })
+        )
+      );
+
+      imageUrls = results.map((result) => {
         const output = result as unknown[];
         const first  = Array.isArray(output) ? output[0] : result;
         return first && typeof (first as { url?: () => string }).url === "function"
           ? (first as { url: () => string }).url()
           : String(first);
-      }
-
-      // Process one concept at a time, 4 views in parallel per concept
-      for (let ci = 0; ci < variations.length; ci++) {
-        const variation = variations[ci];
-        const viewResults = await Promise.all(
-          VIEW_SUFFIXES.map((suffix) =>
-            replicate.run("black-forest-labs/flux-schnell", {
-              input: {
-                prompt:         `${IMAGE_PREFIX} ${variation.description} — ${suffix}`,
-                num_outputs:    1,
-                aspect_ratio:   "1:1",
-                output_format:  "webp",
-                output_quality: 90,
-              },
-            })
-          )
-        );
-        imageMap[ci] = {};
-        viewResults.forEach((result, vi) => {
-          imageMap[ci][vi] = extractUrl(result);
-        });
-      }
+      });
     } catch (replicateErr: unknown) {
       console.warn(
         "[generate-concepts] Replicate unavailable, using placeholders:",
         replicateErr instanceof Error ? replicateErr.message : replicateErr
       );
-      variations.forEach((v, ci) => {
-        imageMap[ci] = {
-          0: `https://placehold.co/1024x1024/1a1a1a/C9A84C?text=Concept+${ci + 1}%0A${encodeURIComponent(v.direction)}&font=montserrat`,
-          1: `https://placehold.co/1024x1024/1a1a1a/C9A84C?text=Concept+${ci + 1}%0ABack&font=montserrat`,
-          2: `https://placehold.co/1024x1024/1a1a1a/C9A84C?text=Detail+1&font=montserrat`,
-          3: `https://placehold.co/1024x1024/1a1a1a/C9A84C?text=Detail+2&font=montserrat`,
-        };
-      });
+      imageUrls = PLACEHOLDER_LABELS.map(
+        (label, i) =>
+          `https://placehold.co/1024x1024/1a1a1a/C9A84C?text=Concept+${i + 1}%0A${encodeURIComponent(label)}&font=montserrat`
+      );
     }
 
-    // ── 6. Assemble multi-concept metadata with embedded image URLs ───────────
+    // ── 6. Embed image URLs in metadata and save ──────────────────────────────
 
-    const multiConceptData: MultiConceptMetadata = {
-      concepts: variations.map((v, ci) => ({
-        ...v,
-        images: {
-          front:   imageMap[ci]?.[0] ?? "",
-          back:    imageMap[ci]?.[1] ?? "",
-          detail1: imageMap[ci]?.[2] ?? "",
-          detail2: imageMap[ci]?.[3] ?? "",
-        },
-      })),
+    const metadataWithImages: DesignMetadata = {
+      ...metadata,
+      images: {
+        front:   imageUrls[0] ?? "",
+        back:    imageUrls[1] ?? "",
+        detail1: imageUrls[2] ?? "",
+        detail2: imageUrls[3] ?? "",
+      },
     };
 
     await supabase
       .from("briefs")
-      .update({ ai_prompt: JSON.stringify(multiConceptData) })
+      .update({ ai_prompt: JSON.stringify(metadataWithImages) })
       .eq("order_id", order_id);
 
-    // ── 7. Insert one concept row per board (front image as canonical URL) ────
+    // ── 7. Insert concept rows ────────────────────────────────────────────────
 
-    const conceptRows = multiConceptData.concepts.map((c, i) => ({
+    const conceptRows = imageUrls.map((url, i) => ({
       order_id,
       concept_number: i + 1,
-      image_url:      c.images.front,
+      image_url:      url,
       selected:       false,
     }));
 
@@ -400,11 +311,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    return NextResponse.json({
-      status:   "complete",
-      order_id,
-      concepts: conceptRows.length,
-    });
+    return NextResponse.json({ status: "complete", order_id, concepts: conceptRows.length });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     console.error("[generate-concepts] error:", message);
