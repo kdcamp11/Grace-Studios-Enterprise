@@ -6,22 +6,10 @@ import { sendConceptsReady } from "@/lib/email";
 
 export const maxDuration = 300;
 
-// Concept roles: 1=front, 2=back, 3=detail (logo/collar), 4=detail (sleeve/panel)
-const CONCEPT_SUFFIXES = [
-  "front view, full garment visible, clean technical flat render, dark background",
-  "back view, full garment visible, clean technical flat render, dark background",
-  "close-up detail shot of collar, neckline, and logo placement, dark background",
-  "close-up detail shot of sleeve, side panel, or hem area, dark background",
-];
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-// Style reference image always passed to Claude for consistent spec-board output.
-// File must exist at public/reference/spec-board-reference.jpg
-const SPEC_BOARD_REFERENCE_URL = `${process.env.NEXT_PUBLIC_APP_URL ?? "https://gs-first-pass.vercel.app"}/reference/spec-board-reference.jpg`;
-
-const IMAGE_PREFIX =
-  "clean technical apparel flat render, sports uniform product board art, professional garment illustration, crisp detail on dark background —";
-
-export interface DesignMetadata {
+export interface ConceptVariation {
+  direction: string;
   garmentType: string;
   colorway: { role: string; name: string; hex: string; pantone?: string }[];
   materials: string[];
@@ -30,63 +18,133 @@ export interface DesignMetadata {
   description: string;
 }
 
-function buildPrompt(brief: Record<string, unknown>, client: Record<string, unknown>): string {
+export interface MultiConceptMetadata {
+  concepts: (ConceptVariation & {
+    images: { front: string; back: string; detail1: string; detail2: string };
+  })[];
+}
+
+// Backward-compat alias used by the page
+export type DesignMetadata = ConceptVariation;
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+// Each concept generates 4 views
+const VIEW_SUFFIXES = [
+  "front view, full garment visible, clean technical flat render on dark background",
+  "back view, full garment visible, clean technical flat render on dark background",
+  "close-up detail: collar, neckline, and logo placement on dark background",
+  "close-up detail: sleeve, side panel, or hem construction on dark background",
+];
+
+// Style reference always sent to Claude so it understands the target layout
+const SPEC_BOARD_REFERENCE_URL = `${
+  process.env.NEXT_PUBLIC_APP_URL ?? "https://gs-first-pass.vercel.app"
+}/reference/spec-board-reference.jpg`;
+
+const IMAGE_PREFIX =
+  "clean technical apparel flat render, sports uniform product board art, professional garment illustration, crisp detail on dark background —";
+
+// The four mandatory design directions
+const CONCEPT_DIRECTIONS = [
+  {
+    label: "Minimal Clean",
+    tone: "stripped-back, modern, refined — minimal graphic treatment, clean silhouette, monochromatic or tight two-tone palette, understated number treatment",
+  },
+  {
+    label: "Bold Graphic",
+    tone: "aggressive, high-contrast, visually dominant — strong colorblocking, bold paneling, graphic stripe or chevron elements, oversized or layered number treatment",
+  },
+  {
+    label: "Heritage Classic",
+    tone: "timeless, institutional, traditional construction — classic color palette, clean varsity typography, minimal graphic interruption, championship-cabinet energy",
+  },
+  {
+    label: "Culture Forward",
+    tone: "streetwear-influenced, fashion-forward — unexpected colorblocking, tonal details, modern edge, distinct detail work, feels like a limited collab drop",
+  },
+] as const;
+
+// ─── Prompt builder ───────────────────────────────────────────────────────────
+
+function buildMultiConceptPrompt(
+  brief: Record<string, unknown>,
+  client: Record<string, unknown>
+): string {
   const designSystem = brief.design_system ?? "bold";
-  const sport = (client.sport as string) ?? "sports";
-  const teamName = (client.name as string) ?? "the team";
-  const city = (client.city as string) ?? "";
+  const sport        = (client.sport as string) ?? "sports";
+  const teamName     = (client.name  as string) ?? "the team";
+  const city         = (client.city  as string) ?? "";
 
-  const logoUrls: string[] = Array.isArray(brief.logo_urls) ? (brief.logo_urls as string[]) : brief.logo_url ? [brief.logo_url as string] : [];
-  const refUrls: string[] = Array.isArray(brief.reference_image_urls) ? (brief.reference_image_urls as string[]) : brief.reference_image_url ? [brief.reference_image_url as string] : [];
+  const logoUrls: string[] = Array.isArray(brief.logo_urls)
+    ? (brief.logo_urls as string[])
+    : brief.logo_url ? [brief.logo_url as string] : [];
 
-  const colorInstruction = logoUrls.length > 0
-    ? `Extract the team's primary and secondary colors directly from the uploaded team logo${logoUrls.length > 1 ? "s" : ""}. Return exact hex codes.`
-    : "Choose a strong, sport-appropriate color palette. Return exact hex codes.";
+  const refUrls: string[] = Array.isArray(brief.reference_image_urls)
+    ? (brief.reference_image_urls as string[])
+    : brief.reference_image_url ? [brief.reference_image_url as string] : [];
 
-  const refInstruction = refUrls.length > 0
-    ? `${refUrls.length} reference image${refUrls.length > 1 ? "s have" : " has"} been provided for visual direction.`
-    : "";
+  const colorInstruction =
+    logoUrls.length > 0
+      ? `Extract the team's primary and secondary colors from the uploaded team logo(s). Return exact hex codes.`
+      : "Choose a strong, sport-appropriate color palette. Return exact hex codes.";
 
-  const construction = brief.sublimated === true ? "sublimated" : brief.sublimated === false ? "tackle twill" : "sublimated";
-  const cut = brief.jersey_cut ?? "standard";
-  const numberStyle = brief.number_style ? `Number style: ${brief.number_style}.` : "";
+  const refInstruction =
+    refUrls.length > 0
+      ? `${refUrls.length} client reference image(s) have been provided for aesthetic direction.`
+      : "";
+
+  const construction   = brief.sublimated === true ? "sublimated" : brief.sublimated === false ? "tackle twill" : "sublimated";
+  const cut            = brief.jersey_cut ?? "standard";
+  const numberStyle    = brief.number_style     ? `Number style: ${brief.number_style}.`          : "";
   const logoPlacementRaw = (brief.gs_logo_placement as string) ?? "chest";
-  const logos = brief.logos_to_include ? `Logos to include: ${brief.logos_to_include}.` : "";
-  const sponsor = brief.sponsor_text ? `Sponsor text/patch: ${brief.sponsor_text}.` : "";
-  const negative = brief.negative_references ? `Do not include: ${brief.negative_references}.` : "";
-  const vision = brief.vision_prompt ? `Client vision: ${brief.vision_prompt}` : "";
+  const logos          = brief.logos_to_include  ? `Logos to include: ${brief.logos_to_include}.`  : "";
+  const sponsor        = brief.sponsor_text       ? `Sponsor text/patch: ${brief.sponsor_text}.`   : "";
+  const negative       = brief.negative_references ? `Do not include: ${brief.negative_references}.` : "";
+  const vision         = brief.vision_prompt      ? `Client vision: ${brief.vision_prompt}`        : "";
 
-  return `You are a professional sports uniform designer creating a technical apparel spec board for ${teamName} from ${city}.
+  const directionsBlock = CONCEPT_DIRECTIONS.map(
+    (d, i) => `  Concept ${i + 1} — "${d.label}": ${d.tone}`
+  ).join("\n");
 
-The attached reference image shows the exact spec-board style and level of detail expected. Your output populates that structured layout.
+  return `You are a senior sportswear designer creating a 4-concept apparel proposal for ${teamName} from ${city}.
 
-Design a ${designSystem} style ${sport} uniform. ${colorInstruction} ${refInstruction}
+The attached reference image shows the exact Grace Athletics spec-board style. Your JSON output populates 4 SEPARATE boards using that identical layout structure.
 
+Team brief: ${designSystem} style ${sport} uniform. ${colorInstruction} ${refInstruction}
 Construction: ${construction}, ${cut} cut. ${numberStyle} ${logos} ${sponsor} Grace Studios logo placement: ${logoPlacementRaw}. ${negative} ${vision}
 
-Return ONLY valid JSON (no markdown, no code fences) with this exact structure:
+Generate 4 DISTINCT concept variations — same sport and garment type, but meaningfully different colorways, paneling, graphic treatments, and construction accents for each direction:
+
+${directionsBlock}
+
+Return ONLY valid JSON (no markdown fences) with this exact structure:
 {
-  "garmentType": "short garment type label e.g. Baseball Jersey, Basketball Uniform",
-  "colorway": [
-    {"role": "Primary", "name": "color name", "hex": "#xxxxxx", "pantone": "Pantone XXXX C"},
-    {"role": "Secondary", "name": "color name", "hex": "#xxxxxx", "pantone": "Pantone XXXX C"}
-  ],
-  "materials": ["e.g. Shell: 100% Nylon", "e.g. Lining: 100% Polyester Mesh", "e.g. Weight: 110GSM"],
-  "features": [
-    "Short, specific feature label suitable for a callout panel — e.g. Full Zip Jacket",
-    "Raglan Sleeve",
-    "Elastic Cuffs & Hem",
-    "Contrast Zipper",
-    "Logo Print"
-  ],
-  "logoPlacement": "Precise placement — e.g. Grace Athletics Crest Centered On Upper Chest, Below Team Name",
-  "description": "Detailed visual description of the uniform for an image generator: exact colors, panel layout, graphic elements, number style, stripe or piping details, logo locations, cut silhouette, and overall energy. Be specific — e.g. bold crimson red body with white side panels and a diagonal gold stripe from shoulder to hip, arched team name across chest in white tackle twill, number centered front and back."
+  "concepts": [
+    {
+      "direction": "Minimal Clean",
+      "garmentType": "e.g. Basketball Uniform",
+      "colorway": [
+        {"role": "Primary",   "name": "color name", "hex": "#xxxxxx", "pantone": "Pantone XXXX C"},
+        {"role": "Secondary", "name": "color name", "hex": "#xxxxxx", "pantone": "Pantone XXXX C"}
+      ],
+      "materials": ["e.g. Shell: 100% Nylon", "e.g. Lining: 100% Polyester Mesh", "e.g. Weight: 110GSM"],
+      "features": ["Short feature label 1", "Short feature label 2", "Short feature label 3", "Short feature label 4"],
+      "logoPlacement": "Precise placement — e.g. Grace Athletics Crest Centered On Upper Chest",
+      "description": "Detailed visual description specific to THIS concept variation — exact colors, panel layout, graphic elements, number style, stripe/piping/texture details, logo locations, cut silhouette. Must be distinct from all other concepts and specific enough for an image generator."
+    },
+    { "direction": "Bold Graphic",      ... },
+    { "direction": "Heritage Classic",  ... },
+    { "direction": "Culture Forward",   ... }
+  ]
 }`.trim();
 }
 
 function validUrl(url: unknown): url is string {
   return typeof url === "string" && url.startsWith("http");
 }
+
+// ─── Route handler ────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
   try {
@@ -100,13 +158,13 @@ export async function POST(req: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    // 1. Fetch brief + client
+    // ── 1. Fetch brief / order / client ──────────────────────────────────────
+
     const { data: brief, error: briefError } = await supabase
       .from("briefs")
       .select("*")
       .eq("order_id", order_id)
       .single();
-
     if (briefError || !brief) {
       return NextResponse.json({ error: "Brief not found" }, { status: 404 });
     }
@@ -116,7 +174,6 @@ export async function POST(req: NextRequest) {
       .select("client_id, order_number")
       .eq("id", order_id)
       .single();
-
     if (orderError || !order) {
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
@@ -126,15 +183,14 @@ export async function POST(req: NextRequest) {
       .select("name, city, sport, email")
       .eq("id", order.client_id)
       .single();
-
     if (clientError || !client) {
       return NextResponse.json({ error: "Client not found" }, { status: 404 });
     }
 
-    // 2. Build prompt
-    const designPrompt = buildPrompt(brief, client);
+    // ── 2. Build Claude prompt ────────────────────────────────────────────────
 
-    // 3. Collect all image URLs (logos first, then references — max 20 for Anthropic)
+    const designPrompt = buildMultiConceptPrompt(brief, client);
+
     const logoUrls: string[] = Array.isArray(brief.logo_urls)
       ? (brief.logo_urls as string[]).filter(validUrl)
       : validUrl(brief.logo_url) ? [brief.logo_url as string] : [];
@@ -143,45 +199,49 @@ export async function POST(req: NextRequest) {
       ? (brief.reference_image_urls as string[]).filter(validUrl)
       : validUrl(brief.reference_image_url) ? [brief.reference_image_url as string] : [];
 
-    // Logo and client reference images (max 19 to leave slot for spec-board reference)
-    const allImageUrls = [...logoUrls, ...refUrls].slice(0, 19);
+    const clientImageUrls = [...logoUrls, ...refUrls].slice(0, 19);
 
-    // 4. Generate design description via Anthropic
+    // ── 3. Call Claude — returns 4 concept variations ─────────────────────────
+
     const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-    type ImageBlock = { type: "image"; source: { type: "url"; url: string } };
-    type TextBlock = { type: "text"; text: string };
+    type ImageBlock   = { type: "image"; source: { type: "url"; url: string } };
+    type TextBlock    = { type: "text"; text: string };
     type ContentBlock = ImageBlock | TextBlock;
 
-    // Always include the spec-board reference as the FIRST image so Claude
-    // understands the target layout and presentation style.
     const specBoardBlock: ImageBlock = {
-      type: "image" as const,
-      source: { type: "url" as const, url: SPEC_BOARD_REFERENCE_URL },
+      type: "image",
+      source: { type: "url", url: SPEC_BOARD_REFERENCE_URL },
     };
 
-    const clientImageBlocks: ContentBlock[] = allImageUrls.map((url) => ({
+    const clientImageBlocks: ContentBlock[] = clientImageUrls.map((url) => ({
       type: "image" as const,
       source: { type: "url" as const, url },
     }));
 
     const imageCountNote = [
-      `The first image is a Grace Athletics spec-board style reference. Match this level of technical detail and structured presentation in your metadata output.`,
-      logoUrls.length > 0 ? `The next ${logoUrls.length} image(s) are team logo(s). Extract brand colors and identity from them.` : "",
-      refUrls.length > 0 ? `The following ${refUrls.length} image(s) are client reference/inspiration images. Use them for style and aesthetic direction.` : "",
-    ].filter(Boolean).join(" ");
+      "The first image is a Grace Athletics spec-board style reference. Match this level of technical detail and structured presentation in your output.",
+      logoUrls.length > 0
+        ? `The next ${logoUrls.length} image(s) are team logo(s). Extract brand colors from them.`
+        : "",
+      refUrls.length > 0
+        ? `The following ${refUrls.length} image(s) are client reference images for aesthetic direction.`
+        : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
 
-    const content: ContentBlock[] = [
+    const claudeContent: ContentBlock[] = [
       specBoardBlock,
       ...clientImageBlocks,
-      { type: "text" as const, text: imageCountNote },
-      { type: "text" as const, text: designPrompt },
+      { type: "text", text: imageCountNote },
+      { type: "text", text: designPrompt },
     ];
 
     const aiResponse = await anthropic.messages.create({
       model: "claude-sonnet-4-6",
-      max_tokens: 1000,
-      messages: [{ role: "user", content }],
+      max_tokens: 4000,
+      messages: [{ role: "user", content: claudeContent }],
       stream: false,
     });
 
@@ -190,78 +250,142 @@ export async function POST(req: NextRequest) {
         ? aiResponse.content[0].text
         : "";
 
-    // Parse structured JSON from Claude; fall back gracefully
-    let metadata: DesignMetadata;
+    // ── 4. Parse 4 concept variations ─────────────────────────────────────────
+
+    let variations: ConceptVariation[];
     try {
-      // Strip any accidental markdown fences
       const cleaned = rawText.replace(/^```json\s*/i, "").replace(/```\s*$/i, "").trim();
-      metadata = JSON.parse(cleaned) as DesignMetadata;
+      const parsed  = JSON.parse(cleaned) as { concepts: ConceptVariation[] };
+      if (!Array.isArray(parsed.concepts) || parsed.concepts.length === 0) {
+        throw new Error("no concepts array");
+      }
+      variations = parsed.concepts;
     } catch {
-      // Fallback: treat raw text as description, build minimal metadata
-      metadata = {
-        garmentType: (brief.jersey_cut as string) ?? "Sports Uniform",
-        colorway: [],
-        materials: [],
-        features: [],
+      // Fallback: build 4 stub variations from raw text
+      const stub: ConceptVariation = {
+        direction:     "Concept",
+        garmentType:   (brief.jersey_cut as string) ?? "Sports Uniform",
+        colorway:      [],
+        materials:     [],
+        features:      [],
         logoPlacement: (brief.gs_logo_placement as string) ?? "",
-        description: rawText,
+        description:   rawText,
       };
+      variations = CONCEPT_DIRECTIONS.map((d) => ({ ...stub, direction: d.label }));
     }
 
-    const designDescription = metadata.description || rawText;
+    // Normalise to exactly 4
+    while (variations.length < 4) {
+      const last = variations[variations.length - 1];
+      variations.push({ ...last, direction: CONCEPT_DIRECTIONS[variations.length].label });
+    }
+    variations = variations.slice(0, 4);
 
-    // Save full metadata JSON to ai_prompt
-    await supabase
-      .from("briefs")
-      .update({ ai_prompt: JSON.stringify(metadata) })
-      .eq("order_id", order_id);
+    // ── 5. Generate 16 images via Replicate (4 concepts × 4 views) ────────────
 
-    // 5. Generate 4 concept images via Replicate (with placeholder fallback)
-    const PLACEHOLDER_LABELS = ["Home", "Away", "Bold", "Minimal"];
-    let conceptRows: { order_id: string; concept_number: number; image_url: string; selected: boolean }[];
+    type ImageJob = {
+      conceptIndex: number;
+      viewIndex: number;
+      suffix: string;
+      description: string;
+    };
+
+    const imageJobs: ImageJob[] = variations.flatMap((v, ci) =>
+      VIEW_SUFFIXES.map((suffix, vi) => ({
+        conceptIndex: ci,
+        viewIndex:    vi,
+        suffix,
+        description:  v.description || "",
+      }))
+    );
+
+    // Map: conceptIndex → viewIndex → image URL
+    const imageMap: Record<number, Record<number, string>> = {};
 
     try {
       const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN });
-      const imagePromises = CONCEPT_SUFFIXES.map((suffix) =>
-        replicate.run("black-forest-labs/flux-schnell", {
-          input: {
-            prompt: `${IMAGE_PREFIX} ${designDescription} — ${suffix}`,
-            num_outputs: 1,
-            aspect_ratio: "1:1",
-            output_format: "webp",
-            output_quality: 90,
-          },
-        })
+
+      const results = await Promise.all(
+        imageJobs.map((job) =>
+          replicate.run("black-forest-labs/flux-schnell", {
+            input: {
+              prompt:         `${IMAGE_PREFIX} ${job.description} — ${job.suffix}`,
+              num_outputs:    1,
+              aspect_ratio:   "1:1",
+              output_format:  "webp",
+              output_quality: 90,
+            },
+          })
+        )
       );
-      const imageResults = await Promise.all(imagePromises);
-      conceptRows = imageResults.map((result, i) => {
+
+      results.forEach((result, idx) => {
+        const { conceptIndex, viewIndex } = imageJobs[idx];
         const output = result as unknown[];
-        const first = Array.isArray(output) ? output[0] : result;
-        const image_url =
+        const first  = Array.isArray(output) ? output[0] : result;
+        const url    =
           first && typeof (first as { url?: () => string }).url === "function"
             ? (first as { url: () => string }).url()
             : String(first);
-        return { order_id, concept_number: i + 1, image_url, selected: false };
+        if (!imageMap[conceptIndex]) imageMap[conceptIndex] = {};
+        imageMap[conceptIndex][viewIndex] = url;
       });
     } catch (replicateErr: unknown) {
-      console.warn("[generate-concepts] Replicate unavailable, using placeholders:", replicateErr instanceof Error ? replicateErr.message : replicateErr);
-      conceptRows = PLACEHOLDER_LABELS.map((label, i) => ({
-        order_id,
-        concept_number: i + 1,
-        image_url: `https://placehold.co/1024x1024/1a1a1a/C9A84C?text=Concept+${i + 1}%0A${label}&font=montserrat`,
-        selected: false,
-      }));
+      console.warn(
+        "[generate-concepts] Replicate unavailable, using placeholders:",
+        replicateErr instanceof Error ? replicateErr.message : replicateErr
+      );
+      variations.forEach((v, ci) => {
+        imageMap[ci] = {
+          0: `https://placehold.co/1024x1024/1a1a1a/C9A84C?text=Concept+${ci + 1}%0A${encodeURIComponent(v.direction)}&font=montserrat`,
+          1: `https://placehold.co/1024x1024/1a1a1a/C9A84C?text=Concept+${ci + 1}%0ABack&font=montserrat`,
+          2: `https://placehold.co/1024x1024/1a1a1a/C9A84C?text=Detail+1&font=montserrat`,
+          3: `https://placehold.co/1024x1024/1a1a1a/C9A84C?text=Detail+2&font=montserrat`,
+        };
+      });
     }
+
+    // ── 6. Assemble multi-concept metadata with embedded image URLs ───────────
+
+    const multiConceptData: MultiConceptMetadata = {
+      concepts: variations.map((v, ci) => ({
+        ...v,
+        images: {
+          front:   imageMap[ci]?.[0] ?? "",
+          back:    imageMap[ci]?.[1] ?? "",
+          detail1: imageMap[ci]?.[2] ?? "",
+          detail2: imageMap[ci]?.[3] ?? "",
+        },
+      })),
+    };
+
+    await supabase
+      .from("briefs")
+      .update({ ai_prompt: JSON.stringify(multiConceptData) })
+      .eq("order_id", order_id);
+
+    // ── 7. Insert one concept row per board (front image as canonical URL) ────
+
+    const conceptRows = multiConceptData.concepts.map((c, i) => ({
+      order_id,
+      concept_number: i + 1,
+      image_url:      c.images.front,
+      selected:       false,
+    }));
 
     const { error: conceptError } = await supabase
       .from("concepts")
       .insert(conceptRows);
 
     if (conceptError) {
-      return NextResponse.json({ error: "Failed to save concepts", detail: conceptError.message }, { status: 500 });
+      return NextResponse.json(
+        { error: "Failed to save concepts", detail: conceptError.message },
+        { status: 500 }
+      );
     }
 
-    // Notify client that concepts are ready
+    // ── 8. Notify client ──────────────────────────────────────────────────────
+
     try {
       if (client?.email) {
         const orderNumber = order.order_number ?? order_id.slice(0, 8).toUpperCase();
@@ -273,10 +397,17 @@ export async function POST(req: NextRequest) {
         });
       }
     } catch (emailErr) {
-      console.warn("[generate-concepts] Email notification failed:", emailErr instanceof Error ? emailErr.message : emailErr);
+      console.warn(
+        "[generate-concepts] Email notification failed:",
+        emailErr instanceof Error ? emailErr.message : emailErr
+      );
     }
 
-    return NextResponse.json({ status: "complete", order_id, concepts: conceptRows.length });
+    return NextResponse.json({
+      status:   "complete",
+      order_id,
+      concepts: conceptRows.length,
+    });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     console.error("[generate-concepts] error:", message);

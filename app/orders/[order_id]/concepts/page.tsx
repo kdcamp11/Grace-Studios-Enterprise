@@ -5,27 +5,27 @@ import { useRouter, useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { getProfile } from "@/lib/profile";
 import GraceLogo from "@/components/GraceLogo";
-import type { DesignMetadata } from "@/app/api/generate-concepts/route";
+import type { ConceptVariation, MultiConceptMetadata } from "@/app/api/generate-concepts/route";
 
-interface Concept {
-  id: string;
-  concept_number: number;
-  image_url: string;
-  selected: boolean;
-}
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-interface BoardData {
+type ConceptWithImages = ConceptVariation & {
+  images: { front: string; back: string; detail1: string; detail2: string };
+};
+
+interface PageState {
   teamName: string;
   orderNumber: string;
-  metadata: DesignMetadata | null;
-  concepts: Concept[];
+  boards: ConceptWithImages[];
 }
 
-// ─── Color Swatch ─────────────────────────────────────────────────────────────
+// ─── Sub-components ───────────────────────────────────────────────────────────
 
-function ColorSwatch({ role, name, hex, pantone }: { role: string; name: string; hex: string; pantone?: string }) {
+function ColorSwatch({
+  role, name, hex, pantone,
+}: { role: string; name: string; hex: string; pantone?: string }) {
   return (
-    <div className="flex items-center gap-3 mb-3">
+    <div className="flex items-center gap-3 mb-2.5">
       <div
         className="w-8 h-8 rounded-sm border border-black/10 flex-shrink-0"
         style={{ backgroundColor: hex || "#cccccc" }}
@@ -38,11 +38,11 @@ function ColorSwatch({ role, name, hex, pantone }: { role: string; name: string;
   );
 }
 
-// ─── Board Image ──────────────────────────────────────────────────────────────
-
-function BoardImage({ url, alt, className }: { url?: string; alt: string; className?: string }) {
+function BoardImage({
+  url, alt, className,
+}: { url?: string; alt: string; className?: string }) {
   const [loaded, setLoaded] = useState(false);
-  const [error, setError] = useState(false);
+  const [error, setError]   = useState(false);
 
   if (!url) return (
     <div className={`bg-[#111] flex items-center justify-center ${className ?? ""}`}>
@@ -52,9 +52,7 @@ function BoardImage({ url, alt, className }: { url?: string; alt: string; classN
 
   return (
     <div className={`relative bg-[#111] overflow-hidden ${className ?? ""}`}>
-      {!loaded && !error && (
-        <div className="absolute inset-0 animate-pulse bg-[#1a1a1a]" />
-      )}
+      {!loaded && !error && <div className="absolute inset-0 animate-pulse bg-[#1a1a1a]" />}
       {error ? (
         <div className="absolute inset-0 flex items-center justify-center">
           <span className="text-white/20 text-[10px]">Unavailable</span>
@@ -75,59 +73,82 @@ function BoardImage({ url, alt, className }: { url?: string; alt: string; classN
 
 // ─── Product Board ────────────────────────────────────────────────────────────
 
-function ProductBoard({ data }: { data: BoardData }) {
-  const { teamName, orderNumber, metadata, concepts } = data;
+function ProductBoard({
+  board,
+  boardNumber,
+  teamName,
+  orderNumber,
+  selected,
+  onSelect,
+  approving,
+}: {
+  board: ConceptWithImages;
+  boardNumber: number;
+  teamName: string;
+  orderNumber: string;
+  selected: boolean;
+  onSelect: () => void;
+  approving: boolean;
+}) {
+  const { direction, garmentType, colorway, materials, features, logoPlacement, images } = board;
 
-  const front   = concepts.find(c => c.concept_number === 1);
-  const back    = concepts.find(c => c.concept_number === 2);
-  const detail1 = concepts.find(c => c.concept_number === 3);
-  const detail2 = concepts.find(c => c.concept_number === 4);
-
-  const garmentType   = metadata?.garmentType   ?? "Sports Uniform";
-  const colorway      = metadata?.colorway      ?? [];
-  const materials     = metadata?.materials     ?? [];
-  const features      = metadata?.features      ?? [];
-  const logoPlacement = metadata?.logoPlacement ?? "";
-
-  // Derive right-column detail labels from features list when available
-  const detailLabel1 = features[0] ? features[0].replace(/^[•\-–]\s*/, "").split(" ").slice(0, 4).join(" ") : "Logo & Collar";
-  const detailLabel2 = features[1] ? features[1].replace(/^[•\-–]\s*/, "").split(" ").slice(0, 4).join(" ") : "Sleeve & Panel";
+  const detailLabel1 = features[0]
+    ? features[0].replace(/^[•\-–]\s*/, "").split(" ").slice(0, 5).join(" ")
+    : "Logo & Collar";
+  const detailLabel2 = features[1]
+    ? features[1].replace(/^[•\-–]\s*/, "").split(" ").slice(0, 5).join(" ")
+    : "Sleeve & Panel";
 
   return (
     <div
-      className="rounded-xl overflow-hidden border border-gray-300 shadow-lg"
-      style={{ backgroundColor: "#f0ede6", fontFamily: "inherit" }}
+      className={`rounded-xl overflow-hidden border shadow-lg transition-all duration-200 ${
+        selected
+          ? "border-gray-800 ring-2 ring-gray-800 ring-offset-2 ring-offset-gs-dark"
+          : "border-gray-300 hover:border-gray-400"
+      }`}
+      style={{ backgroundColor: "#f0ede6" }}
     >
-      {/* ── Top header ── */}
-      <div className="border-b border-gray-300 bg-white px-6 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="w-0.5 h-5 bg-gray-800" />
-          <span className="text-[9px] font-bold uppercase tracking-[0.3em] text-gray-500">
-            Grace Athletics — AI Concept
+      {/* ── Board header ── */}
+      <div className="border-b border-gray-300 bg-white px-5 py-2.5 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <span className="text-[9px] font-bold uppercase tracking-[0.3em] text-gray-400">
+            Concept {String(boardNumber).padStart(2, "0")}
+          </span>
+          <span className="text-gray-300">—</span>
+          <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-gray-700">
+            {direction}
           </span>
         </div>
         <span className="text-[9px] font-mono text-gray-400 tracking-widest">{orderNumber}</span>
       </div>
 
-      {/* ── Body ── */}
-      <div className="flex" style={{ minHeight: 560 }}>
+      {/* ── Body: Left | Center | Right ── */}
+      <div className="flex" style={{ minHeight: 540 }}>
 
-        {/* LEFT: Metadata panel */}
+        {/* LEFT: Spec metadata */}
         <div
           className="flex-shrink-0 border-r border-gray-300 flex flex-col"
           style={{ width: 210, backgroundColor: "#f8f6f1" }}
         >
-          {/* Brand + garment header */}
+          {/* Brand + team + garment */}
           <div className="px-5 pt-5 pb-4 border-b border-gray-200">
-            <p className="text-[8px] uppercase tracking-[0.3em] text-gray-400 font-bold mb-1">Grace Athletics</p>
-            <p className="text-base font-bold uppercase tracking-wider text-gray-900 leading-tight">{teamName}</p>
-            <p className="text-[9px] uppercase tracking-[0.18em] text-gray-500 mt-1">{garmentType}</p>
+            <p className="text-[8px] uppercase tracking-[0.3em] text-gray-400 font-bold mb-1">
+              Grace Athletics
+            </p>
+            <p className="text-base font-bold uppercase tracking-wider text-gray-900 leading-tight">
+              {teamName}
+            </p>
+            <p className="text-[9px] uppercase tracking-[0.18em] text-gray-500 mt-1">
+              {garmentType}
+            </p>
           </div>
 
           {/* Colorway */}
           {colorway.length > 0 && (
             <div className="px-5 py-4 border-b border-gray-200">
-              <p className="text-[8px] uppercase tracking-[0.28em] text-gray-400 font-bold mb-3">Colorway</p>
+              <p className="text-[8px] uppercase tracking-[0.28em] text-gray-400 font-bold mb-3">
+                Colorway
+              </p>
               {colorway.map((c, i) => (
                 <ColorSwatch key={i} {...c} />
               ))}
@@ -137,7 +158,9 @@ function ProductBoard({ data }: { data: BoardData }) {
           {/* Material */}
           {materials.length > 0 && (
             <div className="px-5 py-4 border-b border-gray-200">
-              <p className="text-[8px] uppercase tracking-[0.28em] text-gray-400 font-bold mb-2">Material</p>
+              <p className="text-[8px] uppercase tracking-[0.28em] text-gray-400 font-bold mb-2">
+                Material
+              </p>
               {materials.map((m, i) => (
                 <p key={i} className="text-[9px] text-gray-600 leading-relaxed">{m}</p>
               ))}
@@ -147,11 +170,11 @@ function ProductBoard({ data }: { data: BoardData }) {
           {/* Features */}
           {features.length > 0 && (
             <div className="px-5 py-4 border-b border-gray-200">
-              <p className="text-[8px] uppercase tracking-[0.28em] text-gray-400 font-bold mb-2">Features</p>
+              <p className="text-[8px] uppercase tracking-[0.28em] text-gray-400 font-bold mb-2">
+                Features
+              </p>
               {features.map((f, i) => (
-                <p key={i} className="text-[9px] text-gray-600 leading-snug mb-1">
-                  • {f}
-                </p>
+                <p key={i} className="text-[9px] text-gray-600 leading-snug mb-1">• {f}</p>
               ))}
             </div>
           )}
@@ -159,7 +182,9 @@ function ProductBoard({ data }: { data: BoardData }) {
           {/* Logo */}
           {logoPlacement && (
             <div className="px-5 py-4">
-              <p className="text-[8px] uppercase tracking-[0.28em] text-gray-400 font-bold mb-1.5">Logo</p>
+              <p className="text-[8px] uppercase tracking-[0.28em] text-gray-400 font-bold mb-1.5">
+                Logo
+              </p>
               <p className="text-[9px] text-gray-600 capitalize leading-snug">
                 {logoPlacement.replace(/_/g, " ")}
               </p>
@@ -169,27 +194,17 @@ function ProductBoard({ data }: { data: BoardData }) {
 
         {/* CENTER: Front + Back renders */}
         <div className="flex-1 flex bg-[#0f0f0f]">
-          {/* Front */}
           <div className="flex-1 flex flex-col border-r border-white/5">
             <p className="text-[8px] uppercase tracking-[0.28em] text-white/25 text-center py-2.5 font-bold">
               Front
             </p>
-            <BoardImage
-              url={front?.image_url}
-              alt="Front view"
-              className="flex-1"
-            />
+            <BoardImage url={images.front} alt="Front view" className="flex-1" />
           </div>
-          {/* Back */}
           <div className="flex-1 flex flex-col">
             <p className="text-[8px] uppercase tracking-[0.28em] text-white/25 text-center py-2.5 font-bold">
               Back
             </p>
-            <BoardImage
-              url={back?.image_url}
-              alt="Back view"
-              className="flex-1"
-            />
+            <BoardImage url={images.back} alt="Back view" className="flex-1" />
           </div>
         </div>
 
@@ -198,44 +213,46 @@ function ProductBoard({ data }: { data: BoardData }) {
           className="flex-shrink-0 border-l border-gray-300 flex flex-col divide-y divide-gray-200"
           style={{ width: 168, backgroundColor: "#f8f6f1" }}
         >
-          {/* Detail 1 */}
           <div className="flex-1 flex flex-col p-3">
             <p className="text-[7px] uppercase tracking-[0.22em] text-gray-400 font-bold mb-2 leading-tight">
               {detailLabel1}
             </p>
-            <div className="flex-1 rounded overflow-hidden bg-[#111]" style={{ minHeight: 120 }}>
-              <BoardImage
-                url={detail1?.image_url}
-                alt={detailLabel1}
-                className="w-full h-full"
-              />
+            <div className="flex-1 rounded overflow-hidden" style={{ minHeight: 120 }}>
+              <BoardImage url={images.detail1} alt={detailLabel1} className="w-full h-full" />
             </div>
           </div>
-
-          {/* Detail 2 */}
           <div className="flex-1 flex flex-col p-3">
             <p className="text-[7px] uppercase tracking-[0.22em] text-gray-400 font-bold mb-2 leading-tight">
               {detailLabel2}
             </p>
-            <div className="flex-1 rounded overflow-hidden bg-[#111]" style={{ minHeight: 120 }}>
-              <BoardImage
-                url={detail2?.image_url}
-                alt={detailLabel2}
-                className="w-full h-full"
-              />
+            <div className="flex-1 rounded overflow-hidden" style={{ minHeight: 120 }}>
+              <BoardImage url={images.detail2} alt={detailLabel2} className="w-full h-full" />
             </div>
           </div>
         </div>
       </div>
 
-      {/* ── Footer ── */}
-      <div className="border-t border-gray-300 px-5 py-2.5 flex items-center justify-between bg-white/50">
-        <p className="text-[8px] text-gray-400 italic leading-relaxed max-w-lg">
-          AI concept is for visual direction only and may not exactly match final production artwork.
-          Colors, proportions, and details are subject to change during production.
+      {/* ── Footer: disclaimer + select action ── */}
+      <div className="border-t border-gray-300 bg-white/50 px-5 py-3 flex items-center justify-between gap-4">
+        <p className="text-[8px] text-gray-400 italic leading-relaxed max-w-sm">
+          AI concept is for visual direction only. Colors, proportions, and details are subject to change during production.
         </p>
-        <div className="flex-shrink-0 ml-4 opacity-30">
-          <GraceLogo className="h-4" />
+        <div className="flex items-center gap-3 flex-shrink-0">
+          <div className="opacity-25">
+            <GraceLogo className="h-4" />
+          </div>
+          <button
+            type="button"
+            onClick={onSelect}
+            disabled={approving}
+            className={`px-5 py-2 rounded-lg text-[10px] font-display font-bold uppercase tracking-[0.15em] transition-all duration-200 ${
+              selected
+                ? "bg-gray-900 text-white"
+                : "border border-gray-400 text-gray-600 hover:border-gray-800 hover:text-gray-900"
+            } disabled:opacity-40 disabled:cursor-not-allowed`}
+          >
+            {selected ? "✓ Selected" : "Select This Concept"}
+          </button>
         </div>
       </div>
     </div>
@@ -245,19 +262,22 @@ function ProductBoard({ data }: { data: BoardData }) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ConceptsPage() {
-  const { order_id } = useParams<{ order_id: string }>();
-  const router = useRouter();
-  const supabaseRef = useRef(createClient());
-  const supabase = supabaseRef.current;
+  const { order_id }  = useParams<{ order_id: string }>();
+  const router        = useRouter();
+  const supabaseRef   = useRef(createClient());
+  const supabase      = supabaseRef.current;
 
-  const [boardData, setBoardData]     = useState<BoardData | null>(null);
-  const [loading, setLoading]         = useState(true);
-  const [generating, setGenerating]   = useState(false);
-  const [approving, setApproving]     = useState(false);
-  const [isAdminView, setIsAdminView] = useState(false);
+  const [pageState, setPageState]       = useState<PageState | null>(null);
+  const [loading, setLoading]           = useState(true);
+  const [generating, setGenerating]     = useState(false);
+  const [selectedBoard, setSelectedBoard] = useState<number | null>(null); // 1-indexed
+  const [approving, setApproving]       = useState(false);
+  const [isAdminView, setIsAdminView]   = useState(false);
   const pollRef = useRef<NodeJS.Timeout | null>(null);
 
-  const fetchBoard = useCallback(async (): Promise<boolean> => {
+  // ── Fetch board data ────────────────────────────────────────────────────────
+
+  const fetchBoards = useCallback(async (): Promise<boolean> => {
     const { data: conceptRows } = await supabase
       .from("concepts")
       .select("id, concept_number, image_url, selected")
@@ -279,38 +299,79 @@ export default function ConceptsPage() {
         .single(),
     ]);
 
-    const clientData = Array.isArray(orderRow?.clients)
-      ? orderRow?.clients[0]
-      : orderRow?.clients;
+    const clientData  = Array.isArray(orderRow?.clients) ? orderRow?.clients[0] : orderRow?.clients;
     const teamName    = (clientData as { name?: string })?.name ?? "Your Team";
     const orderNumber = orderRow?.order_number ?? order_id.slice(0, 8).toUpperCase();
 
-    let metadata: DesignMetadata | null = null;
+    // ── Parse ai_prompt — handle multi-concept and legacy single formats ──────
+    let boards: ConceptWithImages[] = [];
+
     if (briefRow?.ai_prompt) {
       try {
-        metadata = JSON.parse(briefRow.ai_prompt) as DesignMetadata;
-        if (typeof metadata.description !== "string") metadata = null;
+        const parsed = JSON.parse(briefRow.ai_prompt as string);
+
+        if (Array.isArray(parsed.concepts) && parsed.concepts.length > 0) {
+          // New multi-concept format
+          const multi = parsed as MultiConceptMetadata;
+          boards = multi.concepts.map((c) => ({
+            ...c,
+            images: c.images ?? { front: "", back: "", detail1: "", detail2: "" },
+          }));
+        } else if (typeof parsed.description === "string") {
+          // Legacy single-concept format — wrap in a single board using concepts table images
+          const front   = conceptRows.find((r) => r.concept_number === 1)?.image_url ?? "";
+          const back    = conceptRows.find((r) => r.concept_number === 2)?.image_url ?? "";
+          const detail1 = conceptRows.find((r) => r.concept_number === 3)?.image_url ?? "";
+          const detail2 = conceptRows.find((r) => r.concept_number === 4)?.image_url ?? "";
+          boards = [{
+            ...parsed,
+            direction: "Concept",
+            images: { front, back, detail1, detail2 },
+          }];
+        }
       } catch {
-        metadata = null;
+        // ai_prompt unreadable — fall back to images from concepts table only
       }
     }
 
-    setBoardData({ teamName, orderNumber, metadata, concepts: conceptRows });
+    // Last-resort fallback: build stub boards from concepts table
+    if (boards.length === 0 && conceptRows.length > 0) {
+      boards = conceptRows.map((row) => ({
+        direction:     `Concept ${row.concept_number}`,
+        garmentType:   "Sports Uniform",
+        colorway:      [],
+        materials:     [],
+        features:      [],
+        logoPlacement: "",
+        description:   "",
+        images: { front: row.image_url, back: "", detail1: "", detail2: "" },
+      }));
+    }
+
+    // Restore any previously selected board
+    const prevSelected = conceptRows.find((r) => r.selected);
+    if (prevSelected) setSelectedBoard(prevSelected.concept_number);
+
+    setPageState({ teamName, orderNumber, boards });
     setGenerating(false);
     setLoading(false);
     if (pollRef.current) clearInterval(pollRef.current);
     return true;
   }, [order_id, supabase]);
 
+  // ── Trigger generation ──────────────────────────────────────────────────────
+
   async function triggerGeneration() {
     setGenerating(true);
     fetch("/api/generate-concepts", {
-      method: "POST",
+      method:  "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ order_id }),
-    }).then(() => fetchBoard());
-    pollRef.current = setInterval(fetchBoard, 5000);
+      body:    JSON.stringify({ order_id }),
+    }).then(() => fetchBoards());
+    pollRef.current = setInterval(fetchBoards, 5000);
   }
+
+  // ── Init ────────────────────────────────────────────────────────────────────
 
   useEffect(() => {
     async function init() {
@@ -319,7 +380,7 @@ export default function ConceptsPage() {
         if (profile.role === "supplier") { router.replace("/supplier"); return; }
         if (profile.role === "admin") setIsAdminView(true);
       }
-      const hasExisting = await fetchBoard();
+      const hasExisting = await fetchBoards();
       if (!hasExisting) {
         setLoading(false);
         await triggerGeneration();
@@ -330,12 +391,23 @@ export default function ConceptsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [order_id]);
 
+  // ── Approve selected board ──────────────────────────────────────────────────
+
   async function handleApprove() {
-    if (!boardData?.concepts.length) return;
+    if (!selectedBoard) return;
     setApproving(true);
-    const concept1 = boardData.concepts.find(c => c.concept_number === 1) ?? boardData.concepts[0];
-    await supabase.from("concepts").update({ selected: false }).eq("order_id", order_id);
-    await supabase.from("concepts").update({ selected: true }).eq("id", concept1.id);
+
+    const { data: conceptRows } = await supabase
+      .from("concepts")
+      .select("id, concept_number")
+      .eq("order_id", order_id);
+
+    if (conceptRows) {
+      await supabase.from("concepts").update({ selected: false }).eq("order_id", order_id);
+      const target = conceptRows.find((r) => r.concept_number === selectedBoard);
+      if (target) await supabase.from("concepts").update({ selected: true }).eq("id", target.id);
+    }
+
     router.push(`/orders/${order_id}/approve`);
   }
 
@@ -344,10 +416,11 @@ export default function ConceptsPage() {
     router.replace("/login");
   }
 
-  const hasConcepts = !!boardData && boardData.concepts.length > 0;
+  const hasBoards = !!pageState && pageState.boards.length > 0;
 
   return (
     <div className="min-h-screen bg-gs-dark flex flex-col">
+
       {isAdminView && (
         <div className="bg-amber-50 border-b border-amber-200 px-6 py-2 flex items-center gap-2">
           <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
@@ -360,54 +433,41 @@ export default function ConceptsPage() {
       <header className="border-b border-gs-border px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <GraceLogo className="h-7" href="/portal" />
-          <a
-            href="/portal"
-            className="text-xs font-display font-bold uppercase tracking-widest text-gs-gold hover:text-gs-gold-light transition-colors"
-          >
+          <a href="/portal" className="text-xs font-display font-bold uppercase tracking-widest text-gs-gold hover:text-gs-gold-light transition-colors">
             Client Portal
           </a>
         </div>
         <div className="flex items-center gap-5">
-          <a
-            href="/portal"
-            className="text-xs font-display font-bold uppercase tracking-wider text-gs-muted hover:text-gs-gold transition-colors"
-          >
+          <a href="/portal" className="text-xs font-display font-bold uppercase tracking-wider text-gs-muted hover:text-gs-gold transition-colors">
             Home
           </a>
-          <button
-            type="button"
-            onClick={() => router.back()}
-            className="text-xs font-display font-bold uppercase tracking-wider text-gs-muted hover:text-gs-gold transition-colors"
-          >
+          <button type="button" onClick={() => router.back()} className="text-xs font-display font-bold uppercase tracking-wider text-gs-muted hover:text-gs-gold transition-colors">
             ← Back
           </button>
-          <button
-            type="button"
-            onClick={signOut}
-            className="text-xs font-display font-bold uppercase tracking-wider text-gs-muted hover:text-gs-gold transition-colors"
-          >
+          <button type="button" onClick={signOut} className="text-xs font-display font-bold uppercase tracking-wider text-gs-muted hover:text-gs-gold transition-colors">
             Sign Out
           </button>
         </div>
       </header>
 
-      <main className="flex-1 flex flex-col items-center px-4 py-8">
+      <main className="flex-1 flex flex-col items-center px-4 py-8 pb-32">
         <div className="w-full max-w-5xl">
 
-          <div className="mb-7">
+          {/* ── Page header ── */}
+          <div className="mb-8">
             <h1 className="font-display text-3xl font-bold uppercase tracking-wide text-gs-white">
-              Your Design Concept
+              Your Design Concepts
             </h1>
             <p className="mt-1.5 text-sm text-gs-muted font-barlow">
               {generating
-                ? "Our AI is designing your uniform — this usually takes 1–3 minutes."
-                : hasConcepts
-                ? "Review your concept board below. Approve to move into production."
-                : "Preparing your concept…"}
+                ? "Our AI is building your concept boards — this usually takes 1–3 minutes."
+                : hasBoards
+                ? `${pageState!.boards.length} design directions generated. Select the concept that best fits your vision, then approve.`
+                : "Preparing your concepts…"}
             </p>
           </div>
 
-          {/* Generating state */}
+          {/* ── Generating ── */}
           {generating && (
             <div className="py-24 flex flex-col items-center justify-center gap-5">
               <div className="relative w-16 h-16">
@@ -415,24 +475,26 @@ export default function ConceptsPage() {
                 <div className="absolute inset-0 border-2 border-gs-gold border-t-transparent rounded-full animate-spin" />
               </div>
               <div className="text-center space-y-1">
-                <p className="text-gs-white font-barlow font-medium">Building your product board</p>
-                <p className="text-xs text-gs-muted font-barlow">AI design in progress · Front, back & detail renders</p>
+                <p className="text-gs-white font-barlow font-medium">Building your concept boards</p>
+                <p className="text-xs text-gs-muted font-barlow">
+                  AI generating 4 design directions · Front, back & detail renders for each
+                </p>
               </div>
               <p className="text-[10px] text-gs-muted font-barlow mt-4 text-center max-w-xs">
-                Your board will appear here automatically. You can leave and come back.
+                Your boards will appear here automatically. You can leave and come back.
               </p>
             </div>
           )}
 
-          {/* Loading */}
+          {/* ── Loading ── */}
           {loading && !generating && (
             <div className="py-24 flex items-center justify-center">
               <div className="w-6 h-6 border-2 border-gs-gold border-t-transparent rounded-full animate-spin" />
             </div>
           )}
 
-          {/* No concepts */}
-          {!loading && !generating && !hasConcepts && (
+          {/* ── No boards ── */}
+          {!loading && !generating && !hasBoards && (
             <div className="py-20 flex flex-col items-center gap-5 text-center">
               <div className="w-12 h-12 rounded-xl border border-gs-border flex items-center justify-center">
                 <svg className="w-5 h-5 text-gs-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -440,7 +502,7 @@ export default function ConceptsPage() {
                 </svg>
               </div>
               <div>
-                <p className="text-gs-white font-barlow font-medium">No concept generated yet</p>
+                <p className="text-gs-white font-barlow font-medium">No concepts generated yet</p>
                 <p className="text-xs text-gs-muted font-barlow mt-1">
                   Generation may still be in progress or encountered an issue.
                 </p>
@@ -448,45 +510,70 @@ export default function ConceptsPage() {
             </div>
           )}
 
-          {/* Product Board */}
-          {!loading && !generating && hasConcepts && (
-            <div className="space-y-5">
-              <ProductBoard data={boardData!} />
-
-              {/* Action row */}
-              <div className="flex items-center justify-between pt-1">
-
-                {/* Regenerate — disabled, locked for review */}
-                <div className="flex flex-col gap-1">
-                  <button
-                    type="button"
-                    disabled
-                    className="text-xs font-display uppercase tracking-wider text-gs-muted/40 cursor-not-allowed"
-                    title="Regeneration is not available at this stage"
-                  >
-                    ↺ Regenerate
-                  </button>
-                  <span className="text-[9px] text-gs-muted/40 font-barlow leading-tight max-w-[220px]">
-                    Regeneration coming soon. Current concept is locked for review.
-                  </span>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleApprove}
-                  disabled={approving}
-                  className="px-8 py-3.5 rounded-xl font-display font-bold text-sm uppercase tracking-[0.15em] transition-all duration-200
-                    bg-gs-white text-gs-dark hover:bg-gs-gold hover:text-white
-                    disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  {approving ? "Saving…" : "Approve This Design →"}
-                </button>
-              </div>
+          {/* ── 4 Concept boards ── */}
+          {!loading && !generating && hasBoards && (
+            <div className="space-y-10">
+              {pageState!.boards.map((board, i) => (
+                <ProductBoard
+                  key={i}
+                  board={board}
+                  boardNumber={i + 1}
+                  teamName={pageState!.teamName}
+                  orderNumber={pageState!.orderNumber}
+                  selected={selectedBoard === i + 1}
+                  onSelect={() => setSelectedBoard(i + 1)}
+                  approving={approving}
+                />
+              ))}
             </div>
           )}
 
         </div>
       </main>
+
+      {/* ── Sticky approval bar — appears once a concept is selected ── */}
+      {hasBoards && !generating && (
+        <div
+          className={`fixed bottom-0 left-0 right-0 border-t border-gs-border bg-gs-dark/95 backdrop-blur px-6 py-4 flex items-center justify-between transition-all duration-300 ${
+            selectedBoard ? "translate-y-0 opacity-100" : "translate-y-full opacity-0 pointer-events-none"
+          }`}
+        >
+          <div>
+            {selectedBoard && (
+              <>
+                <p className="text-xs font-display font-bold uppercase tracking-widest text-gs-gold">
+                  Concept {String(selectedBoard).padStart(2, "0")} — {pageState?.boards[selectedBoard - 1]?.direction} Selected
+                </p>
+                <p className="text-[10px] text-gs-muted font-barlow mt-0.5">
+                  Approving will lock this design and move it into production.
+                </p>
+              </>
+            )}
+          </div>
+
+          <div className="flex items-center gap-4">
+            <button
+              type="button"
+              disabled
+              className="text-[10px] font-display uppercase tracking-wider text-gs-muted/40 cursor-not-allowed"
+              title="Regeneration not available at this stage"
+            >
+              ↺ Regeneration coming soon
+            </button>
+
+            <button
+              type="button"
+              onClick={handleApprove}
+              disabled={!selectedBoard || approving}
+              className="px-8 py-3.5 rounded-xl font-display font-bold text-sm uppercase tracking-[0.15em] transition-all duration-200
+                bg-gs-white text-gs-dark hover:bg-gs-gold hover:text-white
+                disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {approving ? "Saving…" : "Approve This Design →"}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
