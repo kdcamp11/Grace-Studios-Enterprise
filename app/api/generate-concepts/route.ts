@@ -447,27 +447,30 @@ function buildGarmentPrompt(
 
     if (view === "frontJersey") {
       return [
-        `FRONT JERSEY BRANDING HIERARCHY — render these elements sublimated/printed INTO the fabric:`,
+        `FRONT JERSEY BRANDING HIERARCHY:`,
 
-        `LOGO ZONE (${logoSide} chest): Reserve a clean empty fabric area approximately 2 inches wide at ${logoSide} chest position. DO NOT render any logo or artwork here — this zone will be composited with the exact team logo in production. The fabric in this zone should be flat and unmarked.`,
+        // ── Logo zone: BLANK FABRIC — logo handled by app layer post-generation ──
+        `APP-COMPOSITED LOGO ZONE (${logoSide} chest): Leave a clean, completely unmarked flat fabric area approximately 2 inches wide at the ${logoSide} chest position. The uploaded team logo is a LOCKED FILE ASSET managed exclusively by the application — the image model must NOT generate, render, trace, recreate, approximate, or hallucinate any logo, emblem, badge, crest, icon, or symbol in this zone or anywhere else on the jersey. After image generation, the application programmatically composites the exact uploaded logo file onto this zone as a separate pixel-accurate image layer. Pre-filling this zone with anything — even a placeholder mark — will cause a compositing conflict. Leave it completely blank fabric.`,
 
-        `TEAM WORDMARK (primary visual): Render "${wordmarkName}" as the dominant chest element. Style: bold athletic jersey wordmark, slightly arched baseline following the chest contour, sublimated directly into the fabric surface, ${numStyleHint}-inspired letterforms. Width: approximately 60–65% of chest panel width. Typography must feel integrated INTO the jersey construction — following fabric drape, respecting chest curvature — NOT floating on top. Outline/stroke treatment using ${outlineColor} with white fill, layered for depth. Inspired by Nike Elite / NCAA tournament / EYBL jersey wordmarks.`,
+        // ── Wordmark: AI renders this ──
+        `TEAM WORDMARK (primary visual element): Render "${wordmarkName}" as the dominant chest wordmark, sublimated into the fabric. Style: bold athletic jersey wordmark, slightly arched baseline following chest contour, ${numStyleHint}-inspired letterforms, approximately 60–65% of chest width. Must feel constructed INTO the jersey — following fabric drape, not floating on top. Outline/stroke in ${outlineColor} with white fill, layered for depth. Inspired by Nike Elite / NCAA tournament / EYBL jersey wordmarks.`,
 
-        `PLAYER NUMBER (secondary element): Render "00" centered below the team wordmark. Style: ${numStyleHint} numeral construction, varsity proportions, layered ${outlineColor} outline with white fill, sublimated into fabric. Proportionally balanced beneath the wordmark — authentic basketball hierarchy.`,
-
-        `ABSOLUTELY ZERO: external brand logos, Nike/Adidas/Jordan marks, shields, school crests, or any third-party branding. Only the wordmark and number above.`,
+        // ── Number: AI renders this ──
+        `PLAYER NUMBER (secondary element): Render "00" centered below the team wordmark, sublimated into fabric. Style: ${numStyleHint} numerals, varsity proportions, layered ${outlineColor} outline with white fill. Proportionally balanced beneath the wordmark.`,
       ].join(" ");
     }
 
     if (view === "backJersey") {
       return [
-        `BACK JERSEY BRANDING — render sublimated/printed INTO the fabric:`,
+        `BACK JERSEY BRANDING:`,
 
-        `PLAYER NUMBER (dominant element): Render "00" large and centered on the back panel. Style: ${numStyleHint} numeral construction, approximately 50–55% of back panel height, layered ${outlineColor} outline with white fill, sublimated into the fabric with natural fabric drape wrapping the letterforms. This is the primary design element on the back — bold, athletic, authentic basketball construction.`,
+        // ── Back logo zone: blank fabric — app composites if back-neck placement ──
+        `APP-COMPOSITED BACK LOGO ZONE (upper back, below rear collar): Leave a clean, completely unmarked flat fabric area approximately 1.5 inches wide centered below the rear collar. Do NOT generate any logo, emblem, or symbol here — this zone may receive a composited logo from the application layer post-generation.`,
 
-        `OPTIONAL TEAM IDENTIFIER: Optionally render "${wordmarkName}" in a smaller arched treatment above the number if appropriate for the design system and spacing allows — consistent with the front wordmark style but at reduced scale.`,
+        // ── Number: AI renders this ──
+        `PLAYER NUMBER (dominant element): Render "00" large and centered on the back panel. Style: ${numStyleHint} numerals, approximately 50–55% of back panel height, layered ${outlineColor} outline with white fill, sublimated into the fabric with natural drape wrapping the letterforms. Bold, athletic, authentic basketball hierarchy.`,
 
-        `ABSOLUTELY ZERO: external brand logos, shields, crests, or third-party marks.`,
+        `OPTIONAL BACK IDENTIFIER: Optionally render "${wordmarkName}" in small arched text above the number if design system spacing allows — consistent with front wordmark style at reduced scale.`,
       ].join(" ");
     }
 
@@ -476,9 +479,15 @@ function buildGarmentPrompt(
 
   // ── 8. Branding restrictions (split by garment type) ─────────────────────
   const brandingRestrictions = isJersey
-    // Jerseys: allow AI-rendered team wordmark + number (specified above).
-    // React composites the exact uploaded logo into the clean logo zone separately.
-    ? `CRITICAL — ABSOLUTELY ZERO on the jersey: external brand logos, Nike/Adidas/Jordan/Under Armour marks, shield emblems, university crests, sponsor marks, or third-party branding of any kind. Only the team wordmark and number described above are permitted.`
+    // Jerseys: allow only the team wordmark text and player number specified above.
+    // The team's own uploaded logo is NEVER rendered by the image model — it is
+    // composited as a separate file by the application after generation.
+    ? [
+        `CRITICAL LOGO PROHIBITION: Do NOT render the team's own uploaded logo in any form.`,
+        `Do NOT generate any circular emblem, shield, badge, crest, monogram, abstract mark, or symbol that could represent a team logo anywhere on the jersey.`,
+        `Do NOT render Nike, Adidas, Jordan, Under Armour, or any external brand marks.`,
+        `The ONLY graphics permitted on the jersey fabric are: (1) the team name wordmark text, and (2) the player number — both specified above. Everything else must be clean fabric.`,
+      ].join(" ")
     // Shorts: keep entirely clean — no text, no graphics.
     : `CRITICAL — ABSOLUTELY ZERO on the shorts: text, numbers, logos, brand marks, wordmarks, watermarks, graphic overlays, or symbols of any kind. All panels must be completely clean fabric.`;
 
