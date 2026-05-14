@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import BriefLayout from "@/components/brief/BriefLayout";
-import JerseyPreview, { SYSTEM_DEFAULTS } from "@/components/brief/JerseyPreview";
+import { SYSTEM_DEFAULTS } from "@/components/brief/JerseyPreview";
 import { loadBriefState, saveBriefState } from "@/lib/brief-state";
 import { createClient } from "@/lib/supabase/client";
 
@@ -117,9 +117,6 @@ export default function ReferencePage() {
   const [primaryColor,   setPrimaryColor]   = useState("#0C0C0C");
   const [secondaryColor, setSecondaryColor] = useState("#CC1B1B");
   const [accentColor,    setAccentColor]    = useState("#E5E5E5");
-
-  // Preview-only state
-  const [jerseyNumber, setJerseyNumber] = useState("00");
 
   // Upload state
   const [logoUrls, setLogoUrls] = useState<string[]>([]);
@@ -261,36 +258,50 @@ export default function ReferencePage() {
   return (
     <BriefLayout
       currentStep={3}
-      title="Logo & Jersey Details"
-      subtitle="Configure your jersey below — uploads and choices feed directly into the AI."
-      maxWidth="max-w-5xl"
+      title="Logo & Details"
+      subtitle="Upload your logo and set your colors — these feed directly into the AI."
     >
-      <div className="flex flex-col lg:flex-row gap-8 items-start">
+      <div className="space-y-8">
 
-        {/* ── LEFT: sticky jersey preview ─────────────────────────────── */}
-        <div className="w-full lg:w-[300px] xl:w-[320px] lg:sticky lg:top-8 flex-shrink-0">
-          <JerseyPreview
-            system={designSystem}
-            primaryColor={primaryColor}
-            secondaryColor={secondaryColor}
-            accentColor={accentColor}
-            onPrimaryChange={handlePrimaryChange}
-            onSecondaryChange={handleSecondaryChange}
-            onAccentChange={handleAccentChange}
-            teamName={teamName}
-            jerseyNumber={jerseyNumber}
-            onNumberChange={setJerseyNumber}
-            logoUrls={logoUrls}
-            logoPlacement={gsLogoPlacement}
-            numberStyle={numberStyle}
-            orderId={order_id}
-            supabase={supabase}
-            onConceptSaved={() => {/* toast handled by button state */}}
-          />
+        {/* ── Color picker ─────────────────────────────────────────────── */}
+        <div>
+          <label className="block text-[10px] font-display uppercase tracking-[0.2em] text-gs-muted mb-3">
+            Color Palette
+          </label>
+          <div className="grid grid-cols-3 gap-4">
+            {[
+              { label: "Body",  value: primaryColor,   onChange: handlePrimaryChange   },
+              { label: "Panel", value: secondaryColor, onChange: handleSecondaryChange },
+              { label: "Trim",  value: accentColor,    onChange: handleAccentChange    },
+            ].map(({ label, value, onChange }) => (
+              <div key={label} className="flex flex-col items-center gap-2">
+                <label className="text-[10px] font-display uppercase tracking-widest text-gs-muted">{label}</label>
+                <div className="relative w-12 h-12 rounded-xl overflow-hidden border-2 border-gs-border cursor-pointer hover:border-gs-gold transition-colors">
+                  <input
+                    type="color"
+                    value={value}
+                    onChange={(e) => onChange(e.target.value)}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  />
+                  <div className="w-full h-full rounded-xl" style={{ backgroundColor: value }} />
+                </div>
+                <input
+                  type="text"
+                  value={value}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (/^#[0-9A-Fa-f]{0,6}$/.test(v)) onChange(v);
+                  }}
+                  maxLength={7}
+                  className="w-full text-center bg-gs-dark-3 border border-gs-border rounded-lg px-2 py-1.5 text-gs-white font-mono text-xs focus:outline-none focus:border-gs-gold transition-colors"
+                />
+              </div>
+            ))}
+          </div>
         </div>
 
-        {/* ── RIGHT: form ─────────────────────────────────────────────── */}
-        <div className="flex-1 min-w-0 space-y-8">
+        {/* ── Form fields ──────────────────────────────────────────────── */}
+        <div className="space-y-8">
 
           {/* Team logos */}
           <UploadZone
