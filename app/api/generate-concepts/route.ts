@@ -103,6 +103,16 @@ function extractDirectColors(
 
 /**
  * Generates a single photorealistic garment render via OpenAI gpt-image-1.
+ *
+ * LOGO INTEGRATION PATH (jersey views when logoUrl provided):
+ *   Fetches the uploaded logo and passes it as an image[] reference input to the
+ *   images/edits endpoint. gpt-image-1 uses the provided images as visual context
+ *   for generation — the model sees the actual logo shape/colors and integrates it
+ *   naturally into the jersey fabric with realistic lighting and texture.
+ *
+ * FALLBACK PATH (shorts, no logo, or if logo fetch/edits fails):
+ *   Falls back to images/generations (text-to-image) seamlessly.
+ *
  * Returns the public Supabase Storage URL of the uploaded PNG.
  */
 async function generateGarmentRender(
@@ -110,28 +120,73 @@ async function generateGarmentRender(
   supabase: SupabaseClient,
   orderId:  string,
   view:     RenderViewKey,
+  logoUrl?: string | null,
 ): Promise<string> {
   const apiKey       = process.env.OPENAI_API_KEY!;
   const MAX_ATTEMPTS = 4;
   const RETRY_MS     = 15_000;
 
-  let b64: string | null = null;
+  const isJerseyView = view.includes("Jersey");
+
+  // ── Fetch logo for jersey views when a URL is provided ────────────────────
+  let logoBuffer: Buffer | null = null;
+  let logoMime   = "image/png";
+
+  if (logoUrl && isJerseyView) {
+    try {
+      const logoRes = await fetch(logoUrl, { signal: AbortSignal.timeout(15_000) });
+      if (logoRes.ok) {
+        logoBuffer = Buffer.from(await logoRes.arrayBuffer());
+        const ct   = logoRes.headers.get("content-type") ?? "";
+        logoMime   = (ct.includes("jpeg") || ct.includes("jpg")) ? "image/jpeg" : "image/png";
+        console.log(`[generate-concepts] logo fetched for ${view}: ${logoBuffer.length} bytes (${logoMime})`);
+      } else {
+        console.warn(`[generate-concepts] logo fetch ${logoRes.status} for ${view} — using text-to-image`);
+      }
+    } catch (logoErr) {
+      console.warn(`[generate-concepts] logo fetch failed for ${view}:`, logoErr instanceof Error ? logoErr.message : logoErr);
+    }
+  }
+
+  let b64:        string | null = null;
+  let useLogoRef: boolean       = !!logoBuffer;
 
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-    const res = await fetch("https://api.openai.com/v1/images/generations", {
-      method:  "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type":  "application/json",
-      },
-      body: JSON.stringify({
-        model:   "gpt-image-1",
-        prompt,
-        n:       1,
-        size:    "1024x1024",
-        quality: "high",
-      }),
-    });
+    let res: Response;
+
+    if (useLogoRef && logoBuffer) {
+      // ── images/edits: logo as reference input for natural integration ─────
+      const ext  = logoMime === "image/jpeg" ? "logo.jpg" : "logo.png";
+      const form = new FormData();
+      form.append("model",    "gpt-image-1");
+      form.append("image[]",  new Blob([logoBuffer], { type: logoMime }), ext);
+      form.append("prompt",   prompt);
+      form.append("n",        "1");
+      form.append("size",     "1024x1024");
+      form.append("quality",  "high");
+
+      res = await fetch("https://api.openai.com/v1/images/edits", {
+        method:  "POST",
+        headers: { "Authorization": `Bearer ${apiKey}` },
+        body:    form,
+      });
+    } else {
+      // ── images/generations: text-to-image (no logo reference) ────────────
+      res = await fetch("https://api.openai.com/v1/images/generations", {
+        method:  "POST",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type":  "application/json",
+        },
+        body: JSON.stringify({
+          model:   "gpt-image-1",
+          prompt,
+          n:       1,
+          size:    "1024x1024",
+          quality: "high",
+        }),
+      });
+    }
 
     if (res.status === 429 || (res.status >= 500 && res.status < 600)) {
       if (attempt >= MAX_ATTEMPTS) {
@@ -144,8 +199,14 @@ async function generateGarmentRender(
     }
 
     if (!res.ok) {
-      const text = await res.text().catch(() => res.statusText);
-      throw new Error(`OpenAI render failed (${res.status}): ${text}`);
+      const errText = await res.text().catch(() => res.statusText);
+      // Logo-edits client error → fall back to text-to-image on next attempt
+      if (useLogoRef) {
+        console.warn(`[generate-concepts] logo-edits failed (${res.status}), retrying as text-to-image: ${errText.slice(0, 120)}`);
+        useLogoRef = false;
+        continue;
+      }
+      throw new Error(`OpenAI render failed (${res.status}): ${errText}`);
     }
 
     const json = await res.json() as { data: { b64_json?: string }[] };
@@ -393,6 +454,7 @@ function buildGarmentPrompt(
   designSystem: string,
   teamName:     string,
   brief:        Record<string, unknown>,
+  hasLogoRef:   boolean = false,
 ): string {
   const system      = designSystem.toLowerCase();
   const systemFull  = SYSTEM_VISUAL_LANGUAGE[system] ?? SYSTEM_VISUAL_LANGUAGE.bold;
@@ -446,11 +508,16 @@ function buildGarmentPrompt(
                          ? "upper-right" : "upper-left";
 
     if (view === "frontJersey") {
+      const logoZone = hasLogoRef
+        // ── Logo reference provided: integrate into fabric naturally ──
+        ? `LOGO INTEGRATION (${logoSide} chest): The provided image is the team's uploaded logo. Integrate it naturally into the ${logoSide} chest area, approximately 2–2.5 inches wide. Print/sublimate it into the jersey fabric with realistic lighting, depth, and fabric texture — the logo should feel sewn or printed INTO the jersey, not pasted on top. Respect the logo's original colors and shapes exactly; do not simplify, reinterpret, or alter it.`
+        // ── No logo reference: leave blank zone for app-layer compositing ──
+        : `APP-COMPOSITED LOGO ZONE (${logoSide} chest): Leave a clean, completely unmarked flat fabric area approximately 2 inches wide at the ${logoSide} chest position. The uploaded team logo is a LOCKED FILE ASSET managed exclusively by the application — the image model must NOT generate, render, trace, recreate, approximate, or hallucinate any logo, emblem, badge, crest, icon, or symbol in this zone or anywhere else on the jersey. After image generation, the application programmatically composites the exact uploaded logo file onto this zone as a separate pixel-accurate image layer. Pre-filling this zone with anything — even a placeholder mark — will cause a compositing conflict. Leave it completely blank fabric.`;
+
       return [
         `FRONT JERSEY BRANDING HIERARCHY:`,
 
-        // ── Logo zone: BLANK FABRIC — logo handled by app layer post-generation ──
-        `APP-COMPOSITED LOGO ZONE (${logoSide} chest): Leave a clean, completely unmarked flat fabric area approximately 2 inches wide at the ${logoSide} chest position. The uploaded team logo is a LOCKED FILE ASSET managed exclusively by the application — the image model must NOT generate, render, trace, recreate, approximate, or hallucinate any logo, emblem, badge, crest, icon, or symbol in this zone or anywhere else on the jersey. After image generation, the application programmatically composites the exact uploaded logo file onto this zone as a separate pixel-accurate image layer. Pre-filling this zone with anything — even a placeholder mark — will cause a compositing conflict. Leave it completely blank fabric.`,
+        logoZone,
 
         // ── Wordmark: AI renders this ──
         `TEAM WORDMARK (primary visual element): Render "${wordmarkName}" as the dominant chest wordmark, sublimated into the fabric. Style: bold athletic jersey wordmark, slightly arched baseline following chest contour, ${numStyleHint}-inspired letterforms, approximately 60–65% of chest width. Must feel constructed INTO the jersey — following fabric drape, not floating on top. Outline/stroke in ${outlineColor} with white fill, layered for depth. Inspired by Nike Elite / NCAA tournament / EYBL jersey wordmarks.`,
@@ -461,11 +528,16 @@ function buildGarmentPrompt(
     }
 
     if (view === "backJersey") {
+      const backLogoZone = hasLogoRef
+        // ── Logo reference provided: integrate into fabric naturally ──
+        ? `LOGO INTEGRATION (upper back, below rear collar): The provided image is the team's uploaded logo. Integrate it naturally centered below the rear collar, approximately 1.5 inches wide. Print/sublimate it into the jersey fabric with realistic lighting and texture — it should feel part of the garment. Respect the logo's original colors and shapes exactly.`
+        // ── No logo reference: leave blank zone ──
+        : `APP-COMPOSITED BACK LOGO ZONE (upper back, below rear collar): Leave a clean, completely unmarked flat fabric area approximately 1.5 inches wide centered below the rear collar. Do NOT generate any logo, emblem, or symbol here — this zone may receive a composited logo from the application layer post-generation.`;
+
       return [
         `BACK JERSEY BRANDING:`,
 
-        // ── Back logo zone: blank fabric — app composites if back-neck placement ──
-        `APP-COMPOSITED BACK LOGO ZONE (upper back, below rear collar): Leave a clean, completely unmarked flat fabric area approximately 1.5 inches wide centered below the rear collar. Do NOT generate any logo, emblem, or symbol here — this zone may receive a composited logo from the application layer post-generation.`,
+        backLogoZone,
 
         // ── Number: AI renders this ──
         `PLAYER NUMBER (dominant element): Render "00" large and centered on the back panel. Style: ${numStyleHint} numerals, approximately 50–55% of back panel height, layered ${outlineColor} outline with white fill, sublimated into the fabric with natural drape wrapping the letterforms. Bold, athletic, authentic basketball hierarchy.`,
@@ -479,15 +551,20 @@ function buildGarmentPrompt(
 
   // ── 8. Branding restrictions (split by garment type) ─────────────────────
   const brandingRestrictions = isJersey
-    // Jerseys: allow only the team wordmark text and player number specified above.
-    // The team's own uploaded logo is NEVER rendered by the image model — it is
-    // composited as a separate file by the application after generation.
-    ? [
-        `CRITICAL LOGO PROHIBITION: Do NOT render the team's own uploaded logo in any form.`,
-        `Do NOT generate any circular emblem, shield, badge, crest, monogram, abstract mark, or symbol that could represent a team logo anywhere on the jersey.`,
-        `Do NOT render Nike, Adidas, Jordan, Under Armour, or any external brand marks.`,
-        `The ONLY graphics permitted on the jersey fabric are: (1) the team name wordmark text, and (2) the player number — both specified above. Everything else must be clean fabric.`,
-      ].join(" ")
+    // Jerseys: allow only the team wordmark, player number, and (if provided) the
+    // reference logo integrated into the chest zone. External brand marks always banned.
+    ? hasLogoRef
+      ? [
+          `LOGO FIDELITY: Use ONLY the provided uploaded logo image exactly as supplied — do not invent, simplify, redraw, or replace it with a different mark.`,
+          `Do NOT render Nike, Adidas, Jordan, Under Armour, or any external brand marks.`,
+          `The ONLY graphics permitted on the jersey fabric are: (1) the provided uploaded team logo in the chest zone, (2) the team name wordmark text, and (3) the player number — all specified above. Everything else must be clean fabric.`,
+        ].join(" ")
+      : [
+          `CRITICAL LOGO PROHIBITION: Do NOT render the team's own uploaded logo in any form.`,
+          `Do NOT generate any circular emblem, shield, badge, crest, monogram, abstract mark, or symbol that could represent a team logo anywhere on the jersey.`,
+          `Do NOT render Nike, Adidas, Jordan, Under Armour, or any external brand marks.`,
+          `The ONLY graphics permitted on the jersey fabric are: (1) the team name wordmark text, and (2) the player number — both specified above. Everything else must be clean fabric.`,
+        ].join(" ")
     // Shorts: keep entirely clean — no text, no graphics.
     : `CRITICAL — ABSOLUTELY ZERO on the shorts: text, numbers, logos, brand marks, wordmarks, watermarks, graphic overlays, or symbols of any kind. All panels must be completely clean fabric.`;
 
@@ -728,8 +805,17 @@ export async function POST(req: NextRequest) {
 
     const renders: Partial<Record<RenderViewKey, string>> = {};
 
+    // Primary uploaded logo URL — passed to jersey renders for AI integration
+    const primaryLogoUrl: string | null = logoUrls[0] ?? null;
+
     for (let i = 0; i < RENDER_VIEWS.length; i++) {
       const { key, label } = RENDER_VIEWS[i];
+
+      // Jersey views with a logo URL get the logo passed as an image[] reference
+      // to images/edits so the model integrates it naturally into the fabric.
+      // Shorts views always use text-to-image (no logo reference needed).
+      const isJerseyView = key.includes("Jersey");
+      const hasLogoRef   = isJerseyView && !!primaryLogoUrl;
 
       const renderPrompt = buildGarmentPrompt(
         key,
@@ -737,12 +823,21 @@ export async function POST(req: NextRequest) {
         designSystem,
         teamName,
         brief as Record<string, unknown>,
+        hasLogoRef,
       );
 
-      console.log(`[generate-concepts] rendering ${label} (${i + 1}/4) — prompt: ${renderPrompt.slice(0, 120)}…`);
+      console.log(
+        `[generate-concepts] rendering ${label} (${i + 1}/4) — logo=${hasLogoRef ? "ref" : "none"} — prompt: ${renderPrompt.slice(0, 120)}…`,
+      );
 
       try {
-        const url = await generateGarmentRender(renderPrompt, supabase, order_id, key);
+        const url = await generateGarmentRender(
+          renderPrompt,
+          supabase,
+          order_id,
+          key,
+          hasLogoRef ? primaryLogoUrl : null,
+        );
         renders[key] = url;
         console.log(`[generate-concepts] ${label} done: ${url.slice(0, 80)}`);
       } catch (imgErr: unknown) {

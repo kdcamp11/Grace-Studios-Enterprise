@@ -136,46 +136,8 @@ function RenderImage({ url, alt, className }: { url?: string; alt: string; class
 
 // ─── Premium renders board ────────────────────────────────────────────────────
 
-/**
- * Returns absolute-position CSS for the uploaded logo overlay on a jersey render cell.
- *
- * SPLIT ARCHITECTURE:
- *   AI → renders jersey with blank logo zone + integrated wordmark/number
- *   React → composites the exact uploaded logo file into the reserved zone
- *
- * Logo is small (~18% cell width ≈ 2–2.5 inch chest mark). Never overlaps wordmark.
- */
-function frontLogoOverlayStyle(placement: string): React.CSSProperties {
-  const p    = placement.toLowerCase().replace(/[\s_-]+/g, "");
-  // Top ~10% of cell = upper chest area where AI reserved the blank zone
-  const base = { position: "absolute" as const, top: "9%", width: "18%" };
-  if (p.includes("right")) return { ...base, right: "13%" };
-  if (p.includes("left"))  return { ...base, left:  "13%" };
-  return { ...base, left: "50%", transform: "translateX(-50%)" };
-}
-
-/**
- * Back jersey logo overlay — centered below rear collar.
- * Only applied when gsLogoPlacement includes "back" or "neck".
- */
-function backLogoOverlayStyle(): React.CSSProperties {
-  return {
-    position:  "absolute",
-    top:       "7%",
-    left:      "50%",
-    transform: "translateX(-50%)",
-    width:     "14%",           // smaller on back — sub-collar mark
-  };
-}
-
-/** True if the selected placement puts a logo on the back jersey. */
-function hasBackLogo(placement: string): boolean {
-  const p = placement.toLowerCase().replace(/[\s_-]+/g, "");
-  return p.includes("back") || p.includes("neck");
-}
-
 function RendersBoard({ data }: { data: BoardData }) {
-  const { teamName, orderNumber, metadata, logoUrls, gsLogoPlacement } = data;
+  const { teamName, orderNumber, metadata, logoUrls } = data;
   const renders       = metadata.renders;
   const colorway      = metadata.colorway      ?? [];
   const materials     = metadata.materials     ?? [];
@@ -295,28 +257,10 @@ function RendersBoard({ data }: { data: BoardData }) {
 
           {/* Row labels + images */}
           <div className="flex-1 grid grid-cols-2 grid-rows-2">
-            {/* Front jersey — AI renders fabric + wordmark + number; React composites logo */}
+            {/* Front jersey — AI renders fabric + wordmark + number + integrated logo */}
             <div className="relative border-r border-b border-gray-200 overflow-hidden" style={{ minHeight: 240 }}>
               <span className="absolute top-2 left-2.5 text-[6px] font-bold uppercase tracking-[0.28em] text-gray-300 z-10">Front</span>
               <RenderImage url={renders?.frontJersey} alt="Jersey front" className="w-full h-full" />
-
-              {/* Exact uploaded logo composited into the blank zone AI reserved — never AI-generated */}
-              {primaryLogo && (
-                <div style={{ ...frontLogoOverlayStyle(gsLogoPlacement ?? "left chest"), zIndex: 5, pointerEvents: "none" }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={primaryLogo}
-                    alt=""
-                    style={{
-                      width:     "100%",
-                      height:    "auto",
-                      objectFit: "contain",
-                      filter:    "drop-shadow(0 1px 2px rgba(0,0,0,0.40))",
-                      display:   "block",
-                    }}
-                  />
-                </div>
-              )}
             </div>
 
             <div className="relative border-b border-gray-200 overflow-hidden" style={{ minHeight: 240 }}>
@@ -324,28 +268,10 @@ function RendersBoard({ data }: { data: BoardData }) {
               <RenderImage url={renders?.frontShorts} alt="Shorts front" className="w-full h-full" />
             </div>
 
-            {/* Back jersey — logo composited if back-neck placement is selected */}
+            {/* Back jersey — AI renders fabric + number + integrated logo */}
             <div className="relative border-r border-gray-200 overflow-hidden" style={{ minHeight: 240 }}>
               <span className="absolute top-2 left-2.5 text-[6px] font-bold uppercase tracking-[0.28em] text-gray-300 z-10">Back</span>
               <RenderImage url={renders?.backJersey} alt="Jersey back" className="w-full h-full" />
-
-              {/* Back-neck logo overlay — only when placement targets the back */}
-              {primaryLogo && hasBackLogo(gsLogoPlacement ?? "") && (
-                <div style={{ ...backLogoOverlayStyle(), zIndex: 5, pointerEvents: "none" }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={primaryLogo}
-                    alt=""
-                    style={{
-                      width:     "100%",
-                      height:    "auto",
-                      objectFit: "contain",
-                      filter:    "drop-shadow(0 1px 2px rgba(0,0,0,0.35))",
-                      display:   "block",
-                    }}
-                  />
-                </div>
-              )}
             </div>
             <div className="relative overflow-hidden" style={{ minHeight: 240 }}>
               <span className="absolute top-2 left-2.5 text-[6px] font-bold uppercase tracking-[0.28em] text-gray-300 z-10">Back</span>
