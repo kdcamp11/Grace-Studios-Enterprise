@@ -307,15 +307,79 @@ Return ONLY valid JSON — no markdown fences:
 // ─── Garment render prompt builder ────────────────────────────────────────────
 
 /**
+ * View-specific garment anatomy specs.
+ *
+ * Each view has independent construction requirements. The back jersey MUST NOT
+ * mirror the front — real basketball jerseys have completely different neckline
+ * geometry front-to-back (shallow rear scoop vs. deeper front scoop).
+ *
+ * These specs are injected near the top of each render prompt so the model
+ * treats them as primary construction requirements.
+ */
+const GARMENT_CONSTRUCTION: Record<RenderViewKey, string> = {
+  frontJersey: [
+    "FRONT JERSEY — CONSTRUCTION SPECIFICATION:",
+    "Neckline: moderately deep front scoop neckline, characteristic of modern basketball jerseys.",
+    "Collar: rib-knit collar band, 12–15mm wide, hugging the neckline curve with visible knit texture.",
+    "Collar trim: accent-color rib-knit binding along collar edge.",
+    "Shoulder: natural tapered shoulder seam, realistic armhole curve, side seam visible.",
+    "Chest area: clean empty primary-color panel — primary number zone, no markings.",
+    "Armholes: clean curved armhole openings with rib-knit binding trim.",
+    "Silhouette: slightly dimensional chest contour, subtle front lighting to show form.",
+    "View: straight-on front-facing view. Ghost mannequin or flat lay. Centered.",
+  ].join(" "),
+
+  backJersey: [
+    "BACK JERSEY — CONSTRUCTION SPECIFICATION:",
+    "CRITICAL: The back neckline is COMPLETELY DIFFERENT from the front. DO NOT mirror the front scoop.",
+    "Back neckline: HIGH, shallow rear neck opening. The back collar sits much higher on the neck than the front.",
+    "Back collar geometry: nearly flat or very gently curved rear neckline — tight, close-fitting to the neck.",
+    "Back collar height: the rear neck opening is narrow and high — approximately 4–6cm below the base of the neck, not a deep scoop.",
+    "Collar: rib-knit collar band wraps the rear neckline at the high back position, visible knit texture.",
+    "Back shoulder: flat rear shoulder structure, wider shoulder blade area, rear shoulder seams visible.",
+    "Upper back: large clean empty primary-color panel — back name/number zone, no markings whatsoever.",
+    "Back seam: center-back seam running vertically from collar to hem, realistic stitching.",
+    "Silhouette: flatter rear profile compared to front. Back-specific shoulder taper.",
+    "View: straight-on BACK-FACING view — we are looking at the BACK of the jersey, not the front. Ghost mannequin or flat lay. Centered.",
+  ].join(" "),
+
+  frontShorts: [
+    "FRONT SHORTS — CONSTRUCTION SPECIFICATION:",
+    "Waistband: wide elastic waistband with internal drawcord, 4–5cm tall, primary-color or accent-color.",
+    "Waistband detail: visible drawcord exit with grommet or fabric tunnel at center front.",
+    "Side panels: design system panel geometry runs vertically down the outer leg.",
+    "Inseam length: modern basketball short length — approximately 3–5cm above the knee.",
+    "Front view: shows the front face of both legs, waistband, and side panel geometry.",
+    "Hem: clean hemline, no cuff, smooth cut edge with internal hem stitching.",
+    "Silhouette: relaxed athletic fit, slight taper toward the hem.",
+    "View: straight-on front-facing view. Ghost mannequin or flat lay. Centered.",
+  ].join(" "),
+
+  backShorts: [
+    "BACK SHORTS — CONSTRUCTION SPECIFICATION:",
+    "Waistband: same wide elastic waistband as front, showing rear view.",
+    "Back waistband: clean rear face of waistband, no visible drawcord (it exits front only).",
+    "Side panels: design system panel geometry continues from front, visible on both outer legs.",
+    "Back panel: large clean empty primary-color rear panel across both seat panels.",
+    "Back seam: inseam and seat seam construction visible, realistic stitching.",
+    "Inseam length: same knee-length as front view.",
+    "Hem: matching clean hemline.",
+    "Silhouette: relaxed athletic fit rear profile, slight seat curve for realistic drape.",
+    "View: straight-on BACK-FACING view — we are looking at the BACK of the shorts. Ghost mannequin or flat lay. Centered.",
+  ].join(" "),
+};
+
+/**
  * Builds the OpenAI image-generation prompt for a single garment view.
  *
- * CRITICAL DESIGN DECISION: hex colors appear at the TOP of the prompt as
- * MANDATORY requirements. OpenAI gpt-image-1 weighs prompt order heavily —
- * colors buried in the middle of long prompts get ignored. By placing exact
- * hex values as the FIRST thing the model reads, we eliminate color hallucination.
- *
- * The app assembles all 4 renders into the spec-board grid — the AI only
- * generates garment surfaces. No text, no logos, no layout.
+ * CRITICAL DESIGN DECISIONS:
+ * 1. Hex colors appear at the TOP — OpenAI weighs prompt order heavily; colors
+ *    buried mid-prompt get ignored.
+ * 2. Each view has its own independent garment anatomy spec from GARMENT_CONSTRUCTION.
+ *    The back jersey NEVER mirrors the front — different neckline, different shoulder
+ *    structure, different silhouette.
+ * 3. The app assembles all 4 renders into the spec-board grid. AI only generates
+ *    garment surfaces — no text, no logos, no layout.
  */
 function buildGarmentPrompt(
   view:         RenderViewKey,
@@ -332,69 +396,65 @@ function buildGarmentPrompt(
   const secondary = metadata.colorway.find(c => c.role.toLowerCase().includes("secondary"));
   const accent    = metadata.colorway.find(c => c.role.toLowerCase().includes("accent"));
 
-  // ── COLOR BLOCK — always first ────────────────────────────────────────────
+  // ── 1. COLOR BLOCK — always first (highest model attention weight) ─────────
   const colorLines = [
     primary   ? `BODY/PRIMARY panels: exact hex ${primary.hex}` : "",
     secondary ? `SIDE/SECONDARY panels: exact hex ${secondary.hex}` : "",
-    accent    ? `TRIM/ACCENT details: exact hex ${accent.hex}` : "",
+    accent    ? `TRIM/ACCENT details (collar binding, stripe edges, waistband): exact hex ${accent.hex}` : "",
   ].filter(Boolean);
 
   const colorBlock = colorLines.length > 0
-    ? [
-        `MANDATORY COLOR REQUIREMENTS — USE THESE EXACT HEX VALUES, NO SUBSTITUTIONS:`,
-        ...colorLines,
-      ].join("\n")
+    ? [`MANDATORY COLOR REQUIREMENTS — USE THESE EXACT HEX VALUES, NO SUBSTITUTIONS:`, ...colorLines].join("\n")
     : "";
 
-  // ── View-specific details ─────────────────────────────────────────────────
+  // ── 2. View-specific flags ────────────────────────────────────────────────
   const isJersey = view.includes("Jersey");
   const isFront  = view.startsWith("front");
 
-  const garmentName = isJersey
-    ? `basketball game jersey, ${isFront ? "front view" : "back view"}`
-    : `basketball game shorts, ${isFront ? "front view" : "back view"}`;
+  // ── 3. View-specific garment anatomy (independent per view) ───────────────
+  const constructionSpec = GARMENT_CONSTRUCTION[view];
 
-  const poseAndCamera = isFront
-    ? "Straight-on front view, garment centered on clean white background, ghost mannequin or flat lay"
-    : "Straight-on back view, garment centered on clean white background, ghost mannequin or flat lay";
+  // ── 4. Design system panel geometry from Claude ───────────────────────────
+  const garmentDirective = (metadata.description ?? "").slice(0, 180);
 
-  // ── Design system panel geometry from Claude ──────────────────────────────
-  const garmentDirective = (metadata.description ?? "").slice(0, 200);
-
-  // ── Brief details ─────────────────────────────────────────────────────────
+  // ── 5. Brief details ──────────────────────────────────────────────────────
   const construction = brief.sublimated === true  ? "sublimated full-color dye-into-fabric"
                      : brief.sublimated === false ? "tackle-twill stitched"
                      : "sublimated full-color dye-into-fabric";
-
   const numberStyle  = brief.number_style ? String(brief.number_style) : "";
 
+  // ── 6. Subject line ───────────────────────────────────────────────────────
+  const garmentSubject = isJersey
+    ? `Premium ${construction} basketball game jersey, ${isFront ? "front" : "back"} view, for ${teamName} athletic program.`
+    : `Premium ${construction} basketball game shorts, ${isFront ? "front" : "back"} view, for ${teamName} athletic program.`;
+
   return [
-    // ── 1. COLOR REQUIREMENTS (first — highest model attention) ──
+    // ── Colors first ──
     colorBlock,
 
-    // ── 2. SUBJECT ──
-    `Premium ${construction} ${garmentName} for ${teamName} athletic program.`,
+    // ── Subject ──
+    garmentSubject,
 
-    // ── 3. DESIGN SYSTEM GEOMETRY ──
-    `Design system: ${system.toUpperCase()}. Panel geometry: ${systemFull.slice(0, 180)}`,
+    // ── View-specific garment construction anatomy ──
+    constructionSpec,
 
-    // ── 4. DESIGN DETAILS FROM BRIEF ANALYSIS ──
-    garmentDirective ? `Panel construction details: ${garmentDirective}` : "",
+    // ── Design system panel geometry ──
+    `Design system: ${system.toUpperCase()}. Panel geometry and visual language: ${systemFull.slice(0, 160)}`,
 
-    // ── 5. RENDERING STYLE ──
-    `Rendering: photorealistic semi-3D athletic garment render. Realistic performance mesh fabric texture with visible micro-weave. Dimensional studio lighting from upper-left, soft fill from right. ${isJersey ? "Authentic rib-knit V-collar detail. " : "Elastic waistband with internal drawcord. "}Natural fabric drape and realistic seam stitching. Premium Nike/Adidas manufacturing quality.`,
+    // ── Panel details from brief analysis ──
+    garmentDirective ? `Panel construction details from design brief: ${garmentDirective}` : "",
 
-    // ── 6. CAMERA / POSE ──
-    poseAndCamera,
+    // ── Rendering quality ──
+    `Rendering: photorealistic semi-3D athletic garment. Performance mesh fabric with visible micro-weave texture. Dimensional studio lighting from upper-left with soft fill from right. Realistic seam stitching, natural fabric drape and weight. Production-accurate Nike/Adidas/FIBA-level manufacturing quality.`,
 
-    // ── 7. ABSOLUTE RESTRICTIONS ──
-    `CRITICAL — ABSOLUTELY ZERO: text of any kind, numbers, player numbers, jersey numbers, logos, brand marks, wordmarks, watermarks, graphic overlays, or symbols anywhere on the garment. All number zones and logo zones must be completely clean empty fabric panels with no markings whatsoever.${numberStyle ? ` (Number style ${numberStyle} is for production reference only — DO NOT render any numbers.)` : ""}`,
+    // ── Absolute restrictions ──
+    `CRITICAL — ABSOLUTELY ZERO on the garment: text, numbers, player numbers, logos, brand marks, wordmarks, watermarks, graphic overlays, or symbols of any kind. All chest, back, and side panels must be completely clean empty fabric. Logo zones are clean unmarked fabric panels.${numberStyle ? ` Number style "${numberStyle}" is for production reference only — DO NOT render any numbers.` : ""}`,
 
-    // ── 8. BACKGROUND ──
-    `Background: pure clean white (#ffffff). No shadows on background. No floor. No environment. Garment only.`,
+    // ── Background ──
+    `Background: pure clean white (#ffffff). No cast shadows on background. No floor, no environment. Isolated garment only.`,
 
-    // ── 9. QUALITY ──
-    `Output: single isolated garment, square composition, photorealistic premium sportswear quality.`,
+    // ── Output ──
+    `Output: single isolated garment render, square crop, photorealistic premium sportswear quality.`,
   ].filter(Boolean).join("\n\n");
 }
 
