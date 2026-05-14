@@ -39,6 +39,13 @@ export default function AdminTeamPage() {
   const [grantSuccess, setGrantSuccess] = useState("");
   const [revoking, setRevoking] = useState<string | null>(null);
 
+  // Reset password state
+  const [resetEmail, setResetEmail]       = useState("");
+  const [resetPassword, setResetPassword] = useState("");
+  const [resetting, setResetting]         = useState(false);
+  const [resetError, setResetError]       = useState("");
+  const [resetSuccess, setResetSuccess]   = useState("");
+
   useEffect(() => {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser();
@@ -104,6 +111,33 @@ export default function AdminTeamPage() {
       setTimeout(() => setGrantSuccess(""), 3000);
     }
     setGranting(false);
+  }
+
+  async function resetUserPassword(e: React.FormEvent) {
+    e.preventDefault();
+    setResetError("");
+    setResetSuccess("");
+    const email    = resetEmail.trim().toLowerCase();
+    const password = resetPassword;
+    if (!email || !password) return;
+    setResetting(true);
+
+    const res  = await fetch("/api/admin/reset-user-password", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ email, password }),
+    });
+    const body = await res.json() as { success?: boolean; error?: string };
+
+    if (!res.ok || body.error) {
+      setResetError(body.error ?? "Something went wrong.");
+    } else {
+      setResetSuccess(`Password updated for ${email}.`);
+      setResetEmail("");
+      setResetPassword("");
+      setTimeout(() => setResetSuccess(""), 4000);
+    }
+    setResetting(false);
   }
 
   async function revokeAdmin(id: string, email: string) {
@@ -219,6 +253,50 @@ export default function AdminTeamPage() {
               </div>
             )}
           </div>
+
+          {/* Reset user password */}
+          <form onSubmit={resetUserPassword} className="bg-gs-dark-2 border border-gs-border rounded-xl p-6 space-y-4">
+            <p className="text-xs font-display uppercase tracking-widest text-gs-gold">Reset User Password</p>
+            <p className="text-xs font-barlow text-gs-muted">
+              Force-set a new password for any user account. Works for clients, suppliers, and admins.
+            </p>
+            <div className="space-y-3">
+              <input
+                type="email"
+                value={resetEmail}
+                onChange={(e) => setResetEmail(e.target.value)}
+                placeholder="user@email.com"
+                required
+                className="w-full bg-gs-dark border border-gs-border rounded-lg px-4 py-3 text-gs-white font-barlow text-sm placeholder-gs-muted/60 focus:outline-none focus:border-gs-gold transition-colors"
+              />
+              <input
+                type="text"
+                value={resetPassword}
+                onChange={(e) => setResetPassword(e.target.value)}
+                placeholder="New password (min 8 characters)"
+                required
+                minLength={8}
+                className="w-full bg-gs-dark border border-gs-border rounded-lg px-4 py-3 text-gs-white font-barlow text-sm placeholder-gs-muted/60 focus:outline-none focus:border-gs-gold transition-colors"
+              />
+            </div>
+            {resetError && (
+              <p className="text-[#C41E1E] text-sm font-barlow bg-[#C41E1E]/10 border border-[#C41E1E]/30 rounded-lg px-4 py-3">
+                {resetError}
+              </p>
+            )}
+            {resetSuccess && (
+              <p className="text-green-400 text-sm font-barlow bg-green-400/10 border border-green-400/30 rounded-lg px-4 py-3">
+                {resetSuccess}
+              </p>
+            )}
+            <button
+              type="submit"
+              disabled={resetting || !resetEmail.trim() || resetPassword.length < 8}
+              className="w-full py-3 rounded-lg font-display font-bold text-sm uppercase tracking-widest bg-gs-dark border border-gs-border text-gs-white hover:border-gs-gold hover:text-gs-gold disabled:opacity-40 transition-all"
+            >
+              {resetting ? "Updating…" : "Set New Password"}
+            </button>
+          </form>
 
           {/* Grant access form */}
           <form onSubmit={grantAdmin} className="bg-gs-dark-2 border border-gs-border rounded-xl p-6 space-y-4">
