@@ -137,101 +137,22 @@ function RenderImage({ url, alt, className }: { url?: string; alt: string; class
 // ─── Premium renders board ────────────────────────────────────────────────────
 
 /**
- * Returns absolute-position CSS for the logo brand mark on the front jersey.
- * Logo is always small (~20% wide). Position follows gsLogoPlacement:
- *   left / left_chest  → upper-left of chest
- *   right / right_chest → upper-right of chest
- *   center / chest / (default) → centered above wordmark
+ * Returns absolute-position CSS for the logo brand mark overlay on the front jersey.
+ *
+ * The AI renders the jersey typography (wordmark + number) integrated into the
+ * fabric. React overlays ONLY the exact uploaded logo into the clean logo zone
+ * that the AI reserved. This way the logo is pixel-accurate while the typography
+ * follows the fabric surface naturally.
+ *
+ * Logo is intentionally small (~20% wide) — a brand mark, not the primary element.
  */
 function logoOverlayStyle(placement: string): React.CSSProperties {
   const p    = placement.toLowerCase().replace(/[\s_-]+/g, "");
-  const base = { position: "absolute" as const, top: "13%", width: "21%" };
-  if (p.includes("right")) return { ...base, right: "13%" };
-  if (p.includes("left"))  return { ...base, left:  "13%" };
+  const base = { position: "absolute" as const, top: "10%", width: "20%" };
+  if (p.includes("right")) return { ...base, right: "12%" };
+  if (p.includes("left"))  return { ...base, left:  "12%" };
+  // Default: centered (for "chest" / "center" placements)
   return { ...base, left: "50%", transform: "translateX(-50%)" };
-}
-
-/**
- * SVG athletic wordmark for the jersey chest area.
- *
- * Two-pass rendering: outline stroke (in secondary/accent color) drawn first
- * for the knockout/outline effect, then the white fill pass on top. The gentle
- * arch is calibrated to the name length — short names arch more, long names arch less.
- * Uses Impact / Arial Black for authentic basketball jersey typography weight.
- */
-function JerseyWordmark({
-  name,
-  outlineHex,
-}: {
-  name:       string;
-  outlineHex: string;
-}) {
-  const upper  = name.toUpperCase();
-  const len    = upper.length;
-  const vW     = 220;
-  const vH     = 52;
-  const cx     = vW / 2;
-  const yBase  = vH - 10;
-  // Gentle arch: shorter names have more lift, long names stay nearly flat
-  const lift   = Math.round(Math.max(3, Math.min(14, 65 / len)));
-  const arcD   = `M 4,${yBase} Q ${cx},${yBase - lift * 2.2} ${vW - 4},${yBase}`;
-  const fSize  = len > 11 ? 24 : len > 8 ? 29 : 34;
-  const lSpace = len > 11 ? 0   : len > 8 ? 1.5 : 3;
-  // Unique arc id per name to avoid cross-instance collisions
-  const uid    = `jw${upper.replace(/[^A-Z0-9]/g, "").slice(0, 6)}`;
-
-  return (
-    <svg
-      viewBox={`0 0 ${vW} ${vH}`}
-      xmlns="http://www.w3.org/2000/svg"
-      aria-label={upper}
-      style={{ width: "100%", overflow: "visible", display: "block" }}
-    >
-      <defs>
-        <path id={uid} d={arcD} />
-        <filter id={`${uid}sh`} x="-15%" y="-50%" width="130%" height="200%">
-          <feDropShadow dx="1" dy="2" stdDeviation="2.5"
-            floodColor="rgba(0,0,0,0.65)" floodOpacity="1" />
-        </filter>
-      </defs>
-
-      {/* Outline / knockout pass — secondary or accent color stroke */}
-      <text>
-        <textPath href={`#${uid}`} textAnchor="middle" startOffset="50%"
-          style={{
-            fontFamily: `"Arial Black", "Franklin Gothic Heavy", Impact, Arial, sans-serif`,
-            fontWeight: 900,
-            fontSize: fSize,
-            letterSpacing: lSpace,
-            fill:         outlineHex,
-            stroke:       outlineHex,
-            strokeWidth:  7,
-            strokeLinejoin: "round",
-            paintOrder:   "stroke fill",
-            textTransform: "uppercase",
-          } as React.CSSProperties}
-        >{upper}</textPath>
-      </text>
-
-      {/* White fill pass — sits on top of outline with drop shadow */}
-      <text filter={`url(#${uid}sh)`}>
-        <textPath href={`#${uid}`} textAnchor="middle" startOffset="50%"
-          style={{
-            fontFamily: `"Arial Black", "Franklin Gothic Heavy", Impact, Arial, sans-serif`,
-            fontWeight: 900,
-            fontSize: fSize,
-            letterSpacing: lSpace,
-            fill:         "#ffffff",
-            stroke:       outlineHex,
-            strokeWidth:  1.5,
-            strokeLinejoin: "round",
-            paintOrder:   "stroke fill",
-            textTransform: "uppercase",
-          } as React.CSSProperties}
-        >{upper}</textPath>
-      </text>
-    </svg>
-  );
 }
 
 function RendersBoard({ data }: { data: BoardData }) {
@@ -244,13 +165,9 @@ function RendersBoard({ data }: { data: BoardData }) {
   const designSystem  = (metadata.designSystem ?? "bold").toUpperCase();
   const logoPlacement = metadata.logoPlacement ?? "";
 
-  // Primary logo: exact uploaded asset — composited by React, not AI
+  // Primary logo: exact uploaded asset — composited by React into the clean logo zone
+  // that the AI reserved. Typography (wordmark + number) is AI-rendered into the fabric.
   const primaryLogo = logoUrls?.[0] ?? null;
-
-  // Wordmark outline color: secondary colorway > accent > neutral dark
-  const secondaryHex = colorway.find(c => c.role.toLowerCase().includes("secondary"))?.hex
-                    ?? colorway.find(c => c.role.toLowerCase().includes("accent"))?.hex
-                    ?? "#1a1a1a";
 
   return (
     <div
@@ -359,45 +276,28 @@ function RendersBoard({ data }: { data: BoardData }) {
 
           {/* Row labels + images */}
           <div className="flex-1 grid grid-cols-2 grid-rows-2">
-            {/* Front jersey — coordinated branding system: logo + wordmark */}
+            {/* Front jersey — AI renders integrated typography; React composites logo only */}
             <div className="relative border-r border-b border-gray-200 overflow-hidden" style={{ minHeight: 240 }}>
               <span className="absolute top-2 left-2.5 text-[6px] font-bold uppercase tracking-[0.28em] text-gray-300 z-10">Front</span>
               <RenderImage url={renders?.frontJersey} alt="Jersey front" className="w-full h-full" />
 
-              {/* ── Branding overlay ─────────────────────────────────────────── */}
-              <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 5 }}>
-
-                {/* Logo: small brand mark — Option A (left/right/center chest per placement) */}
-                {primaryLogo && (
-                  <div style={logoOverlayStyle(gsLogoPlacement ?? "chest")}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={primaryLogo}
-                      alt=""
-                      style={{
-                        width:      "100%",
-                        height:     "auto",
-                        objectFit:  "contain",
-                        filter:     "drop-shadow(0 1px 3px rgba(0,0,0,0.50))",
-                        display:    "block",
-                      }}
-                    />
-                  </div>
-                )}
-
-                {/* Team name wordmark: primary visual — SVG athletic typography */}
-                <div
-                  className="absolute inset-x-0 select-none"
-                  style={{
-                    top:          primaryLogo ? "42%" : "30%",
-                    paddingLeft:  "6%",
-                    paddingRight: "6%",
-                  }}
-                >
-                  <JerseyWordmark name={teamName} outlineHex={secondaryHex} />
+              {/* Logo composited into the clean reserved zone the AI left open */}
+              {primaryLogo && (
+                <div style={{ ...logoOverlayStyle(gsLogoPlacement ?? "left chest"), zIndex: 5 }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={primaryLogo}
+                    alt=""
+                    style={{
+                      width:     "100%",
+                      height:    "auto",
+                      objectFit: "contain",
+                      filter:    "drop-shadow(0 1px 2px rgba(0,0,0,0.45))",
+                      display:   "block",
+                    }}
+                  />
                 </div>
-
-              </div>
+              )}
             </div>
             <div className="relative border-b border-gray-200 overflow-hidden" style={{ minHeight: 240 }}>
               <span className="absolute top-2 left-2.5 text-[6px] font-bold uppercase tracking-[0.28em] text-gray-300 z-10">Front</span>
@@ -429,7 +329,7 @@ function RendersBoard({ data }: { data: BoardData }) {
           <div className="px-4 py-4">
             <p className="text-[7px] font-bold uppercase tracking-[0.28em] text-gray-400 mb-2">Render Quality</p>
             <p className="text-[8px] text-gray-500 leading-relaxed">
-              Semi-3D photorealistic. Logo and wordmark are your exact uploaded assets.
+              Semi-3D photorealistic. Typography sublimated into fabric by AI. Team logo composited from uploaded asset.
             </p>
           </div>
 

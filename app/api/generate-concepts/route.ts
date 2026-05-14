@@ -372,14 +372,20 @@ const GARMENT_CONSTRUCTION: Record<RenderViewKey, string> = {
 /**
  * Builds the OpenAI image-generation prompt for a single garment view.
  *
- * CRITICAL DESIGN DECISIONS:
- * 1. Hex colors appear at the TOP — OpenAI weighs prompt order heavily; colors
- *    buried mid-prompt get ignored.
- * 2. Each view has its own independent garment anatomy spec from GARMENT_CONSTRUCTION.
- *    The back jersey NEVER mirrors the front — different neckline, different shoulder
- *    structure, different silhouette.
- * 3. The app assembles all 4 renders into the spec-board grid. AI only generates
- *    garment surfaces — no text, no logos, no layout.
+ * SPLIT BRANDING ARCHITECTURE:
+ *
+ * JERSEYS — AI renders integrated typography + number:
+ *   The team name wordmark and player number must be sublimated/printed INTO
+ *   the fabric by the AI. React overlays cannot follow fabric contour, lighting,
+ *   or fold geometry — they always look pasted on. The AI handles all jersey
+ *   typography; React handles ONLY the exact uploaded logo (which the AI cannot
+ *   reproduce accurately).
+ *
+ * SHORTS — AI renders clean fabric only:
+ *   Shorts looked good without text. Maintained as clean panels.
+ *
+ * Colors always appear first — OpenAI weighs prompt order heavily.
+ * Each view has independent garment anatomy from GARMENT_CONSTRUCTION.
  */
 function buildGarmentPrompt(
   view:         RenderViewKey,
@@ -421,12 +427,60 @@ function buildGarmentPrompt(
   const construction = brief.sublimated === true  ? "sublimated full-color dye-into-fabric"
                      : brief.sublimated === false ? "tackle-twill stitched"
                      : "sublimated full-color dye-into-fabric";
-  const numberStyle  = brief.number_style ? String(brief.number_style) : "";
+  const numStyleHint  = brief.number_style ? String(brief.number_style) : "collegiate varsity";
+  const outlineColor  = secondary?.hex ?? accent?.hex ?? "#000000";
 
   // ── 6. Subject line ───────────────────────────────────────────────────────
   const garmentSubject = isJersey
     ? `Premium ${construction} basketball game jersey, ${isFront ? "front" : "back"} view, for ${teamName} athletic program.`
     : `Premium ${construction} basketball game shorts, ${isFront ? "front" : "back"} view, for ${teamName} athletic program.`;
+
+  // ── 7. Jersey branding hierarchy (jerseys only) ───────────────────────────
+  //   Typography must be rendered BY THE AI into the fabric — not overlaid.
+  //   React will composite only the exact uploaded logo into the clean logo zone.
+  const jerseyBranding = (() => {
+    if (!isJersey) return "";
+
+    const wordmarkName = teamName.toUpperCase();
+    const logoSide     = String(brief.gs_logo_placement ?? "left").toLowerCase().includes("right")
+                         ? "upper-right" : "upper-left";
+
+    if (view === "frontJersey") {
+      return [
+        `FRONT JERSEY BRANDING HIERARCHY — render these elements sublimated/printed INTO the fabric:`,
+
+        `LOGO ZONE (${logoSide} chest): Reserve a clean empty fabric area approximately 2 inches wide at ${logoSide} chest position. DO NOT render any logo or artwork here — this zone will be composited with the exact team logo in production. The fabric in this zone should be flat and unmarked.`,
+
+        `TEAM WORDMARK (primary visual): Render "${wordmarkName}" as the dominant chest element. Style: bold athletic jersey wordmark, slightly arched baseline following the chest contour, sublimated directly into the fabric surface, ${numStyleHint}-inspired letterforms. Width: approximately 60–65% of chest panel width. Typography must feel integrated INTO the jersey construction — following fabric drape, respecting chest curvature — NOT floating on top. Outline/stroke treatment using ${outlineColor} with white fill, layered for depth. Inspired by Nike Elite / NCAA tournament / EYBL jersey wordmarks.`,
+
+        `PLAYER NUMBER (secondary element): Render "00" centered below the team wordmark. Style: ${numStyleHint} numeral construction, varsity proportions, layered ${outlineColor} outline with white fill, sublimated into fabric. Proportionally balanced beneath the wordmark — authentic basketball hierarchy.`,
+
+        `ABSOLUTELY ZERO: external brand logos, Nike/Adidas/Jordan marks, shields, school crests, or any third-party branding. Only the wordmark and number above.`,
+      ].join(" ");
+    }
+
+    if (view === "backJersey") {
+      return [
+        `BACK JERSEY BRANDING — render sublimated/printed INTO the fabric:`,
+
+        `PLAYER NUMBER (dominant element): Render "00" large and centered on the back panel. Style: ${numStyleHint} numeral construction, approximately 50–55% of back panel height, layered ${outlineColor} outline with white fill, sublimated into the fabric with natural fabric drape wrapping the letterforms. This is the primary design element on the back — bold, athletic, authentic basketball construction.`,
+
+        `OPTIONAL TEAM IDENTIFIER: Optionally render "${wordmarkName}" in a smaller arched treatment above the number if appropriate for the design system and spacing allows — consistent with the front wordmark style but at reduced scale.`,
+
+        `ABSOLUTELY ZERO: external brand logos, shields, crests, or third-party marks.`,
+      ].join(" ");
+    }
+
+    return "";
+  })();
+
+  // ── 8. Branding restrictions (split by garment type) ─────────────────────
+  const brandingRestrictions = isJersey
+    // Jerseys: allow AI-rendered team wordmark + number (specified above).
+    // React composites the exact uploaded logo into the clean logo zone separately.
+    ? `CRITICAL — ABSOLUTELY ZERO on the jersey: external brand logos, Nike/Adidas/Jordan/Under Armour marks, shield emblems, university crests, sponsor marks, or third-party branding of any kind. Only the team wordmark and number described above are permitted.`
+    // Shorts: keep entirely clean — no text, no graphics.
+    : `CRITICAL — ABSOLUTELY ZERO on the shorts: text, numbers, logos, brand marks, wordmarks, watermarks, graphic overlays, or symbols of any kind. All panels must be completely clean fabric.`;
 
   return [
     // ── Colors first ──
@@ -447,8 +501,11 @@ function buildGarmentPrompt(
     // ── Rendering quality ──
     `Rendering: photorealistic semi-3D athletic garment. Performance mesh fabric with visible micro-weave texture. Dimensional studio lighting from upper-left with soft fill from right. Realistic seam stitching, natural fabric drape and weight. Production-accurate Nike/Adidas/FIBA-level manufacturing quality.`,
 
-    // ── Absolute restrictions ──
-    `CRITICAL — ABSOLUTELY ZERO on the garment: text, numbers, player numbers, logos, brand marks, wordmarks, watermarks, graphic overlays, or symbols of any kind. All chest, back, and side panels must be completely clean empty fabric. Logo zones are clean unmarked fabric panels.${numberStyle ? ` Number style "${numberStyle}" is for production reference only — DO NOT render any numbers.` : ""}`,
+    // ── Jersey branding (jerseys only — typography integrated into fabric by AI) ──
+    jerseyBranding,
+
+    // ── Restrictions ──
+    brandingRestrictions,
 
     // ── Background ──
     `Background: pure clean white (#ffffff). No cast shadows on background. No floor, no environment. Isolated garment only.`,
