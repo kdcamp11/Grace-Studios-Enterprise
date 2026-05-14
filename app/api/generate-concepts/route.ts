@@ -317,6 +317,40 @@ function buildClaudePrompt(
     : `LOGO ZONE RULE: Describe clean empty logo placement zones only. Write "Clean logo zone — [size] on [location]". Do not generate or describe any logo artwork.`;
 
   const systemLanguage = SYSTEM_VISUAL_LANGUAGE[designSystem] ?? SYSTEM_VISUAL_LANGUAGE.bold;
+  const isTracksuit    = sport.toLowerCase() === "tracksuits";
+
+  // ── Tracksuit-specific Claude constraints ──────────────────────────────────
+  const tracksuitConstraints = isTracksuit ? `
+═══ GRACE ATHLETICS TRACKSUIT CONSTRUCTION RULES — MANDATORY FOR ALL OUTPUT ═══
+These rules govern what you write in materials, features, and description. Any output that contradicts these rules is wrong.
+
+MATERIAL RULES:
+- Material is premium lightweight nylon woven shell — NOT polyester knit, NOT fleece, NOT cotton.
+- Use: "Shell: 100% Nylon Woven Shell", "Weight: 80–100GSM Lightweight Nylon", "Finish: Smooth matte or subtle sheen nylon"
+- Do NOT write: polyester, performance knit, fleece, cotton, mesh body fabric.
+
+FEATURES — FORBIDDEN TERMS (do NOT include any of these):
+- "elastic cuffs", "ribbed cuffs", "wrist cuffs", "rib cuffs", "sweatshirt cuffs"
+- "elastic hem", "ribbed waistband hem", "sweatshirt hem", "elastic waistband hem"
+- "ankle cuffs", "elastic ankle", "ribbed ankle", "ankle zip", "ankle drawcord", "ankle opening"
+- "jogger", "tapered leg", "slim fit", "fitted leg"
+- Any mention of cuffs at sleeve ends or ankle ends
+
+FEATURES — CORRECT TERMS TO USE:
+- "OPEN SLEEVE HEM — clean nylon edge" (not cuffed)
+- "OPEN-BOTTOM WIDE-LEG PANTS — straight nylon hem" (not cuffed, not tapered)
+- "STRAIGHT NYLON HEM or HIDDEN DRAWCORD JACKET HEM" (not ribbed waistband)
+- "FULL-LENGTH WIDE-LEG PANT SILHOUETTE"
+- "PREMIUM NYLON SHELL FABRIC"
+- "FULL-ZIP JACKET — STAND/MOCK COLLAR"
+- Features related to panels, zippers, pockets, design system geometry
+
+DESCRIPTION RULES:
+- When describing jacket: do NOT mention ribbed cuffs, elastic cuffs, or waistband rib
+- When describing pants: do NOT mention ankle cuffs, tapered leg, or jogger silhouette
+- Jacket sleeves end with clean open hems. Jacket hem is straight nylon or hidden drawcord.
+- Pants are wide-leg with open bottom nylon hem — they stack at the ankle.
+`.trim() : "";
 
   return `You are a senior sportswear designer at Grace Athletics analyzing a brief to produce controlled render directives.
 
@@ -341,6 +375,7 @@ ${vision}
 ${colorInstruction}
 
 ${logoRule}
+${tracksuitConstraints ? `\n${tracksuitConstraints}` : ""}
 
 ═══ OUTPUT FORMAT ═══
 Return ONLY valid JSON — no markdown fences:
@@ -351,17 +386,28 @@ Return ONLY valid JSON — no markdown fences:
     {"role": "Secondary", "name": "color name", "hex": "#xxxxxx", "pantone": "Pantone XXXX C"},
     {"role": "Accent",    "name": "color name", "hex": "#xxxxxx"}
   ],
-  "materials": [
+  "materials": ${isTracksuit
+    ? `[
+    "Shell: 100% Nylon Woven Shell",
+    "Lining: 100% Polyester Mesh",
+    "Weight: 80–100GSM Lightweight Nylon",
+    "Finish: Smooth Matte Nylon"
+  ]`
+    : `[
     "Shell: 100% Recycled Polyester",
     "Lining: 100% Polyester Mesh",
     "Weight: 160GSM Performance Knit"
-  ],
+  ]`
+  },
   "features": [
-    "4–8 short feature labels following ${designSystem} system construction language",
+    ${isTracksuit
+      ? `"4–8 short feature labels. MUST include: open sleeve hem, open-bottom wide-leg pants, nylon shell. MUST NOT include: elastic cuffs, ribbed cuffs, ankle cuffs, jogger, tapered. Follow ${designSystem} system construction language."`
+      : `"4–8 short feature labels following ${designSystem} system construction language"`
+    },
     "Match the exact feature list style shown in the spec-board reference image"
   ],
   "logoPlacement": "One precise sentence: Grace Athletics logo placement zone description",
-  "description": "GARMENT RENDER DIRECTIVE (max 80 words): Describe panel geometry and design details for ${designSystem.toUpperCase()} system ${sport} uniforms. Specify: body panel zones and their color roles (Primary/Secondary/Accent), diagonal or geometric cut lines with approximate angles, collar style, side panel construction, waistband style. NO color names — color assignment happens separately. Focus on geometry and construction only."
+  "description": "GARMENT RENDER DIRECTIVE (max 80 words): Describe panel geometry and design details for ${designSystem.toUpperCase()} system ${isTracksuit ? "tracksuit" : sport} uniforms. Specify: body panel zones and their color roles (Primary/Secondary/Accent), diagonal or geometric cut lines with approximate angles, collar style, side panel construction, ${isTracksuit ? "OPEN sleeve hems, WIDE-LEG OPEN-BOTTOM pant silhouette" : "waistband style"}. NO color names — color assignment happens separately. Focus on geometry and construction only."
 }`.trim();
 }
 
