@@ -2,14 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
 import GraceLogo from "@/components/GraceLogo";
 
 export default function ForgotPasswordPage() {
-  const [email, setEmail]       = useState("");
+  const [email, setEmail]           = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [sent, setSent]         = useState(false);
-  const [error, setError]       = useState("");
+  const [sent, setSent]             = useState(false);
+  const [error, setError]           = useState("");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -17,13 +16,21 @@ export default function ForgotPasswordPage() {
     setSubmitting(true);
     setError("");
 
-    const supabase = createClient();
-    const { error: authError } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
-    });
+    try {
+      const res  = await fetch("/api/auth/reset-password", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ email }),
+      });
+      const body = await res.json() as { success?: boolean; error?: string };
 
-    if (authError) {
-      setError(authError.message);
+      if (!res.ok || body.error) {
+        setError(body.error ?? "Something went wrong. Please try again.");
+        setSubmitting(false);
+        return;
+      }
+    } catch {
+      setError("Network error. Please check your connection and try again.");
       setSubmitting(false);
       return;
     }
