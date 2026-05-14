@@ -21,6 +21,7 @@ interface BoardData {
   teamName:    string;
   orderNumber: string;
   metadata:    DesignMetadata;
+  logoUrls:    string[];   // exact uploaded logos from brief — composited by app, not AI
 }
 
 // ─── Generating state UI ──────────────────────────────────────────────────────
@@ -135,7 +136,7 @@ function RenderImage({ url, alt, className }: { url?: string; alt: string; class
 // ─── Premium renders board ────────────────────────────────────────────────────
 
 function RendersBoard({ data }: { data: BoardData }) {
-  const { teamName, orderNumber, metadata } = data;
+  const { teamName, orderNumber, metadata, logoUrls } = data;
   const renders       = metadata.renders;
   const colorway      = metadata.colorway      ?? [];
   const materials     = metadata.materials     ?? [];
@@ -143,6 +144,9 @@ function RendersBoard({ data }: { data: BoardData }) {
   const garmentType   = metadata.garmentType   ?? "Basketball Uniform";
   const designSystem  = (metadata.designSystem ?? "bold").toUpperCase();
   const logoPlacement = metadata.logoPlacement ?? "";
+
+  // Primary logo: exact uploaded asset — composited by React, not AI
+  const primaryLogo = logoUrls?.[0] ?? null;
 
   return (
     <div
@@ -174,6 +178,20 @@ function RendersBoard({ data }: { data: BoardData }) {
             <p className="text-sm font-bold uppercase tracking-wide text-gray-900 leading-tight break-words">{teamName}</p>
             <p className="text-[8px] uppercase tracking-[0.18em] text-gray-400 mt-1">{garmentType}</p>
           </div>
+
+          {/* Uploaded logo preview — locked asset confirmation */}
+          {primaryLogo && (
+            <div className="px-5 py-3 border-b border-gray-100">
+              <p className="text-[7px] font-bold uppercase tracking-[0.28em] text-gray-400 mb-2">Team Logo</p>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={primaryLogo}
+                alt={`${teamName} logo`}
+                className="max-h-12 w-auto object-contain"
+                style={{ maxWidth: "100%" }}
+              />
+            </div>
+          )}
 
           {/* Design system badge */}
           <div className="px-5 py-3 border-b border-gray-100">
@@ -237,10 +255,25 @@ function RendersBoard({ data }: { data: BoardData }) {
 
           {/* Row labels + images */}
           <div className="flex-1 grid grid-cols-2 grid-rows-2">
-            {/* Front row label */}
+            {/* Front jersey — with uploaded logo composited on top */}
             <div className="relative border-r border-b border-gray-200 overflow-hidden" style={{ minHeight: 240 }}>
               <span className="absolute top-2 left-2.5 text-[6px] font-bold uppercase tracking-[0.28em] text-gray-300 z-10">Front</span>
               <RenderImage url={renders?.frontJersey} alt="Jersey front" className="w-full h-full" />
+              {/* Exact uploaded logo composited by app — not AI-generated */}
+              {primaryLogo && (
+                <div
+                  className="absolute inset-0 flex items-start justify-center pointer-events-none"
+                  style={{ paddingTop: "20%", zIndex: 5 }}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={primaryLogo}
+                    alt={`${teamName} logo`}
+                    className="object-contain drop-shadow-sm"
+                    style={{ width: "32%", maxHeight: "28%", opacity: 0.92 }}
+                  />
+                </div>
+              )}
             </div>
             <div className="relative border-b border-gray-200 overflow-hidden" style={{ minHeight: 240 }}>
               <span className="absolute top-2 left-2.5 text-[6px] font-bold uppercase tracking-[0.28em] text-gray-300 z-10">Front</span>
@@ -510,7 +543,7 @@ export default function ConceptsPage() {
   const loadBoard = useCallback(async (): Promise<boolean> => {
     const { data: briefRow } = await supabase
       .from("briefs")
-      .select("ai_prompt")
+      .select("ai_prompt, logo_urls")
       .eq("order_id", order_id)
       .single();
 
@@ -582,7 +615,12 @@ export default function ConceptsPage() {
     const teamName    = (clientData as { name?: string })?.name ?? "Your Team";
     const orderNumber = orderRow?.order_number ?? order_id.slice(0, 8).toUpperCase();
 
-    setBoardData({ teamName, orderNumber, metadata });
+    // Extract exact uploaded logos from the brief — composited by the app, not the AI
+    const logoUrls: string[] = Array.isArray(briefRow?.logo_urls)
+      ? (briefRow.logo_urls as unknown[]).filter((u): u is string => typeof u === "string" && u.startsWith("http"))
+      : [];
+
+    setBoardData({ teamName, orderNumber, metadata, logoUrls });
     return true;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [order_id]);
