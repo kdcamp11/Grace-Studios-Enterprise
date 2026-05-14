@@ -401,58 +401,50 @@ function isColorDark(hex: string): boolean {
  */
 const TRACKSUIT_CONSTRUCTION: Record<RenderViewKey, string> = {
   frontJersey: [
-    "FRONT TRACK JACKET — CONSTRUCTION SPECIFICATION:",
-    "This is a fashion-forward TRACK JACKET in a nylon or nylon-blend woven fabric — smooth, slightly lustrous surface with subtle sheen, NOT fleece, NOT cotton, NOT knit.",
-    "Full-length center-front zipper with a clean zip guard, visible metal zip pull.",
-    "Collar: structured mock-neck or funnel collar, 3–4cm tall, bonded or woven fabric (NOT ribbed knit), sitting high on the neck.",
-    "Chest: two front panels divided by the center zip. Clean primary-color nylon fabric with design system panel geometry across both sides.",
-    "Shoulders: set-in sleeve seams, clean athletic shoulder structure.",
-    "Sleeves: full-length sleeves — NO ribbed cuffs. Sleeves end in a clean open hem: a simple folded or bonded woven edge, flat and unfinished-looking, NO elastic, NO knit rib band.",
-    "Side pockets: zip pockets at hip level on both sides.",
-    "Hem: OPEN BOTTOM — the jacket hem is a clean raw or bonded woven edge, completely open with NO ribbed waistband, NO elastic band, NO rib-knit trim. The jacket hangs open and loose at the bottom.",
-    "Silhouette: relaxed-to-oversized fashion cut — straight boxy drop, NOT fitted at waist. Streetwear proportion.",
-    "Material rendering: nylon surface with subtle highlight on folds, clean woven texture, slightly glossy.",
-    "View: straight-on front-facing view. Ghost mannequin or flat lay. Centered.",
+    "FRONT TRACK JACKET — CONSTRUCTION:",
+    "Material: premium lightweight nylon shell — smooth woven surface, subtle sheen, soft reflective highlights on folds, light crinkle texture. NOT fleece. NOT cotton. NOT knit.",
+    "Full-length center-front zipper with clean zip guard, visible metal pull.",
+    "Collar: structured mock-neck or funnel collar, 3–4cm tall, clean bonded woven nylon — NOT ribbed, NOT knit.",
+    "Sleeves: full-length, falling naturally. END IN A CLEAN OPEN NYLON HEM — the sleeve edge is a simple flat woven edge with no closure. ZERO ribbed cuffs. ZERO elastic wrist bands. ZERO sweatshirt-style cuffs. The sleeve opening is loose and open.",
+    "Jacket hem: clean straight nylon edge or adjustable drawcord. NEVER a ribbed waistband. NEVER elastic rib band. The bottom hem is flat nylon.",
+    "Silhouette: relaxed, slightly oversized. NOT fitted. NOT cropped. Straight drop from shoulder.",
+    "Side zip pockets at hip level.",
+    "View: straight-on front-facing. Ghost mannequin or clean flat lay. Centered.",
   ].join(" "),
 
   backJersey: [
-    "BACK TRACK JACKET — CONSTRUCTION SPECIFICATION:",
-    "This is the BACK VIEW of a fashion-forward TRACK JACKET in nylon woven fabric — smooth, slightly lustrous surface with subtle sheen.",
-    "Do NOT show a front zipper or chest.",
-    "Upper back yoke: horizontal seam across the upper back at shoulder blade level.",
-    "Back collar: top of the stand/funnel collar visible at the neckline, smooth woven fabric — NO ribbing.",
-    "Main back panel: large clean primary-color nylon area — the dominant branding zone. No zipper.",
-    "Sleeve backs: full-length sleeves ending in clean open hems — NO ribbed cuffs, NO elastic. Clean folded or bonded woven edge.",
-    "Back hem: OPEN BOTTOM — clean woven edge, NO ribbed waistband, NO elastic band. Jacket falls open and loose.",
-    "Silhouette: relaxed-to-oversized, straight boxy rear profile. Streetwear proportion.",
-    "Material rendering: nylon sheen visible on back panels and sleeves.",
+    "BACK TRACK JACKET — CONSTRUCTION:",
+    "Material: premium lightweight nylon shell — smooth woven surface, subtle sheen. NOT fleece. NOT cotton.",
+    "Back view only — do NOT show front zipper.",
+    "Collar: back of mock-neck/funnel collar visible at neckline, clean woven nylon, NOT ribbed.",
+    "Sleeve backs: full-length, ending in CLEAN OPEN NYLON HEMS — no ribbed cuffs, no elastic, completely open clean edge.",
+    "Jacket hem (back): flat straight nylon hem, clean edge. NEVER ribbed. NEVER elastic.",
+    "Silhouette: relaxed oversized back profile, natural shoulder width.",
+    "Material: nylon sheen and soft highlights on back panels and sleeves.",
     "View: straight-on BACK-FACING view. Ghost mannequin or flat lay. Centered.",
   ].join(" "),
 
   frontShorts: [
-    "FRONT TRACK PANTS — CONSTRUCTION SPECIFICATION:",
-    "These are fashion-forward TRACK PANTS in a nylon or nylon-blend woven fabric — smooth, slightly lustrous surface, NOT fleece, NOT cotton.",
-    "Full ankle-length athletic pants.",
-    "Waistband: wide elastic waistband, 5–6cm tall, with internal drawcord and visible drawcord exits at center front. Waistband can be woven or bonded.",
-    "Leg fit: relaxed-to-wide leg — straight or slightly tapered. Fashion/streetwear proportion, NOT slim fit.",
-    "Side panels: design system panel geometry runs as a continuous stripe or panel down the full outer leg length.",
-    "Pockets: side slash or zip pockets at hip level on both legs.",
-    "Ankle hem: OPEN BOTTOM — clean raw or bonded woven ankle hem, NO ribbed cuffs, NO elastic ankle band. Pants fall open at the ankle.",
-    "Inseam: full-length inseam, clean stitching.",
-    "Material rendering: nylon woven surface with subtle highlight on folds.",
-    "View: straight-on front-facing view. Ghost mannequin or flat lay. Centered.",
+    "FRONT TRACK PANTS — CONSTRUCTION:",
+    "Material: premium lightweight nylon shell — smooth woven surface, subtle sheen, soft folds. NOT fleece. NOT cotton.",
+    "Full ankle-length WIDE-LEG track pants. NOT joggers. NOT tapered. NOT slim.",
+    "LEG SILHOUETTE: straight wide leg from hip to ankle — the leg width does NOT narrow below the knee. Wide open leg opening.",
+    "ANKLE HEM: OPEN BOTTOM — clean wide open nylon hem, completely unfinished or simply hemmed. ZERO elastic ankle bands. ZERO ribbed ankle cuffs. ZERO drawcord ankle closures. The hem opening is WIDE and LOOSE, falling open over the shoe.",
+    "Waistband: wide clean elastic or woven waistband at the top, 5–6cm, with visible drawcord at center front.",
+    "Side design panels run full outer leg length.",
+    "Hip pockets on both sides.",
+    "View: straight-on front-facing. Both full-length wide legs visible. Ghost mannequin or flat lay. Centered.",
   ].join(" "),
 
   backShorts: [
-    "BACK TRACK PANTS — CONSTRUCTION SPECIFICATION:",
-    "This is the BACK VIEW of fashion-forward TRACK PANTS in nylon woven fabric.",
-    "Full ankle-length athletic pants.",
-    "Waistband: same wide waistband as front, clean rear face, no drawcord visible at back.",
-    "Back panel: large clean primary-color nylon seat and back-of-leg panels — the dominant rear design zone.",
-    "Side panels: design system geometry continues from front, full-length stripe visible on both outer legs.",
-    "Ankle hem: OPEN BOTTOM — clean raw or bonded woven ankle edge, NO ribbed cuffs, NO elastic ankle band.",
-    "Silhouette: relaxed wide leg, natural rear drape from seat to open ankle.",
-    "Material rendering: nylon sheen visible on back panels.",
+    "BACK TRACK PANTS — CONSTRUCTION:",
+    "Material: premium lightweight nylon shell — smooth woven surface. NOT fleece. NOT cotton.",
+    "Full ankle-length WIDE-LEG track pants — back view. NOT joggers. NOT tapered.",
+    "LEG SILHOUETTE: straight wide leg from hip to ankle with no taper. Wide open hem visible at bottom.",
+    "ANKLE HEM: OPEN BOTTOM — clean wide open nylon hem. ZERO ribbed cuffs. ZERO elastic ankle bands. Pants fall open and wide at the ankle.",
+    "Waistband back face: clean flat waistband, no drawcord visible from rear.",
+    "Side design panels continue from front, full leg length.",
+    "Material: nylon sheen on back panels.",
     "View: straight-on BACK-FACING view. Ghost mannequin or flat lay. Centered.",
   ].join(" "),
 };
@@ -535,52 +527,69 @@ const GARMENT_CONSTRUCTION: Record<RenderViewKey, string> = {
 // standard for all Grace Athletics tracksuit generations.
 
 const GRACE_TRACKSUIT_SYSTEM = `
-GRACE ATHLETICS TRACKSUIT RENDER SYSTEM
+GRACE ATHLETICS TRACKSUIT RENDER SYSTEM — PERMANENT HARD RULES
 
-DEFAULT TRACKSUIT RULES (ALWAYS APPLY UNLESS OTHERWISE SPECIFIED):
-- Tracksuit pants must ALWAYS be open-bottom/wide-leg. NO elastic ankle cuffs.
-- Jackets must NEVER have wrist cuffs. Sleeves end in a clean open hem.
-- Jacket sleeves fall naturally with a relaxed drape.
-- Use a premium nylon/woven technical material aesthetic.
-- Fabric must look lightweight, smooth, slightly reflective, and luxury athletic.
-- Garments must feel like elevated modern sportswear — NOT cotton fleece, NOT warmup sweats.
-- Overall silhouette must feel fashion-forward and premium.
+═══════════════════════════════════════════════
+MATERIAL — NON-NEGOTIABLE:
+═══════════════════════════════════════════════
+The tracksuit MUST be rendered in premium lightweight nylon — NOT fleece, NOT cotton, NOT standard warmup material, NOT jersey knit.
+Fabric surface: smooth woven nylon texture with a subtle sheen, soft reflective highlights on folds, light crinkle where fabric bends.
+The material must look lightweight, technical, and slightly reflective — like luxury nylon shell sportswear (e.g. premium football training kit, Kappa, Stone Island track, Fear of God Athletics).
 
+═══════════════════════════════════════════════
+PANTS — HARD CONSTRUCTION RULES:
+═══════════════════════════════════════════════
+- WIDE-LEG fit. Pants fall STRAIGHT from hip to hem with no taper below the knee.
+- OPEN BOTTOM: pants end in a clean open nylon hem. The hem opening is wide enough to cover the shoe — loose and flowing.
+- ABSOLUTELY NO ankle cuffs of any kind — no elastic cuffs, no ribbed cuffs, no drawcord ankle closures.
+- NOT a jogger. NOT tapered. NOT slim fit. NOT skinny.
+- The leg opening must be visibly wide and relaxed at the bottom.
+- Silhouette: relaxed/straight/wide from hip to open hem.
+
+═══════════════════════════════════════════════
+JACKET — HARD CONSTRUCTION RULES:
+═══════════════════════════════════════════════
+- SLEEVE HEM: sleeves end in a clean open nylon hem — no ribbing, no elastic band, no drawcord, no sweatshirt cuff of any kind. Sleeve falls naturally with an open clean edge.
+- JACKET HEM: bottom hem is a straight nylon edge or a clean adjustable drawcord hem. NEVER a ribbed sweatshirt waistband. NEVER an elastic rib band at the hem.
+- Silhouette: relaxed and slightly oversized — not fitted, not cropped, not boxy-stiff.
+- Full-length front zipper with clean zip guard.
+
+═══════════════════════════════════════════════
+RENDER STYLE — REQUIRED:
+═══════════════════════════════════════════════
+- 3D semi-photorealistic apparel render — NOT a flat illustration, NOT vector art, NOT Illustrator-style sketch.
+- Garment must show: realistic drape, natural folds, realistic stitching, soft shadows, material depth, nylon surface sheen.
+- Lighting: soft studio lighting, subtle highlights on fabric planes, natural shadow in folds.
+- Quality: premium sportswear campaign render — comparable to Nike Tech Fleece, Adidas training collection, or Fear of God Athletics editorial photography.
+
+═══════════════════════════════════════════════
 STYLE DIRECTION:
-The fashion language must match premium dark-colorway Grace Athletics tracksuits.
-The render must feel: premium, modern, technical, sporty, fashion-forward, luxury athleticwear inspired, clean and elevated.
+═══════════════════════════════════════════════
+Feel: premium, modern, technical, sporty, fashion-forward, luxury athleticwear.
+Comparable to: luxury football training suits, premium track fashion, elevated street-athletic apparel, modern designer sportswear.
+Keep palette premium and restrained. Branding understated and clean.
 
-AVOID:
-- Flat illustrator-style fashion sketches
-- Cartoon styling
-- Generic teamwear energy
-- Stiff fabrics or heavy fleece textures
+═══════════════════════════════════════════════
+HARD AVOID LIST:
+═══════════════════════════════════════════════
+- Fleece texture of any kind
+- Cotton sweatshirt material
+- Ribbed cuffs on sleeves or ankles
+- Elastic ankle bands
+- Jogger-fit tapered legs
+- Tight or slim-fit silhouette
+- Basic team warmup suit aesthetic
+- Flat vector / Illustrator / sketch look
 - Esports aesthetics
-- Oversized repeated logos
-- Basic mockup presentation
+- Heavy or stiff-looking fabric
+- Repeated logo patterns
+- Generic sportswear mockup energy
 
-RENDER STYLE:
-- High-end 3D apparel render
-- Semi-photorealistic garment visualization
-- Premium fashion presentation quality
-- Soft realistic lighting with visible garment depth and material texture
-- Realistic folds, stitching, and drape
-- Technical apparel rendering quality
-- Modern sportswear campaign aesthetic
-
-MATERIAL DIRECTION:
-Use: nylon, woven performance fabric, lightweight technical shell material, luxury training wear textures, subtle sheen, smooth premium fabric reflections.
-The garments should resemble: luxury football training suits, premium track fashion, elevated street-athletic apparel, modern designer sportswear.
-Keep the palette premium and restrained.
-
-LOGO RULES:
-- Do not repeat the logo across the pants or back unless explicitly requested.
-- Branding must feel premium and understated.
-- Keep typography clean and balanced.
-
+═══════════════════════════════════════════════
 DESIGN LANGUAGE:
-The clothing itself carries the visual identity through: seam placement, panel construction, silhouette, gradients, piping, shape language, movement lines, color blocking, material contrast.
-The style must feel like a real premium sportswear brand collection.
+═══════════════════════════════════════════════
+Visual identity is carried through seam placement, panel construction, silhouette, gradients, piping, shape language, movement lines, color blocking, and material contrast.
+The result must feel like a real premium sportswear brand collection — not a generic teamwear uniform.
 `.trim();
 
 // ─────────────────────────────────────────────────────────────────────────────
