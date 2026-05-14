@@ -18,10 +18,11 @@ interface GenerationProgress {
 }
 
 interface BoardData {
-  teamName:    string;
-  orderNumber: string;
-  metadata:    DesignMetadata;
-  logoUrls:    string[];   // exact uploaded logos from brief — composited by app, not AI
+  teamName:       string;
+  orderNumber:    string;
+  metadata:       DesignMetadata;
+  logoUrls:       string[];   // exact uploaded logos from brief — composited by app, not AI
+  gsLogoPlacement: string;   // "chest" | "left_chest" | "right_chest" | etc.
 }
 
 // ─── Generating state UI ──────────────────────────────────────────────────────
@@ -135,8 +136,22 @@ function RenderImage({ url, alt, className }: { url?: string; alt: string; class
 
 // ─── Premium renders board ────────────────────────────────────────────────────
 
+/**
+ * Converts the gs_logo_placement field into CSS flex-alignment values
+ * for the logo overlay container on the jersey render.
+ */
+function resolvePlacementStyle(placement: string): React.CSSProperties {
+  const p = placement.toLowerCase().replace(/[\s_-]+/g, "");
+  // Vertical: all basketball jersey logos sit in the upper chest area
+  const paddingTop = "18%";
+  if (p.includes("left"))  return { paddingTop, paddingLeft: "12%",  justifyContent: "flex-start", alignItems: "flex-start" };
+  if (p.includes("right")) return { paddingTop, paddingRight: "12%", justifyContent: "flex-end",   alignItems: "flex-start" };
+  // Default: center chest
+  return { paddingTop, justifyContent: "center", alignItems: "flex-start" };
+}
+
 function RendersBoard({ data }: { data: BoardData }) {
-  const { teamName, orderNumber, metadata, logoUrls } = data;
+  const { teamName, orderNumber, metadata, logoUrls, gsLogoPlacement } = data;
   const renders       = metadata.renders;
   const colorway      = metadata.colorway      ?? [];
   const materials     = metadata.materials     ?? [];
@@ -146,7 +161,8 @@ function RendersBoard({ data }: { data: BoardData }) {
   const logoPlacement = metadata.logoPlacement ?? "";
 
   // Primary logo: exact uploaded asset — composited by React, not AI
-  const primaryLogo = logoUrls?.[0] ?? null;
+  const primaryLogo    = logoUrls?.[0] ?? null;
+  const placementStyle = resolvePlacementStyle(gsLogoPlacement ?? "chest");
 
   return (
     <div
@@ -255,25 +271,43 @@ function RendersBoard({ data }: { data: BoardData }) {
 
           {/* Row labels + images */}
           <div className="flex-1 grid grid-cols-2 grid-rows-2">
-            {/* Front jersey — with uploaded logo composited on top */}
+            {/* Front jersey — logo + wordmark composited by app, not AI */}
             <div className="relative border-r border-b border-gray-200 overflow-hidden" style={{ minHeight: 240 }}>
               <span className="absolute top-2 left-2.5 text-[6px] font-bold uppercase tracking-[0.28em] text-gray-300 z-10">Front</span>
               <RenderImage url={renders?.frontJersey} alt="Jersey front" className="w-full h-full" />
-              {/* Exact uploaded logo composited by app — not AI-generated */}
+
+              {/* Logo overlay — exact uploaded asset, positioned by gs_logo_placement */}
               {primaryLogo && (
                 <div
-                  className="absolute inset-0 flex items-start justify-center pointer-events-none"
-                  style={{ paddingTop: "20%", zIndex: 5 }}
+                  className="absolute inset-0 flex pointer-events-none"
+                  style={{ ...placementStyle, zIndex: 5 }}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={primaryLogo}
                     alt={`${teamName} logo`}
-                    className="object-contain drop-shadow-sm"
-                    style={{ width: "32%", maxHeight: "28%", opacity: 0.92 }}
+                    className="object-contain drop-shadow-sm flex-shrink-0"
+                    style={{ width: "30%", maxHeight: "26%" }}
                   />
                 </div>
               )}
+
+              {/* Team name wordmark — exact submitted text, never AI-generated */}
+              <div
+                className="absolute inset-x-0 pointer-events-none flex justify-center"
+                style={{ top: primaryLogo ? "47%" : "36%", zIndex: 5 }}
+              >
+                <span
+                  className="font-bold uppercase tracking-[0.18em] text-white select-none"
+                  style={{
+                    fontSize: "clamp(7px, 3.2%, 13px)",
+                    textShadow: "0 1px 3px rgba(0,0,0,0.55), 0 0 8px rgba(0,0,0,0.3)",
+                    letterSpacing: "0.18em",
+                  }}
+                >
+                  {teamName}
+                </span>
+              </div>
             </div>
             <div className="relative border-b border-gray-200 overflow-hidden" style={{ minHeight: 240 }}>
               <span className="absolute top-2 left-2.5 text-[6px] font-bold uppercase tracking-[0.28em] text-gray-300 z-10">Front</span>
@@ -305,7 +339,7 @@ function RendersBoard({ data }: { data: BoardData }) {
           <div className="px-4 py-4">
             <p className="text-[7px] font-bold uppercase tracking-[0.28em] text-gray-400 mb-2">Render Quality</p>
             <p className="text-[8px] text-gray-500 leading-relaxed">
-              Semi-3D photorealistic. Logos composited in production.
+              Semi-3D photorealistic. Logo and wordmark are your exact uploaded assets.
             </p>
           </div>
 
@@ -543,7 +577,7 @@ export default function ConceptsPage() {
   const loadBoard = useCallback(async (): Promise<boolean> => {
     const { data: briefRow } = await supabase
       .from("briefs")
-      .select("ai_prompt, logo_urls")
+      .select("ai_prompt, logo_urls, gs_logo_placement")
       .eq("order_id", order_id)
       .single();
 
@@ -620,7 +654,9 @@ export default function ConceptsPage() {
       ? (briefRow.logo_urls as unknown[]).filter((u): u is string => typeof u === "string" && u.startsWith("http"))
       : [];
 
-    setBoardData({ teamName, orderNumber, metadata, logoUrls });
+    const gsLogoPlacement = (briefRow?.gs_logo_placement as string | null) ?? "chest";
+
+    setBoardData({ teamName, orderNumber, metadata, logoUrls, gsLogoPlacement });
     return true;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [order_id]);
