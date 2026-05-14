@@ -365,6 +365,22 @@ Return ONLY valid JSON — no markdown fences:
 }`.trim();
 }
 
+// ─── Color utilities ──────────────────────────────────────────────────────────
+
+/**
+ * Returns true when a hex color is perceptually dark (relative luminance < 0.35).
+ * Used to decide which palette color gives the logo sufficient contrast.
+ */
+function isColorDark(hex: string): boolean {
+  const h = hex.replace(/^#/, "").padEnd(6, "0");
+  const r = parseInt(h.slice(0, 2), 16) / 255;
+  const g = parseInt(h.slice(2, 4), 16) / 255;
+  const b = parseInt(h.slice(4, 6), 16) / 255;
+  // WCAG relative luminance
+  const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  return lum < 0.35;
+}
+
 // ─── Garment render prompt builder ────────────────────────────────────────────
 
 /**
@@ -508,9 +524,16 @@ function buildGarmentPrompt(
                          ? "upper-right" : "upper-left";
 
     if (view === "frontJersey") {
+      // ── Logo recolor: pick contrasting palette color based on body luminance ──
+      const bodyIsDark    = primary ? isColorDark(primary.hex) : true;
+      // Dark body → use secondary or accent (lighter marks); light body → use primary or accent
+      const logoRecolorHex = bodyIsDark
+        ? (secondary?.hex ?? accent?.hex ?? "#ffffff")
+        : (primary?.hex   ?? accent?.hex ?? "#000000");
+
       const logoZone = hasLogoRef
-        // ── Logo reference provided: integrate into fabric naturally ──
-        ? `LOGO INTEGRATION (${logoSide} chest): The provided image is the team's uploaded logo. Integrate it naturally into the ${logoSide} chest area, approximately 2–2.5 inches wide. Print/sublimate it into the jersey fabric with realistic lighting, depth, and fabric texture — the logo should feel sewn or printed INTO the jersey, not pasted on top. Respect the logo's original colors and shapes exactly; do not simplify, reinterpret, or alter it.`
+        // ── Logo reference provided: integrate + recolor to match palette ──
+        ? `LOGO INTEGRATION (${logoSide} chest): The provided image is the team's uploaded logo. Use its exact shape, proportions, typography, spacing, and icon structure — do not redraw, replace, simplify, or alter the logo design in any way. Integrate it naturally into the ${logoSide} chest area, approximately 2–2.5 inches wide, sublimated/printed into the fabric with realistic lighting, depth, and texture. LOGO RECOLOR: Recolor all logo elements to ${logoRecolorHex} so the logo reads cleanly against the jersey body (${primary?.hex ?? "body color"}). Apply the new color treatment uniformly across the logo; preserve the original form exactly.`
         // ── No logo reference: leave blank zone for app-layer compositing ──
         : `APP-COMPOSITED LOGO ZONE (${logoSide} chest): Leave a clean, completely unmarked flat fabric area approximately 2 inches wide at the ${logoSide} chest position. The uploaded team logo is a LOCKED FILE ASSET managed exclusively by the application — the image model must NOT generate, render, trace, recreate, approximate, or hallucinate any logo, emblem, badge, crest, icon, or symbol in this zone or anywhere else on the jersey. After image generation, the application programmatically composites the exact uploaded logo file onto this zone as a separate pixel-accurate image layer. Pre-filling this zone with anything — even a placeholder mark — will cause a compositing conflict. Leave it completely blank fabric.`;
 
@@ -528,9 +551,15 @@ function buildGarmentPrompt(
     }
 
     if (view === "backJersey") {
+      // Same luminance-based recolor logic as front
+      const bodyIsDark        = primary ? isColorDark(primary.hex) : true;
+      const backLogoRecolorHex = bodyIsDark
+        ? (secondary?.hex ?? accent?.hex ?? "#ffffff")
+        : (primary?.hex   ?? accent?.hex ?? "#000000");
+
       const backLogoZone = hasLogoRef
-        // ── Logo reference provided: integrate into fabric naturally ──
-        ? `LOGO INTEGRATION (upper back, below rear collar): The provided image is the team's uploaded logo. Integrate it naturally centered below the rear collar, approximately 1.5 inches wide. Print/sublimate it into the jersey fabric with realistic lighting and texture — it should feel part of the garment. Respect the logo's original colors and shapes exactly.`
+        // ── Logo reference provided: integrate + recolor to match palette ──
+        ? `LOGO INTEGRATION (upper back, below rear collar): The provided image is the team's uploaded logo. Use its exact shape, proportions, typography, spacing, and icon structure — do not redraw, replace, simplify, or alter the logo design in any way. Integrate it naturally centered below the rear collar, approximately 1.5 inches wide, sublimated/printed into the fabric with realistic lighting and texture. LOGO RECOLOR: Recolor all logo elements to ${backLogoRecolorHex} so the logo reads cleanly against the jersey body (${primary?.hex ?? "body color"}). Apply the new color treatment uniformly across the logo; preserve the original form exactly.`
         // ── No logo reference: leave blank zone ──
         : `APP-COMPOSITED BACK LOGO ZONE (upper back, below rear collar): Leave a clean, completely unmarked flat fabric area approximately 1.5 inches wide centered below the rear collar. Do NOT generate any logo, emblem, or symbol here — this zone may receive a composited logo from the application layer post-generation.`;
 
