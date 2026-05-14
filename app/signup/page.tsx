@@ -67,14 +67,19 @@ export default function SignupPage() {
       return;
     }
 
-    // 2. Insert profile row immediately (user id exists even before email confirm)
+    // 2. Create profile row via server-side API (bypasses RLS — required when
+    //    email confirmation is on and the user has no active session yet).
     if (data.user) {
-      await supabase.from("profiles").upsert({
-        id: data.user.id,
-        email,
-        full_name: fullName || null,
-        role,
-        company: company || null,
+      await fetch("/api/auth/create-profile", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({
+          userId:   data.user.id,
+          email,
+          fullName: fullName || null,
+          company:  company  || null,
+          role,
+        }),
       });
     }
 

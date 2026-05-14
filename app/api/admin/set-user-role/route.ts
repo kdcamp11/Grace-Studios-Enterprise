@@ -15,32 +15,49 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid role" }, { status: 400 });
     }
 
-    // Service-role client bypasses RLS — the only way to update another user's profile
+    const normalizedEmail = email.trim().toLowerCase();
+
+    // Service-role client bypasses RLS entirely
     const admin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
     );
 
-    const { data: profile, error: findError } = await admin
-      .from("profiles")
-      .select("id, email, full_name, company, created_at")
-      .eq("email", email.trim().toLowerCase())
-      .single();
+    // ── 1. Verify the user exists in auth ─────────────────────────────────
+    const { data: listData, error: listError } = await admin.auth.admin.listUsers({ perPage: 1000 });
+    if (listError) {
+      return NextResponse.json({ error: listError.message }, { status: 500 });
+    }
 
-    if (findError || !profile) {
+    const authUser = listData.users.find(
+      (u) => u.email?.toLowerCase() === normalizedEmail,
+    );
+    if (!authUser) {
       return NextResponse.json(
         { error: "No account found with that email. They need to sign up first." },
         { status: 404 },
       );
     }
 
-    const { error: updateError } = await admin
+    // ── 2. Upsert profile row (handles missing profiles from signup failures) ──
+    const { data: profile, error: upsertError } = await admin
       .from("profiles")
-      .update({ role })
-      .eq("id", profile.id);
+      .upsert(
+        {
+          id:         authUser.id,
+          email:      authUser.email,
+          role,
+          full_name:  authUser.user_metadata?.full_name ?? null,
+          company:    authUser.user_metadata?.company   ?? null,
+        },
+        { onConflict: "id" },
+      )
+      .select("id, email, full_name, company, created_at")
+      .single();
 
-    if (updateError) {
-      return NextResponse.json({ error: updateError.message }, { status: 500 });
+    if (upsertError) {
+      console.error("[set-user-role] upsert error:", upsertError.message);
+      return NextResponse.json({ error: upsertError.message }, { status: 500 });
     }
 
     return NextResponse.json({ success: true, profile: { ...profile, role } });
