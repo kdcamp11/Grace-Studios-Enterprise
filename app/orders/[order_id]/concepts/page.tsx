@@ -26,16 +26,25 @@ interface BoardData {
 // ─── Generating state UI ──────────────────────────────────────────────────────
 
 const STEP_LABELS = [
-  "Analyzing brief & references",
-  "Rendering spec board",
+  "Analyzing brief & design references",
+  "Rendering front jersey",
+  "Rendering back jersey",
+  "Rendering front shorts",
+  "Rendering back shorts",
 ];
 
 function GeneratingState({ gen }: { gen: GenerationProgress }) {
-  const pct   = gen.status === "queued"     ? 15
-              : gen.status === "generating" ? 55
-              : 0;
+  // progress 0 = queued/analyzing, 1–4 = renders complete
+  const total     = gen.total ?? 4;
+  const completed = gen.progress ?? 0;
 
-  const label = gen.status === "generating" ? STEP_LABELS[1] : STEP_LABELS[0];
+  // percentage: queued = 5%, each render adds ~22%
+  const pct = gen.status === "queued"
+    ? 5
+    : Math.round(5 + (completed / total) * 90);
+
+  const stepIndex = gen.status === "queued" ? 0 : Math.min(completed + 1, STEP_LABELS.length - 1);
+  const label     = STEP_LABELS[stepIndex] ?? STEP_LABELS[0];
 
   return (
     <div className="py-20 flex flex-col items-center justify-center gap-6 max-w-sm mx-auto text-center">
@@ -47,9 +56,14 @@ function GeneratingState({ gen }: { gen: GenerationProgress }) {
       <div className="space-y-1">
         <p className="text-gs-white font-barlow font-medium">Building your concept board</p>
         <p className="text-xs text-gs-gold font-display uppercase tracking-widest">{label}</p>
-        {gen.status === "generating" && (
+        {completed > 0 && (
           <p className="text-xs text-gs-muted font-barlow">
-            This takes 60–90 seconds — your board will appear automatically
+            {completed} of {total} renders complete
+          </p>
+        )}
+        {gen.status === "generating" && completed === 0 && (
+          <p className="text-xs text-gs-muted font-barlow">
+            Generating garment renders — takes 2–3 minutes
           </p>
         )}
       </div>
@@ -467,7 +481,7 @@ export default function ConceptsPage() {
   const supabase      = supabaseRef.current;
 
   const [boardData, setBoardData]     = useState<BoardData | null>(null);
-  const [gen, setGen]                 = useState<GenerationProgress>({ status: "not_started", progress: 0, total: 1, error: null });
+  const [gen, setGen]                 = useState<GenerationProgress>({ status: "not_started", progress: 0, total: 4, error: null });
   const [approving, setApproving]     = useState(false);
   const [isAdminView, setIsAdminView] = useState(false);
 
@@ -578,7 +592,7 @@ export default function ConceptsPage() {
   const triggerGeneration = useCallback(async () => {
     if (generationFiredRef.current) return;
     generationFiredRef.current = true;
-    setGen({ status: "queued", progress: 0, total: 1, error: null });
+    setGen({ status: "queued", progress: 0, total: 4, error: null });
 
     const res = await fetch("/api/generate-concepts", {
       method:  "POST",
@@ -664,9 +678,10 @@ export default function ConceptsPage() {
   const hasBoard     = !!boardData;
 
   // Board format routing
-  const boardFormat   = boardData?.metadata.boardFormat;
-  const isSpecBoard   = boardFormat === "specboard" || (!boardFormat && !!boardData?.metadata.boardImage);
-  const isRenders     = boardFormat === "renders"   || (!boardFormat && !!boardData?.metadata.renders);
+  // "renders" is now the current format. "specboard" and "multiview" are legacy.
+  const boardFormat = boardData?.metadata.boardFormat;
+  const isRenders   = boardFormat === "renders" || (!boardFormat && !!boardData?.metadata.renders);
+  const isSpecBoard = !isRenders && (boardFormat === "specboard" || (!boardFormat && !!boardData?.metadata.boardImage));
 
   return (
     <div className="min-h-screen bg-gs-dark flex flex-col">
