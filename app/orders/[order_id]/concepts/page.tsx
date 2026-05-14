@@ -27,24 +27,15 @@ interface BoardData {
 
 const STEP_LABELS = [
   "Analyzing brief & references",
-  "Rendering jersey — front",
-  "Rendering jersey — back",
-  "Rendering shorts — front",
-  "Rendering shorts — back",
+  "Rendering spec board",
 ];
 
 function GeneratingState({ gen }: { gen: GenerationProgress }) {
-  const total = gen.total || 4;
-  const pct   = gen.status === "queued"
-    ? 8
-    : gen.status === "generating"
-    ? Math.round(10 + (gen.progress / total) * 85)
-    : 0;
+  const pct   = gen.status === "queued"     ? 15
+              : gen.status === "generating" ? 55
+              : 0;
 
-  const labelIdx = gen.status === "queued"
-    ? 0
-    : Math.min(gen.progress, STEP_LABELS.length - 1);
-  const label = STEP_LABELS[labelIdx];
+  const label = gen.status === "generating" ? STEP_LABELS[1] : STEP_LABELS[0];
 
   return (
     <div className="py-20 flex flex-col items-center justify-center gap-6 max-w-sm mx-auto text-center">
@@ -58,7 +49,7 @@ function GeneratingState({ gen }: { gen: GenerationProgress }) {
         <p className="text-xs text-gs-gold font-display uppercase tracking-widest">{label}</p>
         {gen.status === "generating" && (
           <p className="text-xs text-gs-muted font-barlow">
-            Render {gen.progress} of {total} — takes 2–3 min total
+            This takes 60–90 seconds — your board will appear automatically
           </p>
         )}
       </div>
@@ -324,6 +315,65 @@ function BoardImage({ url, alt, className }: { url?: string; alt: string; classN
   );
 }
 
+// ─── Premium single spec-board display (current format) ──────────────────────
+
+function SpecBoardDisplay({ data }: { data: BoardData }) {
+  const { teamName, orderNumber, metadata } = data;
+  const [imgLoaded, setImgLoaded] = useState(false);
+  const [imgError,  setImgError]  = useState(false);
+
+  const imageUrl = metadata.boardImage ?? metadata.images?.front ?? "";
+
+  return (
+    <div className="rounded-xl overflow-hidden border border-gray-300 shadow-xl">
+      {/* Header */}
+      <div className="border-b border-gray-200 bg-white px-5 py-2.5 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-px h-5 bg-gray-800" />
+          <span className="text-[9px] font-bold uppercase tracking-[0.3em] text-gray-400">
+            Grace Athletics — Concept Board
+          </span>
+        </div>
+        <span className="text-[9px] font-mono text-gray-300 tracking-widest">{orderNumber}</span>
+      </div>
+
+      {/* Full-width spec-board image */}
+      <div className="relative bg-[#f0ede6]" style={{ minHeight: 320 }}>
+        {!imgLoaded && !imgError && (
+          <div className="absolute inset-0 animate-pulse bg-[#e8e5de]" />
+        )}
+        {imgError ? (
+          <div className="flex items-center justify-center py-20">
+            <p className="text-gray-400 text-sm font-barlow">Image unavailable</p>
+          </div>
+        ) : (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={imageUrl}
+            alt={`${teamName} spec board`}
+            className={`w-full block transition-opacity duration-500 ${imgLoaded ? "opacity-100" : "opacity-0"}`}
+            onLoad={() => setImgLoaded(true)}
+            onError={() => { setImgError(true); setImgLoaded(true); }}
+          />
+        )}
+      </div>
+
+      {/* Footer */}
+      <div className="border-t border-gray-200 bg-white px-5 py-2.5 flex items-center justify-between">
+        <p className="text-[7px] text-gray-400 italic leading-relaxed max-w-lg">
+          AI concept is for visual direction only. Colors, proportions, and details are subject to
+          refinement during production. Logos are composited separately.
+        </p>
+        <div className="flex-shrink-0 ml-4 opacity-20">
+          <GraceLogo className="h-4" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Legacy boards (backward compat) ─────────────────────────────────────────
+
 function LegacyBoard({ data }: { data: BoardData }) {
   const { metadata, teamName, orderNumber } = data;
   const isSingleImage = metadata.boardFormat === "specboard" || !!metadata.boardImage;
@@ -417,7 +467,7 @@ export default function ConceptsPage() {
   const supabase      = supabaseRef.current;
 
   const [boardData, setBoardData]     = useState<BoardData | null>(null);
-  const [gen, setGen]                 = useState<GenerationProgress>({ status: "not_started", progress: 0, total: 4, error: null });
+  const [gen, setGen]                 = useState<GenerationProgress>({ status: "not_started", progress: 0, total: 1, error: null });
   const [approving, setApproving]     = useState(false);
   const [isAdminView, setIsAdminView] = useState(false);
 
@@ -528,7 +578,7 @@ export default function ConceptsPage() {
   const triggerGeneration = useCallback(async () => {
     if (generationFiredRef.current) return;
     generationFiredRef.current = true;
-    setGen({ status: "queued", progress: 0, total: 4, error: null });
+    setGen({ status: "queued", progress: 0, total: 1, error: null });
 
     const res = await fetch("/api/generate-concepts", {
       method:  "POST",
@@ -614,7 +664,9 @@ export default function ConceptsPage() {
   const hasBoard     = !!boardData;
 
   // Board format routing
-  const isNewRenders = boardData?.metadata.boardFormat === "renders" || !!boardData?.metadata.renders;
+  const boardFormat   = boardData?.metadata.boardFormat;
+  const isSpecBoard   = boardFormat === "specboard" || (!boardFormat && !!boardData?.metadata.boardImage);
+  const isRenders     = boardFormat === "renders"   || (!boardFormat && !!boardData?.metadata.renders);
 
   return (
     <div className="min-h-screen bg-gs-dark flex flex-col">
@@ -651,7 +703,7 @@ export default function ConceptsPage() {
             </h1>
             <p className="mt-1.5 text-sm text-gs-muted font-barlow">
               {isGenerating
-                ? "Our AI is rendering your uniform concepts — each garment takes 30–45 seconds."
+                ? "Our AI is building your spec board from your design brief — takes 60–90 seconds."
                 : hasBoard
                 ? "Review your concept board. Approve to move into production."
                 : isFailed
@@ -689,9 +741,9 @@ export default function ConceptsPage() {
           {/* Board display */}
           {hasBoard && (
             <div className="space-y-5">
-              {isNewRenders
-                ? <RendersBoard data={boardData!} />
-                : <LegacyBoard  data={boardData!} />
+              {isSpecBoard  ? <SpecBoardDisplay data={boardData!} />
+               : isRenders   ? <RendersBoard     data={boardData!} />
+               :               <LegacyBoard      data={boardData!} />
               }
 
               <div className="flex items-center justify-between pt-1">
