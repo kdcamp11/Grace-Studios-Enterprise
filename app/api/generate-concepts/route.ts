@@ -1197,3 +1197,144 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+
+// ─── GET /api/generate-concepts?order_id=<uuid> ───────────────────────────────
+// Returns the full compiled prompt for each of the 4 render views — exactly
+// what would be sent to OpenAI — without generating any images.
+// Use this to review / debug prompt output before burning credits.
+
+export async function GET(req: NextRequest) {
+  try {
+    const order_id = req.nextUrl.searchParams.get("order_id");
+    if (!order_id) {
+      return NextResponse.json({ error: "order_id query param required" }, { status: 400 });
+    }
+
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    );
+
+    const { data: brief, error: briefError } = await supabase
+      .from("briefs").select("*").eq("order_id", order_id).single();
+    if (briefError || !brief) {
+      return NextResponse.json({ error: "Brief not found" }, { status: 404 });
+    }
+
+    const { data: order } = await supabase
+      .from("orders").select("client_id, order_number").eq("id", order_id).single();
+    if (!order) return NextResponse.json({ error: "Order not found" }, { status: 404 });
+
+    const { data: client } = await supabase
+      .from("clients").select("name, city, sport, email").eq("id", order.client_id).single();
+    if (!client) return NextResponse.json({ error: "Client not found" }, { status: 404 });
+
+    const sport        = (client.sport as string) ?? "basketball";
+    const designSystem = (brief.design_system as string) ?? "bold";
+    const teamName     = (client.name as string) ?? "Team";
+    const garmentLabel = getGarmentTypeLabel(sport);
+
+    const directColors  = extractDirectColors(brief as Record<string, unknown>);
+    const refs          = resolveReferenceFiles(sport, designSystem);
+    const appUrl        = process.env.NEXT_PUBLIC_APP_URL ?? "https://gs-first-pass.vercel.app";
+    const allRefUrls    = getReferenceUrls(refs, appUrl);
+    const refAnnotation = buildReferenceAnnotation(refs);
+
+    const logoUrls: string[] = Array.isArray(brief.logo_urls)
+      ? (brief.logo_urls as string[]).filter(validUrl)
+      : validUrl(brief.logo_url) ? [brief.logo_url as string] : [];
+
+    const clientRefUrls: string[] = Array.isArray(brief.reference_image_urls)
+      ? (brief.reference_image_urls as string[]).filter(validUrl)
+      : validUrl(brief.reference_image_url) ? [brief.reference_image_url as string] : [];
+
+    const clientAnnotation = [
+      logoUrls.length > 0     ? `• ${logoUrls.length} client logo(s) provided` : "",
+      clientRefUrls.length > 0 ? `• ${clientRefUrls.length} reference image(s) provided` : "",
+    ].filter(Boolean).join("\n");
+
+    const fullAnnotation    = [refAnnotation, clientAnnotation].filter(Boolean).join("\n");
+    const designBriefPrompt = buildClaudePrompt(
+      brief as Record<string, unknown>,
+      client as Record<string, unknown>,
+      garmentLabel,
+      fullAnnotation,
+      directColors,
+    );
+
+    // ── Run Claude to get metadata (same as production) ────────────────────────
+    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+    type ImageBlock   = { type: "image"; source: { type: "url"; url: string } };
+    type TextBlock    = { type: "text"; text: string };
+    type ContentBlock = ImageBlock | TextBlock;
+
+    const refImageBlocks: ImageBlock[] = allRefUrls.map(url => ({
+      type: "image", source: { type: "url", url },
+    }));
+
+    const claudeContent: ContentBlock[] = [
+      ...refImageBlocks,
+      ...(fullAnnotation ? [{ type: "text" as const, text: fullAnnotation }] : []),
+      { type: "text" as const, text: designBriefPrompt },
+    ];
+
+    const aiResponse = await anthropic.messages.create({
+      model: "claude-sonnet-4-6", max_tokens: 1500,
+      messages: [{ role: "user", content: claudeContent }],
+      stream: false,
+    });
+
+    const rawText =
+      "content" in aiResponse && aiResponse.content[0].type === "text"
+        ? aiResponse.content[0].text : "";
+
+    let metadata: DesignMetadata;
+    try {
+      const cleaned = rawText.replace(/^```json\s*/i, "").replace(/```\s*$/i, "").trim();
+      metadata = { ...JSON.parse(cleaned) as DesignMetadata, designSystem, boardFormat: "renders" };
+    } catch {
+      metadata = {
+        garmentType: garmentLabel, designSystem, boardFormat: "renders",
+        colorway: [], materials: [], features: [],
+        logoPlacement: (brief.gs_logo_placement as string) ?? "",
+        description: rawText.slice(0, 400),
+      };
+    }
+
+    if (directColors.length > 0) {
+      metadata.colorway = directColors.map(c => ({ ...c, pantone: undefined }));
+    }
+
+    const primaryLogoUrl: string | null = logoUrls[0] ?? null;
+
+    // ── Build all 4 prompts without calling OpenAI ─────────────────────────────
+    const prompts: Record<string, string> = {};
+    for (const { key, label } of RENDER_VIEWS) {
+      const hasLogoRef = key.includes("Jersey") && !!primaryLogoUrl;
+      prompts[label] = buildGarmentPrompt(
+        key, metadata, designSystem, teamName,
+        brief as Record<string, unknown>, hasLogoRef, sport,
+      );
+    }
+
+    return NextResponse.json({
+      order_id,
+      sport,
+      designSystem,
+      teamName,
+      claudeMetadata: {
+        description: metadata.description,
+        colorway:    metadata.colorway,
+        materials:   metadata.materials,
+      },
+      prompts,
+    }, {
+      headers: { "Content-Type": "application/json" },
+    });
+
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
