@@ -57,12 +57,22 @@ export default function ForgotPasswordPage() {
 
           {sent ? (
             <div className="space-y-6 text-center">
-              <div className="bg-green-400/10 border border-green-400/30 rounded-xl px-5 py-6">
-                <p className="text-green-400 font-display text-sm uppercase tracking-wider mb-2">Check your email</p>
+              <div className="bg-green-400/10 border border-green-400/30 rounded-xl px-5 py-6 space-y-3">
+                <p className="text-green-400 font-display text-sm uppercase tracking-wider">Check your email</p>
                 <p className="text-gs-muted font-barlow text-sm leading-relaxed">
                   We sent a reset link to <span className="text-gs-white">{email}</span>. Click it to set a new password.
                 </p>
+                <p className="text-gs-muted/60 font-barlow text-xs leading-relaxed pt-1 border-t border-green-400/10">
+                  Don&apos;t see it? Check your spam folder. If it still doesn&apos;t arrive, the address may not be registered with Grace Athletics.
+                </p>
               </div>
+              <button
+                type="button"
+                onClick={() => { setSent(false); setEmail(""); }}
+                className="block w-full text-xs font-display uppercase tracking-wider text-gs-muted hover:text-gs-gold transition-colors"
+              >
+                Try a different email
+              </button>
               <Link
                 href="/login"
                 className="block text-xs font-display uppercase tracking-wider text-gs-muted hover:text-gs-gold transition-colors"
