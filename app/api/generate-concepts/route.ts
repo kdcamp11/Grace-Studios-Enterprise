@@ -529,6 +529,62 @@ const GARMENT_CONSTRUCTION: Record<RenderViewKey, string> = {
  * Colors always appear first — OpenAI weighs prompt order heavily.
  * Each view has independent garment anatomy from GARMENT_CONSTRUCTION.
  */
+
+// ─── Grace Athletics Tracksuit Render System ─────────────────────────────────
+// Prepended to EVERY tracksuit render prompt. Defines the permanent visual
+// standard for all Grace Athletics tracksuit generations.
+
+const GRACE_TRACKSUIT_SYSTEM = `
+GRACE ATHLETICS TRACKSUIT RENDER SYSTEM
+
+DEFAULT TRACKSUIT RULES (ALWAYS APPLY UNLESS OTHERWISE SPECIFIED):
+- Tracksuit pants must ALWAYS be open-bottom/wide-leg. NO elastic ankle cuffs.
+- Jackets must NEVER have wrist cuffs. Sleeves end in a clean open hem.
+- Jacket sleeves fall naturally with a relaxed drape.
+- Use a premium nylon/woven technical material aesthetic.
+- Fabric must look lightweight, smooth, slightly reflective, and luxury athletic.
+- Garments must feel like elevated modern sportswear — NOT cotton fleece, NOT warmup sweats.
+- Overall silhouette must feel fashion-forward and premium.
+
+STYLE DIRECTION:
+The fashion language must match premium dark-colorway Grace Athletics tracksuits.
+The render must feel: premium, modern, technical, sporty, fashion-forward, luxury athleticwear inspired, clean and elevated.
+
+AVOID:
+- Flat illustrator-style fashion sketches
+- Cartoon styling
+- Generic teamwear energy
+- Stiff fabrics or heavy fleece textures
+- Esports aesthetics
+- Oversized repeated logos
+- Basic mockup presentation
+
+RENDER STYLE:
+- High-end 3D apparel render
+- Semi-photorealistic garment visualization
+- Premium fashion presentation quality
+- Soft realistic lighting with visible garment depth and material texture
+- Realistic folds, stitching, and drape
+- Technical apparel rendering quality
+- Modern sportswear campaign aesthetic
+
+MATERIAL DIRECTION:
+Use: nylon, woven performance fabric, lightweight technical shell material, luxury training wear textures, subtle sheen, smooth premium fabric reflections.
+The garments should resemble: luxury football training suits, premium track fashion, elevated street-athletic apparel, modern designer sportswear.
+Keep the palette premium and restrained.
+
+LOGO RULES:
+- Do not repeat the logo across the pants or back unless explicitly requested.
+- Branding must feel premium and understated.
+- Keep typography clean and balanced.
+
+DESIGN LANGUAGE:
+The clothing itself carries the visual identity through: seam placement, panel construction, silhouette, gradients, piping, shape language, movement lines, color blocking, material contrast.
+The style must feel like a real premium sportswear brand collection.
+`.trim();
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 function buildGarmentPrompt(
   view:         RenderViewKey,
   metadata:     DesignMetadata,
@@ -725,6 +781,9 @@ function buildGarmentPrompt(
       : `CRITICAL — ABSOLUTELY ZERO on the shorts: text, numbers, logos, brand marks, wordmarks, watermarks, graphic overlays, or symbols of any kind. All panels must be completely clean fabric.`;
 
   return [
+    // ── TRACKSUIT SYSTEM SPEC (prepended for all tracksuit renders) ──
+    isTracksuit ? GRACE_TRACKSUIT_SYSTEM : "",
+
     // ── Colors first ──
     colorBlock,
 
@@ -741,7 +800,9 @@ function buildGarmentPrompt(
     garmentDirective ? `Panel construction details from design brief: ${garmentDirective}` : "",
 
     // ── Rendering quality ──
-    `Rendering: photorealistic semi-3D athletic garment. Performance mesh fabric with visible micro-weave texture. Dimensional studio lighting from upper-left with soft fill from right. Realistic seam stitching, natural fabric drape and weight. Production-accurate Nike/Adidas/FIBA-level manufacturing quality.`,
+    isTracksuit
+      ? `Rendering: high-end semi-photorealistic 3D apparel render. Nylon/woven technical shell fabric with subtle sheen and realistic folds. Soft studio lighting from upper-left with soft fill. Realistic seam stitching and natural drape. Premium sportswear campaign quality — Nike/Adidas technical training collection aesthetic.`
+      : `Rendering: photorealistic semi-3D athletic garment. Performance mesh fabric with visible micro-weave texture. Dimensional studio lighting from upper-left with soft fill from right. Realistic seam stitching, natural fabric drape and weight. Production-accurate Nike/Adidas/FIBA-level manufacturing quality.`,
 
     // ── Jersey branding (jerseys only — typography integrated into fabric by AI) ──
     jerseyBranding,
