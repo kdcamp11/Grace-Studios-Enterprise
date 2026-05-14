@@ -116,11 +116,12 @@ function extractDirectColors(
  * Returns the public Supabase Storage URL of the uploaded PNG.
  */
 async function generateGarmentRender(
-  prompt:   string,
-  supabase: SupabaseClient,
-  orderId:  string,
-  view:     RenderViewKey,
-  logoUrl?: string | null,
+  prompt:        string,
+  supabase:      SupabaseClient,
+  orderId:       string,
+  view:          RenderViewKey,
+  logoUrl?:      string | null,
+  garmentRefUrl?: string | null,  // visual construction reference (tracksuits)
 ): Promise<string> {
   const apiKey       = process.env.OPENAI_API_KEY!;
   const MAX_ATTEMPTS = 4;
@@ -148,22 +149,48 @@ async function generateGarmentRender(
     }
   }
 
+  // ── Fetch garment construction reference image (tracksuits) ─────────────
+  let garmentRefBuffer: Buffer | null = null;
+  if (garmentRefUrl) {
+    try {
+      const refRes = await fetch(garmentRefUrl, { signal: AbortSignal.timeout(15_000) });
+      if (refRes.ok) {
+        garmentRefBuffer = Buffer.from(await refRes.arrayBuffer());
+        console.log(`[generate-concepts] garment ref fetched for ${view}: ${garmentRefBuffer.length} bytes`);
+      } else {
+        console.warn(`[generate-concepts] garment ref fetch ${refRes.status} for ${view}`);
+      }
+    } catch (refErr) {
+      console.warn(`[generate-concepts] garment ref fetch failed for ${view}:`, refErr instanceof Error ? refErr.message : refErr);
+    }
+  }
+
   let b64:        string | null = null;
-  let useLogoRef: boolean       = !!logoBuffer;
+  let useLogoRef: boolean       = !!(logoBuffer || garmentRefBuffer);
 
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     let res: Response;
 
-    if (useLogoRef && logoBuffer) {
-      // ── images/edits: logo as reference input for natural integration ─────
-      const ext  = logoMime === "image/jpeg" ? "logo.jpg" : "logo.png";
+    if (useLogoRef && (logoBuffer || garmentRefBuffer)) {
+      // ── images/edits: garment reference + optional logo as visual context ─
+      // Garment reference first → establishes correct construction baseline.
+      // Logo second → team branding to integrate naturally into the fabric.
       const form = new FormData();
-      form.append("model",    "gpt-image-1");
-      form.append("image[]",  new Blob([logoBuffer], { type: logoMime }), ext);
-      form.append("prompt",   prompt);
-      form.append("n",        "1");
-      form.append("size",     "1024x1024");
-      form.append("quality",  "high");
+      form.append("model",   "gpt-image-1");
+      if (garmentRefBuffer) {
+        // Visual construction reference — shows the model correct cuff/hem construction
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        form.append("image[]", new Blob([garmentRefBuffer as any], { type: "image/jpeg" }), "garment-reference.jpg");
+      }
+      if (logoBuffer) {
+        const ext = logoMime === "image/jpeg" ? "logo.jpg" : "logo.png";
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        form.append("image[]", new Blob([logoBuffer as any], { type: logoMime }), ext);
+      }
+      form.append("prompt",  prompt);
+      form.append("n",       "1");
+      form.append("size",    "1024x1024");
+      form.append("quality", "high");
 
       res = await fetch("https://api.openai.com/v1/images/edits", {
         method:  "POST",
@@ -200,9 +227,9 @@ async function generateGarmentRender(
 
     if (!res.ok) {
       const errText = await res.text().catch(() => res.statusText);
-      // Logo-edits client error → fall back to text-to-image on next attempt
+      // Edits client error → fall back to text-to-image on next attempt
       if (useLogoRef) {
-        console.warn(`[generate-concepts] logo-edits failed (${res.status}), retrying as text-to-image: ${errText.slice(0, 120)}`);
+        console.warn(`[generate-concepts] image-edits failed (${res.status}), retrying as text-to-image: ${errText.slice(0, 120)}`);
         useLogoRef = false;
         continue;
       }
@@ -570,36 +597,39 @@ const GARMENT_CONSTRUCTION: Record<RenderViewKey, string> = {
 
 // Jacket-only system spec — only injected into jacket (frontJersey/backJersey) prompts
 const GRACE_TRACKSUIT_SYSTEM_JACKET = `
-GRACE ATHLETICS — LUXURY NYLON ZIP JACKET RENDER RULES
+⚠️ CONSTRUCTION OVERRIDE — READ FIRST BEFORE ALL OTHER INSTRUCTIONS ⚠️
+THIS IS A WINDBREAKER JACKET. Nike Storm-FIT Windrunner / Patagonia Torrentshell / Arc'teryx Squamish construction.
+SLEEVE CUFFS: The sleeve fabric simply ends. It folds over once (1cm) and is topstitched flat. The wrist opening is a plain open tube of nylon — wide, loose, open. Identical to the sleeve hem on a Nike Windrunner or Patagonia rain jacket. There is NO ribbing. NO elastic band. NO knit cuff. NO gathered wrist. The sleeve just ends cleanly.
+JACKET BOTTOM: Straight flat nylon hem with hidden drawcord channel. Like a windbreaker hem. Not banded. Not ribbed.
+COLLAR: Flat woven nylon stand collar. Same fabric as body. Not ribbed. Not knit.
 
-This is a LUXURY NYLON ZIP-FRONT SHELL JACKET. Not a track jacket. Not a soccer warmup. Not a bomber. Not a sweatshirt.
+GRACE ATHLETICS — LUXURY NYLON WINDBREAKER JACKET RENDER RULES
 
-MATERIAL: smooth woven nylon shell — subtle sheen, soft light reflections, natural crinkle in folds. Windbreaker/shell quality.
+GARMENT TYPE: Premium athletic windbreaker jacket — zip-front nylon shell. Nike Storm-FIT Windrunner aesthetic.
 
-SLEEVE ENDS: Each sleeve terminates in a simple flat hem — the nylon fabric folds over once by 1cm and is topstitched. The sleeve opening is a plain open nylon tube, loose at the wrist. Think: hemmed dress shirt sleeve. Not a sweatshirt cuff. No rib. No band. No elastic. No knit. Just open hemmed nylon.
-
-JACKET HEM: The bottom of the jacket is a straight clean nylon edge with a hidden internal drawcord channel. Flat, not banded. Like a windbreaker hem.
+MATERIAL: smooth woven nylon shell — subtle sheen, soft light reflections, natural crinkle in folds. Windbreaker quality.
 
 SILHOUETTE: Relaxed, slightly oversized. Hip length or below. Straight drop from shoulders. No waist cinching. Fashion elongated proportions.
 
-RENDER QUALITY: 3D semi-photorealistic. Soft studio lighting. Realistic nylon drape and folds. Premium campaign quality — Fear of God Athletics / Stone Island / Kappa Kontroll nylon aesthetic.
+RENDER QUALITY: 3D semi-photorealistic. Soft studio lighting. Realistic nylon drape and folds. Premium campaign quality — Nike ACG / Stone Island nylon shell aesthetic.
 `.trim();
 
 // Pants-only system spec — only injected into pants (frontShorts/backShorts) prompts
 const GRACE_TRACKSUIT_SYSTEM_PANTS = `
+⚠️ CONSTRUCTION OVERRIDE — READ FIRST BEFORE ALL OTHER INSTRUCTIONS ⚠️
+THESE ARE WIDE-LEG NYLON TROUSERS. Nike ACG cargo pant / Fear of God wide-leg nylon pant construction.
+ANKLE HEM: The pant leg simply ends. It folds over once (1cm) and is topstitched flat. The ankle opening is the full width of the lower leg — wide, open, flat. The pants stack on the floor. Identical to wide-leg windbreaker trousers. There is NO ribbing. NO elastic ankle. NO gathered cuff. NO tapered leg. The leg is the same width from hip to ankle.
+LEG SHAPE: Wide and straight from hip to floor. Palazzo trouser proportions. Not tapered. Not slim. Not fitted.
+
 GRACE ATHLETICS — LUXURY NYLON WIDE-LEG TROUSERS RENDER RULES
 
-These are LUXURY NYLON WIDE-LEG TROUSERS. Not track pants. Not joggers. Not warmup pants. Not athletic sweats.
+GARMENT TYPE: Premium athletic wide-leg nylon trousers — windbreaker shell fabric. Fear of God Athletics / Nike ACG wide-leg nylon pant aesthetic.
 
-MATERIAL: smooth woven nylon shell — subtle sheen, soft light reflections, natural drape. Windbreaker/shell quality.
-
-LEG SHAPE: The legs are wide and straight — palazzo trouser proportions. The leg is the same width from hip to ankle. It does not narrow or taper. Both legs hang straight down like wide dress trousers made of nylon.
-
-ANKLE HEM: Each leg ends in a simple flat hem — nylon fabric folds over once and is topstitched. The ankle opening is the full width of the lower leg — wide, open, unobstructed. The trousers stack slightly on the floor. Think: hemmed palazzo trouser. No rib. No band. No elastic. No gathered ankle. Just open hemmed nylon.
+MATERIAL: smooth woven nylon shell — subtle sheen, soft light reflections, natural drape. Windbreaker quality.
 
 SILHOUETTE: Relaxed and wide from hip to floor. Long and flowing. Fashion elongated proportions.
 
-RENDER QUALITY: 3D semi-photorealistic. Soft studio lighting. Realistic nylon drape. Premium campaign quality — Fear of God Athletics / Stone Island / Kappa Kontroll nylon aesthetic.
+RENDER QUALITY: 3D semi-photorealistic. Soft studio lighting. Realistic nylon drape. Premium campaign quality.
 `.trim();
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -658,8 +688,8 @@ function buildGarmentPrompt(
   // Use "nylon zip jacket" and "wide-leg nylon trousers" instead.
   const garmentSubject = isTracksuit
     ? isJersey
-      ? `${isFront ? "Front" : "Back"} view of a premium luxury nylon zip-front shell jacket for ${teamName}. ${construction} construction. Fashion-forward elevated sportswear — NOT a track jacket, NOT a soccer warmup, NOT a bomber.`
-      : `${isFront ? "Front" : "Back"} view of premium luxury nylon wide-leg shell trousers for ${teamName}. ${construction} construction. Fashion-forward elevated sportswear — NOT track pants, NOT joggers, NOT tapered warmup pants.`
+      ? `${isFront ? "Front" : "Back"} view of a premium nylon windbreaker jacket for ${teamName}. Nike Storm-FIT Windrunner construction — smooth nylon shell, clean open sleeve hems, flat windbreaker bottom hem. ${construction} graphic print.`
+      : `${isFront ? "Front" : "Back"} view of premium wide-leg nylon windbreaker trousers for ${teamName}. Nike ACG wide-leg construction — straight wide legs from hip to floor, clean open ankle hems, nylon shell fabric. ${construction} graphic print.`
     : isJersey
       ? `Premium ${construction} basketball game jersey, ${isFront ? "front" : "back"} view, for ${teamName} athletic program.`
       : `Premium ${construction} basketball game shorts, ${isFront ? "front" : "back"} view, for ${teamName} athletic program.`;
@@ -1047,6 +1077,8 @@ export async function POST(req: NextRequest) {
     // Primary uploaded logo URL — passed to jersey renders for AI integration
     const primaryLogoUrl: string | null = logoUrls[0] ?? null;
 
+    const isTracksuitSport = sport.toLowerCase() === "tracksuits";
+
     for (let i = 0; i < RENDER_VIEWS.length; i++) {
       const { key, label } = RENDER_VIEWS[i];
 
@@ -1055,6 +1087,14 @@ export async function POST(req: NextRequest) {
       // Shorts views always use text-to-image (no logo reference needed).
       const isJerseyView = key.includes("Jersey");
       const hasLogoRef   = isJerseyView && !!primaryLogoUrl;
+
+      // For tracksuit jacket views: pass the front-reference.jpeg as a visual
+      // construction anchor — gives the model actual visual data for correct
+      // windbreaker/nylon construction (open cuffs, clean hems) which text alone
+      // cannot reliably override against the model's "jacket" visual priors.
+      const garmentRefUrl = (isTracksuitSport && isJerseyView)
+        ? `${appUrl}/reference-library/garments/tracksuits/${designSystem}/front-reference.jpeg`
+        : null;
 
       const renderPrompt = buildGarmentPrompt(
         key,
@@ -1067,7 +1107,7 @@ export async function POST(req: NextRequest) {
       );
 
       console.log(
-        `[generate-concepts] rendering ${label} (${i + 1}/4) — logo=${hasLogoRef ? "ref" : "none"} — prompt: ${renderPrompt.slice(0, 120)}…`,
+        `[generate-concepts] rendering ${label} (${i + 1}/4) — logo=${hasLogoRef ? "ref" : "none"} garmentRef=${!!garmentRefUrl} — prompt: ${renderPrompt.slice(0, 120)}…`,
       );
 
       try {
@@ -1077,6 +1117,7 @@ export async function POST(req: NextRequest) {
           order_id,
           key,
           hasLogoRef ? primaryLogoUrl : null,
+          garmentRefUrl,
         );
         renders[key] = url;
         console.log(`[generate-concepts] ${label} done: ${url.slice(0, 80)}`);
@@ -1284,9 +1325,15 @@ export async function GET(req: NextRequest) {
     const primaryLogoUrl: string | null = logoUrls[0] ?? null;
 
     // ── Build all 4 prompts without calling OpenAI ─────────────────────────────
+    const isTracksuitSportDebug = sport.toLowerCase() === "tracksuits";
     const prompts: Record<string, string> = {};
+    const garmentRefs: Record<string, string | null> = {};
     for (const { key, label } of RENDER_VIEWS) {
-      const hasLogoRef = key.includes("Jersey") && !!primaryLogoUrl;
+      const isJacketView = key.includes("Jersey");
+      const hasLogoRef   = isJacketView && !!primaryLogoUrl;
+      garmentRefs[label] = (isTracksuitSportDebug && isJacketView)
+        ? `${appUrl}/reference-library/garments/tracksuits/${designSystem}/front-reference.jpeg`
+        : null;
       prompts[label] = buildGarmentPrompt(
         key, metadata, designSystem, teamName,
         brief as Record<string, unknown>, hasLogoRef, sport,
@@ -1303,6 +1350,7 @@ export async function GET(req: NextRequest) {
         colorway:    metadata.colorway,
         materials:   metadata.materials,
       },
+      garmentRefs,
       prompts,
     }, {
       headers: { "Content-Type": "application/json" },
