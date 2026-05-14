@@ -401,51 +401,51 @@ function isColorDark(hex: string): boolean {
  */
 const TRACKSUIT_CONSTRUCTION: Record<RenderViewKey, string> = {
   frontJersey: [
-    "FRONT TRACK JACKET — CONSTRUCTION:",
-    "Material: premium lightweight nylon shell — smooth woven surface, subtle sheen, soft reflective highlights on folds, light crinkle texture. NOT fleece. NOT cotton. NOT knit.",
-    "Full-length center-front zipper with clean zip guard, visible metal pull.",
-    "Collar: structured mock-neck or funnel collar, 3–4cm tall, clean bonded woven nylon — NOT ribbed, NOT knit.",
-    "Sleeves: full-length, falling naturally. END IN A CLEAN OPEN NYLON HEM — the sleeve edge is a simple flat woven edge with no closure. ZERO ribbed cuffs. ZERO elastic wrist bands. ZERO sweatshirt-style cuffs. The sleeve opening is loose and open.",
-    "Jacket hem: clean straight nylon edge or adjustable drawcord. NEVER a ribbed waistband. NEVER elastic rib band. The bottom hem is flat nylon.",
-    "Silhouette: relaxed, slightly oversized. NOT fitted. NOT cropped. Straight drop from shoulder.",
-    "Side zip pockets at hip level.",
-    "View: straight-on front-facing. Ghost mannequin or clean flat lay. Centered.",
+    "FRONT TRACK JACKET — CONSTRUCTION SPECIFICATION.",
+    "MATERIAL: premium lightweight nylon shell. Smooth woven surface. Subtle sheen. Soft reflective highlights on folds. Light natural crinkle. NOT fleece. NOT cotton. NOT knit. NOT polyester warmup material.",
+    "FRONT ZIPPER: full-length center-front zipper with clean zip guard and visible metal pull.",
+    "COLLAR: mock-neck or stand collar, 3–4cm tall, clean bonded woven nylon. NOT ribbed. NOT knit.",
+    "SLEEVE CONSTRUCTION — CRITICAL: Sleeves are full-length and fall naturally past the wrist. SLEEVES END IN A CLEAN PLAIN OPEN NYLON HEM — simple flat nylon edge. NO ribbed cuffs. NO elastic wrist cuffs. NO sweatshirt cuffs. NO knit rib band. The sleeve ending is an open plain nylon edge, nothing else.",
+    "JACKET HEM — CRITICAL: Bottom hem is a clean straight nylon edge or softly adjustable hidden drawcord. NO ribbed waistband. NO elastic rib band. NO sweatshirt hem. The hem is flat nylon.",
+    "JACKET SILHOUETTE: relaxed, slightly oversized. Straight drop from shoulder. Below-waist length. NOT fitted. NOT cropped. NOT bomber proportions. NOT soccer warmup proportions. Elongated fashion-forward torso.",
+    "SIDE POCKETS: zip pockets at hip level.",
+    "VIEW: straight-on front-facing. Ghost mannequin or clean flat lay. Centered.",
   ].join(" "),
 
   backJersey: [
-    "BACK TRACK JACKET — CONSTRUCTION:",
-    "Material: premium lightweight nylon shell — smooth woven surface, subtle sheen. NOT fleece. NOT cotton.",
-    "Back view only — do NOT show front zipper.",
-    "Collar: back of mock-neck/funnel collar visible at neckline, clean woven nylon, NOT ribbed.",
-    "Sleeve backs: full-length, ending in CLEAN OPEN NYLON HEMS — no ribbed cuffs, no elastic, completely open clean edge.",
-    "Jacket hem (back): flat straight nylon hem, clean edge. NEVER ribbed. NEVER elastic.",
-    "Silhouette: relaxed oversized back profile, natural shoulder width.",
-    "Material: nylon sheen and soft highlights on back panels and sleeves.",
-    "View: straight-on BACK-FACING view. Ghost mannequin or flat lay. Centered.",
+    "BACK TRACK JACKET — CONSTRUCTION SPECIFICATION.",
+    "MATERIAL: premium lightweight nylon shell. Smooth woven surface. Subtle sheen. NOT fleece. NOT cotton. NOT knit.",
+    "BACK VIEW ONLY — do NOT show front zipper or chest construction.",
+    "COLLAR: back of mock-neck/stand collar visible at neckline. Clean woven nylon. NOT ribbed. NOT knit.",
+    "SLEEVE BACKS — CRITICAL: Full-length sleeves visible at both sides. Sleeves end in CLEAN PLAIN OPEN NYLON HEMS. NO ribbed cuffs. NO elastic cuffs. Open plain nylon edge at sleeve end.",
+    "JACKET HEM — CRITICAL: Back hem is flat straight nylon. NO ribbed waistband. NO elastic band. Clean flat nylon edge.",
+    "SILHOUETTE: relaxed oversized back profile. Below-waist length. Elongated torso. NOT compact. NOT fitted.",
+    "MATERIAL: nylon sheen and soft highlights on back panels and sleeves.",
+    "VIEW: straight-on BACK-FACING view. Ghost mannequin or flat lay. Centered.",
   ].join(" "),
 
   frontShorts: [
-    "FRONT TRACK PANTS — CONSTRUCTION:",
-    "Material: premium lightweight nylon shell — smooth woven surface, subtle sheen, soft folds. NOT fleece. NOT cotton.",
-    "Full ankle-length WIDE-LEG track pants. NOT joggers. NOT tapered. NOT slim.",
-    "LEG SILHOUETTE: straight wide leg from hip to ankle — the leg width does NOT narrow below the knee. Wide open leg opening.",
-    "ANKLE HEM: OPEN BOTTOM — clean wide open nylon hem, completely unfinished or simply hemmed. ZERO elastic ankle bands. ZERO ribbed ankle cuffs. ZERO drawcord ankle closures. The hem opening is WIDE and LOOSE, falling open over the shoe.",
-    "Waistband: wide clean elastic or woven waistband at the top, 5–6cm, with visible drawcord at center front.",
-    "Side design panels run full outer leg length.",
-    "Hip pockets on both sides.",
-    "View: straight-on front-facing. Both full-length wide legs visible. Ghost mannequin or flat lay. Centered.",
+    "FRONT TRACK PANTS — CONSTRUCTION SPECIFICATION.",
+    "MATERIAL: premium lightweight nylon shell. Smooth woven surface. Subtle sheen. Soft drape. NOT fleece. NOT cotton. NOT polyester warmup material.",
+    "SILHOUETTE — CRITICAL: FULL-LENGTH WIDE-LEG TRACK PANTS. The leg is STRAIGHT and WIDE from hip all the way to the ankle. There is ZERO taper below the knee. This is NOT a jogger. This is NOT a tapered pant. This is NOT a slim or athletic-fit pant.",
+    "LEG OPENING: the hem opening at the ankle is WIDE and LOOSE — the pants stack slightly at the bottom and fall open over the shoe area. The leg opening is visibly wider than the knee.",
+    "ANKLE HEM — CRITICAL: clean plain open nylon hem at the ankle. ZERO elastic ankle cuffs. ZERO ribbed ankle cuffs. ZERO drawcord ankle closures of any kind. The bottom of the pant is a wide plain open nylon edge.",
+    "WAISTBAND: clean wide waistband, 5–6cm, with visible drawcord exits at center front.",
+    "PANELS: design system panel geometry runs full outer leg length on both sides.",
+    "POCKETS: hip pockets on both sides.",
+    "VIEW: straight-on front-facing. Both full-length wide legs fully visible. Ghost mannequin or flat lay. Centered.",
   ].join(" "),
 
   backShorts: [
-    "BACK TRACK PANTS — CONSTRUCTION:",
-    "Material: premium lightweight nylon shell — smooth woven surface. NOT fleece. NOT cotton.",
-    "Full ankle-length WIDE-LEG track pants — back view. NOT joggers. NOT tapered.",
-    "LEG SILHOUETTE: straight wide leg from hip to ankle with no taper. Wide open hem visible at bottom.",
-    "ANKLE HEM: OPEN BOTTOM — clean wide open nylon hem. ZERO ribbed cuffs. ZERO elastic ankle bands. Pants fall open and wide at the ankle.",
-    "Waistband back face: clean flat waistband, no drawcord visible from rear.",
-    "Side design panels continue from front, full leg length.",
-    "Material: nylon sheen on back panels.",
-    "View: straight-on BACK-FACING view. Ghost mannequin or flat lay. Centered.",
+    "BACK TRACK PANTS — CONSTRUCTION SPECIFICATION.",
+    "MATERIAL: premium lightweight nylon shell. Smooth woven surface. Subtle sheen. NOT fleece. NOT cotton.",
+    "SILHOUETTE — CRITICAL: FULL-LENGTH WIDE-LEG TRACK PANTS — back view. Leg is STRAIGHT and WIDE from hip to ankle. ZERO taper. NOT a jogger. NOT tapered. NOT fitted.",
+    "LEG OPENING: WIDE open hem at ankle. Pants stack slightly and fall open. Visibly wide leg opening at bottom.",
+    "ANKLE HEM — CRITICAL: clean plain open nylon hem. ZERO elastic ankle cuffs. ZERO ribbed cuffs. Wide plain open nylon edge at the bottom of both legs.",
+    "WAISTBAND BACK: clean flat waistband rear face. No drawcord visible from back.",
+    "PANELS: design system geometry continues from front, full leg length on both sides.",
+    "MATERIAL: nylon sheen visible on back panels and legs.",
+    "VIEW: straight-on BACK-FACING view. Ghost mannequin or flat lay. Centered.",
   ].join(" "),
 };
 
@@ -527,69 +527,107 @@ const GARMENT_CONSTRUCTION: Record<RenderViewKey, string> = {
 // standard for all Grace Athletics tracksuit generations.
 
 const GRACE_TRACKSUIT_SYSTEM = `
-GRACE ATHLETICS TRACKSUIT RENDER SYSTEM — PERMANENT HARD RULES
+GRACE ATHLETICS TRACKSUIT RENDER SYSTEM — MANDATORY PERMANENT RULES
+
+These rules are absolute. They override all default sportswear model assumptions about what a "track jacket" or "track pants" looks like. Do not fall back to standard athletic warmup proportions.
 
 ═══════════════════════════════════════════════
 MATERIAL — NON-NEGOTIABLE:
 ═══════════════════════════════════════════════
-The tracksuit MUST be rendered in premium lightweight nylon — NOT fleece, NOT cotton, NOT standard warmup material, NOT jersey knit.
-Fabric surface: smooth woven nylon texture with a subtle sheen, soft reflective highlights on folds, light crinkle where fabric bends.
-The material must look lightweight, technical, and slightly reflective — like luxury nylon shell sportswear (e.g. premium football training kit, Kappa, Stone Island track, Fear of God Athletics).
+MUST BE: premium woven nylon shell fabric — smooth surface, subtle sheen, soft light reflections on fabric planes, slight natural crinkle and drape where fabric folds.
+The material must look lightweight, technical, slightly reflective, luxury athletic.
+MUST NOT BE: fleece, cotton, jersey knit, polyester warmup suit material, sweatshirt material, performance mesh, ribbed knit.
+Reference: luxury nylon tracksuits, designer technical sportswear, elevated fashion training wear, premium street-athletic apparel.
+NOT: school warmup suits, team tracksuits, soccer warmups, fleece sweats, jogger sets.
 
 ═══════════════════════════════════════════════
-PANTS — HARD CONSTRUCTION RULES:
+CRITICAL JACKET CONSTRUCTION — READ EVERY LINE:
 ═══════════════════════════════════════════════
-- WIDE-LEG fit. Pants fall STRAIGHT from hip to hem with no taper below the knee.
-- OPEN BOTTOM: pants end in a clean open nylon hem. The hem opening is wide enough to cover the shoe — loose and flowing.
-- ABSOLUTELY NO ankle cuffs of any kind — no elastic cuffs, no ribbed cuffs, no drawcord ankle closures.
-- NOT a jogger. NOT tapered. NOT slim fit. NOT skinny.
-- The leg opening must be visibly wide and relaxed at the bottom.
-- Silhouette: relaxed/straight/wide from hip to open hem.
+SLEEVES:
+- Sleeves MUST end with a CLEAN OPEN HEM — plain nylon edge, no closure.
+- ZERO ribbed wrist cuffs.
+- ZERO elastic wrist cuffs.
+- ZERO sweatshirt-style cuffs.
+- ZERO knit rib bands at sleeve end.
+- Sleeves drape naturally and fall past the wrist with an open nylon edge.
+
+JACKET HEM:
+- Bottom hem is a straight nylon edge or a softly adjustable hidden drawcord hem.
+- NEVER a ribbed waistband.
+- NEVER an elastic rib band at the hem.
+- NEVER a sweatshirt hem construction.
+
+JACKET SILHOUETTE:
+- Slightly oversized and relaxed — NOT fitted at waist.
+- Jacket length sits BELOW the waist — NOT cropped.
+- NOT bomber jacket proportions.
+- NOT soccer warmup proportions (short torso, fitted).
+- Elongated, fashion-forward torso length.
+- Collar: mock-neck or stand collar, clean bonded or woven nylon — NOT ribbed.
 
 ═══════════════════════════════════════════════
-JACKET — HARD CONSTRUCTION RULES:
+CRITICAL PANT CONSTRUCTION — READ EVERY LINE:
 ═══════════════════════════════════════════════
-- SLEEVE HEM: sleeves end in a clean open nylon hem — no ribbing, no elastic band, no drawcord, no sweatshirt cuff of any kind. Sleeve falls naturally with an open clean edge.
-- JACKET HEM: bottom hem is a straight nylon edge or a clean adjustable drawcord hem. NEVER a ribbed sweatshirt waistband. NEVER an elastic rib band at the hem.
-- Silhouette: relaxed and slightly oversized — not fitted, not cropped, not boxy-stiff.
-- Full-length front zipper with clean zip guard.
+LEG SILHOUETTE:
+- FULL-LENGTH WIDE-LEG ONLY. Leg falls STRAIGHT from thigh to ankle with NO taper.
+- Pants MUST stack slightly at the bottom — leg is long and falls over the shoe area.
+- Leg opening is WIDE and LOOSE.
+- Relaxed from thigh all the way to the ankle.
+
+ANKLE HEM:
+- OPEN BOTTOM — clean plain nylon hem, wide open leg opening.
+- ZERO elastic ankle cuffs.
+- ZERO ribbed ankle cuffs.
+- ZERO drawcord ankle closures.
+- NOT a jogger silhouette.
+- NOT tapered below the knee.
+- NOT slim, skinny, or fitted through the leg.
+
+PANT PROPORTIONS:
+- Pants should visually extend longer than standard teamwear.
+- The hem should reach past the ankle and lightly stack.
+- Wide-leg luxury nylon trackpant proportions — think premium designer sportswear, NOT school warmup pants.
+
+═══════════════════════════════════════════════
+PROPORTION RULES — BOTH GARMENTS:
+═══════════════════════════════════════════════
+- Garments must feel elongated and fashion-forward.
+- Avoid short or compact silhouettes.
+- Avoid fitted athletic proportions.
+- Maintain relaxed luxury sportswear proportions throughout.
+- Back-view renders must maintain the same relaxed oversized proportions as front.
 
 ═══════════════════════════════════════════════
 RENDER STYLE — REQUIRED:
 ═══════════════════════════════════════════════
-- 3D semi-photorealistic apparel render — NOT a flat illustration, NOT vector art, NOT Illustrator-style sketch.
-- Garment must show: realistic drape, natural folds, realistic stitching, soft shadows, material depth, nylon surface sheen.
-- Lighting: soft studio lighting, subtle highlights on fabric planes, natural shadow in folds.
-- Quality: premium sportswear campaign render — comparable to Nike Tech Fleece, Adidas training collection, or Fear of God Athletics editorial photography.
+- 3D semi-photorealistic apparel render — NOT flat illustration, NOT vector art, NOT Illustrator sketch, NOT fashion croquis.
+- Realistic drape, natural folds, accurate stitching, soft shadows, material depth, nylon sheen.
+- Soft studio lighting — subtle highlights on fabric planes, natural shadow in folds.
+- Premium sportswear campaign quality: comparable to Fear of God Athletics, Kappa Kontroll, Stone Island nylon track, Adidas originals nylon collection.
 
 ═══════════════════════════════════════════════
-STYLE DIRECTION:
+COMPLETE AVOID LIST:
 ═══════════════════════════════════════════════
-Feel: premium, modern, technical, sporty, fashion-forward, luxury athleticwear.
-Comparable to: luxury football training suits, premium track fashion, elevated street-athletic apparel, modern designer sportswear.
-Keep palette premium and restrained. Branding understated and clean.
-
-═══════════════════════════════════════════════
-HARD AVOID LIST:
-═══════════════════════════════════════════════
-- Fleece texture of any kind
-- Cotton sweatshirt material
-- Ribbed cuffs on sleeves or ankles
-- Elastic ankle bands
-- Jogger-fit tapered legs
-- Tight or slim-fit silhouette
-- Basic team warmup suit aesthetic
-- Flat vector / Illustrator / sketch look
-- Esports aesthetics
-- Heavy or stiff-looking fabric
-- Repeated logo patterns
-- Generic sportswear mockup energy
+- Ribbed cuffs anywhere (sleeves, ankles, hem)
+- Elastic ankle bands or wrist bands
+- Sweatshirt construction of any kind
+- Jogger-fit or tapered legs
+- Tight, slim, or athletic-fitted silhouette
+- Bomber jacket proportions
+- Soccer warmup proportions
+- School warmup suit aesthetic
+- Fleece, cotton, or knit fabric appearance
+- Generic teamwear energy
+- Flat vector / Illustrator look
+- Esports styling
+- Short cropped jacket torso
+- Compact or boxy proportions
 
 ═══════════════════════════════════════════════
 DESIGN LANGUAGE:
 ═══════════════════════════════════════════════
 Visual identity is carried through seam placement, panel construction, silhouette, gradients, piping, shape language, movement lines, color blocking, and material contrast.
-The result must feel like a real premium sportswear brand collection — not a generic teamwear uniform.
+The result must feel like a real premium sportswear brand collection — not a generic teamwear set.
 `.trim();
 
 // ─────────────────────────────────────────────────────────────────────────────
