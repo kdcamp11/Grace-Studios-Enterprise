@@ -80,31 +80,19 @@ export default function AdminTeamPage() {
     if (!email) return;
     setGranting(true);
 
-    // Find the profile by email
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("id, email, full_name, company, created_at")
-      .eq("email", email)
-      .single();
+    const res  = await fetch("/api/admin/set-user-role", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ email, role: "admin" }),
+    });
+    const body = await res.json() as { success?: boolean; error?: string; profile?: AdminProfile };
 
-    if (!profile) {
-      setGrantError("No account found with that email. They need to sign up first.");
-      setGranting(false);
-      return;
-    }
-
-    // Grant admin role
-    const { error } = await supabase
-      .from("profiles")
-      .update({ role: "admin" })
-      .eq("id", profile.id);
-
-    if (error) {
-      setGrantError(error.message);
-    } else {
+    if (!res.ok || body.error) {
+      setGrantError(body.error ?? "Something went wrong.");
+    } else if (body.profile) {
       setAdmins((prev) => {
-        if (prev.find((a) => a.id === profile.id)) return prev;
-        return [...prev, { ...profile, is_env_admin: ENV_ADMINS.includes(email) }];
+        if (prev.find((a) => a.id === body.profile!.id)) return prev;
+        return [...prev, { ...body.profile!, is_env_admin: ENV_ADMINS.includes(email) }];
       });
       setGrantSuccess(`${email} is now an admin.`);
       setGrantEmail("");
@@ -147,8 +135,19 @@ export default function AdminTeamPage() {
     }
     if (!confirm("Remove admin access for this user?")) return;
     setRevoking(id);
-    await supabase.from("profiles").update({ role: "client" }).eq("id", id);
-    setAdmins((prev) => prev.filter((a) => a.id !== id));
+
+    const res = await fetch("/api/admin/set-user-role", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ email, role: "client" }),
+    });
+    const body = await res.json() as { success?: boolean; error?: string };
+
+    if (!res.ok || body.error) {
+      alert(body.error ?? "Failed to revoke admin access.");
+    } else {
+      setAdmins((prev) => prev.filter((a) => a.id !== id));
+    }
     setRevoking(null);
   }
 
