@@ -146,6 +146,10 @@ function RendersBoard({ data }: { data: BoardData }) {
   const designSystem  = (metadata.designSystem ?? "bold").toUpperCase();
   const logoPlacement = metadata.logoPlacement ?? "";
 
+  const isTracksuit   = garmentType.toLowerCase().includes("tracksuit");
+  const col1Label     = isTracksuit ? "Jacket" : "Jersey";
+  const col2Label     = isTracksuit ? "Pants"  : "Shorts";
+
   // Primary logo: exact uploaded asset — composited by React into the clean logo zone
   // that the AI reserved. Typography (wordmark + number) is AI-rendered into the fabric.
   const primaryLogo = logoUrls?.[0] ?? null;
@@ -248,34 +252,32 @@ function RendersBoard({ data }: { data: BoardData }) {
           {/* Column labels */}
           <div className="grid grid-cols-2 border-b border-gray-200">
             <div className="border-r border-gray-200 py-2 text-center">
-              <span className="text-[7px] font-bold uppercase tracking-[0.28em] text-gray-400">Jersey</span>
+              <span className="text-[7px] font-bold uppercase tracking-[0.28em] text-gray-400">{col1Label}</span>
             </div>
             <div className="py-2 text-center">
-              <span className="text-[7px] font-bold uppercase tracking-[0.28em] text-gray-400">Shorts</span>
+              <span className="text-[7px] font-bold uppercase tracking-[0.28em] text-gray-400">{col2Label}</span>
             </div>
           </div>
 
           {/* Row labels + images */}
           <div className="flex-1 grid grid-cols-2 grid-rows-2">
-            {/* Front jersey — AI renders fabric + wordmark + number + integrated logo */}
             <div className="relative border-r border-b border-gray-200 overflow-hidden" style={{ minHeight: 240 }}>
               <span className="absolute top-2 left-2.5 text-[6px] font-bold uppercase tracking-[0.28em] text-gray-300 z-10">Front</span>
-              <RenderImage url={renders?.frontJersey} alt="Jersey front" className="w-full h-full" />
+              <RenderImage url={renders?.frontJersey} alt={`${col1Label} front`} className="w-full h-full" />
             </div>
 
             <div className="relative border-b border-gray-200 overflow-hidden" style={{ minHeight: 240 }}>
               <span className="absolute top-2 left-2.5 text-[6px] font-bold uppercase tracking-[0.28em] text-gray-300 z-10">Front</span>
-              <RenderImage url={renders?.frontShorts} alt="Shorts front" className="w-full h-full" />
+              <RenderImage url={renders?.frontShorts} alt={`${col2Label} front`} className="w-full h-full" />
             </div>
 
-            {/* Back jersey — AI renders fabric + number + integrated logo */}
             <div className="relative border-r border-gray-200 overflow-hidden" style={{ minHeight: 240 }}>
               <span className="absolute top-2 left-2.5 text-[6px] font-bold uppercase tracking-[0.28em] text-gray-300 z-10">Back</span>
-              <RenderImage url={renders?.backJersey} alt="Jersey back" className="w-full h-full" />
+              <RenderImage url={renders?.backJersey} alt={`${col1Label} back`} className="w-full h-full" />
             </div>
             <div className="relative overflow-hidden" style={{ minHeight: 240 }}>
               <span className="absolute top-2 left-2.5 text-[6px] font-bold uppercase tracking-[0.28em] text-gray-300 z-10">Back</span>
-              <RenderImage url={renders?.backShorts} alt="Shorts back" className="w-full h-full" />
+              <RenderImage url={renders?.backShorts} alt={`${col2Label} back`} className="w-full h-full" />
             </div>
           </div>
         </div>

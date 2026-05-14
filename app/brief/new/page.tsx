@@ -8,16 +8,18 @@ import { createClient } from "@/lib/supabase/client";
 
 const SPORTS = [
   "Basketball",
-  "Football",
-  "Soccer",
-  "Baseball",
-  "Softball",
-  "Volleyball",
-  "Lacrosse",
-  "Hockey",
-  "Wrestling",
-  "Track & Field",
-  "Other",
+  "Tracksuits",
+  // Coming soon — uncomment as each sport is added to the platform:
+  // "Football",
+  // "Soccer",
+  // "Baseball",
+  // "Softball",
+  // "Volleyball",
+  // "Lacrosse",
+  // "Hockey",
+  // "Wrestling",
+  // "Track & Field",
+  // "Other",
 ];
 
 export default function TeamInfoPage() {

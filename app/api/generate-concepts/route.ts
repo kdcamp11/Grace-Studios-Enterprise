@@ -393,6 +393,68 @@ function isColorDark(hex: string): boolean {
  * These specs are injected near the top of each render prompt so the model
  * treats them as primary construction requirements.
  */
+/**
+ * Tracksuit construction specs — injected in place of basketball specs
+ * when sport === "tracksuits". Views reuse the same 4 keys (frontJersey
+ * = front jacket, backJersey = back jacket, frontShorts = front pants,
+ * backShorts = back pants).
+ */
+const TRACKSUIT_CONSTRUCTION: Record<RenderViewKey, string> = {
+  frontJersey: [
+    "FRONT TRACK JACKET — CONSTRUCTION SPECIFICATION:",
+    "This is a TRACK JACKET, not a jersey. Full-length center-front zipper with a clean zip guard, visible metal or plastic zip pull.",
+    "Collar: structured mock-neck or stand collar, 3–4cm tall, ribbed or bonded fabric, sitting high on the neck.",
+    "Chest: two front chest panels divided by the center zip. Clean primary-color fabric with design system panel geometry running across both sides.",
+    "Shoulders: set-in sleeve seams, clean athletic shoulder structure, natural taper.",
+    "Sleeves: full-length sleeves reaching the wrist, matching fabric with side/sleeve panel geometry continuing from body.",
+    "Cuffs: ribbed elastic cuffs, 3–4cm wide, accent-color or primary-color.",
+    "Side pockets: clean zip or welt pockets at hip level on both sides.",
+    "Hem: ribbed elastic waistband hem, same weight as cuffs.",
+    "Silhouette: slim athletic cut, slightly tapered at waist, realistic 3D form with subtle chest depth.",
+    "View: straight-on front-facing view. Ghost mannequin or flat lay. Centered.",
+  ].join(" "),
+
+  backJersey: [
+    "BACK TRACK JACKET — CONSTRUCTION SPECIFICATION:",
+    "This is the BACK VIEW of a TRACK JACKET. Do NOT show a front zipper or chest.",
+    "Upper back yoke: horizontal seam across the upper back at shoulder blade level, separating yoke panel from main back panel.",
+    "Back collar: top of the stand/mock-neck collar visible at the neckline, back of collar is smooth and clean.",
+    "Main back panel: large clean primary-color area — the dominant branding zone. No zipper, no front construction elements.",
+    "Sleeve backs: full-length sleeves with side-panel geometry continuing from the front view, visible at both sides.",
+    "Center back seam: vertical seam running from collar to hem, realistic stitching.",
+    "Back hem: ribbed elastic waistband matching front, clean and flat.",
+    "Silhouette: flat rear profile with natural shoulder width and athletic taper to waist.",
+    "View: straight-on BACK-FACING view — we are looking at the BACK of the jacket. Ghost mannequin or flat lay. Centered.",
+  ].join(" "),
+
+  frontShorts: [
+    "FRONT TRACK PANTS — CONSTRUCTION SPECIFICATION:",
+    "These are TRACK PANTS, not basketball shorts. Full ankle-length athletic pants.",
+    "Waistband: wide elastic waistband, 5–6cm tall, with internal drawcord and visible drawcord exits at center front.",
+    "Leg fit: tapered athletic cut — wider at the hip, narrowing smoothly toward the ankle.",
+    "Side panels: design system panel geometry runs as a continuous stripe or panel down the full outer leg length.",
+    "Pockets: side slash pockets or zip pockets at hip level on both legs.",
+    "Ankle cuffs: ribbed elastic ankle cuffs, 4–5cm wide, matching waistband fabric.",
+    "Inseam: full-length inseam, clean stitching.",
+    "Front view: shows both full-length legs, waistband, and side panel geometry.",
+    "Silhouette: relaxed through the seat and thigh, tapered below the knee.",
+    "View: straight-on front-facing view. Ghost mannequin or flat lay. Centered.",
+  ].join(" "),
+
+  backShorts: [
+    "BACK TRACK PANTS — CONSTRUCTION SPECIFICATION:",
+    "This is the BACK VIEW of TRACK PANTS. Full ankle-length athletic pants from behind.",
+    "Waistband: same wide elastic waistband as front, clean rear face, no drawcord visible at back.",
+    "Back panel: large clean primary-color seat and back-of-leg panels — the dominant rear design zone.",
+    "Side panels: design system geometry continues from front, full-length stripe visible on both outer legs.",
+    "Back pockets: optional zip back pockets at seat level, or clean back panel.",
+    "Ankle cuffs: matching ribbed elastic cuffs visible at ankle.",
+    "Silhouette: natural rear drape — relaxed at seat, tapered to ankle.",
+    "View: straight-on BACK-FACING view — we are looking at the BACK of the pants. Ghost mannequin or flat lay. Centered.",
+  ].join(" "),
+};
+
+/** Basketball-specific construction specs (original). */
 const GARMENT_CONSTRUCTION: Record<RenderViewKey, string> = {
   frontJersey: [
     "FRONT JERSEY — CONSTRUCTION SPECIFICATION:",
@@ -471,9 +533,11 @@ function buildGarmentPrompt(
   teamName:     string,
   brief:        Record<string, unknown>,
   hasLogoRef:   boolean = false,
+  sport:        string  = "basketball",
 ): string {
   const system      = designSystem.toLowerCase();
   const systemFull  = SYSTEM_VISUAL_LANGUAGE[system] ?? SYSTEM_VISUAL_LANGUAGE.bold;
+  const isTracksuit = sport.toLowerCase() === "tracksuits";
 
   // ── Extract locked hex colors ─────────────────────────────────────────────
   const primary   = metadata.colorway.find(c => c.role.toLowerCase().includes("primary"));
@@ -484,7 +548,7 @@ function buildGarmentPrompt(
   const colorLines = [
     primary   ? `BODY/PRIMARY panels: exact hex ${primary.hex}` : "",
     secondary ? `SIDE/SECONDARY panels: exact hex ${secondary.hex}` : "",
-    accent    ? `TRIM/ACCENT details (collar binding, stripe edges, waistband): exact hex ${accent.hex}` : "",
+    accent    ? `TRIM/ACCENT details (collar binding, stripe edges, waistband, cuffs): exact hex ${accent.hex}` : "",
   ].filter(Boolean);
 
   const colorBlock = colorLines.length > 0
@@ -492,11 +556,13 @@ function buildGarmentPrompt(
     : "";
 
   // ── 2. View-specific flags ────────────────────────────────────────────────
-  const isJersey = view.includes("Jersey");
+  const isJersey = view.includes("Jersey");  // jacket views for tracksuits
   const isFront  = view.startsWith("front");
 
-  // ── 3. View-specific garment anatomy (independent per view) ───────────────
-  const constructionSpec = GARMENT_CONSTRUCTION[view];
+  // ── 3. View-specific garment anatomy (sport-aware) ────────────────────────
+  const constructionSpec = isTracksuit
+    ? TRACKSUIT_CONSTRUCTION[view]
+    : GARMENT_CONSTRUCTION[view];
 
   // ── 4. Design system panel geometry from Claude ───────────────────────────
   const garmentDirective = (metadata.description ?? "").slice(0, 180);
@@ -508,12 +574,16 @@ function buildGarmentPrompt(
   const numStyleHint  = brief.number_style ? String(brief.number_style) : "collegiate varsity";
   const outlineColor  = secondary?.hex ?? accent?.hex ?? "#000000";
 
-  // ── 6. Subject line ───────────────────────────────────────────────────────
-  const garmentSubject = isJersey
-    ? `Premium ${construction} basketball game jersey, ${isFront ? "front" : "back"} view, for ${teamName} athletic program.`
-    : `Premium ${construction} basketball game shorts, ${isFront ? "front" : "back"} view, for ${teamName} athletic program.`;
+  // ── 6. Subject line (sport-aware) ────────────────────────────────────────
+  const garmentSubject = isTracksuit
+    ? isJersey
+      ? `Premium ${construction} athletic track jacket, ${isFront ? "front" : "back"} view, for ${teamName} program.`
+      : `Premium ${construction} athletic track pants, ${isFront ? "front" : "back"} view, for ${teamName} program.`
+    : isJersey
+      ? `Premium ${construction} basketball game jersey, ${isFront ? "front" : "back"} view, for ${teamName} athletic program.`
+      : `Premium ${construction} basketball game shorts, ${isFront ? "front" : "back"} view, for ${teamName} athletic program.`;
 
-  // ── 7. Jersey branding hierarchy (jerseys only) ───────────────────────────
+  // ── 7. Jacket/Jersey branding hierarchy (jacket & jersey views only) ────────
   //   Typography must be rendered BY THE AI into the fabric — not overlaid.
   //   React will composite only the exact uploaded logo into the clean logo zone.
   const jerseyBranding = (() => {
@@ -523,6 +593,44 @@ function buildGarmentPrompt(
     const logoSide     = String(brief.gs_logo_placement ?? "left").toLowerCase().includes("right")
                          ? "upper-right" : "upper-left";
 
+    // ── TRACKSUIT: jacket branding — wordmark + logo, no player number ───────
+    if (isTracksuit && view === "frontJersey") {
+      const bodyIsDark     = primary ? isColorDark(primary.hex) : true;
+      const logoRecolorHex = bodyIsDark
+        ? (secondary?.hex ?? accent?.hex ?? "#ffffff")
+        : (primary?.hex   ?? accent?.hex ?? "#000000");
+
+      const logoZone = hasLogoRef
+        ? `LOGO INTEGRATION (${logoSide} chest): The provided image is the team's uploaded logo. Use its exact shape, proportions, and structure. Integrate it naturally into the ${logoSide} chest area of the jacket, approximately 2–2.5 inches wide, sublimated/printed into the fabric. LOGO RECOLOR: Recolor to ${logoRecolorHex} for contrast against body (${primary?.hex ?? "body color"}). Preserve original form exactly.`
+        : `LOGO ZONE (${logoSide} chest): Leave a clean completely blank fabric area approximately 2 inches wide at the ${logoSide} chest for logo compositing. Do NOT generate any emblem or symbol here.`;
+
+      return [
+        `FRONT JACKET BRANDING:`,
+        logoZone,
+        `TEAM WORDMARK: Render "${wordmarkName}" as a clean chest wordmark sublimated into the fabric. Style: bold athletic lettering, ${system.toUpperCase()} system aesthetic, approximately 55–60% of chest width. Feels printed INTO the jacket fabric — not floating. Outline in ${outlineColor} with contrasting fill.`,
+        `NO PLAYER NUMBERS — tracksuits do not carry player numbers. Do not render any numerals.`,
+      ].join(" ");
+    }
+
+    if (isTracksuit && view === "backJersey") {
+      const bodyIsDark      = primary ? isColorDark(primary.hex) : true;
+      const logoRecolorHex  = bodyIsDark
+        ? (secondary?.hex ?? accent?.hex ?? "#ffffff")
+        : (primary?.hex   ?? accent?.hex ?? "#000000");
+
+      const backLogoZone = hasLogoRef
+        ? `LOGO INTEGRATION (upper back, below collar): Integrate the provided logo centered below the rear collar, approximately 1.5 inches wide. LOGO RECOLOR: Recolor to ${logoRecolorHex}. Preserve form exactly.`
+        : `LOGO ZONE (upper back, below collar): Leave a clean blank 1.5-inch wide area below the rear collar. Do NOT generate any emblem here.`;
+
+      return [
+        `BACK JACKET BRANDING:`,
+        backLogoZone,
+        `TEAM NAME (dominant back element): Render "${wordmarkName}" large across the upper back panel, sublimated into fabric. Style: bold collegiate wordmark, approximately 70–75% of back panel width. Outline in ${outlineColor}. Feels printed INTO the jacket, not floating on top.`,
+        `NO PLAYER NUMBERS — tracksuits do not carry player numbers. Do not render any numerals.`,
+      ].join(" ");
+    }
+
+    // ── BASKETBALL: original jersey branding ─────────────────────────────────
     if (view === "frontJersey") {
       // ── Logo recolor: pick contrasting palette color based on body luminance ──
       const bodyIsDark    = primary ? isColorDark(primary.hex) : true;
@@ -578,24 +686,40 @@ function buildGarmentPrompt(
     return "";
   })();
 
-  // ── 8. Branding restrictions (split by garment type) ─────────────────────
-  const brandingRestrictions = isJersey
-    // Jerseys: allow only the team wordmark, player number, and (if provided) the
-    // reference logo integrated into the chest zone. External brand marks always banned.
-    ? hasLogoRef
-      ? [
-          `LOGO FIDELITY: Use ONLY the provided uploaded logo image exactly as supplied — do not invent, simplify, redraw, or replace it with a different mark.`,
-          `Do NOT render Nike, Adidas, Jordan, Under Armour, or any external brand marks.`,
-          `The ONLY graphics permitted on the jersey fabric are: (1) the provided uploaded team logo in the chest zone, (2) the team name wordmark text, and (3) the player number — all specified above. Everything else must be clean fabric.`,
-        ].join(" ")
-      : [
-          `CRITICAL LOGO PROHIBITION: Do NOT render the team's own uploaded logo in any form.`,
-          `Do NOT generate any circular emblem, shield, badge, crest, monogram, abstract mark, or symbol that could represent a team logo anywhere on the jersey.`,
-          `Do NOT render Nike, Adidas, Jordan, Under Armour, or any external brand marks.`,
-          `The ONLY graphics permitted on the jersey fabric are: (1) the team name wordmark text, and (2) the player number — both specified above. Everything else must be clean fabric.`,
-        ].join(" ")
-    // Shorts: keep entirely clean — no text, no graphics.
-    : `CRITICAL — ABSOLUTELY ZERO on the shorts: text, numbers, logos, brand marks, wordmarks, watermarks, graphic overlays, or symbols of any kind. All panels must be completely clean fabric.`;
+  // ── 8. Branding restrictions (sport + garment type aware) ────────────────
+  const brandingRestrictions = isTracksuit
+    ? isJersey
+      // Jacket: wordmark + logo permitted. No numbers ever.
+      ? hasLogoRef
+        ? [
+            `LOGO FIDELITY: Use ONLY the provided uploaded logo — do not invent or replace it.`,
+            `Do NOT render Nike, Adidas, Jordan, Under Armour, or any external brand marks.`,
+            `CRITICAL: NO player numbers or numerals anywhere on the jacket. Tracksuits never carry player numbers.`,
+            `Permitted graphics: (1) team logo in designated zone, (2) team name wordmark — nothing else.`,
+          ].join(" ")
+        : [
+            `Do NOT generate any logo, emblem, badge, crest, or symbol on the jacket.`,
+            `Do NOT render Nike, Adidas, Jordan, Under Armour, or any external brand marks.`,
+            `CRITICAL: NO player numbers or numerals anywhere on the jacket.`,
+            `Permitted graphics: team name wordmark text only — nothing else.`,
+          ].join(" ")
+      // Pants: completely clean — no text, no graphics.
+      : `CRITICAL — ABSOLUTELY ZERO on the track pants: text, numbers, logos, brand marks, wordmarks, watermarks, or symbols of any kind. All panels must be completely clean fabric.`
+    // Basketball jerseys/shorts (original restrictions):
+    : isJersey
+      ? hasLogoRef
+        ? [
+            `LOGO FIDELITY: Use ONLY the provided uploaded logo image exactly as supplied — do not invent, simplify, redraw, or replace it with a different mark.`,
+            `Do NOT render Nike, Adidas, Jordan, Under Armour, or any external brand marks.`,
+            `The ONLY graphics permitted on the jersey fabric are: (1) the provided uploaded team logo in the chest zone, (2) the team name wordmark text, and (3) the player number — all specified above. Everything else must be clean fabric.`,
+          ].join(" ")
+        : [
+            `CRITICAL LOGO PROHIBITION: Do NOT render the team's own uploaded logo in any form.`,
+            `Do NOT generate any circular emblem, shield, badge, crest, monogram, abstract mark, or symbol that could represent a team logo anywhere on the jersey.`,
+            `Do NOT render Nike, Adidas, Jordan, Under Armour, or any external brand marks.`,
+            `The ONLY graphics permitted on the jersey fabric are: (1) the team name wordmark text, and (2) the player number — both specified above. Everything else must be clean fabric.`,
+          ].join(" ")
+      : `CRITICAL — ABSOLUTELY ZERO on the shorts: text, numbers, logos, brand marks, wordmarks, watermarks, graphic overlays, or symbols of any kind. All panels must be completely clean fabric.`;
 
   return [
     // ── Colors first ──
@@ -853,6 +977,7 @@ export async function POST(req: NextRequest) {
         teamName,
         brief as Record<string, unknown>,
         hasLogoRef,
+        sport,
       );
 
       console.log(

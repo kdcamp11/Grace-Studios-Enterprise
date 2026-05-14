@@ -30,35 +30,41 @@ import path from "path";
 // ─── Sport → folder slug ──────────────────────────────────────────────────────
 
 const SPORT_SLUGS: Record<string, string> = {
-  "basketball":     "basketball",
-  "football":       "football",
-  "soccer":         "soccer",
-  "baseball":       "baseball",
-  "softball":       "softball",
-  "volleyball":     "volleyball",
-  "lacrosse":       "lacrosse",
-  "hockey":         "hockey",
-  "wrestling":      "wrestling",
-  "track & field":  "track-field",
-  "track and field":"track-field",
-  "other":          "basketball",
+  // ── Active sports ──────────────────────────────────────────────────────
+  "basketball":  "basketball",
+  "tracksuits":  "tracksuits",
+  // ── Coming soon — uncomment as each sport launches ─────────────────────
+  // "football":       "football",
+  // "soccer":         "soccer",
+  // "baseball":       "baseball",
+  // "softball":       "softball",
+  // "volleyball":     "volleyball",
+  // "lacrosse":       "lacrosse",
+  // "hockey":         "hockey",
+  // "wrestling":      "wrestling",
+  // "track & field":  "track-field",
+  // "track and field":"track-field",
+  // "other":          "basketball",
 };
 
 // ─── Sport → garment-type label used in prompts ───────────────────────────────
 
 export const GARMENT_TYPE_LABELS: Record<string, string> = {
-  "basketball":     "Basketball Jersey & Shorts Uniform",
-  "football":       "Football Jersey & Pants Uniform",
-  "soccer":         "Soccer Jersey & Shorts Kit",
-  "baseball":       "Baseball Jersey & Pants Uniform",
-  "softball":       "Softball Jersey & Pants Uniform",
-  "volleyball":     "Volleyball Jersey & Shorts Uniform",
-  "lacrosse":       "Lacrosse Jersey & Shorts Uniform",
-  "hockey":         "Hockey Jersey & Pants Uniform",
-  "wrestling":      "Wrestling Singlet",
-  "track & field":  "Track & Field Uniform",
-  "track and field":"Track & Field Uniform",
-  "other":          "Sports Uniform",
+  // ── Active sports ──────────────────────────────────────────────────────
+  "basketball":  "Basketball Jersey & Shorts Uniform",
+  "tracksuits":  "Tracksuit Jacket & Pants",
+  // ── Coming soon — uncomment as each sport launches ─────────────────────
+  // "football":       "Football Jersey & Pants Uniform",
+  // "soccer":         "Soccer Jersey & Shorts Kit",
+  // "baseball":       "Baseball Jersey & Pants Uniform",
+  // "softball":       "Softball Jersey & Pants Uniform",
+  // "volleyball":     "Volleyball Jersey & Shorts Uniform",
+  // "lacrosse":       "Lacrosse Jersey & Shorts Uniform",
+  // "hockey":         "Hockey Jersey & Pants Uniform",
+  // "wrestling":      "Wrestling Singlet",
+  // "track & field":  "Track & Field Uniform",
+  // "track and field":"Track & Field Uniform",
+  // "other":          "Sports Uniform",
 };
 
 // ─── Design-system visual language ────────────────────────────────────────────
