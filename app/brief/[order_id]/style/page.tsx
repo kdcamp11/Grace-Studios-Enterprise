@@ -173,13 +173,30 @@ export default function StylePage() {
   const [selected, setSelected] = useState<"bold" | "gradient" | "program" | "culture" | "">("");
   const [jerseycut, setJerseycut] = useState("");
   const [sublimated, setSublimated] = useState<boolean | null>(null);
+  const [sport, setSport] = useState("");
+  const [sportLoaded, setSportLoaded] = useState(false);
 
   useEffect(() => {
+    // Restore UI selections from localStorage
     const state = loadBriefState();
     if (state.designSystem) setSelected(state.designSystem as typeof selected);
     if (state.jerseycut) setJerseycut(state.jerseycut);
     if (state.sublimated !== null) setSublimated(state.sublimated);
-  }, []);
+
+    // Always fetch sport from server API (service-role bypass for RLS)
+    fetch(`/api/orders/sport?orderId=${order_id}`)
+      .then((r) => r.json())
+      .then(({ sport: sportVal }: { sport?: string }) => {
+        if (sportVal) {
+          setSport(sportVal);
+          saveBriefState({ sport: sportVal });
+        }
+        setSportLoaded(true);
+      })
+      .catch(() => setSportLoaded(true));
+  }, [order_id]);
+
+  const isTracksuit = sport.toLowerCase() === "tracksuits";
 
   const canContinue = selected && jerseycut && sublimated !== null;
 
@@ -200,8 +217,13 @@ export default function StylePage() {
       subtitle="Each system has its own visual language. Pick the one that speaks to your team."
     >
       <div className="space-y-8">
+        {/* DEBUG — remove after confirming fix */}
+        <p className="text-xs text-gs-muted font-mono bg-gs-dark-3 px-3 py-1 rounded">
+          sport: &quot;{sport}&quot; | loaded: {String(sportLoaded)} | isTracksuit: {String(isTracksuit)}
+        </p>
+
         {/* Design system cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4" style={{ visibility: sportLoaded ? "visible" : "hidden" }}>
           {SYSTEMS.map((system) => {
             const isSelected = selected === system.id;
             return (
@@ -219,7 +241,11 @@ export default function StylePage() {
                 <div className="relative bg-white h-52 flex items-center justify-center">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={`/jerseys/${system.id}.jpeg`}
+                    src={
+                      isTracksuit
+                        ? `/reference-library/garments/tracksuits/${system.id}/front-reference.jpeg`
+                        : `/jerseys/${system.id}.jpeg`
+                    }
                     alt={system.name}
                     className="h-full w-full object-contain p-3"
                   />
@@ -260,7 +286,7 @@ export default function StylePage() {
         {/* Jersey cut */}
         <div>
           <label className="block text-xs font-display uppercase tracking-wider text-gs-muted mb-3">
-            Jersey Cut
+            {isTracksuit ? "Garment Cut" : "Jersey Cut"}
           </label>
           <div className="flex flex-wrap gap-2">
             {CUTS.map((cut) => (
