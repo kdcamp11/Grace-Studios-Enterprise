@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
 
   const { data: order, error: orderError } = await adminSupabase
     .from("orders")
-    .select("order_number, design_fee_paid, client_id")
+    .select("order_number, design_fee_paid, production_choice, client_id")
     .eq("id", orderId)
     .single();
 
@@ -52,12 +52,13 @@ export async function GET(req: NextRequest) {
   }
 
   return NextResponse.json({
-    order_number:    order.order_number ?? orderId.slice(0, 8).toUpperCase(),
-    design_fee_paid: order.design_fee_paid ?? false,
-    team_name:       client?.name    ?? "Your Team",
-    sport:           client?.sport   ?? "",
-    garment_type:    garmentType,
-    design_system:   (brief?.design_system as string) ?? "bold",
-    preview_url:     previewUrl,
+    order_number:       order.order_number ?? orderId.slice(0, 8).toUpperCase(),
+    design_fee_paid:    order.design_fee_paid    ?? false,
+    production_choice:  order.production_choice  ?? null,
+    team_name:          client?.name    ?? "Your Team",
+    sport:              client?.sport   ?? "",
+    garment_type:       garmentType,
+    design_system:      (brief?.design_system as string) ?? "bold",
+    preview_url:        previewUrl,
   });
 }

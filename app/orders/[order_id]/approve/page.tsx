@@ -293,7 +293,7 @@ export default function ApprovePage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Approval failed");
-      router.push(`/orders/${order_id}/tracker`);
+      router.push(`/orders/${order_id}/production`);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
       setApproving(false);
