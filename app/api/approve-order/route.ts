@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
     await Promise.all([
       // Supplier / account lead notification
       resend.emails.send({
-        from: "Grace Studios <noreply@gracestudios.com>",
+        from: process.env.EMAIL_FROM ?? "Grace Athletics <noreply@graceathletics.com>",
         to: supplierEmail,
         subject: `New Order Approved — ${teamName} (${orderLabel})`,
         html: `
@@ -113,7 +113,7 @@ export async function POST(req: NextRequest) {
 
       // Client confirmation
       resend.emails.send({
-        from: "Grace Studios <noreply@gracestudios.com>",
+        from: process.env.EMAIL_FROM ?? "Grace Athletics <noreply@graceathletics.com>",
         to: clientEmail,
         subject: `Your brief has been received — ${teamName}`,
         html: `

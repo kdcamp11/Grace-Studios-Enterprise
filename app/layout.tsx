@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Barlow_Condensed, Barlow } from "next/font/google";
+import CookieConsent from "@/components/CookieConsent";
 import "./globals.css";
 
 const barlowCondensed = Barlow_Condensed({
@@ -30,6 +31,7 @@ export default function RootLayout({
         className={`${barlowCondensed.variable} ${barlow.variable} antialiased bg-gs-dark text-gs-white font-barlow`}
       >
         {children}
+        <CookieConsent />
       </body>
     </html>
   );

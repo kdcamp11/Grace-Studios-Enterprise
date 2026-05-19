@@ -3,9 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { Resend } from "resend";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
-// TODO: switch to "Grace Studios <noreply@gracestudios.com>" once gracestudios.com
-// is verified as a sending domain in Resend (resend.com/domains).
-const FROM   = "Grace Studios <onboarding@resend.dev>";
+const FROM   = process.env.EMAIL_FROM ?? "Grace Athletics <noreply@graceathletics.com>";
 
 export async function POST(req: NextRequest) {
   try {

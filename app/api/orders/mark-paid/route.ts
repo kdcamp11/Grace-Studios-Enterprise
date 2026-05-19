@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { rateLimit } from "@/lib/rate-limit";
 
 const adminSupabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -15,6 +16,9 @@ const adminSupabase = createClient(
  * page calls this directly so the full flow can be tested end-to-end.
  */
 export async function POST(req: NextRequest) {
+  const limited = rateLimit(req, { limit: 10, windowMs: 60 * 1000 }); // 10 per minute per IP
+  if (limited) return limited;
+
   const body = await req.json().catch(() => ({}));
   const { order_id } = body as { order_id?: string };
 

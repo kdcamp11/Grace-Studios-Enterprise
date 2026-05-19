@@ -13,6 +13,7 @@ import {
 import sharp from "sharp";
 import fsPromises from "fs/promises";
 import path from "path";
+import { rateLimit } from "@/lib/rate-limit";
 
 export const maxDuration = 300;
 
@@ -1001,6 +1002,9 @@ function buildGarmentPrompt(
 // ─── Route ────────────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
+  const limited = rateLimit(req, { limit: 5, windowMs: 10 * 60 * 1000 }); // 5 per 10 min per IP
+  if (limited) return limited;
+
   try {
     const { order_id } = await req.json();
     if (!order_id) {

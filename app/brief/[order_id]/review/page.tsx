@@ -259,6 +259,16 @@ export default function ReviewPage() {
                   className="text-gs-gold underline underline-offset-2 hover:text-gs-gold-light"
                 >
                   Privacy Policy
+                </a>{" "}
+                and{" "}
+                <a
+                  href="/refund-policy"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="text-gs-gold underline underline-offset-2 hover:text-gs-gold-light"
+                >
+                  Refund &amp; Cancellation Policy
                 </a>
                 , including how my personal information, design data, and uploaded assets are collected and used to
                 process my order.

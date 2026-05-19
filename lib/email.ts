@@ -1,8 +1,8 @@
 import { Resend } from "resend";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
-const FROM   = "Grace Studios <noreply@gracestudios.com>";
-const ADMIN  = process.env.GRACE_STUDIOS_EMAIL ?? "orders@gracestudios.com";
+const FROM   = process.env.EMAIL_FROM ?? "Grace Athletics <noreply@graceathletics.com>";
+const ADMIN  = process.env.GRACE_STUDIOS_EMAIL ?? "orders@graceathletics.com";
 
 // ─── Base template ──────────────────────────────────────────────────────────
 
