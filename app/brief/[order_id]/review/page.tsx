@@ -28,6 +28,7 @@ export default function ReviewPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [ipAgreed, setIpAgreed] = useState(false);
+  const [termsAgreed, setTermsAgreed] = useState(false);
   const [privacyAgreed, setPrivacyAgreed] = useState(false);
 
   useEffect(() => {
@@ -109,7 +110,7 @@ export default function ReviewPage() {
     );
   }
 
-  const canSubmit = !!brief?.gsLogoPlacement && !!brief?.orderId && ipAgreed && privacyAgreed;
+  const canSubmit = !!brief?.gsLogoPlacement && !!brief?.orderId && ipAgreed && termsAgreed && privacyAgreed;
 
   return (
     <BriefLayout
@@ -223,6 +224,44 @@ export default function ReviewPage() {
                 remain the exclusive intellectual property of Grace Athletics. These designs may not be reproduced,
                 transferred, or used without a separate written agreement. By submitting this brief, I grant Grace Athletics
                 a license to create and retain these designs on my behalf.
+              </p>
+            </div>
+          </label>
+
+          {/* Terms of service */}
+          <label className="flex gap-4 bg-gs-dark-3 border border-gs-border rounded-xl p-4 cursor-pointer group hover:border-gs-gold/40 transition-colors">
+            <div className="flex-shrink-0 mt-0.5">
+              <div
+                className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors
+                  ${termsAgreed ? "bg-gs-gold border-gs-gold" : "border-gs-border group-hover:border-gs-gold/60"}`}
+              >
+                {termsAgreed && (
+                  <svg className="w-3 h-3 text-gs-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                  </svg>
+                )}
+              </div>
+            </div>
+            <input
+              type="checkbox"
+              checked={termsAgreed}
+              onChange={(e) => setTermsAgreed(e.target.checked)}
+              className="sr-only"
+            />
+            <div>
+              <p className="text-xs font-display uppercase tracking-wider text-gs-gold mb-1">Terms of Service</p>
+              <p className="text-sm font-barlow text-gs-muted leading-relaxed">
+                I have read and agree to the Grace Athletics{" "}
+                <a
+                  href="/terms"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="text-gs-gold underline underline-offset-2 hover:text-gs-gold-light"
+                >
+                  Terms of Service
+                </a>
+                , including payment terms, revision fees, turnaround time estimates, and the limitation of liability.
               </p>
             </div>
           </label>

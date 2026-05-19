@@ -271,6 +271,10 @@ export default function SignupPage() {
 
               <p className="text-xs text-gs-muted font-barlow text-center">
                 By creating an account you agree to our{" "}
+                <Link href="/terms" className="text-gs-white hover:text-gs-gold transition-colors underline underline-offset-2">
+                  Terms of Service
+                </Link>
+                {" "}and{" "}
                 <Link href="/privacy-policy" className="text-gs-white hover:text-gs-gold transition-colors underline underline-offset-2">
                   Privacy Policy
                 </Link>
