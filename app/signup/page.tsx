@@ -270,6 +270,14 @@ export default function SignupPage() {
               </button>
 
               <p className="text-xs text-gs-muted font-barlow text-center">
+                By creating an account you agree to our{" "}
+                <Link href="/privacy-policy" className="text-gs-white hover:text-gs-gold transition-colors underline underline-offset-2">
+                  Privacy Policy
+                </Link>
+                .
+              </p>
+
+              <p className="text-xs text-gs-muted font-barlow text-center">
                 Already have an account?{" "}
                 <Link href="/login" className="text-gs-white hover:text-gs-gold transition-colors underline underline-offset-2">
                   Sign in

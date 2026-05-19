@@ -27,6 +27,8 @@ export default function ReviewPage() {
   const [brief, setBrief] = useState<BriefState | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [ipAgreed, setIpAgreed] = useState(false);
+  const [privacyAgreed, setPrivacyAgreed] = useState(false);
 
   useEffect(() => {
     setBrief(loadBriefState());
@@ -107,7 +109,7 @@ export default function ReviewPage() {
     );
   }
 
-  const canSubmit = !!brief?.gsLogoPlacement && !!brief?.orderId;
+  const canSubmit = !!brief?.gsLogoPlacement && !!brief?.orderId && ipAgreed && privacyAgreed;
 
   return (
     <BriefLayout
@@ -190,6 +192,79 @@ export default function ReviewPage() {
             Once submitted, concept generation begins and your design direction is locked. Changes after approval are subject to revision fees:
             <span className="text-gs-white"> Color change $25 · Logo change $75 · Layout change $150</span>
           </p>
+        </div>
+
+        {/* Agreements */}
+        <div className="space-y-3">
+          {/* IP ownership */}
+          <label className="flex gap-4 bg-gs-dark-3 border border-gs-border rounded-xl p-4 cursor-pointer group hover:border-gs-gold/40 transition-colors">
+            <div className="flex-shrink-0 mt-0.5">
+              <div
+                className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors
+                  ${ipAgreed ? "bg-gs-gold border-gs-gold" : "border-gs-border group-hover:border-gs-gold/60"}`}
+              >
+                {ipAgreed && (
+                  <svg className="w-3 h-3 text-gs-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                  </svg>
+                )}
+              </div>
+            </div>
+            <input
+              type="checkbox"
+              checked={ipAgreed}
+              onChange={(e) => setIpAgreed(e.target.checked)}
+              className="sr-only"
+            />
+            <div>
+              <p className="text-xs font-display uppercase tracking-wider text-gs-gold mb-1">Intellectual Property Agreement</p>
+              <p className="text-sm font-barlow text-gs-muted leading-relaxed">
+                I understand that all design concepts, artwork, and creative materials generated through Grace Athletics
+                remain the exclusive intellectual property of Grace Athletics. These designs may not be reproduced,
+                transferred, or used without a separate written agreement. By submitting this brief, I grant Grace Athletics
+                a license to create and retain these designs on my behalf.
+              </p>
+            </div>
+          </label>
+
+          {/* Privacy policy */}
+          <label className="flex gap-4 bg-gs-dark-3 border border-gs-border rounded-xl p-4 cursor-pointer group hover:border-gs-gold/40 transition-colors">
+            <div className="flex-shrink-0 mt-0.5">
+              <div
+                className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors
+                  ${privacyAgreed ? "bg-gs-gold border-gs-gold" : "border-gs-border group-hover:border-gs-gold/60"}`}
+              >
+                {privacyAgreed && (
+                  <svg className="w-3 h-3 text-gs-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                  </svg>
+                )}
+              </div>
+            </div>
+            <input
+              type="checkbox"
+              checked={privacyAgreed}
+              onChange={(e) => setPrivacyAgreed(e.target.checked)}
+              className="sr-only"
+            />
+            <div>
+              <p className="text-xs font-display uppercase tracking-wider text-gs-gold mb-1">Privacy Policy</p>
+              <p className="text-sm font-barlow text-gs-muted leading-relaxed">
+                I have read and agree to the Grace Athletics{" "}
+                <a
+                  href="/privacy-policy"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="text-gs-gold underline underline-offset-2 hover:text-gs-gold-light"
+                >
+                  Privacy Policy
+                </a>
+                , including how my personal information, design data, and uploaded assets are collected and used to
+                process my order.
+              </p>
+            </div>
+          </label>
         </div>
 
         {error && (
