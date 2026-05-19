@@ -217,11 +217,6 @@ export default function StylePage() {
       subtitle="Each system has its own visual language. Pick the one that speaks to your team."
     >
       <div className="space-y-8">
-        {/* DEBUG — remove after confirming fix */}
-        <p className="text-xs text-gs-muted font-mono bg-gs-dark-3 px-3 py-1 rounded">
-          sport: &quot;{sport}&quot; | loaded: {String(sportLoaded)} | isTracksuit: {String(isTracksuit)}
-        </p>
-
         {/* Design system cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4" style={{ visibility: sportLoaded ? "visible" : "hidden" }}>
           {SYSTEMS.map((system) => {

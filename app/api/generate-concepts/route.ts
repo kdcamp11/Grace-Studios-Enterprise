@@ -710,10 +710,12 @@ function buildGarmentPrompt(
   const systemFull  = SYSTEM_VISUAL_LANGUAGE[system] ?? SYSTEM_VISUAL_LANGUAGE.bold;
   const isTracksuit = sport.toLowerCase() === "tracksuits";
 
-  // ── Extract mascot from vision notes + Claude's logoPlacement analysis ───────
-  // vision_prompt is collected in the brief form and stored in Supabase but was
-  // never forwarded to the render prompt — this is the root cause of mascots
-  // not appearing in generated concepts.
+  // ── Vision notes + mascot extraction ─────────────────────────────────────
+  // vision_prompt is collected in the brief form. It carries client-specified
+  // mascot details (animal type, style, accessories, pose, etc.) that MUST
+  // reach the OpenAI render prompt verbatim — not just a keyword extraction.
+  // The full vision text is injected as a TOP-PRIORITY directive so the model
+  // treats it as a binding creative specification, not a suggestion.
   const visionText        = String(brief.vision_prompt ?? "").trim();
   const logoPlacementText = String(metadata.logoPlacement ?? "").trim();
   const combinedVision    = `${visionText} ${logoPlacementText}`.toLowerCase();
@@ -731,6 +733,12 @@ function buildGarmentPrompt(
   const mascotName    = mascotKeyword
     ? mascotKeyword.charAt(0).toUpperCase() + mascotKeyword.slice(1)
     : null;
+
+  // Full vision text passed verbatim so specific details (accessories, poses,
+  // style references like "70s baseball hat") are not lost in keyword extraction.
+  const visionDirective = visionText
+    ? `⚠️ CLIENT VISION — TOP PRIORITY: The client specified the following creative direction. You MUST incorporate every detail exactly as described. This overrides default mascot/graphic assumptions: "${visionText}"`
+    : "";
 
   // ── Extract locked hex colors ─────────────────────────────────────────────
   const primary   = metadata.colorway.find(c => c.role.toLowerCase().includes("primary"));
@@ -801,8 +809,11 @@ function buildGarmentPrompt(
         : `LOGO ZONE (${logoSide} chest): Leave a clean completely blank fabric area approximately 2 inches wide at the ${logoSide} chest for logo compositing. Do NOT generate any emblem or symbol here.`;
 
       const mascotZone = mascotName
-        ? `MASCOT GRAPHIC (dominant front graphic element): Render a large bold illustrated ${mascotName} mascot graphic sublimated into the jacket fabric. Style: contemporary athletic mascot illustration — bold graphic-art style, NOT photorealistic. The ${mascotName} should be a large prominent graphic element centered on the chest or asymmetrically placed per the panel geometry, approximately 40–55% of the jacket front height. Strong silhouette, high contrast. Rendered as dye-sublimated print INTO the fabric — not floating on top.`
-        : "";
+        ? [
+            visionDirective,
+            `MASCOT GRAPHIC (dominant front graphic element — REQUIRED): Render a large bold illustrated ${mascotName} mascot graphic sublimated into the jacket fabric. Style: contemporary athletic mascot illustration — bold graphic-art style, NOT photorealistic. The ${mascotName} should be a large prominent graphic element centered on the chest, approximately 40–55% of the jacket front height. Strong silhouette, high contrast. Every detail from the client vision above MUST be reflected — accessories, pose, style references, era-specific elements. Rendered as dye-sublimated print INTO the fabric — not floating on top.`,
+          ].filter(Boolean).join(" ")
+        : visionDirective;
 
       return [
         `FRONT JACKET BRANDING:`,
@@ -859,8 +870,11 @@ function buildGarmentPrompt(
 
         // ── Mascot (if specified in client vision) ──
         mascotName
-          ? `MASCOT GRAPHIC: Client brief specifies a ${mascotName} mascot. Render a bold illustrated ${mascotName} as a secondary graphic element on the jersey — contemporary athletic mascot art style. Place below/behind the wordmark or on the lower chest panel sublimated into the fabric.`
-          : "",
+          ? [
+              visionDirective,
+              `MASCOT GRAPHIC (REQUIRED): Render a bold illustrated ${mascotName} mascot sublimated into the jersey fabric. Contemporary athletic mascot art style — bold, graphic illustration, NOT photorealistic. Every detail from the client vision above MUST appear: accessories, style references, era-specific elements. Place below the wordmark or on the chest panel.`,
+            ].filter(Boolean).join(" ")
+          : visionDirective,
       ].filter(Boolean).join(" ");
     }
 
@@ -940,6 +954,13 @@ function buildGarmentPrompt(
       : `CRITICAL — ABSOLUTELY ZERO on the shorts: text, numbers, logos, brand marks, wordmarks, watermarks, graphic overlays, or symbols of any kind. All panels must be completely clean fabric.`;
 
   return [
+    // ── CLIENT VISION — injected first so it dominates the model's attention ──
+    // This must appear before everything else. LLM/image models weight early
+    // tokens more heavily; vision notes placed at the top ensure specific
+    // details (mascot accessories, style references, era-specific elements)
+    // are not overridden by generic construction prompts below.
+    !mascotName && visionDirective ? visionDirective : "",
+
     // ── TRACKSUIT SYSTEM SPEC (view-specific — jacket rules for jacket, pant rules for pants) ──
     isTracksuit ? (isJersey ? GRACE_TRACKSUIT_SYSTEM_JACKET : GRACE_TRACKSUIT_SYSTEM_PANTS) : "",
 
