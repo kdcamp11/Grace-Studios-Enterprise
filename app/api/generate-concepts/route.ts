@@ -710,6 +710,28 @@ function buildGarmentPrompt(
   const systemFull  = SYSTEM_VISUAL_LANGUAGE[system] ?? SYSTEM_VISUAL_LANGUAGE.bold;
   const isTracksuit = sport.toLowerCase() === "tracksuits";
 
+  // ── Extract mascot from vision notes + Claude's logoPlacement analysis ───────
+  // vision_prompt is collected in the brief form and stored in Supabase but was
+  // never forwarded to the render prompt — this is the root cause of mascots
+  // not appearing in generated concepts.
+  const visionText        = String(brief.vision_prompt ?? "").trim();
+  const logoPlacementText = String(metadata.logoPlacement ?? "").trim();
+  const combinedVision    = `${visionText} ${logoPlacementText}`.toLowerCase();
+
+  const MASCOT_ANIMALS = [
+    "bulldog","eagle","tiger","lion","bear","wolf","hawk","panther",
+    "mustang","bronco","falcon","bull","ram","wildcat","husky","viking",
+    "warrior","knight","spartan","trojan","jaguar","cougar","leopard",
+    "grizzly","bobcat","hornet","wasp","maverick","patriot","pirate",
+    "raider","rebel","dragon","griffin","phoenix","gator","alligator",
+    "wolverine","badger","bison","buffalo","stallion","colt","cobra",
+    "viper","shark","marlin","dolphin","penguin","pelican","osprey",
+  ];
+  const mascotKeyword = MASCOT_ANIMALS.find(m => combinedVision.includes(m));
+  const mascotName    = mascotKeyword
+    ? mascotKeyword.charAt(0).toUpperCase() + mascotKeyword.slice(1)
+    : null;
+
   // ── Extract locked hex colors ─────────────────────────────────────────────
   const primary   = metadata.colorway.find(c => c.role.toLowerCase().includes("primary"));
   const secondary = metadata.colorway.find(c => c.role.toLowerCase().includes("secondary"));
@@ -778,12 +800,17 @@ function buildGarmentPrompt(
         ? `LOGO INTEGRATION (${logoSide} chest): The provided image is the team's uploaded logo. Use its exact shape, proportions, and structure. Integrate it naturally into the ${logoSide} chest area of the jacket, approximately 2–2.5 inches wide, sublimated/printed into the fabric. LOGO RECOLOR: Recolor to ${logoRecolorHex} for contrast against body (${primary?.hex ?? "body color"}). Preserve original form exactly.`
         : `LOGO ZONE (${logoSide} chest): Leave a clean completely blank fabric area approximately 2 inches wide at the ${logoSide} chest for logo compositing. Do NOT generate any emblem or symbol here.`;
 
+      const mascotZone = mascotName
+        ? `MASCOT GRAPHIC (dominant front graphic element): Render a large bold illustrated ${mascotName} mascot graphic sublimated into the jacket fabric. Style: contemporary athletic mascot illustration — bold graphic-art style, NOT photorealistic. The ${mascotName} should be a large prominent graphic element centered on the chest or asymmetrically placed per the panel geometry, approximately 40–55% of the jacket front height. Strong silhouette, high contrast. Rendered as dye-sublimated print INTO the fabric — not floating on top.`
+        : "";
+
       return [
         `FRONT JACKET BRANDING:`,
+        mascotZone,
         logoZone,
         `TEAM WORDMARK: Render "${wordmarkName}" as a clean chest wordmark sublimated into the fabric. Style: bold athletic lettering, ${system.toUpperCase()} system aesthetic, approximately 55–60% of chest width. Feels printed INTO the jacket fabric — not floating. Outline in ${outlineColor} with contrasting fill.`,
         `NO PLAYER NUMBERS — tracksuits do not carry player numbers. Do not render any numerals.`,
-      ].join(" ");
+      ].filter(Boolean).join(" ");
     }
 
     if (isTracksuit && view === "backJersey") {
@@ -829,7 +856,12 @@ function buildGarmentPrompt(
 
         // ── Number: AI renders this ──
         `PLAYER NUMBER (secondary element): Render "00" centered below the team wordmark, sublimated into fabric. Style: ${numStyleHint} numerals, varsity proportions, layered ${outlineColor} outline with white fill. Proportionally balanced beneath the wordmark.`,
-      ].join(" ");
+
+        // ── Mascot (if specified in client vision) ──
+        mascotName
+          ? `MASCOT GRAPHIC: Client brief specifies a ${mascotName} mascot. Render a bold illustrated ${mascotName} as a secondary graphic element on the jersey — contemporary athletic mascot art style. Place below/behind the wordmark or on the lower chest panel sublimated into the fabric.`
+          : "",
+      ].filter(Boolean).join(" ");
     }
 
     if (view === "backJersey") {
@@ -861,6 +893,10 @@ function buildGarmentPrompt(
   })();
 
   // ── 8. Branding restrictions (sport + garment type aware) ────────────────
+  const mascotPermission = mascotName
+    ? `(${mascotName} mascot illustration is PERMITTED and REQUIRED per client brief)`
+    : "";
+
   const brandingRestrictions = isTracksuit
     ? isJersey
       // Jacket: wordmark + logo permitted. No numbers ever.
@@ -869,14 +905,18 @@ function buildGarmentPrompt(
             `LOGO FIDELITY: Use ONLY the provided uploaded logo — do not invent or replace it.`,
             `Do NOT render Nike, Adidas, Jordan, Under Armour, or any external brand marks.`,
             `CRITICAL: NO player numbers or numerals anywhere on the jacket. Tracksuits never carry player numbers.`,
-            `Permitted graphics: (1) team logo in designated zone, (2) team name wordmark — nothing else.`,
+            mascotName
+              ? `Permitted graphics: (1) team logo in designated zone, (2) team name wordmark, (3) ${mascotName} mascot illustration as specified — nothing else.`
+              : `Permitted graphics: (1) team logo in designated zone, (2) team name wordmark — nothing else.`,
           ].join(" ")
         : [
-            `Do NOT generate any logo, emblem, badge, crest, or symbol on the jacket.`,
+            mascotName ? "" : `Do NOT generate any logo, emblem, badge, crest, or symbol on the jacket.`,
             `Do NOT render Nike, Adidas, Jordan, Under Armour, or any external brand marks.`,
             `CRITICAL: NO player numbers or numerals anywhere on the jacket.`,
-            `Permitted graphics: team name wordmark text only — nothing else.`,
-          ].join(" ")
+            mascotName
+              ? `Permitted graphics: team name wordmark text and ${mascotName} mascot illustration — nothing else. ${mascotPermission}`
+              : `Permitted graphics: team name wordmark text only — nothing else.`,
+          ].filter(Boolean).join(" ")
       // Pants: completely clean — no text, no graphics.
       : `CRITICAL — ABSOLUTELY ZERO on the track pants: text, numbers, logos, brand marks, wordmarks, watermarks, or symbols of any kind. All panels must be completely clean fabric.`
     // Basketball jerseys/shorts (original restrictions):
@@ -885,14 +925,18 @@ function buildGarmentPrompt(
         ? [
             `LOGO FIDELITY: Use ONLY the provided uploaded logo image exactly as supplied — do not invent, simplify, redraw, or replace it with a different mark.`,
             `Do NOT render Nike, Adidas, Jordan, Under Armour, or any external brand marks.`,
-            `The ONLY graphics permitted on the jersey fabric are: (1) the provided uploaded team logo in the chest zone, (2) the team name wordmark text, and (3) the player number — all specified above. Everything else must be clean fabric.`,
+            mascotName
+              ? `Permitted graphics on the jersey: (1) the provided uploaded team logo in the chest zone, (2) the team name wordmark text, (3) the player number, (4) ${mascotName} mascot illustration. ${mascotPermission} Everything else must be clean fabric.`
+              : `The ONLY graphics permitted on the jersey fabric are: (1) the provided uploaded team logo in the chest zone, (2) the team name wordmark text, and (3) the player number — all specified above. Everything else must be clean fabric.`,
           ].join(" ")
         : [
-            `CRITICAL LOGO PROHIBITION: Do NOT render the team's own uploaded logo in any form.`,
-            `Do NOT generate any circular emblem, shield, badge, crest, monogram, abstract mark, or symbol that could represent a team logo anywhere on the jersey.`,
+            mascotName ? "" : `CRITICAL LOGO PROHIBITION: Do NOT render the team's own uploaded logo in any form.`,
+            mascotName ? "" : `Do NOT generate any circular emblem, shield, badge, crest, monogram, abstract mark, or symbol that could represent a team logo anywhere on the jersey.`,
             `Do NOT render Nike, Adidas, Jordan, Under Armour, or any external brand marks.`,
-            `The ONLY graphics permitted on the jersey fabric are: (1) the team name wordmark text, and (2) the player number — both specified above. Everything else must be clean fabric.`,
-          ].join(" ")
+            mascotName
+              ? `Permitted graphics on the jersey: (1) the team name wordmark text, (2) the player number, (3) ${mascotName} mascot illustration as specified. ${mascotPermission} Everything else must be clean fabric.`
+              : `The ONLY graphics permitted on the jersey fabric are: (1) the team name wordmark text, and (2) the player number — both specified above. Everything else must be clean fabric.`,
+          ].filter(Boolean).join(" ")
       : `CRITICAL — ABSOLUTELY ZERO on the shorts: text, numbers, logos, brand marks, wordmarks, watermarks, graphic overlays, or symbols of any kind. All panels must be completely clean fabric.`;
 
   return [
