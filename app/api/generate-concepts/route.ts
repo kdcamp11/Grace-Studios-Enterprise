@@ -10,6 +10,9 @@ import {
   buildReferenceAnnotation,
   SYSTEM_VISUAL_LANGUAGE,
 } from "@/lib/reference-library";
+import sharp from "sharp";
+import fsPromises from "fs/promises";
+import path from "path";
 
 export const maxDuration = 300;
 
@@ -115,6 +118,65 @@ function extractDirectColors(
  *
  * Returns the public Supabase Storage URL of the uploaded PNG.
  */
+
+// ─── Watermark ────────────────────────────────────────────────────────────────
+// Burns the Grace Athletics logo as a tiled semi-transparent stamp across the
+// full image so concepts cannot be lifted from the URL directly.
+let _watermarkStamp: Buffer | null = null;
+
+async function getWatermarkStamp(): Promise<Buffer> {
+  if (_watermarkStamp) return _watermarkStamp;
+
+  const logoPath = path.join(process.cwd(), "public", "logo.png");
+  const logoSrc  = await fsPromises.readFile(logoPath);
+
+  const LOGO_W = 200; // rendered width of each stamp in the tiled grid
+
+  // Resize and read raw RGBA pixels so we can scale alpha down to ~22%
+  const { data, info } = await sharp(logoSrc)
+    .resize(LOGO_W)
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+
+  for (let i = 3; i < data.length; i += 4) {
+    data[i] = Math.round(data[i] * 0.22);
+  }
+
+  _watermarkStamp = await sharp(Buffer.from(data), {
+    raw: { width: info.width, height: info.height, channels: 4 },
+  }).png().toBuffer();
+
+  return _watermarkStamp;
+}
+
+async function applyWatermark(imageBuffer: Buffer): Promise<Buffer> {
+  const stamp     = await getWatermarkStamp();
+  const stampMeta = await sharp(stamp).metadata();
+  const stampW    = stampMeta.width  ?? 200;
+  const stampH    = stampMeta.height ?? 61;
+
+  const { width = 1024, height = 1024 } = await sharp(imageBuffer).metadata();
+
+  // Brick-offset grid — alternating rows shift half a step so removal is hard
+  const gapX  = 50;
+  const gapY  = 55;
+  const stepX = stampW + gapX;
+  const stepY = stampH + gapY;
+
+  const composites: sharp.OverlayOptions[] = [];
+  let row = 0;
+  for (let y = -gapY; y < height + stepY; y += stepY) {
+    const shiftX = (row % 2 === 0) ? 0 : Math.round(stepX / 2);
+    for (let x = -gapX + shiftX; x < width + stepX; x += stepX) {
+      composites.push({ input: stamp, top: Math.round(y), left: Math.round(x), blend: "over" });
+    }
+    row++;
+  }
+
+  return sharp(imageBuffer).composite(composites).png().toBuffer();
+}
+
 async function generateGarmentRender(
   prompt:        string,
   supabase:      SupabaseClient,
@@ -244,9 +306,10 @@ async function generateGarmentRender(
 
   if (!b64) throw new Error("OpenAI render produced no output");
 
-  // ── Upload PNG buffer to Supabase Storage ─────────────────────────────────
-  const buffer   = Buffer.from(b64, "base64");
-  const bucket   = "concepts";
+  // ── Watermark then upload to Supabase Storage ────────────────────────────
+  const rawBuffer = Buffer.from(b64, "base64");
+  const buffer    = await applyWatermark(rawBuffer);
+  const bucket    = "concepts";
   const filePath = `${orderId}/${view}-${Date.now()}.png`;
 
   await supabase.storage.createBucket(bucket, { public: true }).catch(() => {/* already exists */});
