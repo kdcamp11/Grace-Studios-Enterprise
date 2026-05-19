@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Barlow_Condensed, Barlow } from "next/font/google";
 import CookieConsent from "@/components/CookieConsent";
+import SupportWidget from "@/components/SupportWidget";
 import "./globals.css";
 
 const barlowCondensed = Barlow_Condensed({
@@ -32,6 +33,7 @@ export default function RootLayout({
       >
         {children}
         <CookieConsent />
+        <SupportWidget />
       </body>
     </html>
   );

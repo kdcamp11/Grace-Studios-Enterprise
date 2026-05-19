@@ -155,43 +155,25 @@ export default function AdminOrderPage() {
       const profile = await getProfile();
       if (!user || (!isAdmin(user.email) && profile?.role !== "admin")) { router.replace("/portal"); return; }
 
-      const [{ data: o }, { data: brief }, { data: concepts }, { data: media }, { data: supplierProfiles }, { data: files }] = await Promise.all([
-        supabase
-          .from("orders")
-          .select("id, order_number, stage, created_at, approved_at, estimated_delivery, tracking_number, supplier, supplier_user_id, notes, clients(name, email, sport, city)")
-          .eq("id", order_id)
-          .single(),
-        supabase.from("briefs").select("*").eq("order_id", order_id).single(),
-        supabase.from("concepts").select("id, concept_number, image_url, selected").eq("order_id", order_id).order("concept_number"),
-        supabase.from("first_piece_media").select("*").eq("order_id", order_id).order("created_at", { ascending: false }),
-        supabase.from("profiles").select("id, full_name, company, email").eq("role", "supplier"),
-        supabase.from("order_files").select("id, created_at, file_url, file_name, file_size, file_type, label, client_visible").eq("order_id", order_id).order("created_at"),
-      ]);
+      // Use service-role API to bypass orders_select_own RLS
+      const res = await fetch(`/api/admin/orders/${order_id}`);
+      if (!res.ok) { setLoading(false); return; }
+      const d = await res.json() as {
+        order: OrderDetail & { client: { name: string; email: string; sport: string; city: string } };
+        brief: Brief | null;
+        concepts: Concept[];
+        media: MediaItem[];
+        suppliers: SupplierProfile[];
+        files: OrderFile[];
+      };
 
-      if (!o) { setLoading(false); return; }
-
-      const client = Array.isArray(o.clients) ? o.clients[0] : o.clients;
-      setOrder({
-        id: o.id,
-        order_number: o.order_number,
-        stage: o.stage as OrderStage,
-        created_at: o.created_at,
-        approved_at: o.approved_at,
-        estimated_delivery: o.estimated_delivery,
-        tracking_number: o.tracking_number,
-        supplier: o.supplier,
-        supplier_user_id: o.supplier_user_id ?? null,
-        notes: o.notes,
-        client: client as { name: string; email: string; sport: string; city: string },
-        brief: brief ?? null,
-        concepts: (concepts ?? []) as Concept[],
-        media: (media ?? []) as MediaItem[],
-      });
-      setSuppliers((supplierProfiles ?? []) as SupplierProfile[]);
-      setOrderFiles((files ?? []) as OrderFile[]);
-      setTrackingInput(o.tracking_number ?? "");
-      setDeliveryInput(o.estimated_delivery?.slice(0, 10) ?? "");
-      setNotesInput(o.notes ?? "");
+      if (!d.order) { setLoading(false); return; }
+      setOrder({ ...d.order, brief: d.brief ?? null, concepts: d.concepts, media: d.media });
+      setSuppliers(d.suppliers);
+      setOrderFiles(d.files);
+      setTrackingInput(d.order.tracking_number ?? "");
+      setDeliveryInput(d.order.estimated_delivery?.slice(0, 10) ?? "");
+      setNotesInput(d.order.notes ?? "");
       setLoading(false);
     });
   }, [supabase, order_id, router]);
@@ -199,12 +181,10 @@ export default function AdminOrderPage() {
   async function updateStage(newStage: OrderStage) {
     if (!order || newStage === order.stage) return;
     setStageSaving(true);
-    await supabase.from("orders").update({ stage: newStage }).eq("id", order_id);
-    await supabase.from("stage_log").insert({
-      order_id,
-      from_stage: order.stage,
-      to_stage: newStage,
-      changed_by: "admin",
+    await fetch(`/api/admin/orders/${order_id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "stage", stage: newStage, from_stage: order.stage }),
     });
     setOrder((prev) => prev ? { ...prev, stage: newStage } : prev);
     setStageSaving(false);
@@ -213,9 +193,11 @@ export default function AdminOrderPage() {
   async function assignSupplier(supplierUserId: string | null) {
     if (!order) return;
     setSupplierSaving(true);
-    await supabase.from("orders")
-      .update({ supplier_user_id: supplierUserId })
-      .eq("id", order_id);
+    await fetch(`/api/admin/orders/${order_id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "supplier", supplier_user_id: supplierUserId }),
+    });
     setOrder((prev) => prev ? { ...prev, supplier_user_id: supplierUserId } : prev);
     setSupplierSaving(false);
     setSupplierSaved(true);
@@ -223,16 +205,12 @@ export default function AdminOrderPage() {
   }
 
   async function reviewMedia(mediaId: string, approved: boolean) {
-    const { data: { user } } = await supabase.auth.getUser();
-    const now = new Date().toISOString();
     const note = reviewNote || null;
-    await supabase.from("first_piece_media").update({
-      admin_approved:    approved,
-      admin_note:        note,
-      admin_reviewed_at: now,
-      admin_reviewed_by: user?.id ?? null,
-      client_visible:    approved,           // auto-publish when approved
-    }).eq("id", mediaId);
+    await fetch(`/api/admin/orders/${order_id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "media", media_id: mediaId, approved, admin_note: note }),
+    });
 
     setOrder((prev) => {
       if (!prev) return prev;
@@ -267,11 +245,16 @@ export default function AdminOrderPage() {
 
   async function saveDetails() {
     setSaving(true);
-    await supabase.from("orders").update({
-      tracking_number: trackingInput || null,
-      estimated_delivery: deliveryInput || null,
-      notes: notesInput || null,
-    }).eq("id", order_id);
+    await fetch(`/api/admin/orders/${order_id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "details",
+        tracking_number: trackingInput || null,
+        estimated_delivery: deliveryInput || null,
+        notes: notesInput || null,
+      }),
+    });
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
@@ -295,10 +278,11 @@ export default function AdminOrderPage() {
     const { data: { publicUrl } } = supabase.storage.from("order-files").getPublicUrl(path);
     const { data: { user } } = await supabase.auth.getUser();
 
-    const { data: row } = await supabase
-      .from("order_files")
-      .insert({
-        order_id,
+    const res = await fetch(`/api/admin/orders/${order_id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "file_insert",
         uploaded_by: user?.id,
         file_url: publicUrl,
         file_name: file.name,
@@ -306,19 +290,21 @@ export default function AdminOrderPage() {
         file_type: file.type || null,
         label: fileLabel.trim() || null,
         client_visible: true,
-      })
-      .select()
-      .single();
-
-    if (row) setOrderFiles((prev) => [...prev, row as OrderFile]);
+      }),
+    });
+    const { row } = await res.json() as { row?: OrderFile };
+    if (row) setOrderFiles((prev) => [...prev, row]);
     setFileUploading(false);
     setFileSaved(true);
     setTimeout(() => setFileSaved(false), 2500);
   }
 
   async function deleteFile(fileId: string, filePath: string) {
-    await supabase.from("order_files").delete().eq("id", fileId);
-    // Extract storage path from URL
+    await fetch(`/api/admin/orders/${order_id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "file_delete", file_id: fileId }),
+    });
     const storagePath = filePath.split("/order-files/")[1];
     if (storagePath) await supabase.storage.from("order-files").remove([storagePath]);
     setOrderFiles((prev) => prev.filter((f) => f.id !== fileId));
