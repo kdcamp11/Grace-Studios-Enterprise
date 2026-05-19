@@ -170,8 +170,57 @@ function RendersBoard({ data }: { data: BoardData }) {
         <span className="text-[9px] font-mono text-gray-300 tracking-widest">{orderNumber}</span>
       </div>
 
-      {/* ── Three-column body ───────────────────────────────────────────────── */}
-      <div className="flex" style={{ minHeight: 560 }}>
+      {/* ── Mobile layout — 2×2 image grid only ────────────────────────────── */}
+      <div className="md:hidden" style={{ backgroundColor: "#f9f8f5" }}>
+        {/* Team info strip */}
+        <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-widest text-gray-900">{teamName}</p>
+            <p className="text-[9px] uppercase tracking-[0.18em] text-gray-400 mt-0.5">{garmentType}</p>
+          </div>
+          <span className="inline-block px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-widest bg-gray-900 text-white">
+            {designSystem}
+          </span>
+        </div>
+
+        {/* 2×2 image grid */}
+        <div className="grid grid-cols-2">
+          {/* Front jacket/jersey */}
+          <div className="relative border-r border-b border-gray-200 bg-gray-50" style={{ aspectRatio: "1/1" }}>
+            <span className="absolute top-2 left-2.5 text-[8px] font-bold uppercase tracking-[0.22em] text-gray-400 z-10 bg-white/80 px-1.5 py-0.5 rounded">
+              {col1Label} Front
+            </span>
+            <RenderImage url={renders?.frontJersey} alt={`${col1Label} front`} className="absolute inset-0 w-full h-full" />
+          </div>
+
+          {/* Front shorts/pants */}
+          <div className="relative border-b border-gray-200 bg-gray-50" style={{ aspectRatio: "1/1" }}>
+            <span className="absolute top-2 left-2.5 text-[8px] font-bold uppercase tracking-[0.22em] text-gray-400 z-10 bg-white/80 px-1.5 py-0.5 rounded">
+              {col2Label} Front
+            </span>
+            <RenderImage url={renders?.frontShorts} alt={`${col2Label} front`} className="absolute inset-0 w-full h-full" />
+          </div>
+
+          {/* Back jacket/jersey */}
+          <div className="relative border-r border-gray-200 bg-gray-50" style={{ aspectRatio: "1/1" }}>
+            <span className="absolute top-2 left-2.5 text-[8px] font-bold uppercase tracking-[0.22em] text-gray-400 z-10 bg-white/80 px-1.5 py-0.5 rounded">
+              {col1Label} Back
+            </span>
+            <RenderImage url={renders?.backJersey} alt={`${col1Label} back`} className="absolute inset-0 w-full h-full" />
+          </div>
+
+          {/* Back shorts/pants */}
+          <div className="relative bg-gray-50" style={{ aspectRatio: "1/1" }}>
+            <span className="absolute top-2 left-2.5 text-[8px] font-bold uppercase tracking-[0.22em] text-gray-400 z-10 bg-white/80 px-1.5 py-0.5 rounded">
+              {col2Label} Back
+            </span>
+            <RenderImage url={renders?.backShorts} alt={`${col2Label} back`} className="absolute inset-0 w-full h-full" />
+          </div>
+        </div>
+      </div>
+
+      {/* ── Desktop three-column body ───────────────────────────────────────── */}
+      <div className="hidden md:flex" style={{ minHeight: 560 }}>
 
         {/* Left column — specs */}
         <div
@@ -307,7 +356,7 @@ function RendersBoard({ data }: { data: BoardData }) {
             </div>
           </div>
         </div>
-      </div>
+      </div>{/* end desktop 3-col */}
 
       {/* ── Footer ─────────────────────────────────────────────────────────── */}
       <div className="border-t border-gray-200 bg-white px-5 py-2.5 flex items-center justify-between">

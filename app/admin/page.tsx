@@ -69,26 +69,12 @@ export default function AdminPage() {
         return;
       }
 
-      const { data } = await supabase
-        .from("orders")
-        .select("id, order_number, stage, created_at, clients(name, email, sport)")
-        .order("created_at", { ascending: false });
-
-      if (data) {
-        setOrders(
-          data.map((o) => {
-            const client = Array.isArray(o.clients) ? o.clients[0] : o.clients;
-            return {
-              id: o.id,
-              order_number: o.order_number,
-              stage: o.stage as OrderStage,
-              created_at: o.created_at,
-              client_name: (client as { name: string })?.name ?? "—",
-              client_email: (client as { email: string })?.email ?? "—",
-              sport: (client as { sport: string })?.sport ?? "—",
-            };
-          })
-        );
+      // Use service-role API to bypass orders_select_own RLS which would
+      // otherwise filter to only orders owned by the admin's email
+      const res = await fetch("/api/admin/orders");
+      if (res.ok) {
+        const { orders } = await res.json() as { orders: AdminOrder[] };
+        setOrders(orders.map(o => ({ ...o, stage: o.stage as OrderStage })));
       }
       setLoading(false);
     });
