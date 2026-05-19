@@ -101,18 +101,18 @@ function ColorSwatch({ role, name, hex, pantone }: { role: string; name: string;
   );
 }
 
-function RenderImage({ url, alt, className }: { url?: string; alt: string; className?: string }) {
+function RenderImage({ url, alt, className, style }: { url?: string; alt: string; className?: string; style?: React.CSSProperties }) {
   const [loaded, setLoaded] = useState(false);
   const [error,  setError]  = useState(false);
 
   if (!url) return (
-    <div className={`bg-gray-50 flex items-center justify-center ${className ?? ""}`}>
+    <div className={`bg-gray-50 flex items-center justify-center ${className ?? ""}`} style={style}>
       <span className="text-gray-300 text-[10px] font-display uppercase tracking-wider">Rendering…</span>
     </div>
   );
 
   return (
-    <div className={`relative bg-gray-50 overflow-hidden ${className ?? ""}`}>
+    <div className={`relative bg-gray-50 overflow-hidden ${className ?? ""}`} style={style}>
       {!loaded && !error && (
         <div className="absolute inset-0 animate-pulse bg-gray-100" />
       )}
@@ -558,6 +558,7 @@ export default function ConceptsPage() {
   const [gen, setGen]                 = useState<GenerationProgress>({ status: "not_started", progress: 0, total: 4, error: null });
   const [approving, setApproving]     = useState(false);
   const [isAdminView, setIsAdminView] = useState(false);
+  const [feePaid, setFeePaid]         = useState<boolean | null>(null); // null = loading
 
   const generationFiredRef = useRef(false);
   const pollIntervalRef    = useRef<NodeJS.Timeout | null>(null);
@@ -704,6 +705,15 @@ export default function ConceptsPage() {
         if (profile.role === "admin") setIsAdminView(true);
       }
 
+      // Check payment status via service-role API
+      const infoRes  = await fetch(`/api/orders/info?orderId=${order_id}`);
+      if (!cancelled && infoRes.ok) {
+        const info = await infoRes.json() as { design_fee_paid: boolean };
+        setFeePaid(info.design_fee_paid);
+      } else if (!cancelled) {
+        setFeePaid(false);
+      }
+
       const alreadyDone = await loadBoard();
       if (cancelled) return;
 
@@ -763,6 +773,9 @@ export default function ConceptsPage() {
   const boardFormat = boardData?.metadata.boardFormat;
   const isRenders   = boardFormat === "renders" || (!boardFormat && !!boardData?.metadata.renders);
   const isSpecBoard = !isRenders && (boardFormat === "specboard" || (!boardFormat && !!boardData?.metadata.boardImage));
+
+  // Payment gate: admin always sees full board; clients need feePaid === true
+  const paymentGated = !isAdminView && feePaid === false;
 
   return (
     <div className="min-h-screen bg-gs-dark flex flex-col">
@@ -837,36 +850,127 @@ export default function ConceptsPage() {
           {/* Board display */}
           {hasBoard && (
             <div className="space-y-5">
-              {isSpecBoard  ? <SpecBoardDisplay data={boardData!} />
-               : isRenders   ? <RendersBoard     data={boardData!} />
-               :               <LegacyBoard      data={boardData!} />
-              }
 
-              <div className="flex items-center justify-between pt-1">
-                <div className="flex flex-col gap-1">
-                  <button
-                    type="button"
-                    disabled
-                    className="text-xs font-display uppercase tracking-wider text-gs-muted/40 cursor-not-allowed"
+              {/* ── Payment teaser: front image + 3 locked ──────────────────── */}
+              {paymentGated && isRenders && boardData?.metadata.renders && (
+                <div className="space-y-4">
+                  {/* Teaser header */}
+                  <div className="rounded-xl border border-gs-gold/20 bg-gs-dark-3 px-5 py-4 flex items-center gap-4">
+                    <div className="w-8 h-8 rounded-lg bg-gs-gold/10 border border-gs-gold/30 flex items-center justify-center flex-shrink-0">
+                      <svg className="w-4 h-4 text-gs-gold" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+                      </svg>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-display font-bold uppercase tracking-wider text-gs-white">
+                        Your design is ready
+                      </p>
+                      <p className="text-[10px] text-gs-muted font-barlow mt-0.5">
+                        Pay the design deposit to unlock all 4 views and approve for production.
+                      </p>
+                    </div>
+                    <a
+                      href={`/orders/${order_id}/checkout`}
+                      className="flex-shrink-0 px-5 py-2.5 rounded-xl font-display font-bold text-xs uppercase tracking-widest bg-gs-gold text-white hover:bg-gs-gold-light transition-all whitespace-nowrap"
+                    >
+                      Unlock →
+                    </a>
+                  </div>
+
+                  {/* Front jersey — visible preview */}
+                  <div className="rounded-xl overflow-hidden border border-gray-200 shadow-lg bg-gray-50">
+                    <div className="border-b border-gray-100 bg-white px-4 py-2 flex items-center justify-between">
+                      <span className="text-[8px] font-bold uppercase tracking-[0.28em] text-gray-400">Preview — Front View</span>
+                      <span className="text-[8px] font-mono text-gray-300">{boardData.orderNumber}</span>
+                    </div>
+                    <RenderImage
+                      url={boardData.metadata.renders?.frontJersey}
+                      alt="Front view preview"
+                      className="w-full"
+                      style={{ height: "min(60vw, 420px)" }}
+                    />
+                  </div>
+
+                  {/* Locked grid — 3 blurred placeholders */}
+                  <div className="grid grid-cols-3 gap-3">
+                    {[
+                      { label: "Back View" },
+                      { label: "Front Shorts / Pants" },
+                      { label: "Back Shorts / Pants" },
+                    ].map(({ label }) => (
+                      <div
+                        key={label}
+                        className="relative rounded-xl overflow-hidden border border-gs-border bg-gs-dark-3 aspect-square flex items-center justify-center"
+                      >
+                        {/* Blurred preview using front jersey as placeholder texture */}
+                        <div
+                          className="absolute inset-0 bg-cover bg-center"
+                          style={{
+                            backgroundImage: boardData.metadata.renders?.frontJersey
+                              ? `url(${boardData.metadata.renders.frontJersey})`
+                              : undefined,
+                            filter: "blur(14px) brightness(0.35)",
+                            transform: "scale(1.1)",
+                          }}
+                        />
+                        <div className="relative z-10 flex flex-col items-center gap-2">
+                          <svg className="w-6 h-6 text-gs-muted/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+                          </svg>
+                          <span className="text-[8px] font-display uppercase tracking-wider text-gs-muted/60">{label}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* CTA */}
+                  <a
+                    href={`/orders/${order_id}/checkout`}
+                    className="block w-full py-4 rounded-xl text-center font-display font-bold text-sm uppercase tracking-[0.15em]
+                      bg-gs-gold text-white hover:bg-gs-gold-light transition-all duration-200
+                      shadow-[0_4px_24px_rgba(212,175,55,0.2)] hover:shadow-[0_4px_32px_rgba(212,175,55,0.35)]"
                   >
-                    ↺ Regenerate
-                  </button>
-                  <span className="text-[9px] text-gs-muted/40 font-barlow max-w-[220px] leading-tight">
-                    Regeneration coming soon. Current concept is locked for review.
-                  </span>
+                    Pay to Unlock All 4 Views →
+                  </a>
                 </div>
+              )}
 
-                <button
-                  type="button"
-                  onClick={handleApprove}
-                  disabled={approving}
-                  className="px-8 py-3.5 rounded-xl font-display font-bold text-sm uppercase tracking-[0.15em] transition-all duration-200
-                    bg-gs-white text-gs-dark hover:bg-gs-gold hover:text-white
-                    disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  {approving ? "Saving…" : "Approve This Design →"}
-                </button>
-              </div>
+              {/* ── Full board: paid or non-renders format ───────────────────── */}
+              {(!paymentGated || !isRenders) && (
+                <>
+                  {isSpecBoard  ? <SpecBoardDisplay data={boardData!} />
+                   : isRenders   ? <RendersBoard     data={boardData!} />
+                   :               <LegacyBoard      data={boardData!} />
+                  }
+
+                  <div className="flex items-center justify-between pt-1">
+                    <div className="flex flex-col gap-1">
+                      <button
+                        type="button"
+                        disabled
+                        className="text-xs font-display uppercase tracking-wider text-gs-muted/40 cursor-not-allowed"
+                      >
+                        ↺ Regenerate
+                      </button>
+                      <span className="text-[9px] text-gs-muted/40 font-barlow max-w-[220px] leading-tight">
+                        Regeneration coming soon. Current concept is locked for review.
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleApprove}
+                      disabled={approving}
+                      className="px-8 py-3.5 rounded-xl font-display font-bold text-sm uppercase tracking-[0.15em] transition-all duration-200
+                        bg-gs-white text-gs-dark hover:bg-gs-gold hover:text-white
+                        disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      {approving ? "Saving…" : "Approve This Design →"}
+                    </button>
+                  </div>
+                </>
+              )}
+
             </div>
           )}
 
