@@ -74,5 +74,18 @@ export async function resolveTenant(hostname: string): Promise<Tenant | null> {
     if (platformTenant) return platformTenant as Tenant;
   }
 
+  // 5. Single-tenant last-resort fallback
+  //    When the deployment has exactly one active tenant (typical for this platform),
+  //    return it automatically regardless of hostname. Eliminates the need for
+  //    PLATFORM_HOSTNAME / PLATFORM_SLUG env vars on Vercel.
+  //    Safe because if multiple tenants exist, this step is skipped.
+  const { data: allTenants } = await admin
+    .from("tenants")
+    .select("*")
+    .eq("active", true)
+    .limit(2);
+
+  if (allTenants?.length === 1) return allTenants[0] as Tenant;
+
   return null;
 }
