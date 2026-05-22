@@ -177,7 +177,7 @@ export default function LoginPage() {
       {/* ══════════════════════════════════════════════════════════════════
           HEADER
       ══════════════════════════════════════════════════════════════════ */}
-      <header className="sticky top-0 z-50 bg-brand-bg/95 backdrop-blur border-b border-brand-border px-8 sm:px-14 lg:px-20 py-4 flex items-center justify-between gap-6">
+      <header className="sticky top-0 z-50 bg-brand-bg/95 backdrop-blur border-b border-brand-border px-5 sm:px-8 lg:px-10 py-4 flex items-center justify-between gap-6">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/grace-enterprise-logo.jpeg" alt="Grace Enterprise" style={{ width: 200 }} className="h-auto object-contain" />
 
@@ -224,7 +224,7 @@ export default function LoginPage() {
           HERO — asymmetric split
       ══════════════════════════════════════════════════════════════════ */}
       <section className="border-b border-brand-border overflow-hidden">
-        <div className="max-w-5xl mx-auto px-8 sm:px-14 lg:px-20 grid lg:grid-cols-[1fr_400px] xl:grid-cols-[1fr_440px] gap-0 min-h-[460px] lg:min-h-[520px]">
+        <div className="max-w-5xl mx-auto px-5 sm:px-8 lg:px-10 grid lg:grid-cols-[1fr_400px] xl:grid-cols-[1fr_440px] gap-0 min-h-[460px] lg:min-h-[520px]">
 
           {/* Left — editorial headline */}
           <div className="flex flex-col justify-center py-14 lg:py-20 lg:pr-14 border-b lg:border-b-0 lg:border-r border-brand-border">
@@ -329,7 +329,7 @@ export default function LoginPage() {
           STATS BAR
       ══════════════════════════════════════════════════════════════════ */}
       <div className="border-b border-brand-border">
-        <div className="max-w-5xl mx-auto px-8 sm:px-14 lg:px-20 grid grid-cols-2 sm:grid-cols-4">
+        <div className="max-w-5xl mx-auto px-5 sm:px-8 lg:px-10 grid grid-cols-2 sm:grid-cols-4">
           {STATS.map((s, i) => (
             <div
               key={s.label}
@@ -345,10 +345,10 @@ export default function LoginPage() {
       {/* ══════════════════════════════════════════════════════════════════
           JERSEY STRIP — visual proof of work
       ══════════════════════════════════════════════════════════════════ */}
-      <div className="border-b border-brand-border px-8 sm:px-14 lg:px-20">
-        <div className="max-w-5xl mx-auto grid grid-cols-4 divide-x divide-brand-border">
+      <div className="border-b border-brand-border px-5 sm:px-8 lg:px-10">
+        <div className="max-w-5xl mx-auto grid grid-cols-4 gap-3">
           {JERSEYS.map((j) => (
-            <div key={j.name} className="relative group bg-brand-bg flex items-center justify-center px-4 py-6 sm:py-8">
+            <div key={j.name} className="relative group bg-white rounded-xl flex items-center justify-center px-4 py-6 sm:py-8 border border-brand-border/20">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={j.src}
@@ -366,7 +366,7 @@ export default function LoginPage() {
       {/* ══════════════════════════════════════════════════════════════════
           PROCESS — connected step grid
       ══════════════════════════════════════════════════════════════════ */}
-      <section id="how-it-works" className="px-8 sm:px-14 lg:px-20 py-12 sm:py-16 border-b border-brand-border">
+      <section id="how-it-works" className="px-5 sm:px-8 lg:px-10 py-12 sm:py-16 border-b border-brand-border">
         <div className="max-w-5xl mx-auto">
 
           <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-5 mb-10">
@@ -390,7 +390,7 @@ export default function LoginPage() {
             {STEPS.map((step) => (
               <div
                 key={step.num}
-                className={`flex flex-col gap-4 p-5 sm:p-6 ${step.isApproval ? "bg-brand-surface" : "bg-brand-bg"}`}
+                className="flex flex-col gap-4 p-5 sm:p-6 bg-brand-bg"
               >
                 {/* Top row: step number + approval badge */}
                 <div className="flex items-start justify-between">
@@ -429,7 +429,7 @@ export default function LoginPage() {
       {/* ══════════════════════════════════════════════════════════════════
           ROLES — three-panel editorial
       ══════════════════════════════════════════════════════════════════ */}
-      <section className="px-8 sm:px-14 lg:px-20 py-12 sm:py-16 border-b border-brand-border">
+      <section className="px-5 sm:px-8 lg:px-10 py-12 sm:py-16 border-b border-brand-border">
         <div className="max-w-5xl mx-auto">
 
           <div className="flex items-center gap-2.5 mb-4">
@@ -481,7 +481,7 @@ export default function LoginPage() {
       {/* ══════════════════════════════════════════════════════════════════
           MOBILE SIGN-IN
       ══════════════════════════════════════════════════════════════════ */}
-      <section id="sign-in" className="px-8 sm:px-14 lg:px-20 py-12 sm:py-16 border-b border-brand-border lg:hidden">
+      <section id="sign-in" className="px-5 sm:px-8 lg:px-10 py-12 sm:py-16 border-b border-brand-border lg:hidden">
         <div className="max-w-sm mx-auto">
           <div className="flex items-center gap-2.5 mb-6">
             <div className="w-[3px] h-6 bg-brand-primary flex-shrink-0" />
@@ -523,7 +523,7 @@ export default function LoginPage() {
       {/* ══════════════════════════════════════════════════════════════════
           FINAL CTA — editorial split
       ══════════════════════════════════════════════════════════════════ */}
-      <section className="px-8 sm:px-14 lg:px-20 py-12 sm:py-16 border-b border-brand-border">
+      <section className="px-5 sm:px-8 lg:px-10 py-12 sm:py-16 border-b border-brand-border">
         <div className="max-w-5xl mx-auto flex flex-col lg:flex-row items-start lg:items-end justify-between gap-10">
           <div>
             <div className="flex items-center gap-2.5 mb-6">
@@ -563,7 +563,7 @@ export default function LoginPage() {
       {/* ══════════════════════════════════════════════════════════════════
           FOOTER
       ══════════════════════════════════════════════════════════════════ */}
-      <footer className="border-t border-brand-border px-8 sm:px-14 lg:px-20 py-8">
+      <footer className="border-t border-brand-border px-5 sm:px-8 lg:px-10 py-8">
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/grace-enterprise-logo.jpeg" alt="Grace Enterprise" style={{ width: 140 }} className="h-auto object-contain opacity-50" />
