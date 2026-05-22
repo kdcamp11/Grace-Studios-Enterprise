@@ -6,77 +6,134 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { getProfile, rolePortal } from "@/lib/profile";
 
+// ── Static data ──────────────────────────────────────────────────────────────
+
+const PREVIEW_ORDERS = [
+  {
+    id: "GE-2025-0847",
+    team: "Eastside Hoops",
+    sport: "Basketball",
+    stage: "First Piece Ready for Review",
+    cta: "Review Now →",
+    urgent: true,
+    dot: "bg-amber-400",
+  },
+  {
+    id: "GE-2025-0831",
+    team: "Ridge City FC",
+    sport: "Soccer",
+    stage: "Designer Mockup Ready",
+    cta: "Review Mockup →",
+    urgent: true,
+    dot: "bg-amber-400",
+  },
+  {
+    id: "GE-2025-0819",
+    team: "Summit Athletics",
+    sport: "Track & Field",
+    stage: "In Production",
+    cta: "View Status →",
+    urgent: false,
+    dot: "bg-blue-400",
+  },
+  {
+    id: "GE-2025-0807",
+    team: "Westlake Elite",
+    sport: "Football",
+    stage: "Shipped",
+    cta: "Track Order →",
+    urgent: false,
+    dot: "bg-emerald-400",
+  },
+];
+
+const STATS = [
+  { value: "48hr",       label: "Concept Turnaround" },
+  { value: "2×",         label: "Client Approvals" },
+  { value: "100%",       label: "Designer-Reviewed Files" },
+  { value: "End-to-End", label: "Order Tracking" },
+];
+
 const STEPS = [
   {
-    number: "01",
+    num: "01",
     who: "Program",
-    title: "Submit Your Brief",
-    body: "Tell us your sport, colors, style direction, and logo. Takes under 5 minutes. Your dedicated team gets notified immediately.",
-    color: "bg-brand-primary",
+    whoClass: "text-brand-primary bg-brand-primary/10 border-brand-primary/30",
+    title: "Submit Brief",
+    detail: "Sport, colors, style direction, logo. Under 5 minutes.",
+    isApproval: false,
   },
   {
-    number: "02",
+    num: "02",
     who: "AI",
+    whoClass: "text-violet-400 bg-violet-400/10 border-violet-400/30",
     title: "AI Generates Concepts",
-    body: "Our AI instantly produces multiple concept renders based on your brief. You review them in your portal and approve the direction you want to move forward with.",
-    color: "bg-violet-500",
+    detail: "Multiple renders from your brief. You select the direction you want.",
+    isApproval: true,
+    approvalLabel: "You approve the direction",
   },
   {
-    number: "03",
+    num: "03",
     who: "Designer",
-    title: "Designer Builds Your Files",
-    body: "Your assigned designer takes the approved concept and creates production-ready mockups in Adobe Illustrator. When it's ready, you get a second review in your portal.",
-    color: "bg-violet-400",
+    whoClass: "text-violet-300 bg-violet-300/10 border-violet-300/30",
+    title: "Illustrator Mockup",
+    detail: "Designer builds production-ready files from your approved concept.",
+    isApproval: false,
   },
   {
-    number: "04",
+    num: "04",
     who: "Program",
-    title: "Approve the Final Mockup",
-    body: "You review the designer's actual production file — not just a render. Approve it or request changes. Nothing moves to production without your explicit sign-off.",
-    color: "bg-brand-primary",
+    whoClass: "text-brand-primary bg-brand-primary/10 border-brand-primary/30",
+    title: "Approve Final Files",
+    detail: "You sign off on the actual production file. Nothing moves without it.",
+    isApproval: true,
+    approvalLabel: "You approve the files",
   },
   {
-    number: "05",
+    num: "05",
     who: "Supplier",
-    title: "Produced & Delivered",
-    body: "Approved files go directly to your supplier. They produce a first piece for your review, then run full bulk production. Track every step in your portal.",
-    color: "bg-emerald-500",
+    whoClass: "text-emerald-400 bg-emerald-400/10 border-emerald-400/30",
+    title: "Production & Delivery",
+    detail: "First piece review, then full production. Every step tracked.",
+    isApproval: false,
   },
 ];
 
 const ROLES = [
   {
     label: "PROGRAM PARTNER",
-    headline: "Your team. Your identity.",
+    headline: "Your team.\nYour identity.",
     body: "Submit briefs, approve AI concepts, review designer mockups, and give final sign-off before production. Track your order from first stitch to delivery.",
     href: "/portal",
     badge: "text-brand-primary bg-brand-primary/10 border-brand-primary/30",
-    bar: "bg-brand-primary",
+    topBar: "bg-brand-primary",
   },
   {
     label: "DESIGNER",
-    headline: "AI-assisted. Human-crafted.",
-    body: "Receive assigned briefs, use AI concept renders as your starting point, and deliver production-ready SVG/AI mockups your clients can actually approve.",
+    headline: "AI-assisted.\nHuman-crafted.",
+    body: "Receive assigned briefs, use AI renders as a starting point, and deliver production-ready Illustrator mockups your clients can actually approve.",
     href: "/designer",
     badge: "text-violet-400 bg-violet-400/10 border-violet-400/30",
-    bar: "bg-violet-500",
+    topBar: "bg-violet-500",
   },
   {
     label: "SUPPLIER",
-    headline: "Clear files. Clean runs.",
-    body: "Receive fully approved production files, upload first-piece photos for client review, then run bulk production with confidence.",
+    headline: "Clear files.\nClean runs.",
+    body: "Receive fully approved production files, submit first-piece photos for client review, then run bulk production with confidence.",
     href: "/supplier",
     badge: "text-emerald-400 bg-emerald-400/10 border-emerald-400/30",
-    bar: "bg-emerald-500",
+    topBar: "bg-emerald-500",
   },
 ];
 
-const STYLES = [
+const JERSEYS = [
   { name: "Bold",     src: "/Jerseys/bold.jpeg"     },
   { name: "Gradient", src: "/Jerseys/gradient.jpeg" },
   { name: "Program",  src: "/Jerseys/program.jpeg"  },
   { name: "Culture",  src: "/Jerseys/culture.jpeg"  },
 ];
+
+// ── Component ────────────────────────────────────────────────────────────────
 
 export default function LoginPage() {
   const router = useRouter();
@@ -117,224 +174,408 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-brand-bg flex flex-col">
 
-      {/* ── Sticky header ─────────────────────────────────────────────────── */}
+      {/* ══════════════════════════════════════════════════════════════════
+          HEADER
+      ══════════════════════════════════════════════════════════════════ */}
       <header className="sticky top-0 z-50 bg-brand-bg/95 backdrop-blur border-b border-brand-border px-6 sm:px-10 py-4 flex items-center justify-between gap-6">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/grace-enterprise-logo.jpeg" alt="Grace Enterprise" style={{ width: 200 }} className="h-auto object-contain" />
 
-        {/* Desktop inline login */}
+        {/* Desktop inline sign-in */}
         <form onSubmit={handleSubmit} className="hidden lg:flex items-center gap-3">
           <input
             type="email" value={email} onChange={(e) => setEmail(e.target.value)}
             placeholder="Email" required
-            className="w-52 bg-brand-surface border border-brand-border rounded-lg px-3 py-2 text-brand-text font-barlow text-sm placeholder-brand-muted/60 focus:outline-none focus:border-brand-primary transition-colors"
+            className="w-52 bg-brand-surface border border-brand-border rounded-lg px-3 py-2 text-brand-text font-barlow text-sm placeholder-brand-muted/50 focus:outline-none focus:border-brand-primary transition-colors"
           />
           <input
             type="password" value={password} onChange={(e) => setPassword(e.target.value)}
             placeholder="Password" required
-            className="w-40 bg-brand-surface border border-brand-border rounded-lg px-3 py-2 text-brand-text font-barlow text-sm placeholder-brand-muted/60 focus:outline-none focus:border-brand-primary transition-colors"
+            className="w-40 bg-brand-surface border border-brand-border rounded-lg px-3 py-2 text-brand-text font-barlow text-sm placeholder-brand-muted/50 focus:outline-none focus:border-brand-primary transition-colors"
           />
-          <button type="submit" disabled={submitting || !email || !password}
-            className="px-5 py-2 rounded-lg bg-brand-primary text-white font-display font-bold text-xs uppercase tracking-widest hover:bg-brand-secondary disabled:opacity-40 transition-colors whitespace-nowrap">
+          <button
+            type="submit"
+            disabled={submitting || !email || !password}
+            className="px-5 py-2 rounded-lg bg-brand-primary text-white font-display font-bold text-xs uppercase tracking-widest hover:bg-brand-secondary disabled:opacity-40 transition-colors whitespace-nowrap"
+          >
             {submitting ? "…" : "Sign In →"}
           </button>
-          <Link href="/signup"
-            className="px-5 py-2 rounded-lg border border-brand-border text-brand-muted font-display font-bold text-xs uppercase tracking-widest hover:border-brand-primary hover:text-brand-primary transition-colors whitespace-nowrap">
+          <Link
+            href="/signup"
+            className="px-5 py-2 rounded-lg border border-brand-border text-brand-muted font-display font-bold text-xs uppercase tracking-widest hover:border-brand-primary hover:text-brand-primary transition-colors whitespace-nowrap"
+          >
             Create Account
           </Link>
           {error && <p className="text-[#C41E1E] text-xs font-barlow">{error}</p>}
         </form>
 
-        {/* Mobile */}
+        {/* Mobile nav */}
         <div className="flex lg:hidden items-center gap-3">
-          <Link href="/signup" className="text-xs font-display font-bold uppercase tracking-widest text-brand-muted hover:text-brand-primary transition-colors">Sign Up</Link>
-          <a href="#sign-in" className="px-4 py-2 rounded-lg bg-brand-primary text-white font-display font-bold text-xs uppercase tracking-widest">Sign In</a>
+          <Link href="/signup" className="text-xs font-display font-bold uppercase tracking-widest text-brand-muted hover:text-brand-primary transition-colors">
+            Sign Up
+          </Link>
+          <a href="#sign-in" className="px-4 py-2 rounded-lg bg-brand-primary text-white font-display font-bold text-xs uppercase tracking-widest">
+            Sign In
+          </a>
         </div>
       </header>
 
-      {/* ── Hero ──────────────────────────────────────────────────────────── */}
-      <section className="px-6 sm:px-10 pt-20 pb-16 flex flex-col items-center text-center border-b border-brand-border">
-        <span className="inline-flex items-center gap-2 mb-6 px-4 py-1.5 rounded-full border border-brand-primary/30 bg-brand-primary/8 text-[10px] font-display font-bold uppercase tracking-[0.25em] text-brand-primary">
-          Programs · Designers · Suppliers — One Platform
-        </span>
+      {/* ══════════════════════════════════════════════════════════════════
+          HERO — asymmetric split
+      ══════════════════════════════════════════════════════════════════ */}
+      <section className="border-b border-brand-border overflow-hidden">
+        <div className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16 grid lg:grid-cols-[1fr_460px] xl:grid-cols-[1fr_520px] gap-0 min-h-[620px] lg:min-h-[680px]">
 
-        <h1 className="font-display font-bold uppercase tracking-tight text-brand-text leading-none text-5xl sm:text-7xl max-w-4xl">
-          Custom Uniforms.<br />
-          <span className="text-brand-primary">Built by a Team.</span><br />
-          Backed by AI.
-        </h1>
+          {/* Left — editorial headline */}
+          <div className="flex flex-col justify-center py-20 lg:py-24 lg:pr-16 border-b lg:border-b-0 lg:border-r border-brand-border">
+            <div className="flex items-center gap-2.5 mb-10">
+              <div className="w-[3px] h-7 bg-brand-primary flex-shrink-0" />
+              <span className="text-[10px] font-display font-bold uppercase tracking-[0.3em] text-brand-primary">
+                Programs · Designers · Suppliers
+              </span>
+            </div>
 
-        <p className="mt-6 text-base text-brand-muted font-barlow max-w-2xl leading-relaxed">
-          Grace Enterprise connects sports programs with dedicated designers and vetted suppliers.
-          AI accelerates the concept phase — a real designer refines every mockup before you approve a single file for production.
-        </p>
+            <h1 className="font-display font-bold uppercase text-brand-text leading-[0.9] tracking-tight mb-8">
+              <span className="block" style={{ fontSize: "clamp(2.8rem, 6.5vw, 5.5rem)" }}>The Operating</span>
+              <span className="block" style={{ fontSize: "clamp(2.8rem, 6.5vw, 5.5rem)" }}>System for</span>
+              <span className="block text-brand-primary" style={{ fontSize: "clamp(2.8rem, 6.5vw, 5.5rem)" }}>Elite Programs.</span>
+            </h1>
 
-        <div className="mt-10 flex flex-col sm:flex-row items-center gap-4">
-          <Link href="/signup"
-            className="w-full sm:w-auto px-10 py-4 rounded-lg bg-brand-primary text-white font-display font-bold text-sm uppercase tracking-widest hover:bg-brand-secondary transition-colors">
-            Get Started →
-          </Link>
-          <a href="#how-it-works"
-            className="w-full sm:w-auto px-10 py-4 rounded-lg border border-brand-border text-brand-muted font-display font-bold text-sm uppercase tracking-widest hover:border-brand-primary hover:text-brand-primary transition-colors">
-            See How It Works ↓
-          </a>
-        </div>
+            <p className="text-[15px] text-brand-muted font-barlow max-w-[480px] leading-relaxed mb-10">
+              AI-accelerated concept generation. Designer-built Illustrator files.
+              Two client approvals before a single garment is cut.
+              This is how elite programs run their apparel operations.
+            </p>
 
-        {/* Jersey strip */}
-        <div className="mt-16 grid grid-cols-2 sm:grid-cols-4 gap-3 w-full max-w-3xl">
-          {STYLES.map((s) => (
-            <div key={s.name} className="relative overflow-hidden rounded-xl border border-brand-border group">
-              <div className="aspect-[3/4]">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={s.src} alt={s.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+            <div className="flex flex-col sm:flex-row items-start gap-3">
+              <Link
+                href="/signup"
+                className="px-8 py-4 rounded-lg bg-brand-primary text-white font-display font-bold text-sm uppercase tracking-widest hover:bg-brand-secondary transition-colors"
+              >
+                Get Started →
+              </Link>
+              <a
+                href="#how-it-works"
+                className="px-8 py-4 rounded-lg border border-brand-border text-brand-muted font-display font-bold text-sm uppercase tracking-widest hover:border-brand-primary hover:text-brand-primary transition-colors"
+              >
+                See the Process
+              </a>
+            </div>
+          </div>
+
+          {/* Right — live order tracker preview */}
+          <div className="hidden lg:flex flex-col justify-end pt-16 pl-10 xl:pl-12">
+            <div className="bg-brand-surface border border-brand-border border-b-0 rounded-t-2xl overflow-hidden shadow-[0_-8px_40px_rgba(0,0,0,0.25)]">
+              {/* Panel chrome */}
+              <div className="border-b border-brand-border px-5 py-4 flex items-center justify-between bg-brand-bg/50">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-2 h-2 rounded-full bg-brand-primary animate-pulse" />
+                  <span className="text-[10px] font-display font-bold uppercase tracking-[0.2em] text-brand-text">Order Tracker</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                  <span className="text-[9px] font-barlow text-brand-muted">Live</span>
+                </div>
               </div>
-              <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/70 to-transparent px-3 py-2.5">
-                <p className="text-white font-display font-bold uppercase tracking-widest text-[10px]">{s.name}</p>
+
+              {/* Order rows */}
+              <div className="divide-y divide-brand-border">
+                {PREVIEW_ORDERS.map((order) => (
+                  <div
+                    key={order.id}
+                    className={`px-5 py-4 flex items-start justify-between gap-4 cursor-default transition-colors duration-200 ${
+                      order.urgent ? "hover:bg-amber-400/5" : "hover:bg-brand-bg/40"
+                    }`}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${order.dot}`} />
+                        <span className="text-[11px] font-display font-bold text-brand-text tracking-wide truncate">
+                          {order.team}
+                        </span>
+                        {order.urgent && (
+                          <span className="flex-shrink-0 px-1.5 py-0.5 rounded bg-amber-400/10 border border-amber-400/30 text-amber-400 font-display font-bold text-[8px] uppercase tracking-widest">
+                            Action
+                          </span>
+                        )}
+                      </div>
+                      <div className="ml-3.5 space-y-0.5">
+                        <p className="text-[9px] font-barlow text-brand-muted">{order.id} · {order.sport}</p>
+                        <p className="text-[10px] font-barlow text-brand-muted/80">{order.stage}</p>
+                      </div>
+                    </div>
+                    <span className={`text-[9px] font-display font-bold uppercase tracking-widest flex-shrink-0 mt-0.5 ${
+                      order.urgent ? "text-amber-500" : "text-brand-muted"
+                    }`}>
+                      {order.cta}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Panel footer */}
+              <div className="border-t border-brand-border px-5 py-3.5 flex items-center justify-between bg-brand-bg/30">
+                <span className="text-[9px] font-barlow text-brand-muted">4 active orders</span>
+                <span className="text-[9px] font-display font-bold uppercase tracking-widest text-brand-primary hover:text-brand-secondary cursor-pointer transition-colors">
+                  + New Brief
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════════════════════
+          STATS BAR
+      ══════════════════════════════════════════════════════════════════ */}
+      <div className="border-b border-brand-border">
+        <div className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16 grid grid-cols-2 sm:grid-cols-4">
+          {STATS.map((s, i) => (
+            <div
+              key={s.label}
+              className={`py-8 flex flex-col gap-1 ${i > 0 ? "border-l border-brand-border pl-8 sm:pl-10" : ""} ${i < STATS.length - 1 ? "pr-8 sm:pr-10" : ""}`}
+            >
+              <span className="font-display font-bold text-brand-text text-3xl tracking-tight leading-none">{s.value}</span>
+              <span className="text-[10px] font-display uppercase tracking-[0.2em] text-brand-muted mt-1">{s.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ══════════════════════════════════════════════════════════════════
+          JERSEY STRIP — visual proof of work
+      ══════════════════════════════════════════════════════════════════ */}
+      <div className="border-b border-brand-border overflow-hidden">
+        <div className="grid grid-cols-4 h-48 sm:h-64">
+          {JERSEYS.map((j) => (
+            <div key={j.name} className="relative overflow-hidden group border-r last:border-r-0 border-brand-border">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={j.src}
+                alt={j.name}
+                className="w-full h-full object-cover scale-105 group-hover:scale-110 transition-transform duration-700 ease-out"
+              />
+              <div className="absolute inset-0 bg-brand-bg/30 group-hover:bg-brand-bg/10 transition-colors duration-300" />
+              <div className="absolute bottom-3 left-3">
+                <span className="text-[9px] font-display font-bold uppercase tracking-[0.25em] text-white/70">{j.name}</span>
               </div>
             </div>
           ))}
         </div>
-      </section>
+      </div>
 
-      {/* ── How It Works ──────────────────────────────────────────────────── */}
-      <section id="how-it-works" className="px-6 sm:px-10 py-20 border-b border-brand-border">
-        <div className="max-w-5xl mx-auto">
-          <p className="text-[10px] font-display uppercase tracking-[0.3em] text-brand-primary mb-3 text-center">The Process</p>
-          <h2 className="font-display font-bold uppercase tracking-tight text-brand-text text-3xl sm:text-4xl text-center mb-4">How It Works</h2>
-          <p className="text-sm font-barlow text-brand-muted text-center max-w-xl mx-auto mb-14 leading-relaxed">
-            Every order moves through a structured workflow — brief to AI concept approval, to designer mockup approval, to production —
-            with two client sign-offs before anything goes to a supplier.
-          </p>
+      {/* ══════════════════════════════════════════════════════════════════
+          PROCESS — connected step grid
+      ══════════════════════════════════════════════════════════════════ */}
+      <section id="how-it-works" className="px-6 sm:px-10 lg:px-16 py-24 border-b border-brand-border">
+        <div className="max-w-[1400px] mx-auto">
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
-            {STEPS.map((step, i) => (
-              <div key={step.number} className="relative flex flex-col">
-                {/* Connector */}
-                {i < STEPS.length - 1 && (
-                  <div className="hidden lg:block absolute top-5 left-[calc(100%_-_12px)] w-6 h-px bg-brand-border z-0" />
-                )}
-                <div className="bg-brand-surface border border-brand-border rounded-2xl p-6 flex flex-col gap-4 flex-1">
-                  <div className="flex items-start justify-between">
-                    <div className={`w-10 h-10 rounded-full ${step.color} flex items-center justify-center`}>
-                      <span className="text-white font-display font-bold text-sm">{i + 1}</span>
-                    </div>
-                    <span className="font-display font-bold text-3xl text-brand-border select-none">{step.number}</span>
-                  </div>
-                  <div>
-                    <span className={`inline-block text-[9px] font-display uppercase tracking-[0.2em] px-2 py-0.5 rounded border mb-2 ${
-                      step.color.includes("violet") ? "text-violet-400 bg-violet-400/10 border-violet-400/30" :
-                      step.color.includes("emerald") ? "text-emerald-400 bg-emerald-400/10 border-emerald-400/30" :
-                      "text-brand-primary bg-brand-primary/10 border-brand-primary/30"
-                    }`}>
-                      {step.who}
-                    </span>
-                    <p className="font-display font-bold uppercase tracking-wide text-brand-text text-sm mb-2">{step.title}</p>
-                    <p className="text-xs font-barlow text-brand-muted leading-relaxed">{step.body}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Key distinction callout */}
-          <div className="mt-10 bg-brand-surface border border-brand-border rounded-2xl px-8 py-6 flex flex-col sm:flex-row items-start sm:items-center gap-4">
-            <div className="w-10 h-10 rounded-full bg-violet-500/10 border border-violet-500/30 flex items-center justify-center flex-shrink-0">
-              <svg className="w-5 h-5 text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
-              </svg>
-            </div>
+          <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6 mb-14">
             <div>
-              <p className="font-display font-bold uppercase tracking-wide text-brand-text text-sm mb-1">You Approve Twice. Nothing Slips Through.</p>
-              <p className="text-xs font-barlow text-brand-muted leading-relaxed max-w-2xl">
-                First, you pick the AI concept direction you like. Then your designer builds a production-ready Adobe Illustrator mockup from that concept
-                and sends it back for your review. You approve the actual design file — not a rough render — before anything ever goes to a supplier.
-                Two checkpoints. Your design, your call.
-              </p>
+              <div className="flex items-center gap-2.5 mb-5">
+                <div className="w-[3px] h-6 bg-brand-primary flex-shrink-0" />
+                <span className="text-[10px] font-display font-bold uppercase tracking-[0.3em] text-brand-primary">The Process</span>
+              </div>
+              <h2 className="font-display font-bold uppercase tracking-tight text-brand-text leading-none" style={{ fontSize: "clamp(2rem, 4vw, 3.5rem)" }}>
+                How Every Order<br />Gets Built.
+              </h2>
             </div>
+            <p className="text-sm font-barlow text-brand-muted max-w-[300px] leading-relaxed lg:text-right lg:pb-1">
+              Two client sign-offs. Zero guesswork.
+              Every file reviewed by a human before it touches a supplier.
+            </p>
           </div>
-        </div>
-      </section>
 
-      {/* ── Who It's For ──────────────────────────────────────────────────── */}
-      <section className="px-6 sm:px-10 py-20 border-b border-brand-border">
-        <div className="max-w-5xl mx-auto">
-          <p className="text-[10px] font-display uppercase tracking-[0.3em] text-brand-primary mb-3 text-center">Every Role Has a Home</p>
-          <h2 className="font-display font-bold uppercase tracking-tight text-brand-text text-3xl sm:text-4xl text-center mb-14">Built for Three Sides of the Network</h2>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-            {ROLES.map((r) => (
-              <div key={r.label} className="bg-brand-surface border border-brand-border rounded-2xl overflow-hidden flex flex-col">
-                <div className={`h-1 w-full ${r.bar}`} />
-                <div className="p-6 flex flex-col gap-3 flex-1">
-                  <span className={`self-start text-[9px] font-display font-bold uppercase tracking-[0.2em] px-2 py-1 rounded border ${r.badge}`}>
-                    {r.label}
-                  </span>
-                  <p className="font-display font-bold uppercase tracking-wide text-brand-text text-sm">{r.headline}</p>
-                  <p className="text-xs font-barlow text-brand-muted leading-relaxed flex-1">{r.body}</p>
-                  <Link href={r.href} className="text-[11px] font-display font-bold uppercase tracking-widest text-brand-muted hover:text-brand-primary transition-colors mt-2">
-                    Go to Portal →
-                  </Link>
+          {/* Steps grid — gap-px + parent bg trick creates seamless inner borders */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-px bg-brand-border border border-brand-border rounded-2xl overflow-hidden">
+            {STEPS.map((step) => (
+              <div
+                key={step.num}
+                className={`flex flex-col gap-5 p-7 ${step.isApproval ? "bg-brand-surface" : "bg-brand-bg"}`}
+              >
+                {/* Top row: step number + approval badge */}
+                <div className="flex items-start justify-between">
+                  <span className="font-display font-bold text-[3rem] leading-none text-brand-border select-none">{step.num}</span>
+                  {step.isApproval && (
+                    <span className="px-2 py-1 rounded bg-brand-primary/10 border border-brand-primary/30 text-brand-primary font-display font-bold text-[8px] uppercase tracking-widest whitespace-nowrap">
+                      ✓ Approval
+                    </span>
+                  )}
                 </div>
+
+                {/* Content */}
+                <div className="flex flex-col gap-2 flex-1">
+                  <span className={`self-start text-[8px] font-display font-bold uppercase tracking-[0.2em] px-2 py-0.5 rounded border ${step.whoClass}`}>
+                    {step.who}
+                  </span>
+                  <p className="font-display font-bold uppercase tracking-wide text-brand-text text-xs leading-snug">{step.title}</p>
+                  <p className="text-[11px] font-barlow text-brand-muted leading-relaxed">{step.detail}</p>
+                </div>
+
+                {/* Approval indicator */}
+                {step.isApproval && "approvalLabel" in step && (
+                  <div className="flex items-center gap-2 pt-4 border-t border-brand-border mt-auto">
+                    <div className="w-1.5 h-1.5 rounded-full bg-brand-primary flex-shrink-0" />
+                    <span className="text-[9px] font-display uppercase tracking-widest text-brand-primary">
+                      {(step as typeof step & { approvalLabel: string }).approvalLabel}
+                    </span>
+                  </div>
+                )}
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── Mobile sign-in ─────────────────────────────────────────────────── */}
+      {/* ══════════════════════════════════════════════════════════════════
+          ROLES — three-panel editorial
+      ══════════════════════════════════════════════════════════════════ */}
+      <section className="px-6 sm:px-10 lg:px-16 py-24 border-b border-brand-border">
+        <div className="max-w-[1400px] mx-auto">
+
+          <div className="flex items-center gap-2.5 mb-5">
+            <div className="w-[3px] h-6 bg-brand-primary flex-shrink-0" />
+            <span className="text-[10px] font-display font-bold uppercase tracking-[0.3em] text-brand-primary">Every Role Has a Home</span>
+          </div>
+          <h2 className="font-display font-bold uppercase tracking-tight text-brand-text leading-none mb-16" style={{ fontSize: "clamp(2rem, 4vw, 3.5rem)" }}>
+            Built for Three Sides<br />of the Network.
+          </h2>
+
+          {/* Connected panel — no gutter, inner borders only */}
+          <div className="border border-brand-border rounded-2xl overflow-hidden grid grid-cols-1 lg:grid-cols-3">
+            {ROLES.map((role, i) => (
+              <div
+                key={role.label}
+                className={`group relative flex flex-col gap-6 p-8 xl:p-10 hover:bg-brand-surface transition-colors duration-300
+                  ${i > 0 ? "border-t lg:border-t-0 lg:border-l border-brand-border" : ""}
+                `}
+              >
+                {/* Hover accent top bar */}
+                <div className={`absolute top-0 left-0 right-0 h-[2px] ${role.topBar} opacity-0 group-hover:opacity-100 transition-opacity duration-300`} />
+
+                <span className={`self-start text-[8px] font-display font-bold uppercase tracking-[0.2em] px-2 py-1 rounded border ${role.badge}`}>
+                  {role.label}
+                </span>
+
+                <div className="flex flex-col gap-3 flex-1">
+                  <p className="font-display font-bold uppercase tracking-wide text-brand-text text-xl xl:text-2xl leading-tight whitespace-pre-line">
+                    {role.headline}
+                  </p>
+                  <p className="text-[13px] font-barlow text-brand-muted leading-relaxed">{role.body}</p>
+                </div>
+
+                <Link
+                  href={role.href}
+                  className="inline-flex items-center gap-2 text-[10px] font-display font-bold uppercase tracking-widest text-brand-muted group-hover:text-brand-primary transition-colors duration-200"
+                >
+                  Enter Portal
+                  <svg className="w-3 h-3 group-hover:translate-x-0.5 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                  </svg>
+                </Link>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════════════════════
+          MOBILE SIGN-IN
+      ══════════════════════════════════════════════════════════════════ */}
       <section id="sign-in" className="px-6 sm:px-10 py-16 border-b border-brand-border lg:hidden">
         <div className="max-w-sm mx-auto">
-          <p className="text-[10px] font-display uppercase tracking-[0.3em] text-brand-primary mb-2 text-center">Existing Partner</p>
-          <h2 className="font-display font-bold uppercase tracking-tight text-brand-text text-2xl text-center mb-8">Sign In</h2>
+          <div className="flex items-center gap-2.5 mb-6">
+            <div className="w-[3px] h-6 bg-brand-primary flex-shrink-0" />
+            <span className="text-[10px] font-display font-bold uppercase tracking-[0.3em] text-brand-primary">Existing Partner</span>
+          </div>
+          <h2 className="font-display font-bold uppercase tracking-tight text-brand-text text-3xl mb-8">Sign In</h2>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email address" required
-              className="w-full bg-brand-surface border border-brand-border rounded-lg px-4 py-3.5 text-brand-text font-barlow text-sm placeholder-brand-muted/60 focus:outline-none focus:border-brand-primary transition-colors" />
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" required
-              className="w-full bg-brand-surface border border-brand-border rounded-lg px-4 py-3.5 text-brand-text font-barlow text-sm placeholder-brand-muted/60 focus:outline-none focus:border-brand-primary transition-colors" />
-            {error && <p className="text-[#C41E1E] text-sm font-barlow bg-[#C41E1E]/10 border border-[#C41E1E]/30 rounded-lg px-4 py-3">{error}</p>}
-            <button type="submit" disabled={submitting || !email || !password}
-              className="w-full py-4 rounded-lg bg-brand-primary text-white font-display font-bold text-sm uppercase tracking-widest hover:bg-brand-secondary disabled:opacity-40 transition-colors">
+            <input
+              type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+              placeholder="Email address" required
+              className="w-full bg-brand-surface border border-brand-border rounded-lg px-4 py-3.5 text-brand-text font-barlow text-sm placeholder-brand-muted/50 focus:outline-none focus:border-brand-primary transition-colors"
+            />
+            <input
+              type="password" value={password} onChange={(e) => setPassword(e.target.value)}
+              placeholder="Password" required
+              className="w-full bg-brand-surface border border-brand-border rounded-lg px-4 py-3.5 text-brand-text font-barlow text-sm placeholder-brand-muted/50 focus:outline-none focus:border-brand-primary transition-colors"
+            />
+            {error && (
+              <p className="text-[#C41E1E] text-sm font-barlow bg-[#C41E1E]/10 border border-[#C41E1E]/30 rounded-lg px-4 py-3">
+                {error}
+              </p>
+            )}
+            <button
+              type="submit"
+              disabled={submitting || !email || !password}
+              className="w-full py-4 rounded-lg bg-brand-primary text-white font-display font-bold text-sm uppercase tracking-widest hover:bg-brand-secondary disabled:opacity-40 transition-colors"
+            >
               {submitting ? "Signing in…" : "Sign In →"}
             </button>
             <p className="text-center text-xs font-barlow text-brand-muted">
-              <Link href="/forgot-password" className="hover:text-brand-primary transition-colors">Forgot password?</Link>
+              <Link href="/forgot-password" className="hover:text-brand-primary transition-colors">
+                Forgot password?
+              </Link>
             </p>
           </form>
         </div>
       </section>
 
-      {/* ── Final CTA ─────────────────────────────────────────────────────── */}
-      <section className="px-6 sm:px-10 py-20 flex flex-col items-center text-center">
-        <h2 className="font-display font-bold uppercase tracking-tight text-brand-text text-4xl sm:text-5xl max-w-2xl leading-none mb-4">
-          Ready to Build Your Program's Identity?
-        </h2>
-        <p className="text-sm font-barlow text-brand-muted max-w-md mb-10 leading-relaxed">
-          Submit your brief, get AI-generated concepts reviewed and refined by a real designer,
-          then approve exactly what goes to your supplier.
-        </p>
-        <div className="flex flex-col sm:flex-row items-center gap-4">
-          <Link href="/signup"
-            className="w-full sm:w-auto px-10 py-4 rounded-lg bg-brand-primary text-white font-display font-bold text-sm uppercase tracking-widest hover:bg-brand-secondary transition-colors">
-            Create Free Account →
-          </Link>
-          <Link href="/login#sign-in"
-            className="w-full sm:w-auto px-10 py-4 rounded-lg border border-brand-border text-brand-muted font-display font-bold text-sm uppercase tracking-widest hover:border-brand-primary hover:text-brand-primary transition-colors">
-            Sign In
-          </Link>
+      {/* ══════════════════════════════════════════════════════════════════
+          FINAL CTA — editorial split
+      ══════════════════════════════════════════════════════════════════ */}
+      <section className="px-6 sm:px-10 lg:px-16 py-24 border-b border-brand-border">
+        <div className="max-w-[1400px] mx-auto flex flex-col lg:flex-row items-start lg:items-end justify-between gap-12">
+          <div>
+            <div className="flex items-center gap-2.5 mb-7">
+              <div className="w-[3px] h-6 bg-brand-primary flex-shrink-0" />
+              <span className="text-[10px] font-display font-bold uppercase tracking-[0.3em] text-brand-primary">Ready to Build</span>
+            </div>
+            <h2 className="font-display font-bold uppercase tracking-tight text-brand-text leading-[0.9]" style={{ fontSize: "clamp(2.5rem, 5.5vw, 5rem)" }}>
+              Your Program's<br />
+              <span className="text-brand-primary">Identity</span><br />
+              Starts Here.
+            </h2>
+          </div>
+
+          <div className="flex flex-col gap-5 lg:items-end lg:pb-1">
+            <p className="text-sm font-barlow text-brand-muted max-w-[280px] leading-relaxed lg:text-right">
+              Concepts in 48 hours. Designer-reviewed files.
+              Full production tracking from brief to delivery.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Link
+                href="/signup"
+                className="px-8 py-4 rounded-lg bg-brand-primary text-white font-display font-bold text-sm uppercase tracking-widest hover:bg-brand-secondary transition-colors"
+              >
+                Submit Your First Brief →
+              </Link>
+              <a
+                href="#sign-in"
+                className="px-8 py-4 rounded-lg border border-brand-border text-brand-muted font-display font-bold text-sm uppercase tracking-widest hover:border-brand-primary hover:text-brand-primary transition-colors lg:hidden"
+              >
+                Sign In
+              </a>
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* ── Footer ────────────────────────────────────────────────────────── */}
-      <footer className="border-t border-brand-border px-6 sm:px-10 py-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/grace-enterprise-logo.jpeg" alt="Grace Enterprise" style={{ width: 140 }} className="h-auto object-contain opacity-60" />
-        <div className="flex items-center gap-6">
-          <Link href="/signup"          className="text-[11px] font-display uppercase tracking-widest text-brand-muted hover:text-brand-primary transition-colors">Sign Up</Link>
-          <Link href="/forgot-password" className="text-[11px] font-display uppercase tracking-widest text-brand-muted hover:text-brand-primary transition-colors">Forgot Password</Link>
-          <Link href="/privacy-policy"  className="text-[11px] font-display uppercase tracking-widest text-brand-muted hover:text-brand-primary transition-colors">Privacy</Link>
-          <Link href="/terms"           className="text-[11px] font-display uppercase tracking-widest text-brand-muted hover:text-brand-primary transition-colors">Terms</Link>
+      {/* ══════════════════════════════════════════════════════════════════
+          FOOTER
+      ══════════════════════════════════════════════════════════════════ */}
+      <footer className="border-t border-brand-border px-6 sm:px-10 lg:px-16 py-8">
+        <div className="max-w-[1400px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/grace-enterprise-logo.jpeg" alt="Grace Enterprise" style={{ width: 140 }} className="h-auto object-contain opacity-50" />
+          <div className="flex items-center gap-6 flex-wrap justify-center">
+            <Link href="/signup"          className="text-[11px] font-display uppercase tracking-widest text-brand-muted hover:text-brand-primary transition-colors">Sign Up</Link>
+            <Link href="/forgot-password" className="text-[11px] font-display uppercase tracking-widest text-brand-muted hover:text-brand-primary transition-colors">Forgot Password</Link>
+            <Link href="/privacy-policy"  className="text-[11px] font-display uppercase tracking-widest text-brand-muted hover:text-brand-primary transition-colors">Privacy</Link>
+            <Link href="/terms"           className="text-[11px] font-display uppercase tracking-widest text-brand-muted hover:text-brand-primary transition-colors">Terms</Link>
+          </div>
+          <p className="text-[10px] font-barlow text-brand-muted opacity-40">© {new Date().getFullYear()} Grace Enterprise</p>
         </div>
-        <p className="text-[10px] font-barlow text-brand-muted opacity-50">© {new Date().getFullYear()} Grace Enterprise</p>
       </footer>
 
     </div>
