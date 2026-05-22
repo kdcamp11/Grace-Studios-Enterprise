@@ -8,7 +8,7 @@ import { loadBriefState, saveBriefState } from "@/lib/brief-state";
 const SYSTEMS = [
   {
     id: "bold",
-    badge: "Grace Bold System",
+    badge: "Bold System",
     name: "Bold Statement",
     tagline: "For teams that want to stand out.",
     bullets: [
@@ -19,7 +19,7 @@ const SYSTEMS = [
   },
   {
     id: "gradient",
-    badge: "Grace Gradient System",
+    badge: "Gradient System",
     name: "Modern Gradient",
     tagline: "Modern, elevated, and dynamic.",
     bullets: [
@@ -30,7 +30,7 @@ const SYSTEMS = [
   },
   {
     id: "program",
-    badge: "Grace Program System",
+    badge: "Program System",
     name: "Clean Program",
     tagline: "Professional and consistent.",
     bullets: [
@@ -41,7 +41,7 @@ const SYSTEMS = [
   },
   {
     id: "culture",
-    badge: "Grace Culture System",
+    badge: "Culture System",
     name: "Street Culture",
     tagline: "Built for the culture.",
     bullets: [
@@ -228,8 +228,8 @@ export default function StylePage() {
                 onClick={() => setSelected(system.id as typeof selected)}
                 className={`text-left rounded-2xl border overflow-hidden transition-all duration-200 w-full
                   ${isSelected
-                    ? "border-gs-gold shadow-[0_0_0_1px_#111111] bg-gs-dark-3"
-                    : "border-gs-border bg-gs-dark-3 hover:border-gs-muted"
+                    ? "border-brand-primary shadow-[0_0_0_1px_#111111] bg-brand-surface"
+                    : "border-brand-border bg-brand-surface hover:border-brand-muted"
                   }`}
               >
                 {/* Jersey photo */}
@@ -245,8 +245,8 @@ export default function StylePage() {
                     className="h-full w-full object-contain p-3"
                   />
                   {isSelected && (
-                    <span className="absolute top-3 right-3 w-6 h-6 bg-gs-gold rounded-full flex items-center justify-center z-10">
-                      <svg className="w-3.5 h-3.5 text-gs-dark" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <span className="absolute top-3 right-3 w-6 h-6 bg-brand-primary rounded-full flex items-center justify-center z-10">
+                      <svg className="w-3.5 h-3.5 text-brand-bg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                       </svg>
                     </span>
@@ -254,20 +254,20 @@ export default function StylePage() {
                 </div>
 
                 {/* System info */}
-                <div className="p-4 space-y-2 border-t border-gs-border">
-                  <p className={`text-xs font-display uppercase tracking-widest ${isSelected ? "text-gs-gold" : "text-gs-muted"}`}>
+                <div className="p-4 space-y-2 border-t border-brand-border">
+                  <p className={`text-xs font-display uppercase tracking-widest ${isSelected ? "text-brand-primary" : "text-brand-muted"}`}>
                     {system.badge}
                   </p>
-                  <p className="font-display font-bold uppercase tracking-wide text-gs-white text-base">
+                  <p className="font-display font-bold uppercase tracking-wide text-brand-text text-base">
                     {system.name}
                   </p>
-                  <p className="text-xs text-gs-muted font-barlow italic">
+                  <p className="text-xs text-brand-muted font-barlow italic">
                     &ldquo;{system.tagline}&rdquo;
                   </p>
                   <ul className="space-y-1 pt-1">
                     {system.bullets.map((b) => (
-                      <li key={b} className="flex items-start gap-2 text-xs font-barlow text-gs-muted">
-                        <span className={`mt-1.5 w-1 h-1 rounded-full flex-shrink-0 ${isSelected ? "bg-gs-gold" : "bg-gs-border"}`} />
+                      <li key={b} className="flex items-start gap-2 text-xs font-barlow text-brand-muted">
+                        <span className={`mt-1.5 w-1 h-1 rounded-full flex-shrink-0 ${isSelected ? "bg-brand-primary" : "bg-brand-border"}`} />
                         {b}
                       </li>
                     ))}
@@ -280,7 +280,7 @@ export default function StylePage() {
 
         {/* Jersey cut */}
         <div>
-          <label className="block text-xs font-display uppercase tracking-wider text-gs-muted mb-3">
+          <label className="block text-xs font-display uppercase tracking-wider text-brand-muted mb-3">
             {isTracksuit ? "Garment Cut" : "Jersey Cut"}
           </label>
           <div className="flex flex-wrap gap-2">
@@ -291,8 +291,8 @@ export default function StylePage() {
                 onClick={() => setJerseycut(cut.id)}
                 className={`px-4 py-2 rounded-full text-sm font-barlow transition-all duration-150
                   ${jerseycut === cut.id
-                    ? "bg-gs-gold text-gs-dark font-medium"
-                    : "bg-gs-dark-3 border border-gs-border text-gs-muted hover:border-gs-gold hover:text-gs-white"
+                    ? "bg-brand-primary text-brand-bg font-medium"
+                    : "bg-brand-surface border border-brand-border text-brand-muted hover:border-brand-primary hover:text-brand-text"
                   }`}
               >
                 {cut.label}
@@ -303,7 +303,7 @@ export default function StylePage() {
 
         {/* Construction type */}
         <div>
-          <label className="block text-xs font-display uppercase tracking-wider text-gs-muted mb-3">
+          <label className="block text-xs font-display uppercase tracking-wider text-brand-muted mb-3">
             Construction Type
           </label>
           <div className="grid grid-cols-2 gap-3">
@@ -317,14 +317,14 @@ export default function StylePage() {
                 onClick={() => setSublimated(val)}
                 className={`text-left p-4 rounded-xl border transition-all duration-200
                   ${sublimated === val
-                    ? "border-gs-gold bg-gs-dark-3"
-                    : "border-gs-border bg-gs-dark-3 hover:border-gs-muted"
+                    ? "border-brand-primary bg-brand-surface"
+                    : "border-brand-border bg-brand-surface hover:border-brand-muted"
                   }`}
               >
-                <p className={`font-display font-bold uppercase tracking-wide text-base ${sublimated === val ? "text-gs-gold" : "text-gs-white"}`}>
+                <p className={`font-display font-bold uppercase tracking-wide text-base ${sublimated === val ? "text-brand-primary" : "text-brand-text"}`}>
                   {label}
                 </p>
-                <p className="text-xs text-gs-muted font-barlow mt-1 leading-relaxed">{desc}</p>
+                <p className="text-xs text-brand-muted font-barlow mt-1 leading-relaxed">{desc}</p>
               </button>
             ))}
           </div>
@@ -335,7 +335,7 @@ export default function StylePage() {
           <button
             type="button"
             onClick={() => router.push("/brief/new")}
-            className="px-6 py-3 rounded-lg font-display font-bold text-sm uppercase tracking-widest border border-gs-border text-gs-muted hover:text-gs-white hover:border-gs-muted transition-colors"
+            className="px-6 py-3 rounded-lg font-display font-bold text-sm uppercase tracking-widest border border-brand-border text-brand-muted hover:text-brand-text hover:border-brand-muted transition-colors"
           >
             ← Back
           </button>
@@ -344,7 +344,7 @@ export default function StylePage() {
             onClick={handleContinue}
             disabled={!canContinue}
             className="flex-1 py-3 rounded-lg font-display font-bold text-base uppercase tracking-widest transition-all duration-200
-              bg-gs-gold text-gs-dark hover:bg-gs-gold-light
+              bg-brand-primary text-brand-bg hover:bg-brand-secondary
               disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Continue to Details →

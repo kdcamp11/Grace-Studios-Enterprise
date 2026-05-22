@@ -3,102 +3,130 @@
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { isAdmin } from "@/lib/admin";
 import { getProfile } from "@/lib/profile";
-import GraceLogo from "@/components/GraceLogo";
+import AdminHeader from "@/components/AdminHeader";
+import { useTenant } from "@/lib/tenant/context";
+import type { UserRole } from "@/lib/supabase/types";
 
-interface AdminProfile {
+interface TeamMember {
   id: string;
   email: string;
   full_name: string | null;
-  company: string | null;
+  role: UserRole;
   created_at: string;
-  is_env_admin: boolean;
 }
 
-const ENV_ADMINS = (process.env.NEXT_PUBLIC_ADMIN_EMAILS ?? "")
-  .split(",")
-  .map((e) => e.trim().toLowerCase())
-  .filter(Boolean);
+const ROLE_LABELS: Partial<Record<UserRole, string>> = {
+  admin:     "Admin",
+  designer:  "Designer",
+  sales_rep: "Sales Rep",
+};
+
+const ROLE_COLORS: Partial<Record<UserRole, string>> = {
+  admin:     "text-brand-primary border-brand-primary/30 bg-brand-primary/10",
+  designer:  "text-violet-400 border-violet-400/30 bg-violet-400/10",
+  sales_rep: "text-emerald-400 border-emerald-400/30 bg-emerald-400/10",
+};
 
 export default function AdminTeamPage() {
   const router = useRouter();
   const supabaseRef = useRef(createClient());
   const supabase = supabaseRef.current;
+  const tenant = useTenant();
 
-  async function signOut() {
-    await supabase.auth.signOut();
-    router.replace("/login");
-  }
-
-  const [admins, setAdmins] = useState<AdminProfile[]>([]);
+  const [members, setMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
-  const [grantEmail, setGrantEmail] = useState("");
-  const [granting, setGranting] = useState(false);
-  const [grantError, setGrantError] = useState("");
-  const [grantSuccess, setGrantSuccess] = useState("");
-  const [revoking, setRevoking] = useState<string | null>(null);
+  const [removing, setRemoving] = useState<string | null>(null);
 
-  // Reset password state
+  // Invite form
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole]   = useState<"admin" | "designer" | "sales_rep">("designer");
+  const [inviting, setInviting]       = useState(false);
+  const [inviteError, setInviteError] = useState("");
+  const [inviteSuccess, setInviteSuccess] = useState("");
+
+  // Reset password
   const [resetEmail, setResetEmail]       = useState("");
   const [resetPassword, setResetPassword] = useState("");
   const [resetting, setResetting]         = useState(false);
   const [resetError, setResetError]       = useState("");
   const [resetSuccess, setResetSuccess]   = useState("");
 
+  async function signOut() {
+    await supabase.auth.signOut();
+    router.replace("/login");
+  }
+
   useEffect(() => {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser();
       const profile = await getProfile();
-      if (!user || (!isAdmin(user.email) && profile?.role !== "admin")) {
+      if (!user || (profile?.role !== "admin" && profile?.role !== "super_admin")) {
         router.replace("/portal");
         return;
       }
-
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("id, email, full_name, company, created_at")
-        .eq("role", "admin")
-        .order("created_at");
-
-      setAdmins(
-        (profiles ?? []).map((p) => ({
-          ...p,
-          is_env_admin: ENV_ADMINS.includes(p.email.toLowerCase()),
-        }))
-      );
+      const res = await fetch("/api/admin/team/members");
+      if (res.ok) {
+        const { members: m } = await res.json() as { members: TeamMember[] };
+        setMembers(m ?? []);
+      }
       setLoading(false);
     }
     load();
   }, [supabase, router]);
 
-  async function grantAdmin(e: React.FormEvent) {
+  async function inviteMember(e: React.FormEvent) {
     e.preventDefault();
-    setGrantError("");
-    setGrantSuccess("");
-    const email = grantEmail.trim().toLowerCase();
+    setInviteError("");
+    setInviteSuccess("");
+    const email = inviteEmail.trim().toLowerCase();
     if (!email) return;
-    setGranting(true);
+    setInviting(true);
 
-    const res  = await fetch("/api/admin/set-user-role", {
-      method:  "POST",
+    const res = await fetch("/api/admin/team/invite", {
+      method: "POST",
       headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify({ email, role: "admin" }),
+      body: JSON.stringify({ email, role: inviteRole }),
     });
-    const body = await res.json() as { success?: boolean; error?: string; profile?: AdminProfile };
+    const body = await res.json() as { member?: TeamMember; already_existed?: boolean; error?: string };
 
     if (!res.ok || body.error) {
-      setGrantError(body.error ?? "Something went wrong.");
-    } else if (body.profile) {
-      setAdmins((prev) => {
-        if (prev.find((a) => a.id === body.profile!.id)) return prev;
-        return [...prev, { ...body.profile!, is_env_admin: ENV_ADMINS.includes(email) }];
+      setInviteError(body.error ?? "Something went wrong.");
+    } else if (body.member) {
+      setMembers((prev) => {
+        if (prev.find((m) => m.id === body.member!.id)) {
+          return prev.map((m) => m.id === body.member!.id ? body.member! : m);
+        }
+        return [...prev, body.member!];
       });
-      setGrantSuccess(`${email} is now an admin.`);
-      setGrantEmail("");
-      setTimeout(() => setGrantSuccess(""), 3000);
+      setInviteSuccess(
+        body.already_existed
+          ? `${email} already had an account — role updated to ${ROLE_LABELS[inviteRole]}.`
+          : `Invite sent to ${email} as ${ROLE_LABELS[inviteRole]}.`,
+      );
+      setInviteEmail("");
+      setTimeout(() => setInviteSuccess(""), 4000);
     }
-    setGranting(false);
+    setInviting(false);
+  }
+
+  async function removeMember(id: string, email: string) {
+    if (!confirm(`Remove ${email} from the team?`)) return;
+    setRemoving(id);
+
+    const res = await fetch("/api/admin/set-user-role", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, role: "client" }),
+    });
+    const body = await res.json() as { success?: boolean; error?: string };
+
+    if (!res.ok || body.error) {
+      alert(body.error ?? "Failed to remove member.");
+    } else {
+      setMembers((prev) => prev.filter((m) => m.id !== id));
+    }
+    setRemoving(null);
   }
 
   async function resetUserPassword(e: React.FormEvent) {
@@ -110,10 +138,10 @@ export default function AdminTeamPage() {
     if (!email || !password) return;
     setResetting(true);
 
-    const res  = await fetch("/api/admin/reset-user-password", {
-      method:  "POST",
+    const res = await fetch("/api/admin/reset-user-password", {
+      method: "POST",
       headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password }),
     });
     const body = await res.json() as { success?: boolean; error?: string };
 
@@ -128,136 +156,139 @@ export default function AdminTeamPage() {
     setResetting(false);
   }
 
-  async function revokeAdmin(id: string, email: string) {
-    if (ENV_ADMINS.includes(email.toLowerCase())) {
-      alert("This admin is set via the NEXT_PUBLIC_ADMIN_EMAILS environment variable and cannot be removed here. Update your .env to remove them.");
-      return;
-    }
-    if (!confirm("Remove admin access for this user?")) return;
-    setRevoking(id);
-
-    const res = await fetch("/api/admin/set-user-role", {
-      method:  "POST",
-      headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify({ email, role: "client" }),
-    });
-    const body = await res.json() as { success?: boolean; error?: string };
-
-    if (!res.ok || body.error) {
-      alert(body.error ?? "Failed to revoke admin access.");
-    } else {
-      setAdmins((prev) => prev.filter((a) => a.id !== id));
-    }
-    setRevoking(null);
-  }
+  const groupedRoles: Array<"admin" | "designer" | "sales_rep"> = ["admin", "designer", "sales_rep"];
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gs-dark flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-gs-gold border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-brand-bg flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-brand-primary border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gs-dark flex flex-col">
-      <header className="border-b border-gs-border px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <GraceLogo className="h-7" href="/admin" />
-          <a href="/admin" className="text-xs font-display font-bold uppercase tracking-widest text-gs-gold hover:text-gs-gold-light transition-colors">
-            Admin Portal
-          </a>
-        </div>
-        <div className="flex items-center gap-5">
-          <a href="/supplier" className="text-xs font-display font-bold uppercase tracking-wider text-gs-muted hover:text-gs-gold transition-colors">Supplier Portal</a>
-          <a href="/portal" className="text-xs font-display font-bold uppercase tracking-wider text-gs-muted hover:text-gs-gold transition-colors">Client Portal</a>
-          <a href="/admin" className="text-xs font-display font-bold uppercase tracking-wider text-gs-muted hover:text-gs-gold transition-colors">Home</a>
-          <button type="button" onClick={() => router.back()} className="text-xs font-display font-bold uppercase tracking-wider text-gs-muted hover:text-gs-gold transition-colors">← Back</button>
-          <button type="button" onClick={signOut} className="text-xs font-display font-bold uppercase tracking-wider text-gs-muted hover:text-gs-gold transition-colors">Sign Out</button>
-        </div>
-      </header>
+    <div className="min-h-screen bg-brand-bg flex flex-col">
+      <AdminHeader onSignOut={signOut} activePath="/admin/team" />
 
       <main className="flex-1 px-4 py-8 flex flex-col items-center">
         <div className="w-full max-w-2xl space-y-8">
 
           <div>
-            <h1 className="font-display text-xl font-bold uppercase tracking-wide text-gs-white">Grace Studios Team</h1>
-            <p className="text-xs text-gs-muted font-barlow mt-1">
-              Manage who has admin access to the platform.
+            <h1 className="font-display text-xl font-bold uppercase tracking-wide text-brand-text">{tenant.name} Team</h1>
+            <p className="text-xs text-brand-muted font-barlow mt-1">
+              Invite designers, sales reps, and admins. Invited users receive a login link by email.
             </p>
           </div>
 
-          {/* ENV admin note */}
-          {ENV_ADMINS.length > 0 && (
-            <div className="bg-gs-dark-3 border border-gs-border rounded-xl px-5 py-4">
-              <p className="text-[10px] font-display uppercase tracking-wider text-gs-muted mb-1">
-                Environment Admins
-              </p>
-              <p className="text-xs font-barlow text-gs-muted">
-                These emails are hardcoded via <span className="font-mono text-gs-white">NEXT_PUBLIC_ADMIN_EMAILS</span> and always have access:
-              </p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {ENV_ADMINS.map((e) => (
-                  <span key={e} className="px-2.5 py-1 rounded-full bg-gs-gold/10 border border-gs-gold/30 text-xs font-mono text-gs-gold">
-                    {e}
-                  </span>
-                ))}
+          {/* Team roster grouped by role */}
+          {groupedRoles.map((role) => {
+            const group = members.filter((m) => m.role === role);
+            if (group.length === 0) return null;
+            return (
+              <div key={role} className="space-y-2">
+                <p className="text-[10px] font-display uppercase tracking-widest text-brand-primary">
+                  {ROLE_LABELS[role]}s ({group.length})
+                </p>
+                <div className="border border-brand-border rounded-xl overflow-hidden">
+                  {group.map((m, i) => (
+                    <div
+                      key={m.id}
+                      className={`flex items-center gap-4 px-5 py-4 ${i < group.length - 1 ? "border-b border-brand-border" : ""}`}
+                    >
+                      <div className="w-8 h-8 rounded-full bg-brand-primary/10 border border-brand-primary/30 flex items-center justify-center flex-shrink-0">
+                        <span className="text-xs font-display font-bold text-brand-primary">
+                          {(m.full_name ?? m.email)[0].toUpperCase()}
+                        </span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-barlow text-brand-text font-medium truncate">
+                            {m.full_name ?? m.email}
+                          </p>
+                          <span className={`flex-shrink-0 text-[9px] font-display uppercase tracking-wider px-1.5 py-0.5 rounded border ${ROLE_COLORS[m.role] ?? ""}`}>
+                            {ROLE_LABELS[m.role] ?? m.role}
+                          </span>
+                        </div>
+                        <p className="text-xs text-brand-muted truncate">{m.email}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeMember(m.id, m.email)}
+                        disabled={removing === m.id}
+                        className="flex-shrink-0 text-[10px] font-display uppercase tracking-wider text-brand-muted hover:text-[#C41E1E] transition-colors disabled:opacity-40"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
+            );
+          })}
+
+          {members.length === 0 && (
+            <div className="border border-brand-border rounded-xl p-8 text-center">
+              <p className="text-brand-muted font-barlow text-sm">No team members yet.</p>
+              <p className="text-xs text-brand-muted font-barlow mt-1 opacity-60">Use the form below to invite your first team member.</p>
             </div>
           )}
 
-          {/* Current admins */}
-          <div className="space-y-3">
-            <p className="text-[10px] font-display uppercase tracking-widest text-gs-gold">Admin Accounts</p>
-            {admins.length === 0 ? (
-              <div className="border border-gs-border rounded-xl p-8 text-center">
-                <p className="text-gs-muted font-barlow text-sm">No admin profiles yet.</p>
-                <p className="text-xs text-gs-muted font-barlow mt-1 opacity-60">Use the form below to grant access.</p>
-              </div>
-            ) : (
-              <div className="border border-gs-border rounded-xl overflow-hidden">
-                {admins.map((a, i) => (
-                  <div
-                    key={a.id}
-                    className={`flex items-center gap-4 px-5 py-4 ${i < admins.length - 1 ? "border-b border-gs-border" : ""}`}
+          {/* Invite form */}
+          <form onSubmit={inviteMember} className="bg-brand-surface border border-brand-border rounded-xl p-6 space-y-4">
+            <p className="text-xs font-display uppercase tracking-widest text-brand-primary">Invite Team Member</p>
+            <p className="text-xs font-barlow text-brand-muted">
+              They will receive a login link by email. New users must set a password on first login.
+            </p>
+            <div className="space-y-3">
+              <input
+                type="email"
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                placeholder="designer@yourcompany.com"
+                required
+                className="w-full bg-brand-bg border border-brand-border rounded-lg px-4 py-3 text-brand-text font-barlow text-sm placeholder-brand-muted/60 focus:outline-none focus:border-brand-primary transition-colors"
+              />
+              <div className="flex gap-2">
+                {(["designer", "sales_rep", "admin"] as const).map((r) => (
+                  <button
+                    key={r}
+                    type="button"
+                    onClick={() => setInviteRole(r)}
+                    className={`px-4 py-2 rounded-lg text-xs font-display font-bold uppercase tracking-wider border transition-colors ${
+                      inviteRole === r
+                        ? "bg-brand-primary text-white border-brand-primary"
+                        : "bg-brand-bg border-brand-border text-brand-muted hover:text-brand-text hover:border-brand-primary"
+                    }`}
                   >
-                    <div className="w-8 h-8 rounded-full bg-gs-gold/10 border border-gs-gold/30 flex items-center justify-center flex-shrink-0">
-                      <span className="text-xs font-display font-bold text-gs-gold">
-                        {(a.full_name ?? a.email)[0].toUpperCase()}
-                      </span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-barlow text-gs-white font-medium truncate">
-                          {a.full_name ?? a.email}
-                        </p>
-                        {a.is_env_admin && (
-                          <span className="flex-shrink-0 text-[9px] font-display uppercase tracking-wider px-1.5 py-0.5 rounded bg-gs-dark border border-gs-border text-gs-muted">
-                            ENV
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-xs text-gs-muted truncate">{a.email}</p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => revokeAdmin(a.id, a.email)}
-                      disabled={revoking === a.id}
-                      className="flex-shrink-0 text-[10px] font-display uppercase tracking-wider text-gs-muted hover:text-[#C41E1E] transition-colors disabled:opacity-40"
-                    >
-                      Revoke
-                    </button>
-                  </div>
+                    {ROLE_LABELS[r]}
+                  </button>
                 ))}
               </div>
+            </div>
+            {inviteError && (
+              <p className="text-[#C41E1E] text-sm font-barlow bg-[#C41E1E]/10 border border-[#C41E1E]/30 rounded-lg px-4 py-3">
+                {inviteError}
+              </p>
             )}
-          </div>
+            {inviteSuccess && (
+              <p className="text-green-400 text-sm font-barlow bg-green-400/10 border border-green-400/30 rounded-lg px-4 py-3">
+                {inviteSuccess}
+              </p>
+            )}
+            <button
+              type="submit"
+              disabled={inviting || !inviteEmail.trim()}
+              className="w-full py-3 rounded-lg font-display font-bold text-sm uppercase tracking-widest bg-brand-primary text-brand-bg hover:bg-brand-secondary disabled:opacity-40 transition-all"
+            >
+              {inviting ? "Sending Invite…" : `Invite as ${ROLE_LABELS[inviteRole]}`}
+            </button>
+          </form>
 
           {/* Reset user password */}
-          <form onSubmit={resetUserPassword} className="bg-gs-dark-2 border border-gs-border rounded-xl p-6 space-y-4">
-            <p className="text-xs font-display uppercase tracking-widest text-gs-gold">Reset User Password</p>
-            <p className="text-xs font-barlow text-gs-muted">
-              Force-set a new password for any user account. Works for clients, suppliers, and admins.
+          <form onSubmit={resetUserPassword} className="bg-brand-surface border border-brand-border rounded-xl p-6 space-y-4">
+            <p className="text-xs font-display uppercase tracking-widest text-brand-primary">Reset User Password</p>
+            <p className="text-xs font-barlow text-brand-muted">
+              Force-set a new password for any user account.
             </p>
             <div className="space-y-3">
               <input
@@ -266,7 +297,7 @@ export default function AdminTeamPage() {
                 onChange={(e) => setResetEmail(e.target.value)}
                 placeholder="user@email.com"
                 required
-                className="w-full bg-gs-dark border border-gs-border rounded-lg px-4 py-3 text-gs-white font-barlow text-sm placeholder-gs-muted/60 focus:outline-none focus:border-gs-gold transition-colors"
+                className="w-full bg-brand-bg border border-brand-border rounded-lg px-4 py-3 text-brand-text font-barlow text-sm placeholder-brand-muted/60 focus:outline-none focus:border-brand-primary transition-colors"
               />
               <input
                 type="text"
@@ -275,7 +306,7 @@ export default function AdminTeamPage() {
                 placeholder="New password (min 8 characters)"
                 required
                 minLength={8}
-                className="w-full bg-gs-dark border border-gs-border rounded-lg px-4 py-3 text-gs-white font-barlow text-sm placeholder-gs-muted/60 focus:outline-none focus:border-gs-gold transition-colors"
+                className="w-full bg-brand-bg border border-brand-border rounded-lg px-4 py-3 text-brand-text font-barlow text-sm placeholder-brand-muted/60 focus:outline-none focus:border-brand-primary transition-colors"
               />
             </div>
             {resetError && (
@@ -291,43 +322,9 @@ export default function AdminTeamPage() {
             <button
               type="submit"
               disabled={resetting || !resetEmail.trim() || resetPassword.length < 8}
-              className="w-full py-3 rounded-lg font-display font-bold text-sm uppercase tracking-widest bg-gs-dark border border-gs-border text-gs-white hover:border-gs-gold hover:text-gs-gold disabled:opacity-40 transition-all"
+              className="w-full py-3 rounded-lg font-display font-bold text-sm uppercase tracking-widest bg-brand-bg border border-brand-border text-brand-text hover:border-brand-primary hover:text-brand-primary disabled:opacity-40 transition-all"
             >
               {resetting ? "Updating…" : "Set New Password"}
-            </button>
-          </form>
-
-          {/* Grant access form */}
-          <form onSubmit={grantAdmin} className="bg-gs-dark-2 border border-gs-border rounded-xl p-6 space-y-4">
-            <p className="text-xs font-display uppercase tracking-widest text-gs-gold">Grant Admin Access</p>
-            <p className="text-xs font-barlow text-gs-muted">
-              The person must already have an account. Enter their email address to promote them to admin.
-            </p>
-            <div>
-              <input
-                type="email"
-                value={grantEmail}
-                onChange={(e) => setGrantEmail(e.target.value)}
-                placeholder="team@gracestudios.com"
-                className="w-full bg-gs-dark border border-gs-border rounded-lg px-4 py-3 text-gs-white font-barlow text-sm placeholder-gs-muted/60 focus:outline-none focus:border-gs-gold transition-colors"
-              />
-            </div>
-            {grantError && (
-              <p className="text-[#C41E1E] text-sm font-barlow bg-[#C41E1E]/10 border border-[#C41E1E]/30 rounded-lg px-4 py-3">
-                {grantError}
-              </p>
-            )}
-            {grantSuccess && (
-              <p className="text-green-400 text-sm font-barlow bg-green-400/10 border border-green-400/30 rounded-lg px-4 py-3">
-                {grantSuccess}
-              </p>
-            )}
-            <button
-              type="submit"
-              disabled={granting || !grantEmail.trim()}
-              className="w-full py-3 rounded-lg font-display font-bold text-sm uppercase tracking-widest bg-gs-gold text-gs-dark hover:bg-gs-gold-light disabled:opacity-40 transition-all"
-            >
-              {granting ? "Granting…" : "Grant Admin Access"}
             </button>
           </form>
 

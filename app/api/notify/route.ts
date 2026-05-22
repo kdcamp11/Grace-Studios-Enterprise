@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { assertAdminTenant, isErrorResponse } from "@/lib/api/assert-admin-tenant";
 import {
   sendBriefSubmitted,
   sendFirstPieceSubmitted,
@@ -7,6 +8,7 @@ import {
   sendChangesRequested,
   sendClientApprovedFirstPiece,
   sendClientRequestedChanges,
+  type TenantEmailCtx,
 } from "@/lib/email";
 
 type NotifyEvent =
@@ -18,6 +20,9 @@ type NotifyEvent =
   | "client_requested_changes";
 
 export async function POST(req: NextRequest) {
+  const ctx = await assertAdminTenant();
+  if (isErrorResponse(ctx)) return ctx;
+
   try {
     const body = await req.json();
     const { event, order_id, media_id, admin_note } = body as {
@@ -31,10 +36,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "event and order_id required" }, { status: 400 });
     }
 
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
+    const supabase = createAdminClient();
+
+    const tenant: TenantEmailCtx = {
+      name:        ctx.tenant.name,
+      brandColor:  ctx.tenant.brand_primary,
+      adminEmail:  ctx.tenant.support_email,
+    };
 
     // Fetch order + client
     const { data: order } = await supabase
@@ -65,6 +73,7 @@ export async function POST(req: NextRequest) {
           sport:  client.sport ?? "—",
           city:   client.city  ?? "—",
           email:  client.email ?? "—",
+          tenant,
         });
         break;
       }
@@ -80,7 +89,7 @@ export async function POST(req: NextRequest) {
             .single();
           supplierName = supplierProfile?.company ?? supplierProfile?.full_name ?? "Supplier";
         }
-        await sendFirstPieceSubmitted({ orderNumber, teamName, supplierName });
+        await sendFirstPieceSubmitted({ orderNumber, teamName, supplierName, tenant });
         break;
       }
 
@@ -91,6 +100,7 @@ export async function POST(req: NextRequest) {
           teamName,
           orderNumber,
           orderId: order_id,
+          tenant,
         });
         break;
       }
@@ -109,6 +119,7 @@ export async function POST(req: NextRequest) {
           orderNumber,
           teamName,
           adminNote: admin_note ?? null,
+          tenant,
         });
         break;
       }
@@ -118,6 +129,7 @@ export async function POST(req: NextRequest) {
           orderNumber,
           teamName,
           clientNote: admin_note ?? null,
+          tenant,
         });
         break;
       }
@@ -127,6 +139,7 @@ export async function POST(req: NextRequest) {
           orderNumber,
           teamName,
           clientNote: admin_note ?? null,
+          tenant,
         });
         break;
       }

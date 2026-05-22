@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { assertAdminTenant, isErrorResponse } from "@/lib/api/assert-admin-tenant";
 
 export async function POST(req: NextRequest) {
+  const ctx = await assertAdminTenant();
+  if (isErrorResponse(ctx)) return ctx;
+
   try {
     const { email, password } = await req.json() as { email?: string; password?: string };
 

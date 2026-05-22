@@ -4,7 +4,8 @@ import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { getProfile } from "@/lib/profile";
-import GraceLogo from "@/components/GraceLogo";
+import TenantLogo from "@/components/TenantLogo";
+import { useTenant } from "@/lib/tenant/context";
 import type { OrderStage, RosterPlayer } from "@/types/database";
 
 interface Brief {
@@ -16,7 +17,7 @@ interface Brief {
   accent_color: string | null;
   number_style: string | null;
   player_names: boolean;
-  gs_logo_placement: string | null;
+  logo_placement: string | null;
   logos_to_include: string | null;
   sponsor_text: string | null;
   negative_references: string | null;
@@ -67,9 +68,9 @@ const STAGE_LABELS: Record<OrderStage, string> = {
 function Field({ label, value }: { label: string; value: string | null | undefined }) {
   if (!value) return null;
   return (
-    <div className="py-2 border-b border-gs-border last:border-0">
-      <p className="text-[10px] font-display uppercase tracking-wider text-gs-muted mb-0.5">{label}</p>
-      <p className="text-sm font-barlow text-gs-white">{value}</p>
+    <div className="py-2 border-b border-brand-border last:border-0">
+      <p className="text-[10px] font-display uppercase tracking-wider text-brand-muted mb-0.5">{label}</p>
+      <p className="text-sm font-barlow text-brand-text">{value}</p>
     </div>
   );
 }
@@ -80,6 +81,7 @@ export default function SupplierOrderPage() {
   const supabaseRef  = useRef(createClient());
   const supabase     = supabaseRef.current;
   const fileRef      = useRef<HTMLInputElement>(null);
+  const tenant       = useTenant();
 
   const [order, setOrder]         = useState<OrderDetail | null>(null);
   const [loading, setLoading]     = useState(true);
@@ -92,14 +94,13 @@ export default function SupplierOrderPage() {
 
   useEffect(() => {
     async function load() {
-      const profile = await getProfile();
-      if (!profile)                                                { router.replace("/login"); return; }
-      if (profile.role !== "supplier" && profile.role !== "admin") { router.replace("/portal"); return; }
-      const adminViewing = profile.role === "admin";
-      if (adminViewing) setIsAdminView(true);
-
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) { router.replace("/login"); return; }
+
+      const profile = await getProfile();
+      if (profile && profile.role !== "supplier" && profile.role !== "admin") { router.replace("/portal"); return; }
+      const adminViewing = profile?.role === "admin";
+      if (adminViewing) setIsAdminView(true);
 
       const orderQuery = supabase
         .from("orders")
@@ -148,7 +149,11 @@ export default function SupplierOrderPage() {
 
   async function advanceStage(next: OrderStage) {
     setStageSaving(true);
-    await supabase.from("orders").update({ stage: next }).eq("id", order_id);
+    await fetch(`/api/supplier/orders/${order_id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ stage: next }),
+    });
 
     // Notify admin when supplier submits first piece for review
     if (next === "first_piece_review") {
@@ -228,16 +233,16 @@ export default function SupplierOrderPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gs-dark flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-gs-gold border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-brand-bg flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-brand-primary border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   if (!order) {
     return (
-      <div className="min-h-screen bg-gs-dark flex items-center justify-center">
-        <p className="text-gs-muted font-barlow">Order not found or not assigned to you.</p>
+      <div className="min-h-screen bg-brand-bg flex items-center justify-center">
+        <p className="text-brand-muted font-barlow">Order not found or not assigned to you.</p>
       </div>
     );
   }
@@ -256,7 +261,7 @@ export default function SupplierOrderPage() {
     first_piece_in_progress: {
       next: "first_piece_review",
       label: "Submit First Piece for Review",
-      note: "Grace Studios will review your uploads before the client sees them.",
+      note: `${tenant.name} will review your uploads before the client sees them.`,
     },
     bulk_production: {
       next: "qc_verified",
@@ -273,7 +278,7 @@ export default function SupplierOrderPage() {
   const stageAction = STAGE_ACTIONS[order.stage] ?? null;
 
   return (
-    <div className="min-h-screen bg-gs-dark flex flex-col">
+    <div className="min-h-screen bg-brand-bg flex flex-col">
       {isAdminView && (
         <div className="bg-amber-50 border-b border-amber-200 px-6 py-2 flex items-center gap-2">
           <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
@@ -287,17 +292,17 @@ export default function SupplierOrderPage() {
           </button>
         </div>
       )}
-      <header className="border-b border-gs-border px-6 py-4 flex items-center justify-between">
+      <header className="border-b border-brand-border px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <GraceLogo className="h-7" href="/supplier" />
-          <a href="/supplier" className="text-xs font-display font-bold uppercase tracking-widest text-gs-gold hover:text-gs-gold-light transition-colors">
+          <TenantLogo className="h-7" href="/supplier" />
+          <a href="/supplier" className="text-xs font-display font-bold uppercase tracking-widest text-brand-primary hover:text-brand-secondary transition-colors">
             Supplier Portal
           </a>
         </div>
         <div className="flex items-center gap-5">
-          <a href="/supplier" className="text-xs font-display font-bold uppercase tracking-wider text-gs-muted hover:text-gs-gold transition-colors">Home</a>
-          <button type="button" onClick={() => router.back()} className="text-xs font-display font-bold uppercase tracking-wider text-gs-muted hover:text-gs-gold transition-colors">← Back</button>
-          <button type="button" onClick={signOut} className="text-xs font-display font-bold uppercase tracking-wider text-gs-muted hover:text-gs-gold transition-colors">Sign Out</button>
+          <a href="/supplier" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Home</a>
+          <button type="button" onClick={() => router.back()} className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">← Back</button>
+          <button type="button" onClick={signOut} className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Sign Out</button>
         </div>
       </header>
 
@@ -305,14 +310,14 @@ export default function SupplierOrderPage() {
 
         {/* Order header */}
         <div>
-          <p className="text-xs font-display uppercase tracking-widest text-gs-muted">Order</p>
-          <h1 className="font-display text-2xl font-bold uppercase tracking-wide text-gs-white mt-1">
+          <p className="text-xs font-display uppercase tracking-widest text-brand-muted">Order</p>
+          <h1 className="font-display text-2xl font-bold uppercase tracking-wide text-brand-text mt-1">
             {order.order_number || order.id.slice(0, 8).toUpperCase()}
           </h1>
-          <p className="text-sm text-gs-muted font-barlow mt-1">
+          <p className="text-sm text-brand-muted font-barlow mt-1">
             {order.client.name} · {order.client.sport} · {order.client.city}
           </p>
-          <span className="inline-block mt-2 text-[10px] font-display uppercase tracking-wider px-2.5 py-1 rounded-full border border-gs-gold/30 bg-gs-gold/10 text-gs-gold">
+          <span className="inline-block mt-2 text-[10px] font-display uppercase tracking-wider px-2.5 py-1 rounded-full border border-brand-primary/30 bg-brand-primary/10 text-brand-primary">
             {STAGE_LABELS[order.stage]}
           </span>
         </div>
@@ -329,8 +334,8 @@ export default function SupplierOrderPage() {
               <p className="font-display font-bold uppercase tracking-wide text-[#C41E1E] text-sm">
                 Changes Requested — {rejectedMedia.length} item{rejectedMedia.length !== 1 ? "s" : ""}
               </p>
-              <p className="text-xs font-barlow text-gs-muted mt-1 leading-relaxed">
-                Grace Studios has requested changes on {rejectedMedia.length === 1 ? "an upload" : "some uploads"} below.
+              <p className="text-xs font-barlow text-brand-muted mt-1 leading-relaxed">
+                {tenant.name} has requested changes on {rejectedMedia.length === 1 ? "an upload" : "some uploads"} below.
                 Review the notes and submit new media when ready.
               </p>
               {rejectedMedia.map((m) => m.admin_note && (
@@ -344,12 +349,12 @@ export default function SupplierOrderPage() {
 
         {/* ── Production Progress ──────────────────────────────────────────────── */}
         {stageAction && (
-          <div className="bg-gs-dark-2 border border-gs-border rounded-xl p-6 space-y-4">
-            <p className="text-xs font-display uppercase tracking-widest text-gs-gold">Production Progress</p>
+          <div className="bg-brand-surface border border-brand-border rounded-xl p-6 space-y-4">
+            <p className="text-xs font-display uppercase tracking-widest text-brand-primary">Production Progress</p>
             <div className="flex items-start gap-4">
               <div className="flex-1">
-                <p className="text-sm font-barlow text-gs-white font-medium">{stageAction.label}</p>
-                <p className="text-xs font-barlow text-gs-muted mt-0.5">{stageAction.note}</p>
+                <p className="text-sm font-barlow text-brand-text font-medium">{stageAction.label}</p>
+                <p className="text-xs font-barlow text-brand-muted mt-0.5">{stageAction.note}</p>
               </div>
               <button
                 type="button"
@@ -359,13 +364,13 @@ export default function SupplierOrderPage() {
                   // Require at least one upload before submitting for review
                   (order.stage === "first_piece_in_progress" && order.media.length === 0)
                 }
-                className="flex-shrink-0 px-5 py-2.5 rounded-lg font-display font-bold text-xs uppercase tracking-widest bg-gs-gold text-white hover:bg-gs-gold-light disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-[0_2px_12px_rgba(196,160,30,0.25)]"
+                className="flex-shrink-0 px-5 py-2.5 rounded-lg font-display font-bold text-xs uppercase tracking-widest bg-brand-primary text-white hover:bg-brand-secondary disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-[0_2px_12px_rgba(196,160,30,0.25)]"
               >
                 {stageSaving ? "Updating…" : "Confirm →"}
               </button>
             </div>
             {order.stage === "first_piece_in_progress" && order.media.length === 0 && (
-              <p className="text-[10px] font-barlow text-gs-muted">
+              <p className="text-[10px] font-barlow text-brand-muted">
                 Upload at least one photo or video before submitting for review.
               </p>
             )}
@@ -374,8 +379,8 @@ export default function SupplierOrderPage() {
 
         {/* ── Brief Specs ─────────────────────────────────────────────────────── */}
         {order.brief && (
-          <div className="bg-gs-dark-2 border border-gs-border rounded-xl p-6 space-y-4">
-            <p className="text-xs font-display uppercase tracking-widest text-gs-gold">Design Specifications</p>
+          <div className="bg-brand-surface border border-brand-border rounded-xl p-6 space-y-4">
+            <p className="text-xs font-display uppercase tracking-widest text-brand-primary">Design Specifications</p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8">
               <Field label="Design System"    value={order.brief.design_system} />
@@ -385,7 +390,7 @@ export default function SupplierOrderPage() {
                 order.brief.sublimated === false ? "Tackle Twill" : null
               } />
               <Field label="Number Style"      value={order.brief.number_style} />
-              <Field label="GS Logo Placement" value={order.brief.gs_logo_placement?.replace(/_/g, " ")} />
+              <Field label="Logo Placement"    value={order.brief.logo_placement?.replace(/_/g, " ")} />
               <Field label="Player Names"      value={order.brief.player_names ? "Yes" : "No"} />
               <Field label="Logos to Include"  value={order.brief.logos_to_include} />
               <Field label="Sponsor Text"      value={order.brief.sponsor_text} />
@@ -394,7 +399,7 @@ export default function SupplierOrderPage() {
 
             {/* Color swatches */}
             <div>
-              <p className="text-[10px] font-display uppercase tracking-wider text-gs-muted mb-3">Colors</p>
+              <p className="text-[10px] font-display uppercase tracking-wider text-brand-muted mb-3">Colors</p>
               <div className="flex flex-wrap gap-3">
                 {[
                   { label: "Primary",   val: order.brief.primary_colors },
@@ -403,12 +408,12 @@ export default function SupplierOrderPage() {
                 ].filter((c) => c.val).map((c) => (
                   <div key={c.label} className="flex items-center gap-2">
                     <div
-                      className="w-7 h-7 rounded-full border border-gs-border shadow-inner flex-shrink-0"
+                      className="w-7 h-7 rounded-full border border-brand-border shadow-inner flex-shrink-0"
                       style={{ backgroundColor: c.val ?? "transparent" }}
                     />
                     <div>
-                      <p className="text-[9px] font-display uppercase tracking-wider text-gs-muted">{c.label}</p>
-                      <p className="text-xs font-barlow text-gs-white font-medium">{c.val}</p>
+                      <p className="text-[9px] font-display uppercase tracking-wider text-brand-muted">{c.label}</p>
+                      <p className="text-xs font-barlow text-brand-text font-medium">{c.val}</p>
                     </div>
                   </div>
                 ))}
@@ -418,8 +423,8 @@ export default function SupplierOrderPage() {
             {/* Vision / design notes */}
             {order.brief.vision_prompt && (
               <div>
-                <p className="text-[10px] font-display uppercase tracking-wider text-gs-muted mb-1">Design Notes</p>
-                <p className="text-sm font-barlow text-gs-white leading-relaxed bg-gs-dark-3 rounded-lg p-3">
+                <p className="text-[10px] font-display uppercase tracking-wider text-brand-muted mb-1">Design Notes</p>
+                <p className="text-sm font-barlow text-brand-text leading-relaxed bg-brand-surface rounded-lg p-3">
                   {order.brief.vision_prompt}
                 </p>
               </div>
@@ -428,12 +433,12 @@ export default function SupplierOrderPage() {
             {/* Reference image */}
             {order.brief.reference_image_url && (
               <div>
-                <p className="text-[10px] font-display uppercase tracking-wider text-gs-muted mb-2">Reference Image</p>
+                <p className="text-[10px] font-display uppercase tracking-wider text-brand-muted mb-2">Reference Image</p>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={order.brief.reference_image_url}
                   alt="Reference"
-                  className="rounded-lg max-h-48 object-contain border border-gs-border"
+                  className="rounded-lg max-h-48 object-contain border border-brand-border"
                 />
               </div>
             )}
@@ -442,16 +447,16 @@ export default function SupplierOrderPage() {
 
         {/* ── Approved concept ────────────────────────────────────────────────── */}
         {order.concepts.length > 0 && (
-          <div className="bg-gs-dark-2 border border-gs-border rounded-xl p-6">
-            <p className="text-xs font-display uppercase tracking-widest text-gs-gold mb-4">
+          <div className="bg-brand-surface border border-brand-border rounded-xl p-6">
+            <p className="text-xs font-display uppercase tracking-widest text-brand-primary mb-4">
               Approved Design Concept{order.concepts.length > 1 ? "s" : ""}
             </p>
             <div className="flex flex-wrap gap-3">
               {order.concepts.map((c) => (
-                <div key={c.id} className="rounded-xl overflow-hidden border border-gs-gold/40 w-40">
+                <div key={c.id} className="rounded-xl overflow-hidden border border-brand-primary/40 w-40">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={c.image_url} alt={`Concept ${c.concept_number}`} className="w-full aspect-square object-cover" />
-                  <p className="text-[10px] font-barlow text-gs-gold text-center py-1.5 bg-gs-gold/10">
+                  <p className="text-[10px] font-barlow text-brand-primary text-center py-1.5 bg-brand-primary/10">
                     Concept {c.concept_number} · Approved
                   </p>
                 </div>
@@ -462,18 +467,18 @@ export default function SupplierOrderPage() {
 
         {/* ── Player Roster ───────────────────────────────────────────────────── */}
         {roster.length > 0 && (
-          <div className="bg-gs-dark-2 border border-gs-border rounded-xl p-6">
+          <div className="bg-brand-surface border border-brand-border rounded-xl p-6">
             <div className="flex items-center justify-between mb-4">
-              <p className="text-xs font-display uppercase tracking-widest text-gs-gold">
+              <p className="text-xs font-display uppercase tracking-widest text-brand-primary">
                 Player Roster — {roster.length} Players
               </p>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm font-barlow">
                 <thead>
-                  <tr className="border-b border-gs-border">
+                  <tr className="border-b border-brand-border">
                     {["#", "Name", "Number", "Size", "Cut"].map((h) => (
-                      <th key={h} className="text-left text-[10px] font-display uppercase tracking-wider text-gs-muted pb-3 pr-4">
+                      <th key={h} className="text-left text-[10px] font-display uppercase tracking-wider text-brand-muted pb-3 pr-4">
                         {h}
                       </th>
                     ))}
@@ -481,12 +486,12 @@ export default function SupplierOrderPage() {
                 </thead>
                 <tbody>
                   {roster.map((player, i) => (
-                    <tr key={i} className="border-b border-gs-border/50 last:border-0">
-                      <td className="py-2.5 pr-4 text-gs-muted text-xs">{i + 1}</td>
-                      <td className="py-2.5 pr-4 text-gs-white font-medium">{player.name}</td>
-                      <td className="py-2.5 pr-4 text-gs-white">{player.number}</td>
-                      <td className="py-2.5 pr-4 text-gs-white">{player.size}</td>
-                      <td className="py-2.5 pr-4 text-gs-muted capitalize">{player.cut}</td>
+                    <tr key={i} className="border-b border-brand-border/50 last:border-0">
+                      <td className="py-2.5 pr-4 text-brand-muted text-xs">{i + 1}</td>
+                      <td className="py-2.5 pr-4 text-brand-text font-medium">{player.name}</td>
+                      <td className="py-2.5 pr-4 text-brand-text">{player.number}</td>
+                      <td className="py-2.5 pr-4 text-brand-text">{player.size}</td>
+                      <td className="py-2.5 pr-4 text-brand-muted capitalize">{player.cut}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -496,11 +501,11 @@ export default function SupplierOrderPage() {
         )}
 
         {/* ── First Piece Upload ──────────────────────────────────────────────── */}
-        <div className="bg-gs-dark-2 border border-gs-border rounded-xl p-6 space-y-6">
+        <div className="bg-brand-surface border border-brand-border rounded-xl p-6 space-y-6">
           <div>
-            <p className="text-xs font-display uppercase tracking-widest text-gs-gold">First Piece Media</p>
-            <p className="text-xs text-gs-muted font-barlow mt-1">
-              Upload photos and videos of the first piece. Grace Studios will review before the client sees them.
+            <p className="text-xs font-display uppercase tracking-widest text-brand-primary">First Piece Media</p>
+            <p className="text-xs text-brand-muted font-barlow mt-1">
+              Upload photos and videos of the first piece. {tenant.name} will review before the client sees them.
             </p>
           </div>
 
@@ -508,7 +513,7 @@ export default function SupplierOrderPage() {
           {canUpload ? (
             <form onSubmit={handleUpload} className="space-y-4">
               <div>
-                <label className="block text-[10px] font-display uppercase tracking-wider text-gs-muted mb-2">
+                <label className="block text-[10px] font-display uppercase tracking-wider text-brand-muted mb-2">
                   Select Files (photos or video)
                 </label>
                 <input
@@ -517,15 +522,15 @@ export default function SupplierOrderPage() {
                   accept="image/*,video/*"
                   multiple
                   required
-                  className="w-full text-sm font-barlow text-gs-muted file:mr-3 file:py-2 file:px-4
-                    file:rounded-lg file:border file:border-gs-border file:bg-gs-dark-3
-                    file:text-xs file:font-display file:uppercase file:tracking-wider file:text-gs-white
-                    file:cursor-pointer hover:file:border-gs-gold hover:file:text-gs-gold
+                  className="w-full text-sm font-barlow text-brand-muted file:mr-3 file:py-2 file:px-4
+                    file:rounded-lg file:border file:border-brand-border file:bg-brand-surface
+                    file:text-xs file:font-display file:uppercase file:tracking-wider file:text-brand-text
+                    file:cursor-pointer hover:file:border-brand-primary hover:file:text-brand-primary
                     file:transition-all cursor-pointer"
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-display uppercase tracking-wider text-gs-muted mb-2">
+                <label className="block text-[10px] font-display uppercase tracking-wider text-brand-muted mb-2">
                   Caption (optional)
                 </label>
                 <input
@@ -533,7 +538,7 @@ export default function SupplierOrderPage() {
                   value={caption}
                   onChange={(e) => setCaption(e.target.value)}
                   placeholder="e.g. Front view — size L sample"
-                  className="w-full bg-gs-dark border border-gs-border rounded-lg px-4 py-3 text-gs-white font-barlow text-sm placeholder-gs-muted/60 focus:outline-none focus:border-gs-gold transition-colors"
+                  className="w-full bg-brand-bg border border-brand-border rounded-lg px-4 py-3 text-brand-text font-barlow text-sm placeholder-brand-muted/60 focus:outline-none focus:border-brand-primary transition-colors"
                 />
               </div>
               {uploadError && (
@@ -544,7 +549,7 @@ export default function SupplierOrderPage() {
               {uploadDone && (
                 <div className="bg-green-400/10 border border-green-400/30 rounded-lg px-4 py-3 flex items-center justify-between gap-4">
                   <p className="text-green-400 text-sm font-barlow">
-                    ✓ Uploaded successfully. Grace Studios will review shortly.
+                    ✓ Uploaded successfully. {tenant.name} will review shortly.
                   </p>
                   <button
                     type="button"
@@ -559,16 +564,16 @@ export default function SupplierOrderPage() {
                 type="submit"
                 disabled={uploading}
                 className="w-full py-3.5 rounded-lg font-display font-bold text-sm uppercase tracking-widest
-                  bg-gs-gold text-white hover:bg-gs-gold-light disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                  bg-brand-primary text-white hover:bg-brand-secondary disabled:opacity-40 disabled:cursor-not-allowed transition-all"
               >
                 {uploading ? "Uploading…" : "Submit First Piece Media →"}
               </button>
             </form>
           ) : (
-            <div className="rounded-lg border border-gs-border bg-gs-dark-3 px-4 py-3">
-              <p className="text-xs font-barlow text-gs-muted">
+            <div className="rounded-lg border border-brand-border bg-brand-surface px-4 py-3">
+              <p className="text-xs font-barlow text-brand-muted">
                 {order.stage === "first_piece_review"
-                  ? "Your uploads are under review by Grace Studios."
+                  ? `Your uploads are under review by ${tenant.name}.`
                   : "Uploads are enabled once the order reaches the First Piece stage."}
               </p>
             </div>
@@ -576,8 +581,8 @@ export default function SupplierOrderPage() {
 
           {/* Previously uploaded media */}
           {order.media.length > 0 && (
-            <div className="space-y-3 pt-2 border-t border-gs-border">
-              <p className="text-[10px] font-display uppercase tracking-wider text-gs-muted">
+            <div className="space-y-3 pt-2 border-t border-brand-border">
+              <p className="text-[10px] font-display uppercase tracking-wider text-brand-muted">
                 Submitted ({order.media.length})
               </p>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -606,7 +611,7 @@ function MediaCard({ item }: { item: MediaItem }) {
     "Pending Review";
 
   return (
-    <div className="rounded-xl overflow-hidden border border-gs-border bg-gs-dark-3">
+    <div className="rounded-xl overflow-hidden border border-brand-border bg-brand-surface">
       {item.media_type === "video" ? (
         <video
           src={item.media_url}
@@ -622,7 +627,7 @@ function MediaCard({ item }: { item: MediaItem }) {
           {statusLabel}
         </span>
         {item.caption && (
-          <p className="text-[10px] font-barlow text-gs-muted leading-tight">{item.caption}</p>
+          <p className="text-[10px] font-barlow text-brand-muted leading-tight">{item.caption}</p>
         )}
         {item.admin_note && item.admin_approved === false && (
           <p className="text-[10px] font-barlow text-[#C41E1E] leading-tight">Note: {item.admin_note}</p>

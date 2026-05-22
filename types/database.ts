@@ -86,7 +86,7 @@ export interface Database {
           away_colorway: string | null;
           number_style: string | null;
           player_names: boolean;
-          gs_logo_placement: string | null;
+          logo_placement: string | null;
           logos_to_include: string | null;
           sponsor_text: string | null;
           reference_image_url: string | null;
@@ -112,7 +112,7 @@ export interface Database {
           away_colorway?: string | null;
           number_style?: string | null;
           player_names?: boolean;
-          gs_logo_placement?: string | null;
+          logo_placement?: string | null;
           logos_to_include?: string | null;
           sponsor_text?: string | null;
           reference_image_url?: string | null;
@@ -194,7 +194,7 @@ export interface Database {
           id: string;
           email: string;
           full_name: string | null;
-          role: "client" | "supplier" | "admin";
+          role: "client" | "supplier" | "admin" | "super_admin" | "designer" | "sales_rep";
           company: string | null;
           created_at: string;
         };
@@ -202,7 +202,7 @@ export interface Database {
           id: string;
           email: string;
           full_name?: string | null;
-          role: "client" | "supplier" | "admin";
+          role: "client" | "supplier" | "admin" | "super_admin" | "designer" | "sales_rep";
           company?: string | null;
           created_at?: string;
         };

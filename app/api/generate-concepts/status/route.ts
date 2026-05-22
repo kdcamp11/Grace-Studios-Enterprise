@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { createServerClient } from "@/lib/supabase/server";
 import type { GenerationStatus, DesignMetadata } from "../route";
 
 export async function GET(req: NextRequest) {
+  // Require authentication — status response contains brief metadata
+  const serverClient = createServerClient();
+  const { data: { user } } = await serverClient.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const order_id = req.nextUrl.searchParams.get("order_id");
   if (!order_id) {
     return NextResponse.json({ error: "order_id required" }, { status: 400 });

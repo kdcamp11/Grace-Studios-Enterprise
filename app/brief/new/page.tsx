@@ -1,108 +1,197 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import BriefLayout from "@/components/brief/BriefLayout";
 import { saveBriefState } from "@/lib/brief-state";
 import { createClient } from "@/lib/supabase/client";
+import type { ClientProfile } from "@/app/api/brief/client-profile/route";
 
 const SPORTS = [
   "Basketball",
   "Tracksuits",
-  // Coming soon — uncomment as each sport is added to the platform:
-  // "Football",
-  // "Soccer",
-  // "Baseball",
-  // "Softball",
-  // "Volleyball",
-  // "Lacrosse",
-  // "Hockey",
-  // "Wrestling",
-  // "Track & Field",
-  // "Other",
 ];
 
 export default function TeamInfoPage() {
   const router = useRouter();
-  const supabaseRef = useRef(createClient());
-  const supabase = supabaseRef.current;
 
-  const [teamName, setTeamName] = useState("");
-  const [contactName, setContactName] = useState("");
-  const [email, setEmail] = useState("");
-  const [city, setCity] = useState("");
-  const [sport, setSport] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  // Shared state
+  const [sport, setSport]       = useState("");
+  const [loading, setLoading]   = useState(false);
+  const [error, setError]       = useState("");
   const [authChecked, setAuthChecked] = useState(false);
 
+  // Returning-client state
+  const [existingClient, setExistingClient] = useState<ClientProfile | null>(null);
+
+  // New-client form state
+  const [teamName, setTeamName]       = useState("");
+  const [contactName, setContactName] = useState("");
+  const [email, setEmail]             = useState("");
+  const [city, setCity]               = useState("");
+
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) {
-        router.replace("/portal");
-      } else {
-        setAuthChecked(true);
+    async function init() {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { router.replace("/portal"); return; }
+
+      // Check for existing client profile (returns null if first-time)
+      const res = await fetch("/api/brief/client-profile");
+      if (res.ok) {
+        const { client } = await res.json() as { client: ClientProfile | null };
+        if (client) {
+          setExistingClient(client);
+        }
       }
-    });
-  }, [supabase, router]);
+      setAuthChecked(true);
+    }
+    init();
+  }, [router]);
 
-  const canSubmit = teamName && contactName && email && city && sport;
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!canSubmit) return;
+  async function startOrder(payload: {
+    teamName: string;
+    contactName: string;
+    email: string;
+    city: string;
+    sport: string;
+  }) {
     setLoading(true);
     setError("");
-
     try {
-      // Upsert client record
-      const { data: client, error: clientError } = await supabase
-        .from("clients")
-        .upsert(
-          { name: teamName, contact_name: contactName, email, sport, city },
-          { onConflict: "email", ignoreDuplicates: false }
-        )
-        .select("id")
-        .single();
+      const res = await fetch("/api/brief/start", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Failed to start brief");
 
-      if (clientError) throw clientError;
-
-      // Create order at onboarding stage
-      const { data: order, error: orderError } = await supabase
-        .from("orders")
-        .insert({ client_id: client.id, stage: "onboarding" })
-        .select("id")
-        .single();
-
-      if (orderError) throw orderError;
-
-      // Persist to localStorage for subsequent screens
       saveBriefState({
-        teamName,
-        contactName,
-        email,
-        city,
-        sport,
-        orderId: order.id,
-        clientId: client.id,
+        teamName:    payload.teamName,
+        contactName: payload.contactName,
+        email:       payload.email,
+        city:        payload.city,
+        sport:       payload.sport,
+        orderId:     data.orderId,
+        clientId:    data.clientId,
       });
 
-      router.push(`/brief/${order.id}/style`);
+      router.push(`/brief/${data.orderId}/style`);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Something went wrong. Please try again.";
-      setError(msg);
+      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
   }
 
+  // ── Returning client: submit sport only ──────────────────────────────────
+  async function handleReturningSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!existingClient || !sport) return;
+    await startOrder({
+      teamName:    existingClient.name,
+      contactName: existingClient.contact_name ?? "",
+      email:       existingClient.email,
+      city:        existingClient.city ?? "",
+      sport,
+    });
+  }
+
+  // ── New client: submit full form ─────────────────────────────────────────
+  async function handleNewSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!teamName || !contactName || !email || !city || !sport) return;
+    await startOrder({ teamName, contactName, email, city, sport });
+  }
+
   if (!authChecked) {
     return (
-      <div className="min-h-screen bg-gs-dark flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-gs-gold border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-brand-bg flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-brand-primary border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // RETURNING CLIENT — just pick a sport
+  // ─────────────────────────────────────────────────────────────────────────
+  if (existingClient) {
+    return (
+      <BriefLayout
+        currentStep={1}
+        title="New order"
+        subtitle="Your team info is saved. Just pick a sport and we'll get started."
+      >
+        {/* Saved profile summary */}
+        <div className="bg-brand-surface border border-brand-border rounded-xl px-5 py-4 mb-6 flex items-center justify-between gap-4">
+          <div>
+            <p className="font-display font-bold uppercase tracking-wide text-brand-text text-sm">
+              {existingClient.name}
+            </p>
+            <p className="text-xs text-brand-muted font-barlow mt-0.5">
+              {existingClient.contact_name && `${existingClient.contact_name} · `}
+              {existingClient.email}
+              {existingClient.city && ` · ${existingClient.city}`}
+            </p>
+          </div>
+          <a
+            href="/settings"
+            className="text-[11px] font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors flex-shrink-0"
+          >
+            Edit →
+          </a>
+        </div>
+
+        <form onSubmit={handleReturningSubmit} className="space-y-5">
+          <div>
+            <label className="block text-xs font-display uppercase tracking-wider text-brand-muted mb-3">
+              Sport
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {SPORTS.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setSport(s)}
+                  className={`px-4 py-2 rounded-full text-sm font-barlow font-medium transition-all duration-150
+                    ${sport === s
+                      ? "bg-brand-primary text-brand-bg"
+                      : "bg-brand-surface border border-brand-border text-brand-muted hover:border-brand-primary hover:text-brand-text"
+                    }`}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {error && (
+            <p className="text-red-400 text-sm font-barlow bg-red-950/30 border border-red-800 rounded-lg px-4 py-3">
+              {error}
+            </p>
+          )}
+
+          <div className="pt-2">
+            <button
+              type="submit"
+              disabled={!sport || loading}
+              className="w-full py-3.5 rounded-lg font-display font-bold text-base uppercase tracking-widest transition-all duration-200
+                bg-brand-primary text-brand-bg hover:bg-brand-secondary
+                disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {loading ? "Setting up your order…" : "Continue to Design System →"}
+            </button>
+          </div>
+        </form>
+      </BriefLayout>
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // NEW CLIENT — full team-info form
+  // ─────────────────────────────────────────────────────────────────────────
+  const canSubmit = teamName && contactName && email && city && sport;
 
   return (
     <BriefLayout
@@ -110,10 +199,10 @@ export default function TeamInfoPage() {
       title="Tell us about your team"
       subtitle="This information will appear on your order and design brief."
     >
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form onSubmit={handleNewSubmit} className="space-y-5">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
           <div>
-            <label className="block text-xs font-display uppercase tracking-wider text-gs-muted mb-2">
+            <label className="block text-xs font-display uppercase tracking-wider text-brand-muted mb-2">
               Team / Program Name
             </label>
             <input
@@ -121,12 +210,12 @@ export default function TeamInfoPage() {
               value={teamName}
               onChange={(e) => setTeamName(e.target.value)}
               placeholder="e.g. Westside Warriors"
-              className="w-full bg-gs-dark-3 border border-gs-border rounded-lg px-4 py-3 text-gs-white font-barlow placeholder-gs-muted focus:outline-none focus:border-gs-gold transition-colors"
+              className="w-full bg-brand-surface border border-brand-border rounded-lg px-4 py-3 text-brand-text font-barlow placeholder-brand-muted focus:outline-none focus:border-brand-primary transition-colors"
               required
             />
           </div>
           <div>
-            <label className="block text-xs font-display uppercase tracking-wider text-gs-muted mb-2">
+            <label className="block text-xs font-display uppercase tracking-wider text-brand-muted mb-2">
               Contact Name
             </label>
             <input
@@ -134,7 +223,7 @@ export default function TeamInfoPage() {
               value={contactName}
               onChange={(e) => setContactName(e.target.value)}
               placeholder="e.g. Coach Johnson"
-              className="w-full bg-gs-dark-3 border border-gs-border rounded-lg px-4 py-3 text-gs-white font-barlow placeholder-gs-muted focus:outline-none focus:border-gs-gold transition-colors"
+              className="w-full bg-brand-surface border border-brand-border rounded-lg px-4 py-3 text-brand-text font-barlow placeholder-brand-muted focus:outline-none focus:border-brand-primary transition-colors"
               required
             />
           </div>
@@ -142,7 +231,7 @@ export default function TeamInfoPage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
           <div>
-            <label className="block text-xs font-display uppercase tracking-wider text-gs-muted mb-2">
+            <label className="block text-xs font-display uppercase tracking-wider text-brand-muted mb-2">
               Email Address
             </label>
             <input
@@ -150,12 +239,12 @@ export default function TeamInfoPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="coach@school.edu"
-              className="w-full bg-gs-dark-3 border border-gs-border rounded-lg px-4 py-3 text-gs-white font-barlow placeholder-gs-muted focus:outline-none focus:border-gs-gold transition-colors"
+              className="w-full bg-brand-surface border border-brand-border rounded-lg px-4 py-3 text-brand-text font-barlow placeholder-brand-muted focus:outline-none focus:border-brand-primary transition-colors"
               required
             />
           </div>
           <div>
-            <label className="block text-xs font-display uppercase tracking-wider text-gs-muted mb-2">
+            <label className="block text-xs font-display uppercase tracking-wider text-brand-muted mb-2">
               City
             </label>
             <input
@@ -163,14 +252,14 @@ export default function TeamInfoPage() {
               value={city}
               onChange={(e) => setCity(e.target.value)}
               placeholder="e.g. Atlanta, GA"
-              className="w-full bg-gs-dark-3 border border-gs-border rounded-lg px-4 py-3 text-gs-white font-barlow placeholder-gs-muted focus:outline-none focus:border-gs-gold transition-colors"
+              className="w-full bg-brand-surface border border-brand-border rounded-lg px-4 py-3 text-brand-text font-barlow placeholder-brand-muted focus:outline-none focus:border-brand-primary transition-colors"
               required
             />
           </div>
         </div>
 
         <div>
-          <label className="block text-xs font-display uppercase tracking-wider text-gs-muted mb-3">
+          <label className="block text-xs font-display uppercase tracking-wider text-brand-muted mb-3">
             Sport
           </label>
           <div className="flex flex-wrap gap-2">
@@ -180,12 +269,10 @@ export default function TeamInfoPage() {
                 type="button"
                 onClick={() => setSport(s)}
                 className={`px-4 py-2 rounded-full text-sm font-barlow font-medium transition-all duration-150
-                  ${
-                    sport === s
-                      ? "bg-gs-gold text-gs-dark"
-                      : "bg-gs-dark-3 border border-gs-border text-gs-muted hover:border-gs-gold hover:text-gs-white"
-                  }
-                `}
+                  ${sport === s
+                    ? "bg-brand-primary text-brand-bg"
+                    : "bg-brand-surface border border-brand-border text-brand-muted hover:border-brand-primary hover:text-brand-text"
+                  }`}
               >
                 {s}
               </button>
@@ -204,7 +291,7 @@ export default function TeamInfoPage() {
             type="submit"
             disabled={!canSubmit || loading}
             className="w-full py-3.5 rounded-lg font-display font-bold text-base uppercase tracking-widest transition-all duration-200
-              bg-gs-gold text-gs-dark hover:bg-gs-gold-light
+              bg-brand-primary text-brand-bg hover:bg-brand-secondary
               disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {loading ? "Setting up your order…" : "Continue to Design System →"}

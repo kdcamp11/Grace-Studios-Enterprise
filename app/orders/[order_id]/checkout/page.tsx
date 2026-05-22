@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import GraceLogo from "@/components/GraceLogo";
+import TenantLogo from "@/components/TenantLogo";
 
 interface OrderInfo {
   order_number: string;
@@ -73,28 +73,28 @@ export default function CheckoutPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gs-dark flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-gs-gold border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-brand-bg flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-brand-primary border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   if (!info) {
     return (
-      <div className="min-h-screen bg-gs-dark flex items-center justify-center">
-        <p className="text-gs-muted font-barlow">Order not found.</p>
+      <div className="min-h-screen bg-brand-bg flex items-center justify-center">
+        <p className="text-brand-muted font-barlow">Order not found.</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gs-dark flex flex-col">
-      <header className="border-b border-gs-border px-6 py-4 flex items-center justify-between">
-        <GraceLogo className="h-7" href="/portal" />
+    <div className="min-h-screen bg-brand-bg flex flex-col">
+      <header className="border-b border-brand-border px-6 py-4 flex items-center justify-between">
+        <TenantLogo className="h-7" href="/portal" />
         <button
           type="button"
           onClick={() => router.back()}
-          className="text-xs font-display font-bold uppercase tracking-wider text-gs-muted hover:text-gs-gold transition-colors"
+          className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors"
         >
           ← Back
         </button>
@@ -105,13 +105,13 @@ export default function CheckoutPage() {
 
           {/* Heading */}
           <div className="text-center space-y-2">
-            <p className="text-[10px] font-display uppercase tracking-[0.3em] text-gs-gold">
+            <p className="text-[10px] font-display uppercase tracking-[0.3em] text-brand-primary">
               Design Deposit
             </p>
-            <h1 className="font-display text-3xl font-bold uppercase tracking-wide text-gs-white">
+            <h1 className="font-display text-3xl font-bold uppercase tracking-wide text-brand-text">
               Unlock Your Concept
             </h1>
-            <p className="text-sm text-gs-muted font-barlow leading-relaxed">
+            <p className="text-sm text-brand-muted font-barlow leading-relaxed">
               Your designs are ready. Pay the design deposit to view all 4
               renders and approve your concept for production.
             </p>
@@ -119,7 +119,7 @@ export default function CheckoutPage() {
 
           {/* Preview thumbnail */}
           {info.preview_url && (
-            <div className="relative rounded-2xl overflow-hidden border border-gs-border bg-gray-50 aspect-square max-w-[180px] mx-auto">
+            <div className="relative rounded-2xl overflow-hidden border border-brand-border bg-gray-50 aspect-square max-w-[180px] mx-auto">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={info.preview_url}
@@ -127,8 +127,8 @@ export default function CheckoutPage() {
                 className="w-full h-full object-contain"
               />
               {/* Lock overlay on the right half */}
-              <div className="absolute inset-y-0 right-0 w-1/2 backdrop-blur-md bg-gs-dark/60 flex items-center justify-center">
-                <svg className="w-6 h-6 text-gs-muted/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <div className="absolute inset-y-0 right-0 w-1/2 backdrop-blur-md bg-brand-bg/60 flex items-center justify-center">
+                <svg className="w-6 h-6 text-brand-muted/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
                 </svg>
               </div>
@@ -136,32 +136,32 @@ export default function CheckoutPage() {
           )}
 
           {/* Order summary card */}
-          <div className="rounded-2xl border border-gs-border bg-gs-dark-3 divide-y divide-gs-border">
+          <div className="rounded-2xl border border-brand-border bg-brand-surface divide-y divide-brand-border">
             <div className="px-6 py-4 flex items-center justify-between">
-              <span className="text-xs font-display uppercase tracking-wider text-gs-muted">Team</span>
-              <span className="text-sm font-bold text-gs-white font-display uppercase tracking-wide">
+              <span className="text-xs font-display uppercase tracking-wider text-brand-muted">Team</span>
+              <span className="text-sm font-bold text-brand-text font-display uppercase tracking-wide">
                 {info.team_name}
               </span>
             </div>
             <div className="px-6 py-4 flex items-center justify-between">
-              <span className="text-xs font-display uppercase tracking-wider text-gs-muted">Garment</span>
-              <span className="text-xs text-gs-white font-barlow">{info.garment_type}</span>
+              <span className="text-xs font-display uppercase tracking-wider text-brand-muted">Garment</span>
+              <span className="text-xs text-brand-text font-barlow">{info.garment_type}</span>
             </div>
             <div className="px-6 py-4 flex items-center justify-between">
-              <span className="text-xs font-display uppercase tracking-wider text-gs-muted">Design System</span>
-              <span className="inline-block px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-widest bg-gray-900 text-white border border-gs-border">
+              <span className="text-xs font-display uppercase tracking-wider text-brand-muted">Design System</span>
+              <span className="inline-block px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-widest bg-gray-900 text-white border border-brand-border">
                 {info.design_system.toUpperCase()}
               </span>
             </div>
             <div className="px-6 py-4 flex items-center justify-between">
-              <span className="text-xs font-display uppercase tracking-wider text-gs-muted">Order</span>
-              <span className="text-xs font-mono text-gs-white">{info.order_number}</span>
+              <span className="text-xs font-display uppercase tracking-wider text-brand-muted">Order</span>
+              <span className="text-xs font-mono text-brand-text">{info.order_number}</span>
             </div>
-            <div className="px-6 py-5 flex items-center justify-between bg-gs-dark-2 rounded-b-2xl">
-              <span className="text-sm font-display font-bold uppercase tracking-wider text-gs-white">
+            <div className="px-6 py-5 flex items-center justify-between bg-brand-surface rounded-b-2xl">
+              <span className="text-sm font-display font-bold uppercase tracking-wider text-brand-text">
                 Design Deposit
               </span>
-              <span className="text-2xl font-display font-bold text-gs-gold tracking-wide">
+              <span className="text-2xl font-display font-bold text-brand-primary tracking-wide">
                 {DESIGN_FEE}
               </span>
             </div>
@@ -174,7 +174,7 @@ export default function CheckoutPage() {
               onClick={handlePay}
               disabled={paying}
               className="w-full py-4 rounded-xl font-display font-bold text-sm uppercase tracking-[0.15em]
-                bg-gs-gold text-white hover:bg-gs-gold-light
+                bg-brand-primary text-white hover:bg-brand-secondary
                 disabled:opacity-50 disabled:cursor-not-allowed
                 transition-all duration-200 shadow-[0_4px_24px_rgba(212,175,55,0.25)]
                 hover:shadow-[0_4px_32px_rgba(212,175,55,0.4)]"
@@ -186,7 +186,7 @@ export default function CheckoutPage() {
               <p className="text-xs text-red-400 font-barlow text-center">{error}</p>
             )}
 
-            <p className="text-[10px] text-gs-muted font-barlow text-center leading-relaxed">
+            <p className="text-[10px] text-brand-muted font-barlow text-center leading-relaxed">
               Design deposit is credited toward your total order. No additional
               charge for standard production.
             </p>

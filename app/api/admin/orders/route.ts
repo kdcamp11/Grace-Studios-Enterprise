@@ -1,21 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-
-const adminSupabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+import { createAdminClient } from "@/lib/supabase/admin";
+import { assertAdminTenant, isErrorResponse } from "@/lib/api/assert-admin-tenant";
 
 /**
  * GET /api/admin/orders
- * Returns all orders for the admin dashboard. Uses service-role key to bypass
- * the orders_select_own RLS policy. Does a two-step query (orders then clients)
- * to avoid PostgREST embedded-resource joins silently dropping rows.
+ * Returns all orders for the current tenant's admin dashboard.
  */
 export async function GET(_req: NextRequest) {
-  const { data: orders, error: ordersError } = await adminSupabase
+  const ctx = await assertAdminTenant();
+  if (isErrorResponse(ctx)) return ctx;
+
+  const { tenant } = ctx;
+  const admin = createAdminClient();
+
+  const { data: orders, error: ordersError } = await admin
     .from("orders")
     .select("id, order_number, stage, created_at, client_id")
+    .eq("tenant_id", tenant.id)
     .order("created_at", { ascending: false });
 
   if (ordersError) {
@@ -26,9 +27,8 @@ export async function GET(_req: NextRequest) {
     return NextResponse.json({ orders: [] });
   }
 
-  // Fetch all referenced clients in one round-trip
   const clientIds = Array.from(new Set(orders.map((o) => o.client_id).filter(Boolean)));
-  const { data: clients } = await adminSupabase
+  const { data: clients } = await admin
     .from("clients")
     .select("id, name, email, sport")
     .in("id", clientIds);

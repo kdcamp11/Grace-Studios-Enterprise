@@ -1,5 +1,5 @@
 {
-  "name": "grace-studios-platform",
+  "name": "saas-platform",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -23,6 +23,7 @@
     "replicate": "^1.4.0",
     "resend": "^6.12.2",
     "sharp": "^0.34.5",
+    "stripe": "^22.1.1",
     "three": "^0.184.0"
   },
   "devDependencies": {

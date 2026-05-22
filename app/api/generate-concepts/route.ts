@@ -14,6 +14,8 @@ import sharp from "sharp";
 import fsPromises from "fs/promises";
 import path from "path";
 import { rateLimit } from "@/lib/rate-limit";
+import { createServerClient } from "@/lib/supabase/server";
+import { getRequestTenant } from "@/lib/tenant/get-request-tenant";
 
 export const maxDuration = 300;
 
@@ -369,6 +371,7 @@ function buildClaudePrompt(
   garmentLabel:        string,
   referenceAnnotation: string,
   directColors:        { role: string; name: string; hex: string }[],
+  studioName:          string = "Grace Athletics",
 ): string {
   const designSystem = (brief.design_system as string) ?? "bold";
   const sport        = (client.sport as string) ?? "basketball";
@@ -412,7 +415,7 @@ function buildClaudePrompt(
 
   // ── Tracksuit-specific Claude constraints ──────────────────────────────────
   const tracksuitConstraints = isTracksuit ? `
-═══ GRACE ATHLETICS TRACKSUIT CONSTRUCTION RULES — MANDATORY FOR ALL OUTPUT ═══
+═══ TRACKSUIT CONSTRUCTION RULES — MANDATORY FOR ALL OUTPUT ═══
 These rules govern what you write in materials, features, and description. Any output that contradicts these rules is wrong.
 
 MATERIAL RULES:
@@ -443,7 +446,7 @@ DESCRIPTION RULES:
 - Pants are wide-leg with open bottom nylon hem — they stack at the ankle.
 `.trim() : "";
 
-  return `You are a senior sportswear designer at Grace Athletics analyzing a brief to produce controlled render directives.
+  return `You are a senior sportswear designer at ${studioName} analyzing a brief to produce controlled render directives.
 
 ═══ REFERENCE IMAGES PROVIDED ═══
 ${referenceAnnotation || "No reference images loaded — follow design system spec below."}
@@ -458,7 +461,7 @@ Client: ${teamName}, ${city} — ${sport}
 Garment: ${garmentLabel}
 Construction: ${construction}, ${cut} cut
 ${numberStyle} ${logos} ${sponsor}
-Grace Studios logo placement: ${(brief.gs_logo_placement as string) ?? "chest"}
+Logo placement: ${(brief.logo_placement as string) ?? "chest"}
 ${negative}
 ${vision}
 
@@ -497,7 +500,7 @@ Return ONLY valid JSON — no markdown fences:
     },
     "Match the exact feature list style shown in the spec-board reference image"
   ],
-  "logoPlacement": "One precise sentence: Grace Athletics logo placement zone description",
+  "logoPlacement": "One precise sentence: logo placement zone description",
   "description": "GARMENT RENDER DIRECTIVE (max 80 words): Describe panel geometry and design details for ${designSystem.toUpperCase()} system ${isTracksuit ? "tracksuit" : sport} uniforms. Specify: body panel zones and their color roles (Primary/Secondary/Accent), diagonal or geometric cut lines with approximate angles, collar style, side panel construction, ${isTracksuit ? "OPEN sleeve hems, WIDE-LEG OPEN-BOTTOM pant silhouette" : "waistband style"}. NO color names — color assignment happens separately. Focus on geometry and construction only."
 }`.trim();
 }
@@ -795,7 +798,7 @@ function buildGarmentPrompt(
     if (!isJersey) return "";
 
     const wordmarkName = teamName.toUpperCase();
-    const logoSide     = String(brief.gs_logo_placement ?? "left").toLowerCase().includes("right")
+    const logoSide     = String(brief.logo_placement ?? "left").toLowerCase().includes("right")
                          ? "upper-right" : "upper-left";
 
     // ── TRACKSUIT: jacket branding — wordmark + logo, no player number ───────
@@ -1005,6 +1008,11 @@ export async function POST(req: NextRequest) {
   const limited = rateLimit(req, { limit: 5, windowMs: 10 * 60 * 1000 }); // 5 per 10 min per IP
   if (limited) return limited;
 
+  // Require authentication — prevents unauthenticated callers from burning AI credits
+  const serverClient = createServerClient();
+  const { data: { user } } = await serverClient.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   try {
     const { order_id } = await req.json();
     if (!order_id) {
@@ -1015,6 +1023,18 @@ export async function POST(req: NextRequest) {
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
     );
+
+    // Verify the order belongs to the request tenant
+    const tenant = await getRequestTenant();
+    if (tenant) {
+      const { data: tenantCheck } = await supabase
+        .from("orders")
+        .select("id")
+        .eq("id", order_id)
+        .eq("tenant_id", tenant.id)
+        .single();
+      if (!tenantCheck) return NextResponse.json({ error: "Order not found" }, { status: 404 });
+    }
 
     // ── 1. Duplicate-generation guard ─────────────────────────────────────────
 
@@ -1045,7 +1065,7 @@ export async function POST(req: NextRequest) {
     }
 
     const { data: order, error: orderError } = await supabase
-      .from("orders").select("client_id, order_number").eq("id", order_id).single();
+      .from("orders").select("client_id, order_number, tenant_id").eq("id", order_id).single();
     if (orderError || !order) {
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
@@ -1136,6 +1156,7 @@ export async function POST(req: NextRequest) {
       garmentLabel,
       fullAnnotation,
       directColors,
+      tenant?.name ?? "Grace Athletics",
     );
 
     const claudeContent: ContentBlock[] = [
@@ -1177,7 +1198,7 @@ export async function POST(req: NextRequest) {
         colorway:      [],
         materials:     [],
         features:      [],
-        logoPlacement: (brief.gs_logo_placement as string) ?? "",
+        logoPlacement: (brief.logo_placement as string) ?? "",
         description:   rawText.slice(0, 400),
       };
     }
@@ -1305,11 +1326,12 @@ export async function POST(req: NextRequest) {
 
     await supabase.from("concepts").delete().eq("order_id", order_id);
 
+    const tenantId = (order as { tenant_id?: string }).tenant_id;
     const conceptRows = [
-      { order_id, concept_number: 1, image_url: renders.frontJersey!, selected: false },
-      { order_id, concept_number: 2, image_url: renders.backJersey!,  selected: false },
-      { order_id, concept_number: 3, image_url: renders.frontShorts!, selected: false },
-      { order_id, concept_number: 4, image_url: renders.backShorts!,  selected: false },
+      { order_id, tenant_id: tenantId, concept_number: 1, image_url: renders.frontJersey!, selected: false },
+      { order_id, tenant_id: tenantId, concept_number: 2, image_url: renders.backJersey!,  selected: false },
+      { order_id, tenant_id: tenantId, concept_number: 3, image_url: renders.frontShorts!, selected: false },
+      { order_id, tenant_id: tenantId, concept_number: 4, image_url: renders.backShorts!,  selected: false },
     ];
 
     const { error: conceptError } = await supabase.from("concepts").insert(conceptRows);
@@ -1327,6 +1349,7 @@ export async function POST(req: NextRequest) {
           teamName:    client.name ?? "Client",
           orderNumber,
           orderId:     order_id,
+          tenant: tenant ? { name: tenant.name, brandColor: tenant.brand_primary, adminEmail: tenant.support_email } : undefined,
         });
       }
     } catch (emailErr) {
@@ -1377,6 +1400,8 @@ export async function GET(req: NextRequest) {
       .from("clients").select("name, city, sport, email").eq("id", order.client_id).single();
     if (!client) return NextResponse.json({ error: "Client not found" }, { status: 404 });
 
+    const tenant = await getRequestTenant();
+
     const sport        = (client.sport as string) ?? "basketball";
     const designSystem = (brief.design_system as string) ?? "bold";
     const teamName     = (client.name as string) ?? "Team";
@@ -1408,6 +1433,7 @@ export async function GET(req: NextRequest) {
       garmentLabel,
       fullAnnotation,
       directColors,
+      tenant?.name ?? "Grace Athletics",
     );
 
     // ── Run Claude to get metadata (same as production) ────────────────────────
@@ -1445,7 +1471,7 @@ export async function GET(req: NextRequest) {
       metadata = {
         garmentType: garmentLabel, designSystem, boardFormat: "renders",
         colorway: [], materials: [], features: [],
-        logoPlacement: (brief.gs_logo_placement as string) ?? "",
+        logoPlacement: (brief.logo_placement as string) ?? "",
         description: rawText.slice(0, 400),
       };
     }

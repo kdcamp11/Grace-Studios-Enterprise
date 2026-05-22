@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useRef } from "react";
 import BriefProgress from "./BriefProgress";
-import GraceLogo from "@/components/GraceLogo";
+import TenantLogo from "@/components/TenantLogo";
 
 interface BriefLayoutProps {
   children: React.ReactNode;
@@ -25,19 +25,19 @@ export default function BriefLayout({ children, currentStep, title, subtitle, ma
   }
 
   return (
-    <div className="min-h-screen bg-gs-dark flex flex-col">
+    <div className="min-h-screen bg-brand-bg flex flex-col">
       {/* Header */}
-      <header className="px-6 sm:px-10 py-5 flex items-center justify-between border-b border-gs-border">
+      <header className="px-6 sm:px-10 py-5 flex items-center justify-between border-b border-brand-border">
         <div className="flex items-center gap-4">
-          <GraceLogo className="h-7" href="/portal" />
-          <a href="/portal" className="text-xs font-display font-bold uppercase tracking-widest text-gs-gold hover:text-gs-gold-light transition-colors">
+          <TenantLogo className="h-7" href="/portal" />
+          <a href="/portal" className="text-xs font-display font-bold uppercase tracking-widest text-brand-primary hover:text-brand-secondary transition-colors">
             Client Portal
           </a>
         </div>
         <div className="flex items-center gap-5">
-          <a href="/portal" className="text-xs font-display font-bold uppercase tracking-wider text-gs-muted hover:text-gs-gold transition-colors">Home</a>
-          <button type="button" onClick={() => router.back()} className="text-xs font-display font-bold uppercase tracking-wider text-gs-muted hover:text-gs-gold transition-colors">← Back</button>
-          <button type="button" onClick={signOut} className="text-xs font-display font-bold uppercase tracking-wider text-gs-muted hover:text-gs-gold transition-colors">Sign Out</button>
+          <a href="/portal" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Home</a>
+          <button type="button" onClick={() => router.back()} className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">← Back</button>
+          <button type="button" onClick={signOut} className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Sign Out</button>
         </div>
       </header>
 
@@ -46,11 +46,11 @@ export default function BriefLayout({ children, currentStep, title, subtitle, ma
           <BriefProgress currentStep={currentStep} />
 
           <div className="mb-8">
-            <h1 className="font-display text-4xl sm:text-5xl font-bold uppercase tracking-wide text-gs-white leading-none">
+            <h1 className="font-display text-4xl sm:text-5xl font-bold uppercase tracking-wide text-brand-text leading-none">
               {title}
             </h1>
             {subtitle && (
-              <p className="mt-2.5 text-sm text-gs-muted font-barlow leading-relaxed max-w-lg">
+              <p className="mt-2.5 text-sm text-brand-muted font-barlow leading-relaxed max-w-lg">
                 {subtitle}
               </p>
             )}

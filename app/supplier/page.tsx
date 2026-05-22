@@ -4,7 +4,8 @@ import { useEffect, useState, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { getProfile } from "@/lib/profile";
-import GraceLogo from "@/components/GraceLogo";
+import TenantLogo from "@/components/TenantLogo";
+import { useTenant } from "@/lib/tenant/context";
 import type { OrderStage } from "@/types/database";
 
 const STAGE_LABELS: Record<OrderStage, string> = {
@@ -42,15 +43,16 @@ interface AssignedOrder {
 
 function stageColor(stage: OrderStage) {
   if (stage === "first_piece_review") return "text-amber-400 bg-amber-400/10 border-amber-400/30";
-  if (ACTIVE_STAGES.includes(stage))  return "text-gs-gold  bg-gs-gold/10  border-gs-gold/30";
+  if (ACTIVE_STAGES.includes(stage))  return "text-brand-primary  bg-brand-primary/10  border-brand-primary/30";
   if (stage === "complete")           return "text-green-400 bg-green-400/10 border-green-400/30";
-  return "text-gs-muted bg-gs-dark-4 border-gs-border";
+  return "text-brand-muted bg-brand-surface border-brand-border";
 }
 
 function SupplierPortalContent() {
   const router = useRouter();
   const supabaseRef = useRef(createClient());
   const supabase = supabaseRef.current;
+  const tenant = useTenant();
 
   const [orders, setOrders]     = useState<AssignedOrder[]>([]);
   const [loading, setLoading]   = useState(true);
@@ -61,15 +63,14 @@ function SupplierPortalContent() {
 
   useEffect(() => {
     async function load() {
-      const profile = await getProfile();
-      if (!profile)                                                     { router.replace("/login"); return; }
-      if (profile.role !== "supplier" && profile.role !== "admin")      { router.replace("/portal"); return; }
-      if (profile.role === "admin") setIsAdminView(true);
-
-      setName(profile.full_name ?? profile.company ?? (profile.role === "admin" ? "Admin" : "Supplier"));
-
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) { router.replace("/login"); return; }
+
+      const profile = await getProfile();
+      if (profile && profile.role !== "supplier" && profile.role !== "admin") { router.replace("/portal"); return; }
+      if (profile?.role === "admin") setIsAdminView(true);
+
+      setName(profile?.full_name ?? profile?.company ?? (profile?.role === "admin" ? "Admin" : "Supplier"));
 
       // Fetch orders assigned to this supplier
       const { data: rawOrders } = await supabase
@@ -127,8 +128,8 @@ function SupplierPortalContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gs-dark flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-gs-gold border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-brand-bg flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-brand-primary border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -137,7 +138,7 @@ function SupplierPortalContent() {
   const completed = orders.filter((o) => !ACTIVE_STAGES.includes(o.stage));
 
   return (
-    <div className="min-h-screen bg-gs-dark flex flex-col">
+    <div className="min-h-screen bg-brand-bg flex flex-col">
       {isAdminView && (
         <div className="bg-amber-50 border-b border-amber-200 px-6 py-2 flex items-center gap-2">
           <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
@@ -159,19 +160,20 @@ function SupplierPortalContent() {
           </div>
         </div>
       )}
-      <header className="border-b border-gs-border px-6 py-4 flex items-center justify-between">
+      <header className="border-b border-brand-border px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <GraceLogo className="h-7" href="/supplier" />
-          <a href="/supplier" className="text-xs font-display font-bold uppercase tracking-widest text-gs-gold hover:text-gs-gold-light transition-colors">
+          <TenantLogo className="h-7" href="/supplier" />
+          <a href="/supplier" className="text-xs font-display font-bold uppercase tracking-widest text-brand-primary hover:text-brand-secondary transition-colors">
             Supplier Portal
           </a>
         </div>
         <div className="flex items-center gap-5">
-          <span className="text-xs text-gs-muted font-barlow hidden sm:block">{name}</span>
+          <span className="text-xs text-brand-muted font-barlow hidden sm:block">{name}</span>
+          <a href="/supplier/portfolio" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Portfolio</a>
           {!isAdminView && (
-            <a href="/settings" className="text-xs font-display font-bold uppercase tracking-wider text-gs-muted hover:text-gs-gold transition-colors">Settings</a>
+            <a href="/settings" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Settings</a>
           )}
-          <button type="button" onClick={signOut} className="text-xs font-display font-bold uppercase tracking-wider text-gs-muted hover:text-gs-gold transition-colors">Sign Out</button>
+          <button type="button" onClick={signOut} className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Sign Out</button>
         </div>
       </header>
 
@@ -179,10 +181,10 @@ function SupplierPortalContent() {
 
         {/* Welcome */}
         <div className="mb-10">
-          <h1 className="font-display text-3xl font-bold uppercase tracking-wide text-gs-white">
+          <h1 className="font-display text-3xl font-bold uppercase tracking-wide text-brand-text">
             Your Orders
           </h1>
-          <p className="text-sm text-gs-muted font-barlow mt-1">
+          <p className="text-sm text-brand-muted font-barlow mt-1">
             {orders.length === 0
               ? "No orders assigned yet — check back soon."
               : `${active.length} active · ${completed.length} completed`}
@@ -196,10 +198,10 @@ function SupplierPortalContent() {
         </div>
 
         {orders.length === 0 && (
-          <div className="border border-gs-border rounded-xl p-12 text-center">
-            <p className="text-gs-muted font-barlow text-sm">No orders have been assigned to you yet.</p>
-            <p className="text-xs text-gs-muted font-barlow mt-1 opacity-60">
-              The Grace Studios team will assign orders as they come in.
+          <div className="border border-brand-border rounded-xl p-12 text-center">
+            <p className="text-brand-muted font-barlow text-sm">No orders have been assigned to you yet.</p>
+            <p className="text-xs text-brand-muted font-barlow mt-1 opacity-60">
+              The {tenant.name} team will assign orders as they come in.
             </p>
           </div>
         )}
@@ -207,7 +209,7 @@ function SupplierPortalContent() {
         {/* Active orders */}
         {active.length > 0 && (
           <section className="space-y-3 mb-10">
-            <p className="text-[10px] font-display uppercase tracking-[0.2em] text-gs-gold">Active</p>
+            <p className="text-[10px] font-display uppercase tracking-[0.2em] text-brand-primary">Active</p>
             {active.map((order) => (
               <OrderCard key={order.id} order={order} onClick={() => router.push(`/supplier/orders/${order.id}`)} />
             ))}
@@ -217,7 +219,7 @@ function SupplierPortalContent() {
         {/* Completed orders */}
         {completed.length > 0 && (
           <section className="space-y-3">
-            <p className="text-[10px] font-display uppercase tracking-[0.2em] text-gs-muted">Completed</p>
+            <p className="text-[10px] font-display uppercase tracking-[0.2em] text-brand-muted">Completed</p>
             {completed.map((order) => (
               <OrderCard key={order.id} order={order} onClick={() => router.push(`/supplier/orders/${order.id}`)} />
             ))}
@@ -239,18 +241,18 @@ export default function SupplierPortalPage() {
 function OrderCard({ order, onClick }: { order: AssignedOrder; onClick: () => void }) {
   const borderClass = order.changes_requested
     ? "border-red-300 hover:border-red-400"
-    : "border-gs-border hover:border-gs-gold";
+    : "border-brand-border hover:border-brand-primary";
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`w-full text-left bg-gs-dark-2 border rounded-xl p-5 transition-all duration-150 group ${borderClass}`}
+      className={`w-full text-left bg-brand-surface border rounded-xl p-5 transition-all duration-150 group ${borderClass}`}
     >
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <p className="font-display font-bold uppercase tracking-wider text-gs-white text-sm group-hover:text-gs-gold transition-colors">
+            <p className="font-display font-bold uppercase tracking-wider text-brand-text text-sm group-hover:text-brand-primary transition-colors">
               {order.order_number || order.id.slice(0, 8).toUpperCase()}
             </p>
             {order.changes_requested && (
@@ -264,11 +266,11 @@ function OrderCard({ order, onClick }: { order: AssignedOrder; onClick: () => vo
               </span>
             )}
           </div>
-          <p className="text-sm font-barlow text-gs-muted truncate">
+          <p className="text-sm font-barlow text-brand-muted truncate">
             {order.client.name} · {order.client.sport} · {order.client.city}
           </p>
           {order.media_count > 0 && (
-            <p className="text-xs font-barlow text-gs-muted mt-1 opacity-60">
+            <p className="text-xs font-barlow text-brand-muted mt-1 opacity-60">
               {order.media_count} upload{order.media_count !== 1 ? "s" : ""} submitted
             </p>
           )}
@@ -278,11 +280,11 @@ function OrderCard({ order, onClick }: { order: AssignedOrder; onClick: () => vo
             {STAGE_LABELS[order.stage]}
           </span>
           {order.estimated_delivery && (
-            <p className="text-[10px] font-barlow text-gs-muted block">
+            <p className="text-[10px] font-barlow text-brand-muted block">
               Est. {new Date(order.estimated_delivery).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
             </p>
           )}
-          <span className="text-xs font-display font-bold uppercase tracking-wider text-gs-muted group-hover:text-gs-gold transition-colors">
+          <span className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted group-hover:text-brand-primary transition-colors">
             View →
           </span>
         </div>

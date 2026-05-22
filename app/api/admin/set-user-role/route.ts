@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { assertAdminTenant, isErrorResponse } from "@/lib/api/assert-admin-tenant";
 
-const VALID_ROLES = ["client", "supplier", "admin"] as const;
+const VALID_ROLES = ["client", "supplier", "admin", "designer", "sales_rep"] as const;
 type Role = typeof VALID_ROLES[number];
 
 export async function POST(req: NextRequest) {
+  const ctx = await assertAdminTenant();
+  if (isErrorResponse(ctx)) return ctx;
+
   try {
     const { email, role } = await req.json() as { email?: string; role?: string };
 
@@ -17,11 +21,7 @@ export async function POST(req: NextRequest) {
 
     const normalizedEmail = email.trim().toLowerCase();
 
-    // Service-role client bypasses RLS entirely
-    const admin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    );
+    const admin = createAdminClient();
 
     // ── 1. Verify the user exists in auth ─────────────────────────────────
     const { data: listData, error: listError } = await admin.auth.admin.listUsers({ perPage: 1000 });
@@ -47,6 +47,7 @@ export async function POST(req: NextRequest) {
           id:         authUser.id,
           email:      authUser.email,
           role,
+          tenant_id:  ctx.tenant.id,
           full_name:  authUser.user_metadata?.full_name ?? null,
           company:    authUser.user_metadata?.company   ?? null,
         },

@@ -1,17 +1,27 @@
 import Link from "next/link";
-import GraceLogo from "@/components/GraceLogo";
+import TenantLogo from "@/components/TenantLogo";
+import { getRequestTenant } from "@/lib/tenant/get-request-tenant";
+import type { Metadata } from "next";
 
-export const metadata = {
-  title: "DMCA Policy — Grace Athletics",
-  description: "Grace Athletics Digital Millennium Copyright Act policy and takedown notice procedures.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const tenant = await getRequestTenant();
+  const name = tenant?.name ?? "Grace Athletics";
+  return {
+    title: `DMCA Policy — ${name}`,
+    description: `${name} Digital Millennium Copyright Act policy and takedown notice procedures.`,
+  };
+}
 
-export default function DmcaPage() {
+export default async function DmcaPage() {
+  const tenant = await getRequestTenant();
+  const name   = tenant?.name ?? "Grace Athletics";
+  const email  = tenant?.support_email ?? "dmca@graceathletics.com";
+
   return (
-    <div className="min-h-screen bg-gs-dark flex flex-col">
-      <header className="border-b border-gs-border px-6 py-4 flex items-center justify-between">
-        <GraceLogo className="h-7" href="/" />
-        <Link href="/portal" className="text-xs font-display font-bold uppercase tracking-widest text-gs-muted hover:text-gs-gold transition-colors">
+    <div className="min-h-screen bg-brand-bg flex flex-col">
+      <header className="border-b border-brand-border px-6 py-4 flex items-center justify-between">
+        <TenantLogo className="h-7" href="/" />
+        <Link href="/portal" className="text-xs font-display font-bold uppercase tracking-widest text-brand-muted hover:text-brand-primary transition-colors">
           ← Back to Portal
         </Link>
       </header>
@@ -20,14 +30,14 @@ export default function DmcaPage() {
         <div className="w-full max-w-3xl space-y-10">
 
           <div>
-            <p className="text-xs font-display uppercase tracking-widest text-gs-gold mb-2">Legal</p>
-            <h1 className="font-display text-4xl font-bold uppercase tracking-wide text-gs-white">DMCA Policy</h1>
-            <p className="text-sm text-gs-muted font-barlow mt-2">Effective date: May 19, 2026 · Last updated: May 19, 2026</p>
+            <p className="text-xs font-display uppercase tracking-widest text-brand-primary mb-2">Legal</p>
+            <h1 className="font-display text-4xl font-bold uppercase tracking-wide text-brand-text">DMCA Policy</h1>
+            <p className="text-sm text-brand-muted font-barlow mt-2">Effective date: May 19, 2026 · Last updated: May 19, 2026</p>
           </div>
 
           <Section title="Overview">
             <P>
-              Grace Athletics respects the intellectual property rights of others and complies with the Digital
+              {name} respects the intellectual property rights of others and complies with the Digital
               Millennium Copyright Act (DMCA), 17 U.S.C. § 512. Users of our platform may upload logos, images,
               and other creative assets as part of their design brief. If you believe your copyrighted work has
               been uploaded or used without authorization, please follow the procedure below.
@@ -37,7 +47,7 @@ export default function DmcaPage() {
           <Section title="1. Filing a DMCA Takedown Notice">
             <P>
               To submit a notice of claimed copyright infringement, your written notice must include{" "}
-              <strong className="text-gs-white">all</strong> of the following:
+              <strong className="text-brand-text">all</strong> of the following:
             </P>
             <ul className="list-none space-y-3 mt-3">
               <Li number="1">
@@ -49,7 +59,7 @@ export default function DmcaPage() {
               </Li>
               <Li number="3">
                 Identification of the material claimed to be infringing, including sufficient information to allow
-                Grace Athletics to locate it (e.g., the URL or order reference where the material appears).
+                {" "}{name} to locate it (e.g., the URL or order reference where the material appears).
               </Li>
               <Li number="4">
                 Your contact information: name, mailing address, telephone number, and email address.
@@ -64,20 +74,20 @@ export default function DmcaPage() {
               </Li>
             </ul>
 
-            <div className="mt-5 bg-gs-dark-3 border border-gs-border rounded-xl p-5 space-y-2">
-              <p className="text-xs font-display uppercase tracking-widest text-gs-gold">Send Takedown Notices To</p>
-              <p className="text-sm font-barlow text-gs-white">Grace Athletics — DMCA Agent</p>
-              <p className="text-sm font-barlow text-gs-muted">
+            <div className="mt-5 bg-brand-surface border border-brand-border rounded-xl p-5 space-y-2">
+              <p className="text-xs font-display uppercase tracking-widest text-brand-primary">Send Takedown Notices To</p>
+              <p className="text-sm font-barlow text-brand-text">{name} — DMCA Agent</p>
+              <p className="text-sm font-barlow text-brand-muted">
                 Email:{" "}
-                <a href="mailto:dmca@graceathletics.com" className="text-gs-gold hover:underline">
-                  dmca@graceathletics.com
+                <a href={`mailto:${email}`} className="text-brand-primary hover:underline">
+                  {email}
                 </a>
               </p>
-              <p className="text-sm font-barlow text-gs-muted">Subject line: <span className="text-gs-white">DMCA Takedown Notice</span></p>
+              <p className="text-sm font-barlow text-brand-muted">Subject line: <span className="text-brand-text">DMCA Takedown Notice</span></p>
             </div>
 
             <P className="mt-4">
-              We will respond to valid notices within <strong className="text-gs-white">10 business days</strong>.
+              We will respond to valid notices within <strong className="text-brand-text">10 business days</strong>.
               Upon receipt of a valid notice, we will promptly remove or disable access to the infringing material
               and notify the user who uploaded it.
             </P>
@@ -100,7 +110,7 @@ export default function DmcaPage() {
               <Li number="4">
                 Your name, address, telephone number, and email address, and a statement that you consent to the
                 jurisdiction of the Federal District Court for the judicial district where your address is located
-                (or if you are outside the U.S., any judicial district where Grace Athletics may be found), and that
+                (or if you are outside the U.S., any judicial district where {name} may be found), and that
                 you will accept service of process from the complainant.
               </Li>
             </ul>
@@ -113,7 +123,7 @@ export default function DmcaPage() {
 
           <Section title="3. Repeat Infringers">
             <P>
-              Grace Athletics will terminate the accounts of users who are found to be repeat infringers of
+              {name} will terminate the accounts of users who are found to be repeat infringers of
               copyright in appropriate circumstances.
             </P>
           </Section>
@@ -128,22 +138,22 @@ export default function DmcaPage() {
 
           <Section title="5. User Responsibility">
             <P>
-              By uploading logos, images, or other assets to the Grace Athletics platform, you represent that you
+              By uploading logos, images, or other assets to the {name} platform, you represent that you
               own or have the necessary rights and permissions to use those assets. Uploading third-party copyrighted
               material without authorization is a violation of our{" "}
-              <Link href="/terms" className="text-gs-gold hover:underline">Terms of Service</Link> and may result
+              <Link href="/terms" className="text-brand-primary hover:underline">Terms of Service</Link> and may result
               in account termination and legal liability.
             </P>
           </Section>
 
-          <div className="pt-6 border-t border-gs-border flex flex-wrap gap-6">
-            <Link href="/terms" className="text-sm font-display font-bold uppercase tracking-widest text-gs-muted hover:text-gs-gold transition-colors">
+          <div className="pt-6 border-t border-brand-border flex flex-wrap gap-6">
+            <Link href="/terms" className="text-sm font-display font-bold uppercase tracking-widest text-brand-muted hover:text-brand-primary transition-colors">
               Terms of Service →
             </Link>
-            <Link href="/privacy-policy" className="text-sm font-display font-bold uppercase tracking-widest text-gs-muted hover:text-gs-gold transition-colors">
+            <Link href="/privacy-policy" className="text-sm font-display font-bold uppercase tracking-widest text-brand-muted hover:text-brand-primary transition-colors">
               Privacy Policy →
             </Link>
-            <Link href="/portal" className="text-sm font-display font-bold uppercase tracking-widest text-gs-muted hover:text-gs-gold transition-colors">
+            <Link href="/portal" className="text-sm font-display font-bold uppercase tracking-widest text-brand-muted hover:text-brand-primary transition-colors">
               ← Return to Portal
             </Link>
           </div>
@@ -156,7 +166,7 @@ export default function DmcaPage() {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="space-y-3">
-      <h2 className="font-display text-lg font-bold uppercase tracking-wider text-gs-white border-b border-gs-border pb-2">
+      <h2 className="font-display text-lg font-bold uppercase tracking-wider text-brand-text border-b border-brand-border pb-2">
         {title}
       </h2>
       <div className="space-y-3">{children}</div>
@@ -165,13 +175,13 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 function P({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return <p className={`text-sm font-barlow text-gs-muted leading-relaxed ${className}`}>{children}</p>;
+  return <p className={`text-sm font-barlow text-brand-muted leading-relaxed ${className}`}>{children}</p>;
 }
 
 function Li({ number, children }: { number?: string | number; children: React.ReactNode }) {
   return (
-    <li className="flex gap-3 text-sm font-barlow text-gs-muted leading-relaxed">
-      <span className="text-gs-gold font-bold flex-shrink-0 w-4">{number ?? "—"}</span>
+    <li className="flex gap-3 text-sm font-barlow text-brand-muted leading-relaxed">
+      <span className="text-brand-primary font-bold flex-shrink-0 w-4">{number ?? "—"}</span>
       <span>{children}</span>
     </li>
   );

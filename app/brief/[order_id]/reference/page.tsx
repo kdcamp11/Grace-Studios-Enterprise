@@ -6,6 +6,7 @@ import BriefLayout from "@/components/brief/BriefLayout";
 import { SYSTEM_DEFAULTS } from "@/components/brief/JerseyPreview";
 import { loadBriefState, saveBriefState } from "@/lib/brief-state";
 import { createClient } from "@/lib/supabase/client";
+import { useTenant } from "@/lib/tenant/context";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -35,13 +36,13 @@ function UploadZone({
 
   return (
     <div>
-      <p className="text-[10px] font-display uppercase tracking-[0.2em] text-gs-muted mb-1">{label}</p>
-      <p className="text-xs text-gs-muted font-barlow mb-3 leading-relaxed">{hint}</p>
+      <p className="text-[10px] font-display uppercase tracking-[0.2em] text-brand-muted mb-1">{label}</p>
+      <p className="text-xs text-brand-muted font-barlow mb-3 leading-relaxed">{hint}</p>
 
       {images.length > 0 && (
         <div className="flex flex-wrap gap-2.5 mb-3">
           {images.map((url) => (
-            <div key={url} className="relative w-16 h-16 rounded-xl overflow-hidden border border-gs-border group">
+            <div key={url} className="relative w-16 h-16 rounded-xl overflow-hidden border border-brand-border group">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={url} alt="" className="w-full h-full object-cover" />
               <button
@@ -65,7 +66,7 @@ function UploadZone({
         onClick={()      => inputRef.current?.click()}
         className={`cursor-pointer rounded-xl border-2 border-dashed transition-all duration-200
           flex items-center gap-3 py-5 px-4
-          ${drag ? "border-gs-gold bg-gs-gold/5" : "border-gs-border bg-gs-dark-3 hover:border-gs-muted"}`}
+          ${drag ? "border-brand-primary bg-brand-primary/5" : "border-brand-border bg-brand-surface hover:border-brand-muted"}`}
       >
         <input
           ref={inputRef}
@@ -76,17 +77,17 @@ function UploadZone({
           onChange={(e) => { if (e.target.files?.length) onAdd(e.target.files); e.target.value = ""; }}
         />
         {uploading ? (
-          <div className="w-5 h-5 border-2 border-gs-gold border-t-transparent rounded-full animate-spin mx-auto" />
+          <div className="w-5 h-5 border-2 border-brand-primary border-t-transparent rounded-full animate-spin mx-auto" />
         ) : (
           <>
-            <svg className="w-5 h-5 text-gs-muted flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <svg className="w-5 h-5 text-brand-muted flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
             </svg>
             <div>
-              <p className="text-sm font-barlow text-gs-white">
+              <p className="text-sm font-barlow text-brand-text">
                 {images.length > 0 ? "Add more" : "Drop files here"}
               </p>
-              <p className="text-xs text-gs-muted font-barlow">or click to browse — PNG, SVG, JPG</p>
+              <p className="text-xs text-brand-muted font-barlow">or click to browse — PNG, SVG, JPG</p>
             </div>
           </>
         )}
@@ -108,6 +109,7 @@ export default function ReferencePage() {
   const { order_id } = useParams<{ order_id: string }>();
   const supabaseRef = useRef(createClient());
   const supabase = supabaseRef.current;
+  const tenant = useTenant();
 
   // Brief state hydration
   const [designSystem, setDesignSystem] = useState("");
@@ -265,7 +267,7 @@ export default function ReferencePage() {
 
         {/* ── Color picker ─────────────────────────────────────────────── */}
         <div>
-          <label className="block text-[10px] font-display uppercase tracking-[0.2em] text-gs-muted mb-3">
+          <label className="block text-[10px] font-display uppercase tracking-[0.2em] text-brand-muted mb-3">
             Color Palette
           </label>
           <div className="grid grid-cols-3 gap-4">
@@ -275,8 +277,8 @@ export default function ReferencePage() {
               { label: "Trim",  value: accentColor,    onChange: handleAccentChange    },
             ].map(({ label, value, onChange }) => (
               <div key={label} className="flex flex-col items-center gap-2">
-                <label className="text-[10px] font-display uppercase tracking-widest text-gs-muted">{label}</label>
-                <div className="relative w-12 h-12 rounded-xl overflow-hidden border-2 border-gs-border cursor-pointer hover:border-gs-gold transition-colors">
+                <label className="text-[10px] font-display uppercase tracking-widest text-brand-muted">{label}</label>
+                <div className="relative w-12 h-12 rounded-xl overflow-hidden border-2 border-brand-border cursor-pointer hover:border-brand-primary transition-colors">
                   <input
                     type="color"
                     value={value}
@@ -293,7 +295,7 @@ export default function ReferencePage() {
                     if (/^#[0-9A-Fa-f]{0,6}$/.test(v)) onChange(v);
                   }}
                   maxLength={7}
-                  className="w-full text-center bg-gs-dark-3 border border-gs-border rounded-lg px-2 py-1.5 text-gs-white font-mono text-xs focus:outline-none focus:border-gs-gold transition-colors"
+                  className="w-full text-center bg-brand-surface border border-brand-border rounded-lg px-2 py-1.5 text-brand-text font-mono text-xs focus:outline-none focus:border-brand-primary transition-colors"
                 />
               </div>
             ))}
@@ -327,8 +329,8 @@ export default function ReferencePage() {
 
           {/* GS logo placement (required) */}
           <div>
-            <label className="block text-[10px] font-display uppercase tracking-[0.2em] text-gs-muted mb-3">
-              Grace Athletics Logo Placement
+            <label className="block text-[10px] font-display uppercase tracking-[0.2em] text-brand-muted mb-3">
+              {tenant.name} Logo Placement
               <span className="ml-2 text-red-500 normal-case font-barlow font-normal">Required</span>
             </label>
             <div className="grid grid-cols-3 gap-3">
@@ -344,14 +346,14 @@ export default function ReferencePage() {
                     }}
                     className={`text-left p-4 rounded-xl border transition-all duration-200
                       ${isSelected
-                        ? "border-gs-gold bg-gs-dark-3"
-                        : "border-gs-border bg-gs-dark-3 hover:border-gs-muted"
+                        ? "border-brand-primary bg-brand-surface"
+                        : "border-brand-border bg-brand-surface hover:border-brand-muted"
                       }`}
                   >
-                    <p className={`font-display font-bold uppercase tracking-wide text-sm ${isSelected ? "text-gs-gold" : "text-gs-white"}`}>
+                    <p className={`font-display font-bold uppercase tracking-wide text-sm ${isSelected ? "text-brand-primary" : "text-brand-text"}`}>
                       {p.label}
                     </p>
-                    <p className="text-xs text-gs-muted font-barlow mt-1 leading-relaxed">{p.description}</p>
+                    <p className="text-xs text-brand-muted font-barlow mt-1 leading-relaxed">{p.description}</p>
                   </button>
                 );
               })}
@@ -360,7 +362,7 @@ export default function ReferencePage() {
 
           {/* Number style */}
           <div>
-            <label className="block text-[10px] font-display uppercase tracking-[0.2em] text-gs-muted mb-3">
+            <label className="block text-[10px] font-display uppercase tracking-[0.2em] text-brand-muted mb-3">
               Number Style <span className="normal-case font-barlow font-normal">(optional)</span>
             </label>
             <div className="flex flex-wrap gap-2">
@@ -371,8 +373,8 @@ export default function ReferencePage() {
                   onClick={() => setNumberStyle(ns === numberStyle ? "" : ns)}
                   className={`px-4 py-2 rounded-full text-sm font-barlow transition-all duration-150
                     ${numberStyle === ns
-                      ? "bg-gs-gold text-gs-dark font-medium"
-                      : "bg-gs-dark-3 border border-gs-border text-gs-muted hover:border-gs-gold hover:text-gs-white"
+                      ? "bg-brand-primary text-brand-bg font-medium"
+                      : "bg-brand-surface border border-brand-border text-brand-muted hover:border-brand-primary hover:text-brand-text"
                     }`}
                 >
                   {ns}
@@ -385,7 +387,7 @@ export default function ReferencePage() {
           <div className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-[10px] font-display uppercase tracking-[0.2em] text-gs-muted mb-2">
+                <label className="block text-[10px] font-display uppercase tracking-[0.2em] text-brand-muted mb-2">
                   Logos to Include <span className="normal-case font-barlow font-normal">(optional)</span>
                 </label>
                 <input
@@ -393,11 +395,11 @@ export default function ReferencePage() {
                   value={logosToInclude}
                   onChange={(e) => setLogosToInclude(e.target.value)}
                   placeholder="e.g. school crest, conference patch"
-                  className="w-full bg-gs-dark-3 border border-gs-border rounded-lg px-4 py-3 text-gs-white font-barlow text-sm placeholder-gs-muted focus:outline-none focus:border-gs-gold transition-colors"
+                  className="w-full bg-brand-surface border border-brand-border rounded-lg px-4 py-3 text-brand-text font-barlow text-sm placeholder-brand-muted focus:outline-none focus:border-brand-primary transition-colors"
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-display uppercase tracking-[0.2em] text-gs-muted mb-2">
+                <label className="block text-[10px] font-display uppercase tracking-[0.2em] text-brand-muted mb-2">
                   Sponsor Text / Patch <span className="normal-case font-barlow font-normal">(optional)</span>
                 </label>
                 <input
@@ -405,13 +407,13 @@ export default function ReferencePage() {
                   value={sponsorText}
                   onChange={(e) => setSponsorText(e.target.value)}
                   placeholder="e.g. Powered by Nike"
-                  className="w-full bg-gs-dark-3 border border-gs-border rounded-lg px-4 py-3 text-gs-white font-barlow text-sm placeholder-gs-muted focus:outline-none focus:border-gs-gold transition-colors"
+                  className="w-full bg-brand-surface border border-brand-border rounded-lg px-4 py-3 text-brand-text font-barlow text-sm placeholder-brand-muted focus:outline-none focus:border-brand-primary transition-colors"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-[10px] font-display uppercase tracking-[0.2em] text-gs-muted mb-2">
+              <label className="block text-[10px] font-display uppercase tracking-[0.2em] text-brand-muted mb-2">
                 What to Avoid <span className="normal-case font-barlow font-normal">(optional)</span>
               </label>
               <input
@@ -419,12 +421,12 @@ export default function ReferencePage() {
                 value={negativeReferences}
                 onChange={(e) => setNegativeReferences(e.target.value)}
                 placeholder="e.g. no camo, avoid busy graphics, keep it clean"
-                className="w-full bg-gs-dark-3 border border-gs-border rounded-lg px-4 py-3 text-gs-white font-barlow text-sm placeholder-gs-muted focus:outline-none focus:border-gs-gold transition-colors"
+                className="w-full bg-brand-surface border border-brand-border rounded-lg px-4 py-3 text-brand-text font-barlow text-sm placeholder-brand-muted focus:outline-none focus:border-brand-primary transition-colors"
               />
             </div>
 
             <div>
-              <label className="block text-[10px] font-display uppercase tracking-[0.2em] text-gs-muted mb-2">
+              <label className="block text-[10px] font-display uppercase tracking-[0.2em] text-brand-muted mb-2">
                 Vision Notes <span className="normal-case font-barlow font-normal">(optional)</span>
               </label>
               <textarea
@@ -432,7 +434,7 @@ export default function ReferencePage() {
                 onChange={(e) => setVisionPrompt(e.target.value)}
                 placeholder="Describe your vision — vibe, inspiration, specific elements you want on the jersey…"
                 rows={4}
-                className="w-full bg-gs-dark-3 border border-gs-border rounded-lg px-4 py-3 text-gs-white font-barlow text-sm placeholder-gs-muted focus:outline-none focus:border-gs-gold transition-colors resize-none"
+                className="w-full bg-brand-surface border border-brand-border rounded-lg px-4 py-3 text-brand-text font-barlow text-sm placeholder-brand-muted focus:outline-none focus:border-brand-primary transition-colors resize-none"
               />
             </div>
           </div>
@@ -442,7 +444,7 @@ export default function ReferencePage() {
             <button
               type="button"
               onClick={() => router.push(`/brief/${order_id}/style`)}
-              className="px-6 py-3 rounded-lg font-display font-bold text-sm uppercase tracking-widest border border-gs-border text-gs-muted hover:text-gs-white hover:border-gs-muted transition-colors"
+              className="px-6 py-3 rounded-lg font-display font-bold text-sm uppercase tracking-widest border border-brand-border text-brand-muted hover:text-brand-text hover:border-brand-muted transition-colors"
             >
               ← Back
             </button>
@@ -451,7 +453,7 @@ export default function ReferencePage() {
               onClick={handleContinue}
               disabled={!canContinue || logoUploading || refUploading}
               className="flex-1 py-3 rounded-lg font-display font-bold text-base uppercase tracking-widest transition-all duration-200
-                bg-gs-gold text-gs-dark hover:bg-gs-gold-light
+                bg-brand-primary text-brand-bg hover:bg-brand-secondary
                 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Continue to Review →

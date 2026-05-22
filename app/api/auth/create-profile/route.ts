@@ -1,19 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { getRequestTenant } from "@/lib/tenant/get-request-tenant";
 
 /**
  * Creates or updates a profile row for a newly signed-up user.
- *
- * Called server-side from the signup page immediately after auth.signUp().
- * Uses the service role key to bypass RLS — required because the user has
- * no active session yet when email confirmation is enabled, so the anon-key
- * client would silently fail the RLS check.
+ * Resolves the tenant from the request hostname so profiles are always
+ * scoped to the correct tenant at signup time.
  */
 export async function POST(req: NextRequest) {
   try {
     const { userId, email, fullName, company, role } = await req.json() as {
-      userId:   string;
-      email:    string;
+      userId:    string;
+      email:     string;
       fullName?: string;
       company?:  string;
       role?:     string;
@@ -23,21 +21,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "userId and email are required" }, { status: 400 });
     }
 
+    const tenant = await getRequestTenant();
+    if (!tenant) {
+      return NextResponse.json({ error: "Tenant not found for this domain" }, { status: 400 });
+    }
+
     const validRoles = ["client", "supplier", "admin"];
     const safeRole   = validRoles.includes(role ?? "") ? role : "client";
 
-    const admin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    );
+    const admin = createAdminClient();
 
     const { error } = await admin.from("profiles").upsert(
       {
-        id:         userId,
-        email:      email.trim().toLowerCase(),
-        full_name:  fullName || null,
-        company:    company  || null,
-        role:       safeRole,
+        id:        userId,
+        tenant_id: tenant.id,
+        email:     email.trim().toLowerCase(),
+        full_name: fullName || null,
+        company:   company  || null,
+        role:      safeRole,
       },
       { onConflict: "id" },
     );

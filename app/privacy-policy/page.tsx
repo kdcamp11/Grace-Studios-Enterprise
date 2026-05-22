@@ -1,19 +1,29 @@
 import Link from "next/link";
-import GraceLogo from "@/components/GraceLogo";
+import TenantLogo from "@/components/TenantLogo";
+import { getRequestTenant } from "@/lib/tenant/get-request-tenant";
+import type { Metadata } from "next";
 
-export const metadata = {
-  title: "Privacy Policy — Grace Athletics",
-  description: "How Grace Athletics collects, uses, and protects your personal information.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const tenant = await getRequestTenant();
+  const name = tenant?.name ?? "Grace Athletics";
+  return {
+    title: `Privacy Policy — ${name}`,
+    description: `How ${name} collects, uses, and protects your personal information.`,
+  };
+}
 
-export default function PrivacyPolicyPage() {
+export default async function PrivacyPolicyPage() {
+  const tenant = await getRequestTenant();
+  const name  = tenant?.name ?? "Grace Athletics";
+  const email = tenant?.support_email ?? "info@graceathletics.com";
+
   return (
-    <div className="min-h-screen bg-gs-dark flex flex-col">
-      <header className="border-b border-gs-border px-6 py-4 flex items-center justify-between">
-        <GraceLogo className="h-7" href="/" />
+    <div className="min-h-screen bg-brand-bg flex flex-col">
+      <header className="border-b border-brand-border px-6 py-4 flex items-center justify-between">
+        <TenantLogo className="h-7" href="/" />
         <Link
           href="/portal"
-          className="text-xs font-display font-bold uppercase tracking-widest text-gs-muted hover:text-gs-gold transition-colors"
+          className="text-xs font-display font-bold uppercase tracking-widest text-brand-muted hover:text-brand-primary transition-colors"
         >
           ← Back to Portal
         </Link>
@@ -23,17 +33,17 @@ export default function PrivacyPolicyPage() {
         <div className="w-full max-w-3xl space-y-10">
 
           <div>
-            <p className="text-xs font-display uppercase tracking-widest text-gs-gold mb-2">Legal</p>
-            <h1 className="font-display text-4xl font-bold uppercase tracking-wide text-gs-white">Privacy Policy</h1>
-            <p className="text-sm text-gs-muted font-barlow mt-2">Effective date: May 19, 2026 · Last updated: May 19, 2026</p>
+            <p className="text-xs font-display uppercase tracking-widest text-brand-primary mb-2">Legal</p>
+            <h1 className="font-display text-4xl font-bold uppercase tracking-wide text-brand-text">Privacy Policy</h1>
+            <p className="text-sm text-brand-muted font-barlow mt-2">Effective date: May 19, 2026 · Last updated: May 19, 2026</p>
           </div>
 
           <Section title="1. Who We Are">
             <P>
-              Grace Athletics (&ldquo;Grace Athletics,&rdquo; &ldquo;we,&rdquo; &ldquo;us,&rdquo; or &ldquo;our&rdquo;) is a custom
-              athletic apparel design and production company. We operate the Grace Athletics client portal and design platform
+              {name} (&ldquo;{name},&rdquo; &ldquo;we,&rdquo; &ldquo;us,&rdquo; or &ldquo;our&rdquo;) is a custom
+              athletic apparel design and production company. We operate the {name} client portal and design platform
               (the &ldquo;Platform&rdquo;). Our contact email is{" "}
-              <a href="mailto:info@graceathletics.com" className="text-gs-gold hover:underline">info@graceathletics.com</a>.
+              <a href={`mailto:${email}`} className="text-brand-primary hover:underline">{email}</a>.
             </P>
           </Section>
 
@@ -62,7 +72,7 @@ export default function PrivacyPolicyPage() {
               </Li>
             </ul>
             <P className="mt-4">
-              We do <strong className="text-gs-white">not</strong> collect or store payment card numbers directly.
+              We do <strong className="text-brand-text">not</strong> collect or store payment card numbers directly.
               Payment processing is handled by our third-party payment provider and is subject to their privacy practices.
             </P>
           </Section>
@@ -78,7 +88,7 @@ export default function PrivacyPolicyPage() {
               <Li>Comply with legal obligations and resolve disputes</Li>
             </ul>
             <P className="mt-4">
-              We do <strong className="text-gs-white">not</strong> sell your personal information to third parties.
+              We do <strong className="text-brand-text">not</strong> sell your personal information to third parties.
             </P>
           </Section>
 
@@ -102,11 +112,11 @@ export default function PrivacyPolicyPage() {
           <Section title="5. Intellectual Property">
             <P>
               All design concepts, artwork, mockups, and creative materials generated through our Platform are and remain the
-              exclusive intellectual property of Grace Athletics unless a separate written licensing or ownership transfer
-              agreement is executed between Grace Athletics and the client. Submitting a design brief grants Grace Athletics a
+              exclusive intellectual property of {name} unless a separate written licensing or ownership transfer
+              agreement is executed between {name} and the client. Submitting a design brief grants {name} a
               license to create, retain, and display these designs. For inquiries about licensing or IP transfer agreements,
               contact us at{" "}
-              <a href="mailto:info@graceathletics.com" className="text-gs-gold hover:underline">info@graceathletics.com</a>.
+              <a href={`mailto:${email}`} className="text-brand-primary hover:underline">{email}</a>.
             </P>
           </Section>
 
@@ -137,7 +147,7 @@ export default function PrivacyPolicyPage() {
             </ul>
             <P className="mt-4">
               To exercise any of these rights, contact us at{" "}
-              <a href="mailto:info@graceathletics.com" className="text-gs-gold hover:underline">info@graceathletics.com</a>.
+              <a href={`mailto:${email}`} className="text-brand-primary hover:underline">{email}</a>.
               We will respond within 30 days.
             </P>
           </Section>
@@ -160,14 +170,14 @@ export default function PrivacyPolicyPage() {
           <Section title="11. Contact Us">
             <P>
               If you have questions about this Privacy Policy or how we handle your data, please contact us at{" "}
-              <a href="mailto:info@graceathletics.com" className="text-gs-gold hover:underline">info@graceathletics.com</a>.
+              <a href={`mailto:${email}`} className="text-brand-primary hover:underline">{email}</a>.
             </P>
           </Section>
 
-          <div className="pt-6 border-t border-gs-border">
+          <div className="pt-6 border-t border-brand-border">
             <Link
               href="/portal"
-              className="text-sm font-display font-bold uppercase tracking-widest text-gs-muted hover:text-gs-gold transition-colors"
+              className="text-sm font-display font-bold uppercase tracking-widest text-brand-muted hover:text-brand-primary transition-colors"
             >
               ← Return to Portal
             </Link>
@@ -181,7 +191,7 @@ export default function PrivacyPolicyPage() {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="space-y-3">
-      <h2 className="font-display text-lg font-bold uppercase tracking-wider text-gs-white border-b border-gs-border pb-2">
+      <h2 className="font-display text-lg font-bold uppercase tracking-wider text-brand-text border-b border-brand-border pb-2">
         {title}
       </h2>
       <div className="space-y-3">{children}</div>
@@ -191,16 +201,16 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function P({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
-    <p className={`text-sm font-barlow text-gs-muted leading-relaxed ${className}`}>{children}</p>
+    <p className={`text-sm font-barlow text-brand-muted leading-relaxed ${className}`}>{children}</p>
   );
 }
 
 function Li({ label, children }: { label?: string; children: React.ReactNode }) {
   return (
-    <li className="flex gap-3 text-sm font-barlow text-gs-muted leading-relaxed">
-      <span className="text-gs-gold mt-0.5 flex-shrink-0">—</span>
+    <li className="flex gap-3 text-sm font-barlow text-brand-muted leading-relaxed">
+      <span className="text-brand-primary mt-0.5 flex-shrink-0">—</span>
       <span>
-        {label && <strong className="text-gs-white">{label}: </strong>}
+        {label && <strong className="text-brand-text">{label}: </strong>}
         {children}
       </span>
     </li>

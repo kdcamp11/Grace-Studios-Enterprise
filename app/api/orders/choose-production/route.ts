@@ -1,18 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-
-const adminSupabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+import { createAdminClient } from "@/lib/supabase/admin";
+import { assertClientOrder, isErrorResponse } from "@/lib/api/assert-client-order";
 
 /**
  * POST /api/orders/choose-production
  * Body: { order_id, choice: "design_file" | "production" }
- *
- * design_file  → records choice, stage stays at "files_sent"
- * production   → records choice + production_deposit_paid=true (placeholder),
- *               advances stage to "first_piece_in_progress"
  */
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
@@ -22,6 +14,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "order_id and valid choice required" }, { status: 400 });
   }
 
+  const ctx = await assertClientOrder(order_id);
+  if (isErrorResponse(ctx)) return ctx;
+
   const patch: Record<string, unknown> = { production_choice: choice };
 
   if (choice === "production") {
@@ -29,14 +24,11 @@ export async function POST(req: NextRequest) {
     patch.stage = "first_piece_in_progress";
   }
 
-  const { error } = await adminSupabase
+  const { error } = await createAdminClient()
     .from("orders")
     .update(patch)
     .eq("id", order_id);
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ success: true, choice });
 }

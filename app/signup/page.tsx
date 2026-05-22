@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { getProfile, rolePortal } from "@/lib/profile";
-import GraceLogo from "@/components/GraceLogo";
+import TenantLogo from "@/components/TenantLogo";
+import { useTenant } from "@/lib/tenant/context";
 
 type Role = "client" | "supplier";
 
@@ -24,6 +25,7 @@ const ROLE_OPTIONS: { value: Role; label: string; description: string }[] = [
 
 export default function SignupPage() {
   const router = useRouter();
+  const tenant = useTenant();
   const [fullName, setFullName]   = useState("");
   const [company, setCompany]     = useState("");
   const [email, setEmail]         = useState("");
@@ -89,15 +91,15 @@ export default function SignupPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gs-dark flex items-center justify-center">
-        <div className="w-5 h-5 border-2 border-gs-gold border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-brand-bg flex items-center justify-center">
+        <div className="w-5 h-5 border-2 border-brand-primary border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gs-dark flex flex-col">
-      <div className="h-px w-full bg-gs-gold" />
+    <div className="min-h-screen bg-brand-bg flex flex-col">
+      <div className="h-px w-full bg-brand-primary" />
 
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-16">
         <div className="w-full max-w-[400px] animate-fade-up space-y-10">
@@ -105,43 +107,43 @@ export default function SignupPage() {
           {/* Logo + wordmark */}
           <div className="text-center space-y-5">
             <div className="flex justify-center">
-              <GraceLogo className="h-12" href="/login" />
+              <TenantLogo className="h-12" href="/login" />
             </div>
             <div className="space-y-1">
-              <h1 className="font-display text-4xl font-bold uppercase tracking-wide text-gs-white leading-none">
+              <h1 className="font-display text-4xl font-bold uppercase tracking-wide text-brand-text leading-none">
                 Create Account
               </h1>
-              <p className="text-xs font-display uppercase tracking-[0.2em] text-gs-muted">
-                Grace Athletics Platform
+              <p className="text-xs font-display uppercase tracking-[0.2em] text-brand-muted">
+                {tenant.name}
               </p>
             </div>
           </div>
 
-          <div className="h-px bg-gs-border w-full" />
+          <div className="h-px bg-brand-border w-full" />
 
           {done ? (
             /* ── Confirm email state ── */
             <div className="space-y-5 animate-fade-in text-center">
               <div className="flex justify-center">
-                <div className="w-14 h-14 rounded-full border border-gs-border bg-gs-dark-3 flex items-center justify-center">
-                  <svg className="w-6 h-6 text-gs-gold" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <div className="w-14 h-14 rounded-full border border-brand-border bg-brand-surface flex items-center justify-center">
+                  <svg className="w-6 h-6 text-brand-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                   </svg>
                 </div>
               </div>
               <div className="space-y-2">
-                <p className="font-display font-bold uppercase tracking-wider text-gs-white text-lg">
+                <p className="font-display font-bold uppercase tracking-wider text-brand-text text-lg">
                   Confirm your email
                 </p>
-                <p className="text-sm text-gs-muted font-barlow leading-relaxed">
+                <p className="text-sm text-brand-muted font-barlow leading-relaxed">
                   We sent a confirmation link to{" "}
-                  <span className="text-gs-white font-medium">{email}</span>.
+                  <span className="text-brand-text font-medium">{email}</span>.
                   Click it to activate your account.
                 </p>
               </div>
               <Link
                 href="/login"
-                className="inline-block text-xs font-display uppercase tracking-widest text-gs-muted hover:text-gs-gold transition-colors py-2"
+                className="inline-block text-xs font-display uppercase tracking-widest text-brand-muted hover:text-brand-primary transition-colors py-2"
               >
                 Back to Sign In
               </Link>
@@ -152,7 +154,7 @@ export default function SignupPage() {
 
               {/* Role selector */}
               <div>
-                <p className="text-[10px] font-display uppercase tracking-[0.2em] text-gs-muted mb-2.5">
+                <p className="text-[10px] font-display uppercase tracking-[0.2em] text-brand-muted mb-2.5">
                   I am a…
                 </p>
                 <div className="grid grid-cols-2 gap-2">
@@ -163,8 +165,8 @@ export default function SignupPage() {
                       onClick={() => setRole(opt.value)}
                       className={`p-3.5 rounded-lg border text-left transition-all duration-150
                         ${role === opt.value
-                          ? "border-gs-gold bg-gs-gold/8 text-gs-white"
-                          : "border-gs-border text-gs-muted hover:border-gs-muted hover:text-gs-white"
+                          ? "border-brand-primary bg-brand-primary/8 text-brand-text"
+                          : "border-brand-border text-brand-muted hover:border-brand-muted hover:text-brand-text"
                         }`}
                     >
                       <span className="block text-xs font-display uppercase tracking-wider font-bold leading-tight">
@@ -180,7 +182,7 @@ export default function SignupPage() {
 
               {/* Full name */}
               <div>
-                <label className="block text-[10px] font-display uppercase tracking-[0.2em] text-gs-muted mb-2.5">
+                <label className="block text-[10px] font-display uppercase tracking-[0.2em] text-brand-muted mb-2.5">
                   Full Name
                 </label>
                 <input
@@ -188,13 +190,13 @@ export default function SignupPage() {
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   placeholder="Your full name"
-                  className="w-full bg-gs-dark-2 border border-gs-border rounded-lg px-4 py-3.5 text-gs-white font-barlow text-sm placeholder-gs-muted/60 focus:outline-none focus:border-gs-gold transition-colors"
+                  className="w-full bg-brand-surface border border-brand-border rounded-lg px-4 py-3.5 text-brand-text font-barlow text-sm placeholder-brand-muted/60 focus:outline-none focus:border-brand-primary transition-colors"
                 />
               </div>
 
               {/* Company / team name */}
               <div>
-                <label className="block text-[10px] font-display uppercase tracking-[0.2em] text-gs-muted mb-2.5">
+                <label className="block text-[10px] font-display uppercase tracking-[0.2em] text-brand-muted mb-2.5">
                   {role === "client" ? "Team / Organization Name" : "Company / Factory Name"}
                 </label>
                 <input
@@ -202,13 +204,13 @@ export default function SignupPage() {
                   value={company}
                   onChange={(e) => setCompany(e.target.value)}
                   placeholder={role === "client" ? "e.g. Riverside High School" : "e.g. Apex Sportswear Ltd."}
-                  className="w-full bg-gs-dark-2 border border-gs-border rounded-lg px-4 py-3.5 text-gs-white font-barlow text-sm placeholder-gs-muted/60 focus:outline-none focus:border-gs-gold transition-colors"
+                  className="w-full bg-brand-surface border border-brand-border rounded-lg px-4 py-3.5 text-brand-text font-barlow text-sm placeholder-brand-muted/60 focus:outline-none focus:border-brand-primary transition-colors"
                 />
               </div>
 
               {/* Email */}
               <div>
-                <label className="block text-[10px] font-display uppercase tracking-[0.2em] text-gs-muted mb-2.5">
+                <label className="block text-[10px] font-display uppercase tracking-[0.2em] text-brand-muted mb-2.5">
                   Email Address
                 </label>
                 <input
@@ -217,14 +219,14 @@ export default function SignupPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@yourteam.com"
                   required
-                  className="w-full bg-gs-dark-2 border border-gs-border rounded-lg px-4 py-3.5 text-gs-white font-barlow text-sm placeholder-gs-muted/60 focus:outline-none focus:border-gs-gold transition-colors"
+                  className="w-full bg-brand-surface border border-brand-border rounded-lg px-4 py-3.5 text-brand-text font-barlow text-sm placeholder-brand-muted/60 focus:outline-none focus:border-brand-primary transition-colors"
                 />
               </div>
 
               {/* Password */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[10px] font-display uppercase tracking-[0.2em] text-gs-muted mb-2.5">
+                  <label className="block text-[10px] font-display uppercase tracking-[0.2em] text-brand-muted mb-2.5">
                     Password
                   </label>
                   <input
@@ -234,11 +236,11 @@ export default function SignupPage() {
                     placeholder="Min. 8 characters"
                     required
                     minLength={8}
-                    className="w-full bg-gs-dark-2 border border-gs-border rounded-lg px-4 py-3.5 text-gs-white font-barlow text-sm placeholder-gs-muted/60 focus:outline-none focus:border-gs-gold transition-colors"
+                    className="w-full bg-brand-surface border border-brand-border rounded-lg px-4 py-3.5 text-brand-text font-barlow text-sm placeholder-brand-muted/60 focus:outline-none focus:border-brand-primary transition-colors"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-display uppercase tracking-[0.2em] text-gs-muted mb-2.5">
+                  <label className="block text-[10px] font-display uppercase tracking-[0.2em] text-brand-muted mb-2.5">
                     Confirm
                   </label>
                   <input
@@ -247,8 +249,8 @@ export default function SignupPage() {
                     onChange={(e) => setConfirm(e.target.value)}
                     placeholder="Repeat password"
                     required
-                    className={`w-full bg-gs-dark-2 border rounded-lg px-4 py-3.5 text-gs-white font-barlow text-sm placeholder-gs-muted/60 focus:outline-none transition-colors
-                      ${confirm && confirm !== password ? "border-[#C41E1E] focus:border-[#C41E1E]" : "border-gs-border focus:border-gs-gold"}`}
+                    className={`w-full bg-brand-surface border rounded-lg px-4 py-3.5 text-brand-text font-barlow text-sm placeholder-brand-muted/60 focus:outline-none transition-colors
+                      ${confirm && confirm !== password ? "border-[#C41E1E] focus:border-[#C41E1E]" : "border-brand-border focus:border-brand-primary"}`}
                   />
                 </div>
               </div>
@@ -263,27 +265,27 @@ export default function SignupPage() {
                 type="submit"
                 disabled={submitting || !email || !password || !confirm}
                 className="w-full py-4 rounded-lg font-display font-bold text-sm uppercase tracking-[0.15em] transition-all duration-200
-                  bg-gs-gold text-white hover:bg-gs-gold-light
+                  bg-brand-primary text-white hover:bg-brand-secondary
                   disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {submitting ? "Creating account…" : "Create Account →"}
               </button>
 
-              <p className="text-xs text-gs-muted font-barlow text-center">
+              <p className="text-xs text-brand-muted font-barlow text-center">
                 By creating an account you agree to our{" "}
-                <Link href="/terms" className="text-gs-white hover:text-gs-gold transition-colors underline underline-offset-2">
+                <Link href="/terms" className="text-brand-text hover:text-brand-primary transition-colors underline underline-offset-2">
                   Terms of Service
                 </Link>
                 {" "}and{" "}
-                <Link href="/privacy-policy" className="text-gs-white hover:text-gs-gold transition-colors underline underline-offset-2">
+                <Link href="/privacy-policy" className="text-brand-text hover:text-brand-primary transition-colors underline underline-offset-2">
                   Privacy Policy
                 </Link>
                 .
               </p>
 
-              <p className="text-xs text-gs-muted font-barlow text-center">
+              <p className="text-xs text-brand-muted font-barlow text-center">
                 Already have an account?{" "}
-                <Link href="/login" className="text-gs-white hover:text-gs-gold transition-colors underline underline-offset-2">
+                <Link href="/login" className="text-brand-text hover:text-brand-primary transition-colors underline underline-offset-2">
                   Sign in
                 </Link>
               </p>
@@ -293,7 +295,7 @@ export default function SignupPage() {
         </div>
       </div>
 
-      <div className="h-px w-full bg-gs-border" />
+      <div className="h-px w-full bg-brand-border" />
     </div>
   );
 }

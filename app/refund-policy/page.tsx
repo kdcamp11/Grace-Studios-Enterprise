@@ -1,19 +1,29 @@
 import Link from "next/link";
-import GraceLogo from "@/components/GraceLogo";
+import TenantLogo from "@/components/TenantLogo";
+import { getRequestTenant } from "@/lib/tenant/get-request-tenant";
+import type { Metadata } from "next";
 
-export const metadata = {
-  title: "Refund & Cancellation Policy — Grace Athletics",
-  description: "Grace Athletics refund, cancellation, and revision policy for custom athletic apparel orders.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const tenant = await getRequestTenant();
+  const name = tenant?.name ?? "Grace Athletics";
+  return {
+    title: `Refund & Cancellation Policy — ${name}`,
+    description: `${name} refund, cancellation, and revision policy for custom athletic apparel orders.`,
+  };
+}
 
-export default function RefundPolicyPage() {
+export default async function RefundPolicyPage() {
+  const tenant = await getRequestTenant();
+  const name  = tenant?.name ?? "Grace Athletics";
+  const email = tenant?.support_email ?? "info@graceathletics.com";
+
   return (
-    <div className="min-h-screen bg-gs-dark flex flex-col">
-      <header className="border-b border-gs-border px-6 py-4 flex items-center justify-between">
-        <GraceLogo className="h-7" href="/" />
+    <div className="min-h-screen bg-brand-bg flex flex-col">
+      <header className="border-b border-brand-border px-6 py-4 flex items-center justify-between">
+        <TenantLogo className="h-7" href="/" />
         <Link
           href="/portal"
-          className="text-xs font-display font-bold uppercase tracking-widest text-gs-muted hover:text-gs-gold transition-colors"
+          className="text-xs font-display font-bold uppercase tracking-widest text-brand-muted hover:text-brand-primary transition-colors"
         >
           ← Back to Portal
         </Link>
@@ -23,14 +33,14 @@ export default function RefundPolicyPage() {
         <div className="w-full max-w-3xl space-y-10">
 
           <div>
-            <p className="text-xs font-display uppercase tracking-widest text-gs-gold mb-2">Legal</p>
-            <h1 className="font-display text-4xl font-bold uppercase tracking-wide text-gs-white">Refund &amp; Cancellation Policy</h1>
-            <p className="text-sm text-gs-muted font-barlow mt-2">Effective date: May 19, 2026 · Last updated: May 19, 2026</p>
+            <p className="text-xs font-display uppercase tracking-widest text-brand-primary mb-2">Legal</p>
+            <h1 className="font-display text-4xl font-bold uppercase tracking-wide text-brand-text">Refund &amp; Cancellation Policy</h1>
+            <p className="text-sm text-brand-muted font-barlow mt-2">Effective date: May 19, 2026 · Last updated: May 19, 2026</p>
           </div>
 
           <Section title="Overview">
             <P>
-              Grace Athletics produces custom athletic apparel made to order. Because every garment is manufactured
+              {name} produces custom athletic apparel made to order. Because every garment is manufactured
               specifically for your program, our ability to offer refunds is limited once production has begun.
               Please read this policy carefully before placing an order.
             </P>
@@ -39,7 +49,7 @@ export default function RefundPolicyPage() {
           <Section title="1. Design Fee">
             <P>
               The design fee covers AI-assisted concept generation and designer review. It is{" "}
-              <strong className="text-gs-white">non-refundable</strong> once concept generation has begun, as design
+              <strong className="text-brand-text">non-refundable</strong> once concept generation has begun, as design
               work is performed immediately upon brief submission.
             </P>
             <P>
@@ -60,7 +70,7 @@ export default function RefundPolicyPage() {
                   manufacturing partner.
                 </Li>
                 <Li label="After production starts">
-                  <strong className="text-gs-white">No refund</strong> once production has been confirmed and
+                  <strong className="text-brand-text">No refund</strong> once production has been confirmed and
                   materials have been ordered. We will do everything possible to accommodate changes to quantities
                   or sizing, but cannot guarantee it at this stage.
                 </Li>
@@ -85,12 +95,9 @@ export default function RefundPolicyPage() {
               <Li>Issue a partial or full refund at our discretion based on the nature of the defect</Li>
             </ul>
             <P className="mt-3">
-              Claims must be submitted within <strong className="text-gs-white">7 days of delivery</strong> with
+              Claims must be submitted within <strong className="text-brand-text">7 days of delivery</strong> with
               photos documenting the issue. Contact us at{" "}
-              <a href="mailto:info@graceathletics.com" className="text-gs-gold hover:underline">
-                info@graceathletics.com
-              </a>
-              .
+              <a href={`mailto:${email}`} className="text-brand-primary hover:underline">{email}</a>.
             </P>
             <P>
               Normal variation in color between screen previews and physical garments is not considered a defect.
@@ -104,13 +111,13 @@ export default function RefundPolicyPage() {
               Your design direction is locked after brief submission. Post-approval revisions are subject to the
               following fees:
             </P>
-            <div className="bg-gs-dark-3 border border-gs-border rounded-xl overflow-hidden mt-3">
+            <div className="bg-brand-surface border border-brand-border rounded-xl overflow-hidden mt-3">
               <table className="w-full text-sm font-barlow">
                 <thead>
-                  <tr className="border-b border-gs-border">
-                    <th className="text-left px-5 py-3 text-xs font-display uppercase tracking-wider text-gs-muted">Revision Type</th>
-                    <th className="text-left px-5 py-3 text-xs font-display uppercase tracking-wider text-gs-muted">Fee</th>
-                    <th className="text-left px-5 py-3 text-xs font-display uppercase tracking-wider text-gs-muted">Availability</th>
+                  <tr className="border-b border-brand-border">
+                    <th className="text-left px-5 py-3 text-xs font-display uppercase tracking-wider text-brand-muted">Revision Type</th>
+                    <th className="text-left px-5 py-3 text-xs font-display uppercase tracking-wider text-brand-muted">Fee</th>
+                    <th className="text-left px-5 py-3 text-xs font-display uppercase tracking-wider text-brand-muted">Availability</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -120,10 +127,10 @@ export default function RefundPolicyPage() {
                     ["Layout / panel change", "$150", "Before production"],
                     ["Post-production change", "Not available", "—"],
                   ].map(([type, fee, avail]) => (
-                    <tr key={type} className="border-b border-gs-border last:border-b-0">
-                      <td className="px-5 py-3 text-gs-white">{type}</td>
-                      <td className="px-5 py-3 text-gs-gold font-semibold">{fee}</td>
-                      <td className="px-5 py-3 text-gs-muted">{avail}</td>
+                    <tr key={type} className="border-b border-brand-border last:border-b-0">
+                      <td className="px-5 py-3 text-brand-text">{type}</td>
+                      <td className="px-5 py-3 text-brand-primary font-semibold">{fee}</td>
+                      <td className="px-5 py-3 text-brand-muted">{avail}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -152,18 +159,16 @@ export default function RefundPolicyPage() {
           <Section title="7. How to Request a Refund or Cancellation">
             <P>
               Email us at{" "}
-              <a href="mailto:info@graceathletics.com" className="text-gs-gold hover:underline">
-                info@graceathletics.com
-              </a>{" "}
+              <a href={`mailto:${email}`} className="text-brand-primary hover:underline">{email}</a>{" "}
               with your order number and the reason for your request. We respond within 2 business days.
               Approved refunds are processed within 5–10 business days to the original payment method.
             </P>
           </Section>
 
-          <div className="pt-6 border-t border-gs-border">
+          <div className="pt-6 border-t border-brand-border">
             <Link
               href="/portal"
-              className="text-sm font-display font-bold uppercase tracking-widest text-gs-muted hover:text-gs-gold transition-colors"
+              className="text-sm font-display font-bold uppercase tracking-widest text-brand-muted hover:text-brand-primary transition-colors"
             >
               ← Return to Portal
             </Link>
@@ -177,7 +182,7 @@ export default function RefundPolicyPage() {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="space-y-3">
-      <h2 className="font-display text-lg font-bold uppercase tracking-wider text-gs-white border-b border-gs-border pb-2">
+      <h2 className="font-display text-lg font-bold uppercase tracking-wider text-brand-text border-b border-brand-border pb-2">
         {title}
       </h2>
       <div className="space-y-3">{children}</div>
@@ -187,16 +192,16 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function P({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
-    <p className={`text-sm font-barlow text-gs-muted leading-relaxed ${className}`}>{children}</p>
+    <p className={`text-sm font-barlow text-brand-muted leading-relaxed ${className}`}>{children}</p>
   );
 }
 
 function Li({ label, children }: { label?: string; children: React.ReactNode }) {
   return (
-    <li className="flex gap-3 text-sm font-barlow text-gs-muted leading-relaxed">
-      <span className="text-gs-gold mt-0.5 flex-shrink-0">—</span>
+    <li className="flex gap-3 text-sm font-barlow text-brand-muted leading-relaxed">
+      <span className="text-brand-primary mt-0.5 flex-shrink-0">—</span>
       <span>
-        {label && <strong className="text-gs-white">{label}: </strong>}
+        {label && <strong className="text-brand-text">{label}: </strong>}
         {children}
       </span>
     </li>

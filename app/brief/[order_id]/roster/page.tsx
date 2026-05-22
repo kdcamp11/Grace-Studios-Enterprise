@@ -4,7 +4,6 @@ import { useState, useRef, KeyboardEvent } from "react";
 import { useRouter, useParams } from "next/navigation";
 import BriefLayout from "@/components/brief/BriefLayout";
 import { clearBriefState } from "@/lib/brief-state";
-import { createClient } from "@/lib/supabase/client";
 import type { RosterPlayer } from "@/types/database";
 
 const SIZES = ["YS", "YM", "YL", "YXL", "AS", "AM", "AL", "AXL", "A2XL", "A3XL"];
@@ -18,8 +17,6 @@ function emptyPlayer(): RosterPlayer {
 export default function RosterPage() {
   const router = useRouter();
   const { order_id } = useParams<{ order_id: string }>();
-  const supabaseRef = useRef(createClient());
-  const supabase = supabaseRef.current;
   const tableRef = useRef<HTMLTableElement>(null);
 
   const [players, setPlayers] = useState<RosterPlayer[]>([emptyPlayer()]);
@@ -84,14 +81,19 @@ export default function RosterPage() {
     setSaving(true);
     setError("");
     try {
-      await supabase
-        .from("briefs")
-        .update({
+      const res = await fetch("/api/brief/roster", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          order_id,
           player_roster: hasPlayers ? roster : null,
           player_names: hasPlayers,
-        })
-        .eq("order_id", order_id);
-
+        }),
+      });
+      if (!res.ok) {
+        const { error } = await res.json() as { error: string };
+        throw new Error(error);
+      }
       clearBriefState();
       router.push(`/portal?submitted=${order_id}`);
     } catch (err: unknown) {
@@ -119,22 +121,22 @@ export default function RosterPage() {
       subtitle="Optional — add player names, numbers, sizes, and cuts. Tab across columns, Enter to add rows."
     >
       <div className="space-y-5">
-        <div className="overflow-x-auto rounded-xl border border-gs-border">
+        <div className="overflow-x-auto rounded-xl border border-brand-border">
           <table ref={tableRef} className="w-full text-sm font-barlow">
             <thead>
-              <tr className="border-b border-gs-border bg-gs-dark-3">
-                <th className="w-8 py-3 px-3 text-left text-xs font-display uppercase tracking-wider text-gs-muted">#</th>
-                <th className="py-3 px-3 text-left text-xs font-display uppercase tracking-wider text-gs-muted">Name</th>
-                <th className="w-20 py-3 px-3 text-left text-xs font-display uppercase tracking-wider text-gs-muted">Number</th>
-                <th className="w-24 py-3 px-3 text-left text-xs font-display uppercase tracking-wider text-gs-muted">Size</th>
-                <th className="w-24 py-3 px-3 text-left text-xs font-display uppercase tracking-wider text-gs-muted">Cut</th>
+              <tr className="border-b border-brand-border bg-brand-surface">
+                <th className="w-8 py-3 px-3 text-left text-xs font-display uppercase tracking-wider text-brand-muted">#</th>
+                <th className="py-3 px-3 text-left text-xs font-display uppercase tracking-wider text-brand-muted">Name</th>
+                <th className="w-20 py-3 px-3 text-left text-xs font-display uppercase tracking-wider text-brand-muted">Number</th>
+                <th className="w-24 py-3 px-3 text-left text-xs font-display uppercase tracking-wider text-brand-muted">Size</th>
+                <th className="w-24 py-3 px-3 text-left text-xs font-display uppercase tracking-wider text-brand-muted">Cut</th>
                 <th className="w-10 py-3 px-2" />
               </tr>
             </thead>
             <tbody>
               {players.map((player, i) => (
-                <tr key={i} className="border-b border-gs-border last:border-b-0 hover:bg-gs-dark-3/50">
-                  <td className="py-2 px-3 text-gs-muted text-xs select-none">{i + 1}</td>
+                <tr key={i} className="border-b border-brand-border last:border-b-0 hover:bg-brand-surface/50">
+                  <td className="py-2 px-3 text-brand-muted text-xs select-none">{i + 1}</td>
                   <td className="py-1.5 px-2">
                     <input
                       type="text"
@@ -142,7 +144,7 @@ export default function RosterPage() {
                       onChange={(e) => updatePlayer(i, "name", e.target.value)}
                       onKeyDown={(e) => handleKeyDown(e, i, "name")}
                       placeholder="Player name"
-                      className="w-full bg-transparent text-gs-white placeholder-gs-border focus:outline-none py-1"
+                      className="w-full bg-transparent text-brand-text placeholder-brand-border focus:outline-none py-1"
                     />
                   </td>
                   <td className="py-1.5 px-2">
@@ -153,7 +155,7 @@ export default function RosterPage() {
                       onKeyDown={(e) => handleKeyDown(e, i, "number")}
                       placeholder="00"
                       maxLength={3}
-                      className="w-full bg-transparent text-gs-white placeholder-gs-border focus:outline-none py-1"
+                      className="w-full bg-transparent text-brand-text placeholder-brand-border focus:outline-none py-1"
                     />
                   </td>
                   <td className="py-1.5 px-2">
@@ -161,10 +163,10 @@ export default function RosterPage() {
                       value={player.size}
                       onChange={(e) => updatePlayer(i, "size", e.target.value)}
                       onKeyDown={(e) => handleKeyDown(e, i, "size")}
-                      className="w-full bg-transparent text-gs-white focus:outline-none py-1 cursor-pointer"
+                      className="w-full bg-transparent text-brand-text focus:outline-none py-1 cursor-pointer"
                     >
-                      <option value="" className="bg-gs-dark-3">—</option>
-                      {SIZES.map((s) => <option key={s} value={s} className="bg-gs-dark-3">{s}</option>)}
+                      <option value="" className="bg-brand-surface">—</option>
+                      {SIZES.map((s) => <option key={s} value={s} className="bg-brand-surface">{s}</option>)}
                     </select>
                   </td>
                   <td className="py-1.5 px-2">
@@ -172,10 +174,10 @@ export default function RosterPage() {
                       value={player.cut}
                       onChange={(e) => updatePlayer(i, "cut", e.target.value)}
                       onKeyDown={(e) => handleKeyDown(e, i, "cut")}
-                      className="w-full bg-transparent text-gs-white focus:outline-none py-1 cursor-pointer"
+                      className="w-full bg-transparent text-brand-text focus:outline-none py-1 cursor-pointer"
                     >
-                      <option value="" className="bg-gs-dark-3">—</option>
-                      {CUTS.map((c) => <option key={c} value={c} className="bg-gs-dark-3">{c}</option>)}
+                      <option value="" className="bg-brand-surface">—</option>
+                      {CUTS.map((c) => <option key={c} value={c} className="bg-brand-surface">{c}</option>)}
                     </select>
                   </td>
                   <td className="py-1.5 px-2">
@@ -183,7 +185,7 @@ export default function RosterPage() {
                       <button
                         type="button"
                         onClick={() => removeRow(i)}
-                        className="text-gs-border hover:text-red-400 transition-colors"
+                        className="text-brand-border hover:text-red-400 transition-colors"
                         aria-label="Remove row"
                       >
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -201,7 +203,7 @@ export default function RosterPage() {
         <button
           type="button"
           onClick={addRow}
-          className="text-gs-muted hover:text-gs-gold text-sm font-barlow flex items-center gap-1.5 transition-colors"
+          className="text-brand-muted hover:text-brand-primary text-sm font-barlow flex items-center gap-1.5 transition-colors"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
@@ -210,7 +212,7 @@ export default function RosterPage() {
         </button>
 
         {filledCount > 0 && (
-          <p className="text-xs text-gs-muted font-barlow">
+          <p className="text-xs text-brand-muted font-barlow">
             {filledCount} player{filledCount !== 1 ? "s" : ""} entered
           </p>
         )}
@@ -226,7 +228,7 @@ export default function RosterPage() {
             type="button"
             onClick={handleSkip}
             disabled={saving}
-            className="px-6 py-3 rounded-lg font-display font-bold text-sm uppercase tracking-widest border border-gs-border text-gs-muted hover:text-gs-white hover:border-gs-muted transition-colors disabled:opacity-40"
+            className="px-6 py-3 rounded-lg font-display font-bold text-sm uppercase tracking-widest border border-brand-border text-brand-muted hover:text-brand-text hover:border-brand-muted transition-colors disabled:opacity-40"
           >
             Skip
           </button>
@@ -235,7 +237,7 @@ export default function RosterPage() {
             onClick={handleContinue}
             disabled={saving}
             className="flex-1 py-3 rounded-lg font-display font-bold text-base uppercase tracking-widest transition-all duration-200
-              bg-gs-gold text-gs-dark hover:bg-gs-gold-light
+              bg-brand-primary text-brand-bg hover:bg-brand-secondary
               disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {saving ? "Saving…" : "Finish & View Concepts →"}

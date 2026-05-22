@@ -5,10 +5,12 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { getProfile, rolePortal } from "@/lib/profile";
-import GraceLogo from "@/components/GraceLogo";
+import TenantLogo from "@/components/TenantLogo";
+import { useTenant } from "@/lib/tenant/context";
 
 export default function LoginPage() {
   const router = useRouter();
+  const tenant = useTenant();
   const [email, setEmail]       = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading]   = useState(true);
@@ -45,15 +47,15 @@ export default function LoginPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gs-dark flex items-center justify-center">
-        <div className="w-5 h-5 border-2 border-gs-gold border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-brand-bg flex items-center justify-center">
+        <div className="w-5 h-5 border-2 border-brand-primary border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gs-dark flex flex-col">
-      <div className="h-px w-full bg-gs-gold" />
+    <div className="min-h-screen bg-brand-bg flex flex-col">
+      <div className="h-px w-full bg-brand-primary" />
 
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-16">
         <div className="w-full max-w-[360px] animate-fade-up space-y-10">
@@ -61,23 +63,23 @@ export default function LoginPage() {
           {/* Logo + wordmark */}
           <div className="text-center space-y-5">
             <div className="flex justify-center">
-              <GraceLogo className="h-12" href="/login" />
+              <TenantLogo className="h-12" href="/login" />
             </div>
             <div className="space-y-1">
-              <h1 className="font-display text-4xl font-bold uppercase tracking-wide text-gs-white leading-none">
+              <h1 className="font-display text-4xl font-bold uppercase tracking-wide text-brand-text leading-none">
                 Partner Portal
               </h1>
-              <p className="text-xs font-display uppercase tracking-[0.2em] text-gs-muted">
-                Grace Athletics
+              <p className="text-xs font-display uppercase tracking-[0.2em] text-brand-muted">
+                {tenant.name}
               </p>
             </div>
           </div>
 
-          <div className="h-px bg-gs-border w-full" />
+          <div className="h-px bg-brand-border w-full" />
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block text-[10px] font-display uppercase tracking-[0.2em] text-gs-muted mb-2.5">
+              <label className="block text-[10px] font-display uppercase tracking-[0.2em] text-brand-muted mb-2.5">
                 Email Address
               </label>
               <input
@@ -87,16 +89,16 @@ export default function LoginPage() {
                 placeholder="you@yourteam.com"
                 required
                 autoFocus
-                className="w-full bg-gs-dark-2 border border-gs-border rounded-lg px-4 py-3.5 text-gs-white font-barlow text-sm placeholder-gs-muted/60 focus:outline-none focus:border-gs-gold transition-colors duration-200"
+                className="w-full bg-brand-surface border border-brand-border rounded-lg px-4 py-3.5 text-brand-text font-barlow text-sm placeholder-brand-muted/60 focus:outline-none focus:border-brand-primary transition-colors duration-200"
               />
             </div>
 
             <div>
               <div className="flex items-center justify-between mb-2.5">
-                <label className="block text-[10px] font-display uppercase tracking-[0.2em] text-gs-muted">
+                <label className="block text-[10px] font-display uppercase tracking-[0.2em] text-brand-muted">
                   Password
                 </label>
-                <Link href="/forgot-password" className="text-[10px] font-display uppercase tracking-wider text-gs-muted hover:text-gs-gold transition-colors">
+                <Link href="/forgot-password" className="text-[10px] font-display uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">
                   Forgot password?
                 </Link>
               </div>
@@ -106,7 +108,7 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 required
-                className="w-full bg-gs-dark-2 border border-gs-border rounded-lg px-4 py-3.5 text-gs-white font-barlow text-sm placeholder-gs-muted/60 focus:outline-none focus:border-gs-gold transition-colors duration-200"
+                className="w-full bg-brand-surface border border-brand-border rounded-lg px-4 py-3.5 text-brand-text font-barlow text-sm placeholder-brand-muted/60 focus:outline-none focus:border-brand-primary transition-colors duration-200"
               />
             </div>
 
@@ -120,7 +122,7 @@ export default function LoginPage() {
               type="submit"
               disabled={submitting || !email || !password}
               className="w-full py-4 rounded-lg font-display font-bold text-sm uppercase tracking-[0.15em] transition-all duration-200
-                bg-gs-gold text-white hover:bg-gs-gold-light
+                bg-brand-primary text-white hover:bg-brand-secondary
                 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {submitting ? "Signing in…" : "Sign In →"}
@@ -128,10 +130,10 @@ export default function LoginPage() {
           </form>
 
           <div className="text-center space-y-3">
-            <div className="h-px bg-gs-border" />
-            <p className="text-xs text-gs-muted font-barlow">
-              New to Grace Athletics?{" "}
-              <Link href="/signup" className="text-gs-white hover:text-gs-gold transition-colors underline underline-offset-2">
+            <div className="h-px bg-brand-border" />
+            <p className="text-xs text-brand-muted font-barlow">
+              New to {tenant.name}?{" "}
+              <Link href="/signup" className="text-brand-text hover:text-brand-primary transition-colors underline underline-offset-2">
                 Create an account
               </Link>
             </p>
@@ -140,7 +142,7 @@ export default function LoginPage() {
         </div>
       </div>
 
-      <div className="h-px w-full bg-gs-border" />
+      <div className="h-px w-full bg-brand-border" />
     </div>
   );
 }

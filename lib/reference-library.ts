@@ -231,7 +231,7 @@ export function buildReferenceAnnotation(refs: ReferenceFiles): string {
   const lines: string[] = [];
 
   if (refs.specBoard) {
-    lines.push(`• Image ${idx++}: SPEC-BOARD LAYOUT AUTHORITY — the Grace Athletics basketball uniform specification board. This defines the EXACT layout your output must populate: left column (brand, colorway, material, features, logo), center 2×2 garment grid (jersey front/back top row, shorts front/back bottom row), right column (detail callout boxes: collar, logo, side panel, vent, waistband). Follow this structure exactly.`);
+    lines.push(`• Image ${idx++}: SPEC-BOARD LAYOUT AUTHORITY — the basketball uniform specification board. This defines the EXACT layout your output must populate: left column (brand, colorway, material, features, logo), center 2×2 garment grid (jersey front/back top row, shorts front/back bottom row), right column (detail callout boxes: collar, logo, side panel, vent, waistband). Follow this structure exactly.`);
   }
   if (refs.front) {
     lines.push(`• Image ${idx++}: FRONT DESIGN REFERENCE — authoritative example of this design system's front visual language. Follow panel structure and graphic placement from this image.`);

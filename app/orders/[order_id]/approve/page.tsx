@@ -4,7 +4,8 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { getProfile } from "@/lib/profile";
-import GraceLogo from "@/components/GraceLogo";
+import TenantLogo from "@/components/TenantLogo";
+import { useTenant } from "@/lib/tenant/context";
 import type { RosterPlayer } from "@/types/database";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -46,7 +47,7 @@ interface FullSummary {
   negativeReferences: string | null;
 
   // Branding
-  gsLogoPlacement: string | null;
+  logoPlacement: string | null;
   logosToInclude: string | null;
   sponsorText: string | null;
   playerNames: boolean;
@@ -66,11 +67,11 @@ interface FullSummary {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-gs-dark-2 rounded-xl border border-gs-border overflow-hidden">
-      <div className="px-5 py-3 border-b border-gs-border bg-gs-dark-3">
-        <p className="text-[9px] font-display uppercase tracking-[0.25em] text-gs-muted">{title}</p>
+    <div className="bg-brand-surface rounded-xl border border-brand-border overflow-hidden">
+      <div className="px-5 py-3 border-b border-brand-border bg-brand-surface">
+        <p className="text-[9px] font-display uppercase tracking-[0.25em] text-brand-muted">{title}</p>
       </div>
-      <div className="divide-y divide-gs-border">{children}</div>
+      <div className="divide-y divide-brand-border">{children}</div>
     </div>
   );
 }
@@ -79,8 +80,8 @@ function Row({ label, value, mono }: { label: string; value: string | null | und
   if (!value) return null;
   return (
     <div className="flex gap-4 px-5 py-3">
-      <span className="text-[10px] font-display uppercase tracking-wider text-gs-muted w-36 flex-shrink-0 pt-0.5">{label}</span>
-      <span className={`text-sm text-gs-white flex-1 leading-relaxed ${mono ? "font-mono text-xs" : "font-barlow"}`}>{value}</span>
+      <span className="text-[10px] font-display uppercase tracking-wider text-brand-muted w-36 flex-shrink-0 pt-0.5">{label}</span>
+      <span className={`text-sm text-brand-text flex-1 leading-relaxed ${mono ? "font-mono text-xs" : "font-barlow"}`}>{value}</span>
     </div>
   );
 }
@@ -89,7 +90,7 @@ function BadgeRow({ label, value }: { label: string; value: boolean | null }) {
   if (value === null) return null;
   return (
     <div className="flex gap-4 px-5 py-3 items-center">
-      <span className="text-[10px] font-display uppercase tracking-wider text-gs-muted w-36 flex-shrink-0">{label}</span>
+      <span className="text-[10px] font-display uppercase tracking-wider text-brand-muted w-36 flex-shrink-0">{label}</span>
       <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-display uppercase tracking-wider
         ${value ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-red-50 text-red-600 border border-red-200"}`}>
         <span className={`w-1.5 h-1.5 rounded-full ${value ? "bg-emerald-500" : "bg-red-500"}`} />
@@ -104,13 +105,13 @@ function ColorRow({ label, value }: { label: string; value: string | null | unde
   const isHex = /^#[0-9a-fA-F]{3,8}$/.test(value.trim());
   return (
     <div className="flex gap-4 px-5 py-3 items-center">
-      <span className="text-[10px] font-display uppercase tracking-wider text-gs-muted w-36 flex-shrink-0">{label}</span>
+      <span className="text-[10px] font-display uppercase tracking-wider text-brand-muted w-36 flex-shrink-0">{label}</span>
       <div className="flex items-center gap-2.5">
         {isHex && (
-          <span className="w-5 h-5 rounded-full border border-gs-border flex-shrink-0 shadow-sm"
+          <span className="w-5 h-5 rounded-full border border-brand-border flex-shrink-0 shadow-sm"
             style={{ backgroundColor: value }} />
         )}
-        <span className="text-sm font-mono text-gs-white tracking-wide">{value}</span>
+        <span className="text-sm font-mono text-brand-text tracking-wide">{value}</span>
       </div>
     </div>
   );
@@ -120,8 +121,8 @@ function TextBlock({ label, value }: { label: string; value: string | null | und
   if (!value) return null;
   return (
     <div className="px-5 py-4">
-      <p className="text-[10px] font-display uppercase tracking-wider text-gs-muted mb-2">{label}</p>
-      <p className="text-sm font-barlow text-gs-white leading-relaxed whitespace-pre-wrap">{value}</p>
+      <p className="text-[10px] font-display uppercase tracking-wider text-brand-muted mb-2">{label}</p>
+      <p className="text-sm font-barlow text-brand-text leading-relaxed whitespace-pre-wrap">{value}</p>
     </div>
   );
 }
@@ -131,26 +132,26 @@ function RosterTable({ roster }: { roster: RosterPlayer[] }) {
   return (
     <div className="px-5 py-4">
       <div className="mb-3 flex items-center justify-between">
-        <p className="text-[10px] font-display uppercase tracking-wider text-gs-muted">Player Roster</p>
-        <span className="text-[10px] font-barlow text-gs-muted">{roster.length} player{roster.length !== 1 ? "s" : ""}</span>
+        <p className="text-[10px] font-display uppercase tracking-wider text-brand-muted">Player Roster</p>
+        <span className="text-[10px] font-barlow text-brand-muted">{roster.length} player{roster.length !== 1 ? "s" : ""}</span>
       </div>
-      <div className="rounded-lg border border-gs-border overflow-hidden">
+      <div className="rounded-lg border border-brand-border overflow-hidden">
         <table className="w-full text-xs font-barlow">
           <thead>
-            <tr className="bg-gs-dark-3 border-b border-gs-border">
+            <tr className="bg-brand-surface border-b border-brand-border">
               {["#", "Name", "Number", "Size", "Cut"].map((h) => (
-                <th key={h} className="text-left px-3 py-2 text-[9px] font-display uppercase tracking-wider text-gs-muted">{h}</th>
+                <th key={h} className="text-left px-3 py-2 text-[9px] font-display uppercase tracking-wider text-brand-muted">{h}</th>
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-gs-border">
+          <tbody className="divide-y divide-brand-border">
             {roster.map((player, i) => (
-              <tr key={i} className="hover:bg-gs-dark-3 transition-colors">
-                <td className="px-3 py-2.5 text-gs-muted">{i + 1}</td>
-                <td className="px-3 py-2.5 text-gs-white font-medium">{player.name || "—"}</td>
-                <td className="px-3 py-2.5 text-gs-white font-mono">{player.number || "—"}</td>
-                <td className="px-3 py-2.5 text-gs-muted capitalize">{player.size || "—"}</td>
-                <td className="px-3 py-2.5 text-gs-muted capitalize">{player.cut || "—"}</td>
+              <tr key={i} className="hover:bg-brand-surface transition-colors">
+                <td className="px-3 py-2.5 text-brand-muted">{i + 1}</td>
+                <td className="px-3 py-2.5 text-brand-text font-medium">{player.name || "—"}</td>
+                <td className="px-3 py-2.5 text-brand-text font-mono">{player.number || "—"}</td>
+                <td className="px-3 py-2.5 text-brand-muted capitalize">{player.size || "—"}</td>
+                <td className="px-3 py-2.5 text-brand-muted capitalize">{player.cut || "—"}</td>
               </tr>
             ))}
           </tbody>
@@ -167,6 +168,7 @@ export default function ApprovePage() {
   const router = useRouter();
   const supabaseRef = useRef(createClient());
   const supabase = supabaseRef.current;
+  const tenant = useTenant();
 
   const [summary, setSummary]     = useState<FullSummary | null>(null);
   const [loading, setLoading]     = useState(true);
@@ -210,7 +212,7 @@ export default function ApprovePage() {
             jersey_cut, sublimated,
             home_colorway, away_colorway,
             number_style, player_names,
-            gs_logo_placement, logos_to_include, sponsor_text,
+            logo_placement, logos_to_include, sponsor_text,
             reference_image_url, vision_prompt, negative_references,
             player_roster
           `)
@@ -259,7 +261,7 @@ export default function ApprovePage() {
         numberStyle:      brief?.number_style ?? null,
         negativeReferences: brief?.negative_references ?? null,
 
-        gsLogoPlacement:  (brief?.gs_logo_placement ?? "").replace(/_/g, " "),
+        logoPlacement:    (brief?.logo_placement ?? "").replace(/_/g, " "),
         logosToInclude:   brief?.logos_to_include ?? null,
         sponsorText:      brief?.sponsor_text ?? null,
         playerNames:      brief?.player_names ?? false,
@@ -302,16 +304,16 @@ export default function ApprovePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gs-dark flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-gs-gold border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-brand-bg flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-brand-primary border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   if (!summary) {
     return (
-      <div className="min-h-screen bg-gs-dark flex items-center justify-center">
-        <p className="text-gs-muted font-barlow">Order not found.</p>
+      <div className="min-h-screen bg-brand-bg flex items-center justify-center">
+        <p className="text-brand-muted font-barlow">Order not found.</p>
       </div>
     );
   }
@@ -329,24 +331,24 @@ export default function ApprovePage() {
     : null;
 
   return (
-    <div className="min-h-screen bg-gs-dark flex flex-col">
+    <div className="min-h-screen bg-brand-bg flex flex-col">
       {isAdminView && (
         <div className="bg-amber-50 border-b border-amber-200 px-6 py-2 flex items-center gap-2">
           <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
           <span className="text-xs font-display font-bold uppercase tracking-widest text-amber-700">Admin View — Client Portal</span>
         </div>
       )}
-      <header className="border-b border-gs-border px-6 py-4 flex items-center justify-between">
+      <header className="border-b border-brand-border px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <GraceLogo className="h-7" href="/portal" />
-          <a href="/portal" className="text-xs font-display font-bold uppercase tracking-widest text-gs-gold hover:text-gs-gold-light transition-colors">
+          <TenantLogo className="h-7" href="/portal" />
+          <a href="/portal" className="text-xs font-display font-bold uppercase tracking-widest text-brand-primary hover:text-brand-secondary transition-colors">
             Client Portal
           </a>
         </div>
         <div className="flex items-center gap-5">
-          <a href="/portal" className="text-xs font-display font-bold uppercase tracking-wider text-gs-muted hover:text-gs-gold transition-colors">Home</a>
-          <button type="button" onClick={() => router.back()} className="text-xs font-display font-bold uppercase tracking-wider text-gs-muted hover:text-gs-gold transition-colors">← Back</button>
-          <button type="button" onClick={signOut} className="text-xs font-display font-bold uppercase tracking-wider text-gs-muted hover:text-gs-gold transition-colors">Sign Out</button>
+          <a href="/portal" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Home</a>
+          <button type="button" onClick={() => router.back()} className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">← Back</button>
+          <button type="button" onClick={signOut} className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Sign Out</button>
         </div>
       </header>
 
@@ -355,26 +357,26 @@ export default function ApprovePage() {
 
           {/* Title */}
           <div>
-            <h1 className="font-display text-3xl font-bold uppercase tracking-wide text-gs-white">
+            <h1 className="font-display text-3xl font-bold uppercase tracking-wide text-brand-text">
               Approve & Send to Production
             </h1>
-            <p className="mt-1.5 text-sm text-gs-muted font-barlow">
+            <p className="mt-1.5 text-sm text-brand-muted font-barlow">
               Review every production detail below before locking your order.
             </p>
           </div>
 
           {/* Selected concept image */}
           {summary.conceptImageUrl && (
-            <div className="rounded-xl border border-gs-gold overflow-hidden">
+            <div className="rounded-xl border border-brand-primary overflow-hidden">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={summary.conceptImageUrl}
                 alt={`Selected concept ${summary.conceptNumber}`}
-                className="w-full object-contain bg-gs-dark-4 max-h-[420px]"
+                className="w-full object-contain bg-brand-surface max-h-[420px]"
               />
-              <div className="px-4 py-3 bg-gs-dark-3 border-t border-gs-border flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-gs-gold" />
-                <span className="text-[10px] font-display uppercase tracking-[0.22em] text-gs-gold">
+              <div className="px-4 py-3 bg-brand-surface border-t border-brand-border flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-brand-primary" />
+                <span className="text-[10px] font-display uppercase tracking-[0.22em] text-brand-primary">
                   Selected — Concept {summary.conceptNumber}
                 </span>
               </div>
@@ -387,14 +389,14 @@ export default function ApprovePage() {
             <Row label="Package"      value={summary.packageTier} />
             <Row label="Account Lead" value={summary.accountLead} />
             <div className="flex gap-4 px-5 py-3 items-center">
-              <span className="text-[10px] font-display uppercase tracking-wider text-gs-muted w-36 flex-shrink-0">Payment</span>
+              <span className="text-[10px] font-display uppercase tracking-wider text-brand-muted w-36 flex-shrink-0">Payment</span>
               <div className="flex gap-2">
                 <span className={`px-2 py-0.5 rounded text-[9px] font-display uppercase tracking-wider
-                  ${summary.depositPaid ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-gs-dark-3 text-gs-muted border border-gs-border"}`}>
+                  ${summary.depositPaid ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-brand-surface text-brand-muted border border-brand-border"}`}>
                   Deposit {summary.depositPaid ? "✓" : "Pending"}
                 </span>
                 <span className={`px-2 py-0.5 rounded text-[9px] font-display uppercase tracking-wider
-                  ${summary.balancePaid ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-gs-dark-3 text-gs-muted border border-gs-border"}`}>
+                  ${summary.balancePaid ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-brand-surface text-brand-muted border border-brand-border"}`}>
                   Balance {summary.balancePaid ? "✓" : "Pending"}
                 </span>
               </div>
@@ -439,7 +441,7 @@ export default function ApprovePage() {
 
           {/* ── Branding & Placement ──────────────────────────────────────── */}
           <Section title="Branding & Placement">
-            <Row       label="GS Logo"      value={summary.gsLogoPlacement} />
+            <Row       label="Logo Placement" value={summary.logoPlacement} />
             <TextBlock label="Logos"        value={summary.logosToInclude} />
             <TextBlock label="Sponsor Text" value={summary.sponsorText} />
             <BadgeRow  label="Player Names" value={summary.playerNames} />
@@ -453,7 +455,7 @@ export default function ApprovePage() {
                 <img
                   src={summary.referenceImageUrl}
                   alt="Client reference"
-                  className="w-full max-h-48 object-contain rounded-lg bg-gs-dark-4"
+                  className="w-full max-h-48 object-contain rounded-lg bg-brand-surface"
                 />
               </div>
             </Section>
@@ -498,14 +500,14 @@ export default function ApprovePage() {
             onClick={handleApprove}
             disabled={approving}
             className="w-full py-4 rounded-xl font-display font-bold text-sm uppercase tracking-[0.15em] transition-all duration-200
-              bg-gs-white text-gs-dark hover:bg-gs-gold hover:text-white border border-transparent
+              bg-brand-text text-brand-bg hover:bg-brand-primary hover:text-white border border-transparent
               disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {approving ? "Sending to Production…" : "Approve & Send to Production →"}
           </button>
 
-          <p className="text-center text-[10px] text-gs-muted font-barlow pb-6">
-            By approving, you confirm all details above are correct and authorize Grace Studios to begin production.
+          <p className="text-center text-[10px] text-brand-muted font-barlow pb-6">
+            By approving, you confirm all details above are correct and authorize {tenant.name} to begin production.
           </p>
 
         </div>

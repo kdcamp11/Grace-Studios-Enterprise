@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { Resend } from "resend";
+import { getRequestTenant } from "@/lib/tenant/get-request-tenant";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
-const FROM   = process.env.EMAIL_FROM ?? "Grace Athletics <noreply@graceathletics.com>";
 
 export async function POST(req: NextRequest) {
   try {
@@ -12,6 +12,11 @@ export async function POST(req: NextRequest) {
     if (!email || typeof email !== "string") {
       return NextResponse.json({ error: "Email is required" }, { status: 400 });
     }
+
+    const tenant     = await getRequestTenant();
+    const studioName = tenant?.name ?? "Grace Studios";
+    const accentColor = tenant?.brand_primary ?? "#111111";
+    const FROM       = process.env.EMAIL_FROM ?? `${studioName} <noreply@graceathletics.com>`;
 
     // Service-role client — required to call auth.admin.generateLink()
     const supabase = createClient(
@@ -47,18 +52,18 @@ export async function POST(req: NextRequest) {
     await resend.emails.send({
       from:    FROM,
       to:      email.trim(),
-      subject: "Reset your Grace Athletics password",
+      subject: `Reset your ${studioName} password`,
       html: `
         <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:32px;background:#fafafa;border:1px solid #e5e5e5;border-radius:12px;">
-          <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:#888;margin:0 0 20px;">Grace Studios</p>
+          <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:#888;margin:0 0 20px;">${studioName}</p>
           <h1 style="font-size:22px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#111;margin:0 0 16px;">Reset Your Password</h1>
           <p style="font-size:14px;color:#444;margin:0 0 28px;line-height:1.6;">
-            We received a request to reset the password for your Grace Athletics account.
+            We received a request to reset the password for your ${studioName} account.
             Click the button below to choose a new password. This link expires in 1 hour.
           </p>
           <a
             href="${resetLink}"
-            style="display:inline-block;padding:14px 28px;background:#111;color:#fff;text-decoration:none;border-radius:8px;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:28px;"
+            style="display:inline-block;padding:14px 28px;background:${accentColor};color:#fff;text-decoration:none;border-radius:8px;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:28px;"
           >
             Reset Password →
           </a>
@@ -69,7 +74,7 @@ export async function POST(req: NextRequest) {
             Or copy this link: ${resetLink}
           </p>
           <hr style="border:none;border-top:1px solid #e5e5e5;margin:28px 0 16px;" />
-          <p style="font-size:11px;color:#aaa;margin:0;">Grace Studios · Custom Sportswear Platform</p>
+          <p style="font-size:11px;color:#aaa;margin:0;">${studioName} · Custom Apparel Platform</p>
         </div>
       `,
     });

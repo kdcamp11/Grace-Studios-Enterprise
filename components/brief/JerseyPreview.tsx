@@ -1436,7 +1436,7 @@ export default function JerseyPreview({
         className={`w-full py-3.5 rounded-xl font-display font-bold text-sm uppercase tracking-[0.15em] transition-all duration-300 border
           ${captureState === "saved"  ? "bg-emerald-600 border-emerald-600 text-white"
           : captureState === "error" ? "bg-transparent border-red-400 text-red-400"
-          : "bg-gs-white text-gs-dark border-gs-white hover:bg-gs-gold hover:text-white hover:border-gs-gold"}
+          : "bg-brand-text text-brand-bg border-brand-text hover:bg-brand-primary hover:text-white hover:border-brand-primary"}
           disabled:opacity-50 disabled:cursor-not-allowed`}>
         {capturing        ? "Saving…"
           : captureState === "saved" ? "✓ Builder concept saved"
@@ -1445,13 +1445,13 @@ export default function JerseyPreview({
       </button>
 
       {/* Disclaimer */}
-      <div className="bg-gs-dark-3 border border-gs-border rounded-xl px-4 py-4 flex items-start gap-3">
-        <svg className="w-4 h-4 text-gs-muted mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <div className="bg-brand-surface border border-brand-border rounded-xl px-4 py-4 flex items-start gap-3">
+        <svg className="w-4 h-4 text-brand-muted mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
         </svg>
         <div>
-          <p className="text-[9px] font-display uppercase tracking-[0.2em] text-gs-muted mb-1.5">Directional Preview Only</p>
-          <p className="text-[11px] text-gs-muted font-barlow leading-relaxed">
+          <p className="text-[9px] font-display uppercase tracking-[0.2em] text-brand-muted mb-1.5">Directional Preview Only</p>
+          <p className="text-[11px] text-brand-muted font-barlow leading-relaxed">
             This builder is a directional guide — not final production artwork. Colors, typography, proportions, and material finish will be refined by our design team. Saving a builder concept adds it alongside AI-generated concepts in your review without replacing either.
           </p>
         </div>

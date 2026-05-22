@@ -3,9 +3,10 @@
 import { useEffect, useState, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { isAdmin } from "@/lib/admin";
 import { getProfile, rolePortal } from "@/lib/profile";
-import GraceLogo from "@/components/GraceLogo";
+import type { UserRole } from "@/lib/profile";
+import TenantLogo from "@/components/TenantLogo";
+import { useTenant } from "@/lib/tenant/context";
 import type { User } from "@supabase/supabase-js";
 import type { OrderStage } from "@/types/database";
 
@@ -23,7 +24,7 @@ const STAGE_LABELS: Record<OrderStage, string> = {
 };
 
 const STAGE_COLOR: Record<string, string> = {
-  onboarding:          "text-gs-muted",
+  onboarding:          "text-brand-muted",
   design_confirmed:    "text-amber-500",
   files_sent:          "text-blue-400",
   first_piece_review:  "text-amber-400 font-semibold",
@@ -45,10 +46,13 @@ function PortalContent() {
   const supabaseRef  = useRef(createClient());
   const supabase     = supabaseRef.current;
 
+  const tenant    = useTenant();
   const submitted = searchParams.get("submitted");
   const [user, setUser]     = useState<User | null>(null);
+  const [role, setRole]     = useState<UserRole | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hasProfile, setHasProfile] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -58,10 +62,17 @@ function PortalContent() {
 
       // Redirect suppliers to their portal; admins can view client portal too
       const profile = await getProfile();
+      if (profile) setRole(profile.role);
       if (profile && profile.role === "supplier") {
         router.replace("/supplier");
         return;
       }
+
+      // Check if this user has an existing client profile (for smart CTA)
+      fetch("/api/brief/client-profile")
+        .then((r) => r.json())
+        .then(({ client: cp }) => { if (cp) setHasProfile(true); })
+        .catch(() => {});
 
       const { data: client } = await supabase
         .from("clients")
@@ -120,29 +131,31 @@ function PortalContent() {
 
   if (loading || !user) {
     return (
-      <div className="min-h-screen bg-gs-dark flex items-center justify-center">
-        <div className="w-5 h-5 border-2 border-gs-gold border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-brand-bg flex items-center justify-center">
+        <div className="w-5 h-5 border-2 border-brand-primary border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gs-dark flex flex-col">
+    <div className="min-h-screen bg-brand-bg flex flex-col">
       {/* Header */}
-      <header className="border-b border-gs-border px-6 sm:px-10 py-5 flex items-center justify-between">
+      <header className="border-b border-brand-border px-6 sm:px-10 py-5 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <GraceLogo className="h-7" href="/portal" />
-          <a href="/portal" className="text-xs font-display font-bold uppercase tracking-widest text-gs-gold hover:text-gs-gold-light transition-colors">
+          <TenantLogo className="h-7" href="/portal" />
+          <a href="/portal" className="text-xs font-display font-bold uppercase tracking-widest text-brand-primary hover:text-brand-secondary transition-colors">
             Client Portal
           </a>
         </div>
         <div className="flex items-center gap-5">
-          <a href="/brief/new" className="text-xs font-display font-bold uppercase tracking-wider text-gs-gold hover:text-gs-gold-light transition-colors">+ New Brief</a>
-          {isAdmin(user.email) && (
-            <a href="/admin" className="text-xs font-display font-bold uppercase tracking-wider text-gs-muted hover:text-gs-gold transition-colors">Admin Portal</a>
+          <a href="/brief/new" className="text-xs font-display font-bold uppercase tracking-wider text-brand-primary hover:text-brand-secondary transition-colors">
+            {hasProfile ? "+ New Order" : "+ New Brief"}
+          </a>
+          {(role === "admin" || role === "super_admin") && (
+            <a href="/admin" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Admin Portal</a>
           )}
-          <a href="/settings" className="text-xs font-display font-bold uppercase tracking-wider text-gs-muted hover:text-gs-gold transition-colors">Settings</a>
-          <button type="button" onClick={handleSignOut} className="text-xs font-display font-bold uppercase tracking-wider text-gs-muted hover:text-gs-gold transition-colors">Sign Out</button>
+          <a href="/settings" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Settings</a>
+          <button type="button" onClick={handleSignOut} className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Sign Out</button>
         </div>
       </header>
 
@@ -151,20 +164,20 @@ function PortalContent() {
 
           {/* Brief submitted banner */}
           {submitted && (
-            <div className="bg-gs-dark-3 border border-gs-border rounded-2xl p-6 flex items-start gap-5">
-              <div className="w-10 h-10 rounded-full bg-gs-gold/10 border border-gs-gold/30 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <svg className="w-5 h-5 text-gs-gold" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <div className="bg-brand-surface border border-brand-border rounded-2xl p-6 flex items-start gap-5">
+              <div className="w-10 h-10 rounded-full bg-brand-primary/10 border border-brand-primary/30 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <svg className="w-5 h-5 text-brand-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                 </svg>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-display font-bold uppercase tracking-wide text-gs-white">Brief Received</p>
-                <p className="text-sm text-gs-muted font-barlow mt-1 leading-relaxed">
+                <p className="font-display font-bold uppercase tracking-wide text-brand-text">Brief Received</p>
+                <p className="text-sm text-brand-muted font-barlow mt-1 leading-relaxed">
                   Concept generation is underway. Our AI is designing your jerseys now — check back in a few minutes.
                 </p>
                 <a
                   href={`/orders/${submitted}/concepts`}
-                  className="inline-block mt-4 px-5 py-2.5 rounded-lg bg-gs-gold text-white font-display font-bold text-xs uppercase tracking-widest hover:bg-gs-gold-light transition-colors"
+                  className="inline-block mt-4 px-5 py-2.5 rounded-lg bg-brand-primary text-white font-display font-bold text-xs uppercase tracking-widest hover:bg-brand-secondary transition-colors"
                 >
                   View Concepts →
                 </a>
@@ -173,11 +186,11 @@ function PortalContent() {
           )}
 
           {/* Section header */}
-          <div className="border-b border-gs-border pb-4">
-            <p className="text-[10px] font-display uppercase tracking-[0.25em] text-gs-muted mb-1">
-              Grace Athletics
+          <div className="border-b border-brand-border pb-4">
+            <p className="text-[10px] font-display uppercase tracking-[0.25em] text-brand-muted mb-1">
+              {tenant.name}
             </p>
-            <h2 className="font-display text-3xl font-bold uppercase tracking-wide text-gs-white leading-none">
+            <h2 className="font-display text-3xl font-bold uppercase tracking-wide text-brand-text leading-none">
               Your Orders
             </h2>
           </div>
@@ -186,18 +199,18 @@ function PortalContent() {
           {orders.length === 0 ? (
             <div className="text-center py-20 space-y-6">
               <div className="space-y-2">
-                <p className="font-display text-2xl font-bold uppercase tracking-wide text-gs-white">
+                <p className="font-display text-2xl font-bold uppercase tracking-wide text-brand-text">
                   No orders yet
                 </p>
-                <p className="text-sm text-gs-muted font-barlow">
+                <p className="text-sm text-brand-muted font-barlow">
                   Submit your first brief and our AI will generate custom concepts within minutes.
                 </p>
               </div>
               <a
                 href="/brief/new"
-                className="inline-block px-8 py-4 rounded-lg font-display font-bold text-sm uppercase tracking-widest bg-gs-gold text-white hover:bg-gs-gold-light transition-colors"
+                className="inline-block px-8 py-4 rounded-lg font-display font-bold text-sm uppercase tracking-widest bg-brand-primary text-white hover:bg-brand-secondary transition-colors"
               >
-                Submit Your First Brief →
+                {hasProfile ? "Start a New Order →" : "Submit Your First Brief →"}
               </a>
             </div>
           ) : (
@@ -223,15 +236,15 @@ function PortalContent() {
                     key={order.id}
                     onClick={() => router.push(dest)}
                     style={{ animationDelay: `${i * 60}ms` }}
-                    className={`animate-fade-up group bg-gs-dark-2 border rounded-2xl px-6 py-5 flex items-center justify-between gap-4 cursor-pointer transition-all duration-300
+                    className={`animate-fade-up group bg-brand-surface border rounded-2xl px-6 py-5 flex items-center justify-between gap-4 cursor-pointer transition-all duration-300
                       ${order.has_pending_review
                         ? "border-amber-400/60 hover:border-amber-500 hover:shadow-[0_4px_24px_rgba(251,191,36,0.15)]"
-                        : "border-gs-border hover:border-gs-gold hover:shadow-[0_2px_12px_rgba(0,0,0,0.06)]"
+                        : "border-brand-border hover:border-brand-primary hover:shadow-[0_2px_12px_rgba(0,0,0,0.06)]"
                       }`}
                   >
                     <div className="min-w-0 space-y-1.5">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <p className="font-display font-bold uppercase tracking-wide text-gs-white text-base">
+                        <p className="font-display font-bold uppercase tracking-wide text-brand-text text-base">
                           Order {orderLabel}
                         </p>
                         {order.has_pending_review && (
@@ -240,15 +253,15 @@ function PortalContent() {
                           </span>
                         )}
                         {!order.has_pending_review && order.has_concepts && (
-                          <span className="px-2 py-0.5 rounded-full bg-gs-gold/10 text-gs-gold font-display font-bold text-[9px] uppercase tracking-widest border border-gs-gold/30">
+                          <span className="px-2 py-0.5 rounded-full bg-brand-primary/10 text-brand-primary font-display font-bold text-[9px] uppercase tracking-widest border border-brand-primary/30">
                             Concepts Ready
                           </span>
                         )}
                       </div>
-                      <p className={`text-xs font-barlow ${STAGE_COLOR[order.stage] ?? "text-gs-muted"}`}>
+                      <p className={`text-xs font-barlow ${STAGE_COLOR[order.stage] ?? "text-brand-muted"}`}>
                         {STAGE_LABELS[order.stage] ?? order.stage}
                       </p>
-                      <p className="text-[11px] text-gs-muted font-barlow">
+                      <p className="text-[11px] text-brand-muted font-barlow">
                         {new Date(order.created_at).toLocaleDateString("en-US", {
                           month: "long", day: "numeric", year: "numeric",
                         })}
@@ -257,7 +270,7 @@ function PortalContent() {
                     <span className={`flex-shrink-0 text-xs font-display font-bold uppercase tracking-wider transition-colors
                       ${order.has_pending_review
                         ? "text-amber-600 group-hover:text-amber-700"
-                        : "text-gs-muted group-hover:text-gs-gold"
+                        : "text-brand-muted group-hover:text-brand-primary"
                       }`}>
                       {cta}
                     </span>

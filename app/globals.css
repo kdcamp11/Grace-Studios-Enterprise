@@ -3,21 +3,20 @@
 @tailwind utilities;
 
 :root {
-  --gs-dark:       #ffffff;
-  --gs-dark-2:     #fafafa;
-  --gs-dark-3:     #f5f5f5;
-  --gs-dark-4:     #ececec;
-  --gs-border:     #d4d4d4;
-  --gs-gold:       #111111;
-  --gs-gold-light: #333333;
-  --gs-white:      #0a0a0a;
-  --gs-muted:      #888888;
+  /* Brand tokens — overridden per-tenant by TenantProvider */
+  --brand-primary:   #111111;
+  --brand-secondary: #333333;
+  --brand-bg:        #ffffff;
+  --brand-surface:   #f5f5f5;
+  --brand-border:    #d4d4d4;
+  --brand-text:      #0a0a0a;
+  --brand-muted:     #888888;
 }
 
 @layer base {
   body {
-    background-color: var(--gs-dark);
-    color: var(--gs-white);
+    background-color: var(--brand-bg);
+    color: var(--brand-text);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -36,31 +35,34 @@
     font-family: var(--font-barlow), sans-serif;
   }
 
-  /* Premium surface — warm card with subtle shadow */
   .surface {
-    background-color: var(--gs-dark-3);
-    border: 1px solid var(--gs-border);
-    box-shadow: 0 1px 3px rgba(13, 11, 9, 0.04), 0 4px 16px rgba(13, 11, 9, 0.04);
+    background-color: var(--brand-surface);
+    border: 1px solid var(--brand-border);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.04);
   }
 
-  /* Elevated surface — slightly more prominent */
   .surface-elevated {
-    background-color: var(--gs-dark-2);
-    border: 1px solid var(--gs-border);
-    box-shadow: 0 2px 8px rgba(13, 11, 9, 0.06), 0 8px 32px rgba(13, 11, 9, 0.06);
+    background-color: var(--brand-bg);
+    border: 1px solid var(--brand-border);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06), 0 8px 32px rgba(0,0,0,0.06);
   }
 
-  /* Cinematic divider — thin warm rule */
   .rule {
-    border-top: 1px solid var(--gs-border);
+    border-top: 1px solid var(--brand-border);
   }
 
-  /* Red accent text */
   .text-accent {
-    color: var(--gs-gold);
+    color: var(--brand-primary);
   }
 
-  /* Animation delay utilities */
+  .bg-accent {
+    background-color: var(--brand-primary);
+  }
+
+  .border-brand {
+    border-color: var(--brand-border);
+  }
+
   .animation-delay-100 { animation-delay: 100ms; }
   .animation-delay-200 { animation-delay: 200ms; }
   .animation-delay-300 { animation-delay: 300ms; }

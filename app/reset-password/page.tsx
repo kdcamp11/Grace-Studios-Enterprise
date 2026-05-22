@@ -4,7 +4,8 @@ import { useState, useEffect, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { getProfile, rolePortal } from "@/lib/profile";
-import GraceLogo from "@/components/GraceLogo";
+import TenantLogo from "@/components/TenantLogo";
+import { useTenant } from "@/lib/tenant/context";
 
 function ResetPasswordForm() {
   const router = useRouter();
@@ -51,8 +52,8 @@ function ResetPasswordForm() {
   if (!ready) {
     return (
       <div className="flex flex-col items-center gap-4 py-12">
-        <div className="w-6 h-6 border-2 border-gs-gold border-t-transparent rounded-full animate-spin" />
-        <p className="text-gs-muted font-barlow text-sm">Verifying reset link…</p>
+        <div className="w-6 h-6 border-2 border-brand-primary border-t-transparent rounded-full animate-spin" />
+        <p className="text-brand-muted font-barlow text-sm">Verifying reset link…</p>
       </div>
     );
   }
@@ -60,7 +61,7 @@ function ResetPasswordForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       <div>
-        <label className="block text-[10px] font-display uppercase tracking-[0.2em] text-gs-muted mb-2.5">
+        <label className="block text-[10px] font-display uppercase tracking-[0.2em] text-brand-muted mb-2.5">
           New Password
         </label>
         <input
@@ -70,12 +71,12 @@ function ResetPasswordForm() {
           placeholder="Min. 8 characters"
           required
           autoFocus
-          className="w-full bg-gs-dark-2 border border-gs-border rounded-lg px-4 py-3.5 text-gs-white font-barlow text-sm placeholder-gs-muted/60 focus:outline-none focus:border-gs-gold transition-colors duration-200"
+          className="w-full bg-brand-surface border border-brand-border rounded-lg px-4 py-3.5 text-brand-text font-barlow text-sm placeholder-brand-muted/60 focus:outline-none focus:border-brand-primary transition-colors duration-200"
         />
       </div>
 
       <div>
-        <label className="block text-[10px] font-display uppercase tracking-[0.2em] text-gs-muted mb-2.5">
+        <label className="block text-[10px] font-display uppercase tracking-[0.2em] text-brand-muted mb-2.5">
           Confirm Password
         </label>
         <input
@@ -84,7 +85,7 @@ function ResetPasswordForm() {
           onChange={(e) => setConfirm(e.target.value)}
           placeholder="Repeat password"
           required
-          className="w-full bg-gs-dark-2 border border-gs-border rounded-lg px-4 py-3.5 text-gs-white font-barlow text-sm placeholder-gs-muted/60 focus:outline-none focus:border-gs-gold transition-colors duration-200"
+          className="w-full bg-brand-surface border border-brand-border rounded-lg px-4 py-3.5 text-brand-text font-barlow text-sm placeholder-brand-muted/60 focus:outline-none focus:border-brand-primary transition-colors duration-200"
         />
       </div>
 
@@ -98,7 +99,7 @@ function ResetPasswordForm() {
         type="submit"
         disabled={submitting || !password || !confirm}
         className="w-full py-4 rounded-lg font-display font-bold text-sm uppercase tracking-[0.15em] transition-all duration-200
-          bg-gs-gold text-white hover:bg-gs-gold-light
+          bg-brand-primary text-white hover:bg-brand-secondary
           disabled:opacity-40 disabled:cursor-not-allowed"
       >
         {submitting ? "Updating…" : "Set New Password →"}
@@ -108,32 +109,33 @@ function ResetPasswordForm() {
 }
 
 export default function ResetPasswordPage() {
+  const tenant = useTenant();
   return (
-    <div className="min-h-screen bg-gs-dark flex flex-col">
-      <div className="h-px w-full bg-gs-gold" />
+    <div className="min-h-screen bg-brand-bg flex flex-col">
+      <div className="h-px w-full bg-brand-primary" />
 
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-16">
         <div className="w-full max-w-[360px] animate-fade-up space-y-10">
 
           <div className="text-center space-y-5">
             <div className="flex justify-center">
-              <GraceLogo className="h-12" href="/login" />
+              <TenantLogo className="h-12" href="/login" />
             </div>
             <div className="space-y-1">
-              <h1 className="font-display text-3xl font-bold uppercase tracking-wide text-gs-white leading-none">
+              <h1 className="font-display text-3xl font-bold uppercase tracking-wide text-brand-text leading-none">
                 New Password
               </h1>
-              <p className="text-xs font-display uppercase tracking-[0.2em] text-gs-muted">
-                Grace Athletics
+              <p className="text-xs font-display uppercase tracking-[0.2em] text-brand-muted">
+                {tenant.name}
               </p>
             </div>
           </div>
 
-          <div className="h-px bg-gs-border w-full" />
+          <div className="h-px bg-brand-border w-full" />
 
           <Suspense fallback={
             <div className="flex justify-center py-12">
-              <div className="w-6 h-6 border-2 border-gs-gold border-t-transparent rounded-full animate-spin" />
+              <div className="w-6 h-6 border-2 border-brand-primary border-t-transparent rounded-full animate-spin" />
             </div>
           }>
             <ResetPasswordForm />
@@ -142,7 +144,7 @@ export default function ResetPasswordPage() {
         </div>
       </div>
 
-      <div className="h-px w-full bg-gs-border" />
+      <div className="h-px w-full bg-brand-border" />
     </div>
   );
 }

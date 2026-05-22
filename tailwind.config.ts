@@ -9,15 +9,14 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        "gs-dark":       "#ffffff",
-        "gs-dark-2":     "#fafafa",
-        "gs-dark-3":     "#f5f5f5",
-        "gs-dark-4":     "#ececec",
-        "gs-border":     "#d4d4d4",
-        "gs-gold":       "#111111",
-        "gs-gold-light": "#333333",
-        "gs-white":      "#0a0a0a",
-        "gs-muted":      "#888888",
+        // Brand tokens — resolved at runtime via CSS variables
+        "brand-primary":   "var(--brand-primary)",
+        "brand-secondary": "var(--brand-secondary)",
+        "brand-bg":        "var(--brand-bg)",
+        "brand-surface":   "var(--brand-surface)",
+        "brand-border":    "var(--brand-border)",
+        "brand-text":      "var(--brand-text)",
+        "brand-muted":     "var(--brand-muted)",
       },
       animation: {
         "fade-up": "fadeUp 0.5s ease both",

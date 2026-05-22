@@ -1,28 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { assertAdminTenant, isErrorResponse } from "@/lib/api/assert-admin-tenant";
+import { logActivity } from "@/lib/activity/log";
 
-const serviceSupabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+const serviceSupabase = createAdminClient();
 
 // ---------------------------------------------------------------------------
 // GET /api/admin/orders/[order_id]
 // Returns all data needed by the admin order detail page.
 // ---------------------------------------------------------------------------
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: { order_id: string } },
 ) {
+  const ctx = await assertAdminTenant();
+  if (isErrorResponse(ctx)) return ctx;
+
   const { order_id } = params;
 
-  // Fetch order row first (no embedded join to avoid PostgREST join issues)
+  // Fetch order row first — also verify it belongs to this tenant
   const { data: orderRow, error: orderError } = await serviceSupabase
     .from("orders")
     .select(
-      "id, order_number, stage, created_at, approved_at, estimated_delivery, tracking_number, supplier, supplier_user_id, notes, design_fee_paid, production_choice, client_id",
+      "id, order_number, stage, created_at, approved_at, estimated_delivery, tracking_number, supplier, supplier_user_id, assigned_designer_id, notes, design_fee_paid, production_choice, client_id",
     )
     .eq("id", order_id)
+    .eq("tenant_id", ctx.tenant.id)
     .single();
 
   if (orderError || !orderRow) {
@@ -45,7 +48,9 @@ export async function GET(
     { data: concepts },
     { data: media },
     { data: supplierProfiles },
+    { data: designerProfiles },
     { data: files },
+    { data: invoiceRows },
   ] = await Promise.all([
     serviceSupabase.from("briefs").select("*").eq("order_id", order_id).single(),
     serviceSupabase
@@ -63,10 +68,21 @@ export async function GET(
       .select("id, full_name, company, email")
       .eq("role", "supplier"),
     serviceSupabase
+      .from("profiles")
+      .select("id, full_name, email")
+      .eq("tenant_id", ctx.tenant.id)
+      .eq("role", "designer"),
+    serviceSupabase
       .from("order_files")
       .select("id, created_at, file_url, file_name, file_size, file_type, label, client_visible")
       .eq("order_id", order_id)
       .order("created_at"),
+    serviceSupabase
+      .from("invoices")
+      .select("*, payments(*)")
+      .eq("order_id", order_id)
+      .eq("tenant_id", ctx.tenant.id)
+      .order("created_at", { ascending: false }),
   ]);
 
   const order = {
@@ -78,8 +94,9 @@ export async function GET(
     estimated_delivery: orderRow.estimated_delivery,
     tracking_number:   orderRow.tracking_number,
     supplier:          orderRow.supplier,
-    supplier_user_id:  orderRow.supplier_user_id,
-    notes:             orderRow.notes,
+    supplier_user_id:      orderRow.supplier_user_id,
+    assigned_designer_id:  orderRow.assigned_designer_id,
+    notes:                 orderRow.notes,
     design_fee_paid:   orderRow.design_fee_paid,
     production_choice: orderRow.production_choice,
     client: clientRow ?? { name: "—", email: "—", sport: "—", city: "—" },
@@ -91,7 +108,9 @@ export async function GET(
     concepts:  concepts   ?? [],
     media:     media      ?? [],
     suppliers: supplierProfiles ?? [],
+    designers: designerProfiles ?? [],
     files:     files      ?? [],
+    invoices:  invoiceRows ?? [],
   });
 }
 
@@ -103,7 +122,19 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: { order_id: string } },
 ) {
+  const ctx = await assertAdminTenant();
+  if (isErrorResponse(ctx)) return ctx;
+
   const { order_id } = params;
+
+  // Verify this order belongs to the caller's tenant
+  const { data: ownership } = await serviceSupabase
+    .from("orders")
+    .select("id")
+    .eq("id", order_id)
+    .eq("tenant_id", ctx.tenant.id)
+    .single();
+  if (!ownership) return NextResponse.json({ error: "Order not found" }, { status: 404 });
 
   let body: Record<string, unknown>;
   try {
@@ -132,15 +163,29 @@ export async function PATCH(
 
     const { error: logError } = await serviceSupabase.from("stage_log").insert({
       order_id,
+      tenant_id:  ctx.tenant.id,
       from_stage,
-      to_stage: stage,
+      to_stage:   stage,
       changed_by: "admin",
     });
 
     if (logError) {
-      // Non-fatal — stage is already updated; log the error but return success
       console.error("[admin orders] stage_log insert failed:", logError.message);
     }
+
+    const STAGE_LABELS: Record<string, string> = {
+      onboarding: "Brief Submitted", design_confirmed: "Concepts Generating",
+      files_sent: "Design Approved", first_piece_in_progress: "First Piece",
+      first_piece_review: "First Piece Review", bulk_production: "Bulk Production",
+      qc_verified: "QC Verified", shipped: "Shipped", delivered: "Delivered", complete: "Complete",
+    };
+    await logActivity({
+      tenantId: ctx.tenant.id, orderId: order_id,
+      actorUserId: ctx.userId, actorRole: "admin",
+      eventType: "stage_changed",
+      eventMessage: `Stage moved from ${STAGE_LABELS[from_stage] ?? from_stage} → ${STAGE_LABELS[stage] ?? stage}`,
+      metadata: { from_stage, to_stage: stage },
+    });
 
     return NextResponse.json({ success: true });
   }
@@ -156,6 +201,24 @@ export async function PATCH(
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    if (supplier_user_id) {
+      const { data: sp } = await serviceSupabase.from("profiles").select("full_name, email").eq("id", supplier_user_id).single();
+      await logActivity({
+        tenantId: ctx.tenant.id, orderId: order_id,
+        actorUserId: ctx.userId, actorRole: "admin",
+        eventType: "supplier_assigned",
+        eventMessage: `Supplier assigned: ${sp?.full_name ?? sp?.email ?? "Unknown"}`,
+        metadata: { supplier_user_id },
+      });
+    } else {
+      await logActivity({
+        tenantId: ctx.tenant.id, orderId: order_id,
+        actorUserId: ctx.userId, actorRole: "admin",
+        eventType: "supplier_unassigned",
+        eventMessage: "Supplier removed",
+      });
     }
 
     return NextResponse.json({ success: true });
@@ -255,6 +318,12 @@ export async function PATCH(
       .single();
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    await logActivity({
+      tenantId: ctx.tenant.id, orderId: order_id,
+      actorUserId: ctx.userId, actorRole: "admin",
+      eventType: "files_uploaded",
+      eventMessage: `File uploaded: ${file_name}`,
+    });
     return NextResponse.json({ success: true, row });
   }
 

@@ -4,7 +4,8 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { getProfile } from "@/lib/profile";
-import GraceLogo from "@/components/GraceLogo";
+import TenantLogo from "@/components/TenantLogo";
+import { useTenant } from "@/lib/tenant/context";
 import type { DesignMetadata, GenerationStatus } from "@/app/api/generate-concepts/route";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -51,33 +52,33 @@ function GeneratingState({ gen }: { gen: GenerationProgress }) {
   return (
     <div className="py-20 flex flex-col items-center justify-center gap-6 max-w-sm mx-auto text-center">
       <div className="relative w-16 h-16">
-        <div className="w-16 h-16 border border-gs-border rounded-full" />
-        <div className="absolute inset-0 border-2 border-gs-gold border-t-transparent rounded-full animate-spin" />
+        <div className="w-16 h-16 border border-brand-border rounded-full" />
+        <div className="absolute inset-0 border-2 border-brand-primary border-t-transparent rounded-full animate-spin" />
       </div>
 
       <div className="space-y-1">
-        <p className="text-gs-white font-barlow font-medium">Building your concept board</p>
-        <p className="text-xs text-gs-gold font-display uppercase tracking-widest">{label}</p>
+        <p className="text-brand-text font-barlow font-medium">Building your concept board</p>
+        <p className="text-xs text-brand-primary font-display uppercase tracking-widest">{label}</p>
         {completed > 0 && (
-          <p className="text-xs text-gs-muted font-barlow">
+          <p className="text-xs text-brand-muted font-barlow">
             {completed} of {total} renders complete
           </p>
         )}
         {gen.status === "generating" && completed === 0 && (
-          <p className="text-xs text-gs-muted font-barlow">
+          <p className="text-xs text-brand-muted font-barlow">
             Generating garment renders — takes 2–3 minutes
           </p>
         )}
       </div>
 
-      <div className="w-full bg-gs-border rounded-full h-0.5 overflow-hidden">
+      <div className="w-full bg-brand-border rounded-full h-0.5 overflow-hidden">
         <div
-          className="h-full bg-gs-gold transition-all duration-1000 ease-out rounded-full"
+          className="h-full bg-brand-primary transition-all duration-1000 ease-out rounded-full"
           style={{ width: `${pct}%` }}
         />
       </div>
 
-      <p className="text-[10px] text-gs-muted font-barlow">
+      <p className="text-[10px] text-brand-muted font-barlow">
         You can leave and come back — your board saves automatically.
       </p>
     </div>
@@ -136,7 +137,7 @@ function RenderImage({ url, alt, className, style }: { url?: string; alt: string
 
 // ─── Premium renders board ────────────────────────────────────────────────────
 
-function RendersBoard({ data }: { data: BoardData }) {
+function RendersBoard({ data, studioName }: { data: BoardData; studioName?: string }) {
   const { teamName, orderNumber, metadata, logoUrls } = data;
   const renders       = metadata.renders;
   const colorway      = metadata.colorway      ?? [];
@@ -164,7 +165,7 @@ function RendersBoard({ data }: { data: BoardData }) {
         <div className="flex items-center gap-3">
           <div className="w-px h-5 bg-gray-800" />
           <span className="text-[9px] font-bold uppercase tracking-[0.3em] text-gray-400">
-            Grace Athletics — AI Concept
+            AI Concept
           </span>
         </div>
         <span className="text-[9px] font-mono text-gray-300 tracking-widest">{orderNumber}</span>
@@ -229,7 +230,7 @@ function RendersBoard({ data }: { data: BoardData }) {
         >
           {/* Team */}
           <div className="px-5 pt-5 pb-4 border-b border-gray-100">
-            <p className="text-[7px] font-bold uppercase tracking-[0.32em] text-gray-400 mb-1">Grace Athletics</p>
+            <p className="text-[7px] font-bold uppercase tracking-[0.32em] text-gray-400 mb-1">{studioName ?? "Custom Sportswear"}</p>
             <p className="text-sm font-bold uppercase tracking-wide text-gray-900 leading-tight break-words">{teamName}</p>
             <p className="text-[8px] uppercase tracking-[0.18em] text-gray-400 mt-1">{garmentType}</p>
           </div>
@@ -352,7 +353,7 @@ function RendersBoard({ data }: { data: BoardData }) {
 
           <div className="px-4 py-4 flex-1 flex flex-col justify-end">
             <div className="opacity-20 mt-auto">
-              <GraceLogo className="h-5" />
+              <TenantLogo className="h-5" />
             </div>
           </div>
         </div>
@@ -419,7 +420,7 @@ function SpecBoardDisplay({ data }: { data: BoardData }) {
         <div className="flex items-center gap-3">
           <div className="w-px h-5 bg-gray-800" />
           <span className="text-[9px] font-bold uppercase tracking-[0.3em] text-gray-400">
-            Grace Athletics — Concept Board
+            Concept Board
           </span>
         </div>
         <span className="text-[9px] font-mono text-gray-300 tracking-widest">{orderNumber}</span>
@@ -453,7 +454,7 @@ function SpecBoardDisplay({ data }: { data: BoardData }) {
           refinement during production. Logos are composited separately.
         </p>
         <div className="flex-shrink-0 ml-4 opacity-20">
-          <GraceLogo className="h-4" />
+          <TenantLogo className="h-4" />
         </div>
       </div>
     </div>
@@ -462,7 +463,7 @@ function SpecBoardDisplay({ data }: { data: BoardData }) {
 
 // ─── Legacy boards (backward compat) ─────────────────────────────────────────
 
-function LegacyBoard({ data }: { data: BoardData }) {
+function LegacyBoard({ data, studioName }: { data: BoardData; studioName?: string }) {
   const { metadata, teamName, orderNumber } = data;
   const isSingleImage = metadata.boardFormat === "specboard" || !!metadata.boardImage;
 
@@ -471,7 +472,7 @@ function LegacyBoard({ data }: { data: BoardData }) {
     return (
       <div className="rounded-xl overflow-hidden border border-gray-300 shadow-lg">
         <div className="border-b border-gray-300 bg-white px-5 py-2.5 flex items-center justify-between">
-          <span className="text-[9px] font-bold uppercase tracking-[0.3em] text-gray-500">Grace Athletics — Concept Board</span>
+          <span className="text-[9px] font-bold uppercase tracking-[0.3em] text-gray-500">Concept Board</span>
           <span className="text-[9px] font-mono text-gray-400 tracking-widest">{orderNumber}</span>
         </div>
         <div className="relative bg-[#f0ede6]" style={{ minHeight: 300 }}>
@@ -482,7 +483,7 @@ function LegacyBoard({ data }: { data: BoardData }) {
           <p className="text-[8px] text-gray-400 italic max-w-lg">
             AI concept is for visual direction only. Colors and details subject to change.
           </p>
-          <div className="flex-shrink-0 ml-4 opacity-25"><GraceLogo className="h-4" /></div>
+          <div className="flex-shrink-0 ml-4 opacity-25"><TenantLogo className="h-4" /></div>
         </div>
       </div>
     );
@@ -498,13 +499,13 @@ function LegacyBoard({ data }: { data: BoardData }) {
   return (
     <div className="rounded-xl overflow-hidden border border-gray-300 shadow-lg" style={{ backgroundColor: "#f0ede6" }}>
       <div className="border-b border-gray-300 bg-white px-5 py-2.5 flex items-center justify-between">
-        <span className="text-[9px] font-bold uppercase tracking-[0.3em] text-gray-500">Grace Athletics — AI Concept</span>
+        <span className="text-[9px] font-bold uppercase tracking-[0.3em] text-gray-500">AI Concept</span>
         <span className="text-[9px] font-mono text-gray-400 tracking-widest">{orderNumber}</span>
       </div>
       <div className="flex" style={{ minHeight: 540 }}>
         <div className="flex-shrink-0 border-r border-gray-300 flex flex-col" style={{ width: 210, backgroundColor: "#f8f6f1" }}>
           <div className="px-5 pt-5 pb-4 border-b border-gray-200">
-            <p className="text-[8px] uppercase tracking-[0.3em] text-gray-400 font-bold mb-1">Grace Athletics</p>
+            <p className="text-[8px] uppercase tracking-[0.3em] text-gray-400 font-bold mb-1">{studioName ?? "Custom Sportswear"}</p>
             <p className="text-base font-bold uppercase tracking-wider text-gray-900 leading-tight">{teamName}</p>
             <p className="text-[9px] uppercase tracking-[0.18em] text-gray-500 mt-1">{garmentType}</p>
           </div>
@@ -540,7 +541,7 @@ function LegacyBoard({ data }: { data: BoardData }) {
       </div>
       <div className="border-t border-gray-300 bg-white/50 px-5 py-2.5 flex items-center justify-between">
         <p className="text-[8px] text-gray-400 italic max-w-lg">AI concept for visual direction only. Details subject to change.</p>
-        <div className="flex-shrink-0 ml-4 opacity-25"><GraceLogo className="h-4" /></div>
+        <div className="flex-shrink-0 ml-4 opacity-25"><TenantLogo className="h-4" /></div>
       </div>
     </div>
   );
@@ -553,6 +554,7 @@ export default function ConceptsPage() {
   const router        = useRouter();
   const supabaseRef   = useRef(createClient());
   const supabase      = supabaseRef.current;
+  const tenant        = useTenant();
 
   const [boardData, setBoardData]     = useState<BoardData | null>(null);
   const [gen, setGen]                 = useState<GenerationProgress>({ status: "not_started", progress: 0, total: 4, error: null });
@@ -585,7 +587,7 @@ export default function ConceptsPage() {
   const loadBoard = useCallback(async (): Promise<boolean> => {
     const { data: briefRow } = await supabase
       .from("briefs")
-      .select("ai_prompt, logo_urls, gs_logo_placement")
+      .select("ai_prompt, logo_urls, logo_placement")
       .eq("order_id", order_id)
       .single();
 
@@ -662,7 +664,7 @@ export default function ConceptsPage() {
       ? (briefRow.logo_urls as unknown[]).filter((u): u is string => typeof u === "string" && u.startsWith("http"))
       : [];
 
-    const gsLogoPlacement = (briefRow?.gs_logo_placement as string | null) ?? "chest";
+    const gsLogoPlacement = (briefRow?.logo_placement as string | null) ?? "chest";
 
     setBoardData({ teamName, orderNumber, metadata, logoUrls, gsLogoPlacement });
     return true;
@@ -752,9 +754,14 @@ export default function ConceptsPage() {
     const { data: conceptRows } = await supabase
       .from("concepts").select("id, concept_number").eq("order_id", order_id);
     if (conceptRows) {
-      await supabase.from("concepts").update({ selected: false }).eq("order_id", order_id);
       const target = conceptRows.find(r => r.concept_number === 1) ?? conceptRows[0];
-      if (target) await supabase.from("concepts").update({ selected: true }).eq("id", target.id);
+      if (target) {
+        await fetch(`/api/orders/${order_id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "select_concept", concept_id: target.id }),
+        });
+      }
     }
     router.push(`/orders/${order_id}/approve`);
   }
@@ -778,7 +785,7 @@ export default function ConceptsPage() {
   const paymentGated = !isAdminView && feePaid === false;
 
   return (
-    <div className="min-h-screen bg-gs-dark flex flex-col">
+    <div className="min-h-screen bg-brand-bg flex flex-col">
 
       {isAdminView && (
         <div className="bg-amber-50 border-b border-amber-200 px-6 py-2 flex items-center gap-2">
@@ -789,17 +796,17 @@ export default function ConceptsPage() {
         </div>
       )}
 
-      <header className="border-b border-gs-border px-6 py-4 flex items-center justify-between">
+      <header className="border-b border-brand-border px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <GraceLogo className="h-7" href="/portal" />
-          <a href="/portal" className="text-xs font-display font-bold uppercase tracking-widest text-gs-gold hover:text-gs-gold-light transition-colors">
+          <TenantLogo className="h-7" href="/portal" />
+          <a href="/portal" className="text-xs font-display font-bold uppercase tracking-widest text-brand-primary hover:text-brand-secondary transition-colors">
             Client Portal
           </a>
         </div>
         <div className="flex items-center gap-5">
-          <a href="/portal" className="text-xs font-display font-bold uppercase tracking-wider text-gs-muted hover:text-gs-gold transition-colors">Home</a>
-          <button type="button" onClick={() => router.back()} className="text-xs font-display font-bold uppercase tracking-wider text-gs-muted hover:text-gs-gold transition-colors">← Back</button>
-          <button type="button" onClick={signOut} className="text-xs font-display font-bold uppercase tracking-wider text-gs-muted hover:text-gs-gold transition-colors">Sign Out</button>
+          <a href="/portal" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Home</a>
+          <button type="button" onClick={() => router.back()} className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">← Back</button>
+          <button type="button" onClick={signOut} className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Sign Out</button>
         </div>
       </header>
 
@@ -807,10 +814,10 @@ export default function ConceptsPage() {
         <div className="w-full max-w-5xl">
 
           <div className="mb-7">
-            <h1 className="font-display text-3xl font-bold uppercase tracking-wide text-gs-white">
+            <h1 className="font-display text-3xl font-bold uppercase tracking-wide text-brand-text">
               Your Design Concept
             </h1>
-            <p className="mt-1.5 text-sm text-gs-muted font-barlow">
+            <p className="mt-1.5 text-sm text-brand-muted font-barlow">
               {isGenerating
                 ? "Our AI is building your spec board from your design brief — takes 60–90 seconds."
                 : hasBoard
@@ -827,7 +834,7 @@ export default function ConceptsPage() {
           {/* Initial loading */}
           {!isGenerating && !hasBoard && !isFailed && (
             <div className="py-24 flex items-center justify-center">
-              <div className="w-6 h-6 border-2 border-gs-gold border-t-transparent rounded-full animate-spin" />
+              <div className="w-6 h-6 border-2 border-brand-primary border-t-transparent rounded-full animate-spin" />
             </div>
           )}
 
@@ -840,9 +847,9 @@ export default function ConceptsPage() {
                 </svg>
               </div>
               <div>
-                <p className="text-gs-white font-barlow font-medium">Generation failed</p>
+                <p className="text-brand-text font-barlow font-medium">Generation failed</p>
                 {gen.error && <p className="text-xs text-red-400 font-barlow mt-1 max-w-sm">{gen.error}</p>}
-                <p className="text-xs text-gs-muted font-barlow mt-2">Please contact Grace Studios support to retry.</p>
+                <p className="text-xs text-brand-muted font-barlow mt-2">Please contact {tenant.name} support to retry.</p>
               </div>
             </div>
           )}
@@ -855,23 +862,23 @@ export default function ConceptsPage() {
               {paymentGated && isRenders && boardData?.metadata.renders && (
                 <div className="space-y-4">
                   {/* Teaser header */}
-                  <div className="rounded-xl border border-gs-gold/20 bg-gs-dark-3 px-5 py-4 flex items-center gap-4">
-                    <div className="w-8 h-8 rounded-lg bg-gs-gold/10 border border-gs-gold/30 flex items-center justify-center flex-shrink-0">
-                      <svg className="w-4 h-4 text-gs-gold" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <div className="rounded-xl border border-brand-primary/20 bg-brand-surface px-5 py-4 flex items-center gap-4">
+                    <div className="w-8 h-8 rounded-lg bg-brand-primary/10 border border-brand-primary/30 flex items-center justify-center flex-shrink-0">
+                      <svg className="w-4 h-4 text-brand-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
                       </svg>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-display font-bold uppercase tracking-wider text-gs-white">
+                      <p className="text-xs font-display font-bold uppercase tracking-wider text-brand-text">
                         Your design is ready
                       </p>
-                      <p className="text-[10px] text-gs-muted font-barlow mt-0.5">
+                      <p className="text-[10px] text-brand-muted font-barlow mt-0.5">
                         Pay the design deposit to unlock all 4 views and approve for production.
                       </p>
                     </div>
                     <a
                       href={`/orders/${order_id}/checkout`}
-                      className="flex-shrink-0 px-5 py-2.5 rounded-xl font-display font-bold text-xs uppercase tracking-widest bg-gs-gold text-white hover:bg-gs-gold-light transition-all whitespace-nowrap"
+                      className="flex-shrink-0 px-5 py-2.5 rounded-xl font-display font-bold text-xs uppercase tracking-widest bg-brand-primary text-white hover:bg-brand-secondary transition-all whitespace-nowrap"
                     >
                       Unlock →
                     </a>
@@ -900,7 +907,7 @@ export default function ConceptsPage() {
                     ].map(({ label }) => (
                       <div
                         key={label}
-                        className="relative rounded-xl overflow-hidden border border-gs-border bg-gs-dark-3 aspect-square flex items-center justify-center"
+                        className="relative rounded-xl overflow-hidden border border-brand-border bg-brand-surface aspect-square flex items-center justify-center"
                       >
                         {/* Blurred preview using front jersey as placeholder texture */}
                         <div
@@ -914,10 +921,10 @@ export default function ConceptsPage() {
                           }}
                         />
                         <div className="relative z-10 flex flex-col items-center gap-2">
-                          <svg className="w-6 h-6 text-gs-muted/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                          <svg className="w-6 h-6 text-brand-muted/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
                           </svg>
-                          <span className="text-[8px] font-display uppercase tracking-wider text-gs-muted/60">{label}</span>
+                          <span className="text-[8px] font-display uppercase tracking-wider text-brand-muted/60">{label}</span>
                         </div>
                       </div>
                     ))}
@@ -927,7 +934,7 @@ export default function ConceptsPage() {
                   <a
                     href={`/orders/${order_id}/checkout`}
                     className="block w-full py-4 rounded-xl text-center font-display font-bold text-sm uppercase tracking-[0.15em]
-                      bg-gs-gold text-white hover:bg-gs-gold-light transition-all duration-200
+                      bg-brand-primary text-white hover:bg-brand-secondary transition-all duration-200
                       shadow-[0_4px_24px_rgba(212,175,55,0.2)] hover:shadow-[0_4px_32px_rgba(212,175,55,0.35)]"
                   >
                     Pay to Unlock All 4 Views →
@@ -939,8 +946,8 @@ export default function ConceptsPage() {
               {(!paymentGated || !isRenders) && (
                 <>
                   {isSpecBoard  ? <SpecBoardDisplay data={boardData!} />
-                   : isRenders   ? <RendersBoard     data={boardData!} />
-                   :               <LegacyBoard      data={boardData!} />
+                   : isRenders   ? <RendersBoard     data={boardData!} studioName={tenant.name} />
+                   :               <LegacyBoard      data={boardData!} studioName={tenant.name} />
                   }
 
                   <div className="flex items-center justify-between pt-1">
@@ -948,11 +955,11 @@ export default function ConceptsPage() {
                       <button
                         type="button"
                         disabled
-                        className="text-xs font-display uppercase tracking-wider text-gs-muted/40 cursor-not-allowed"
+                        className="text-xs font-display uppercase tracking-wider text-brand-muted/40 cursor-not-allowed"
                       >
                         ↺ Regenerate
                       </button>
-                      <span className="text-[9px] text-gs-muted/40 font-barlow max-w-[220px] leading-tight">
+                      <span className="text-[9px] text-brand-muted/40 font-barlow max-w-[220px] leading-tight">
                         Regeneration coming soon. Current concept is locked for review.
                       </span>
                     </div>
@@ -962,7 +969,7 @@ export default function ConceptsPage() {
                       onClick={handleApprove}
                       disabled={approving}
                       className="px-8 py-3.5 rounded-xl font-display font-bold text-sm uppercase tracking-[0.15em] transition-all duration-200
-                        bg-gs-white text-gs-dark hover:bg-gs-gold hover:text-white
+                        bg-brand-text text-brand-bg hover:bg-brand-primary hover:text-white
                         disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                       {approving ? "Saving…" : "Approve This Design →"}
