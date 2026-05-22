@@ -195,13 +195,15 @@ CREATE TABLE IF NOT EXISTS public.notifications (
   type       text        NOT NULL,
   title      text        NOT NULL,
   message    text,
-  read       boolean     NOT NULL DEFAULT false,
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
+-- Add read column idempotently (table may already exist without it)
+ALTER TABLE public.notifications ADD COLUMN IF NOT EXISTS read boolean NOT NULL DEFAULT false;
+
 CREATE INDEX IF NOT EXISTS idx_notifications_user   ON public.notifications(user_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_tenant ON public.notifications(tenant_id);
-CREATE INDEX IF NOT EXISTS idx_notifications_unread ON public.notifications(user_id, read) WHERE read = false;
+CREATE INDEX IF NOT EXISTS idx_notifications_unread ON public.notifications(user_id, read);
 
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 
