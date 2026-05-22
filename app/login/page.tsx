@@ -348,16 +348,16 @@ export default function LoginPage() {
       <div className="border-b border-brand-border px-5 sm:px-8 lg:px-10">
         <div className="max-w-5xl mx-auto grid grid-cols-4 gap-6">
           {JERSEYS.map((j) => (
-            <div key={j.name} className="relative group bg-white rounded-xl flex items-center justify-center px-6 py-8 sm:py-10">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={j.src}
-                alt={j.name}
-                className="w-full max-h-52 sm:max-h-64 object-contain group-hover:scale-105 transition-transform duration-500 ease-out"
-              />
-              <div className="absolute bottom-2 left-3">
-                <span className="text-[9px] font-display font-bold uppercase tracking-[0.25em] text-brand-muted/60">{j.name}</span>
+            <div key={j.name} className="group flex flex-col items-center gap-4">
+              <div className="bg-white rounded-xl w-full flex items-center justify-center px-4 py-6">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={j.src}
+                  alt={j.name}
+                  className="w-full max-h-80 sm:max-h-96 object-contain group-hover:scale-105 transition-transform duration-500 ease-out"
+                />
               </div>
+              <span className="text-[10px] font-display font-bold uppercase tracking-[0.25em] text-brand-muted text-center">{j.name}</span>
             </div>
           ))}
         </div>
