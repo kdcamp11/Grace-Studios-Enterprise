@@ -70,7 +70,7 @@ export default function AdminHeader({ onSignOut, activePath }: AdminHeaderProps)
   return (
     <header className="border-b border-brand-border px-6 py-4 flex items-center justify-between sticky top-0 bg-brand-bg z-40">
       <div className="flex items-center gap-4">
-        <TenantLogo className="h-10" href="/admin" />
+        <TenantLogo href="/admin" />
         <div>
           <p className="text-[9px] font-display uppercase tracking-[0.3em] text-brand-muted leading-none">Operations</p>
           <a

@@ -6,7 +6,7 @@ import { useTenant } from "@/lib/tenant/context";
 
 const DEFAULT_LOGO = "/grace-enterprise-logo.jpeg";
 
-export default function TenantLogo({ className = "h-10", href = "/portal" }: {
+export default function TenantLogo({ className = "w-[200px] h-auto", href = "/portal" }: {
   className?: string;
   href?: string;
 }) {
@@ -21,7 +21,7 @@ export default function TenantLogo({ className = "h-10", href = "/portal" }: {
       <img
         src={logoSrc}
         alt={tenant.name}
-        className={`w-auto object-contain ${className}`}
+        className={`object-contain ${className}`}
         onError={() => { if (logoSrc !== DEFAULT_LOGO) setImgError(true); }}
       />
     </Link>

@@ -63,7 +63,7 @@ export default function LoginPage() {
           {/* Logo + wordmark */}
           <div className="text-center space-y-5">
             <div className="flex justify-center">
-              <TenantLogo className="h-12" href="/login" />
+              <TenantLogo href="/login" />
             </div>
             <div className="space-y-1">
               <h1 className="font-display text-4xl font-bold uppercase tracking-wide text-brand-text leading-none">

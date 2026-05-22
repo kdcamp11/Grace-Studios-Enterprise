@@ -130,7 +130,7 @@ export default function ProductionChoicePage() {
   return (
     <div className="min-h-screen bg-brand-bg flex flex-col">
       <header className="border-b border-brand-border px-6 py-4 flex items-center justify-between">
-        <OrgLogo className="h-10" href="/portal" />
+        <OrgLogo href="/portal" />
         <a href="/portal" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">
           Home
         </a>

@@ -188,7 +188,7 @@ function InvoicePageContent() {
       {/* Header */}
       <header className="border-b border-brand-border px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <OrgLogo className="h-10" href="/portal" />
+          <OrgLogo href="/portal" />
         </div>
         <a
           href={`/orders/${order_id}/tracker`}

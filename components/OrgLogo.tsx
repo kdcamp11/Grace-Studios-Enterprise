@@ -29,7 +29,7 @@ interface OrgBrand {
 
 interface Props {
   href?: string;
-  /** Tailwind height class, e.g. "h-7" or "h-5". Defaults to "h-7". */
+  /** Tailwind sizing class(es) applied to the img. Defaults to w-[200px] h-auto. */
   className?: string;
 }
 
@@ -63,7 +63,7 @@ export function invalidateOrgCache(): void {
 }
 
 // ── Component ───────────────────────────────────────────────────────────────
-export default function OrgLogo({ href = "/portal", className = "h-10" }: Props) {
+export default function OrgLogo({ href = "/portal", className = "w-[200px] h-auto" }: Props) {
   const tenant = useTenant();
 
   // "pending" while the fetch is in-flight so we can show a faded placeholder
@@ -113,7 +113,7 @@ export default function OrgLogo({ href = "/portal", className = "h-10" }: Props)
       <img
         src={logoSrc}
         alt={displayName}
-        className={`w-auto object-contain transition-opacity duration-200 ${
+        className={`object-contain transition-opacity duration-200 ${
           isPending ? "opacity-50" : "opacity-100"
         } ${className}`}
         onError={() => {

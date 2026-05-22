@@ -162,7 +162,7 @@ function SupplierPortalContent() {
       )}
       <header className="border-b border-brand-border px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <TenantLogo className="h-10" href="/supplier" />
+          <TenantLogo href="/supplier" />
           <a href="/supplier" className="text-xs font-display font-bold uppercase tracking-widest text-brand-primary hover:text-brand-secondary transition-colors">
             Supplier Portal
           </a>
