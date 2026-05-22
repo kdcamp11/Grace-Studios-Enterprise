@@ -127,10 +127,10 @@ const ROLES = [
 ];
 
 const JERSEYS = [
-  { name: "Bold",     src: "/jerseys/bold.jpeg"     },
-  { name: "Gradient", src: "/jerseys/gradient.jpeg" },
-  { name: "Program",  src: "/jerseys/program.jpeg"  },
-  { name: "Culture",  src: "/jerseys/culture.jpeg"  },
+  { name: "Bold",     src: "/jerseys/bold.png"     },
+  { name: "Gradient", src: "/jerseys/gradient.png" },
+  { name: "Program",  src: "/jerseys/program.png"  },
+  { name: "Culture",  src: "/jerseys/culture.png"  },
 ];
 
 // ── Component ────────────────────────────────────────────────────────────────
@@ -177,7 +177,7 @@ export default function LoginPage() {
       {/* ══════════════════════════════════════════════════════════════════
           HEADER
       ══════════════════════════════════════════════════════════════════ */}
-      <header className="sticky top-0 z-50 bg-brand-bg/95 backdrop-blur border-b border-brand-border px-6 sm:px-10 py-4 flex items-center justify-between gap-6">
+      <header className="sticky top-0 z-50 bg-brand-bg/95 backdrop-blur border-b border-brand-border px-8 sm:px-14 lg:px-20 py-4 flex items-center justify-between gap-6">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/grace-enterprise-logo.jpeg" alt="Grace Enterprise" style={{ width: 200 }} className="h-auto object-contain" />
 
@@ -224,7 +224,7 @@ export default function LoginPage() {
           HERO — asymmetric split
       ══════════════════════════════════════════════════════════════════ */}
       <section className="border-b border-brand-border overflow-hidden">
-        <div className="max-w-6xl mx-auto px-6 sm:px-10 lg:px-12 grid lg:grid-cols-[1fr_400px] xl:grid-cols-[1fr_440px] gap-0 min-h-[540px] lg:min-h-[600px]">
+        <div className="max-w-5xl mx-auto px-8 sm:px-14 lg:px-20 grid lg:grid-cols-[1fr_400px] xl:grid-cols-[1fr_440px] gap-0 min-h-[460px] lg:min-h-[520px]">
 
           {/* Left — editorial headline */}
           <div className="flex flex-col justify-center py-14 lg:py-20 lg:pr-14 border-b lg:border-b-0 lg:border-r border-brand-border">
@@ -236,12 +236,12 @@ export default function LoginPage() {
             </div>
 
             <h1 className="font-display font-bold uppercase text-brand-text leading-[0.9] tracking-tight mb-6">
-              <span className="block" style={{ fontSize: "clamp(1.7rem, 3.4vw, 3rem)" }}>The Operating</span>
-              <span className="block" style={{ fontSize: "clamp(1.7rem, 3.4vw, 3rem)" }}>System for</span>
-              <span className="block text-brand-primary" style={{ fontSize: "clamp(1.7rem, 3.4vw, 3rem)" }}>Elite Programs.</span>
+              <span className="block" style={{ fontSize: "clamp(1.5rem, 2.8vw, 2.5rem)" }}>The Operating</span>
+              <span className="block" style={{ fontSize: "clamp(1.5rem, 2.8vw, 2.5rem)" }}>System for</span>
+              <span className="block text-brand-primary" style={{ fontSize: "clamp(1.5rem, 2.8vw, 2.5rem)" }}>Elite Programs.</span>
             </h1>
 
-            <p className="text-sm text-brand-muted font-barlow max-w-[420px] leading-relaxed mb-8">
+            <p className="text-xs text-brand-muted font-barlow max-w-[380px] leading-relaxed mb-7">
               AI-accelerated concept generation. Designer-built Illustrator files.
               Two client approvals before a single garment is cut.
               This is how elite programs run their apparel operations.
@@ -329,7 +329,7 @@ export default function LoginPage() {
           STATS BAR
       ══════════════════════════════════════════════════════════════════ */}
       <div className="border-b border-brand-border">
-        <div className="max-w-6xl mx-auto px-6 sm:px-10 lg:px-12 grid grid-cols-2 sm:grid-cols-4">
+        <div className="max-w-5xl mx-auto px-8 sm:px-14 lg:px-20 grid grid-cols-2 sm:grid-cols-4">
           {STATS.map((s, i) => (
             <div
               key={s.label}
@@ -345,10 +345,10 @@ export default function LoginPage() {
       {/* ══════════════════════════════════════════════════════════════════
           JERSEY STRIP — visual proof of work
       ══════════════════════════════════════════════════════════════════ */}
-      <div className="border-b border-brand-border">
-        <div className="grid grid-cols-4">
+      <div className="border-b border-brand-border px-8 sm:px-14 lg:px-20">
+        <div className="max-w-5xl mx-auto grid grid-cols-4 divide-x divide-brand-border">
           {JERSEYS.map((j) => (
-            <div key={j.name} className="relative group border-r last:border-r-0 border-brand-border bg-brand-bg flex items-center justify-center px-4 py-6 sm:py-8">
+            <div key={j.name} className="relative group bg-brand-bg flex items-center justify-center px-4 py-6 sm:py-8">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={j.src}
@@ -366,8 +366,8 @@ export default function LoginPage() {
       {/* ══════════════════════════════════════════════════════════════════
           PROCESS — connected step grid
       ══════════════════════════════════════════════════════════════════ */}
-      <section id="how-it-works" className="px-6 sm:px-10 lg:px-12 py-12 sm:py-16 border-b border-brand-border">
-        <div className="max-w-6xl mx-auto">
+      <section id="how-it-works" className="px-8 sm:px-14 lg:px-20 py-12 sm:py-16 border-b border-brand-border">
+        <div className="max-w-5xl mx-auto">
 
           <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-5 mb-10">
             <div>
@@ -375,7 +375,7 @@ export default function LoginPage() {
                 <div className="w-[3px] h-5 bg-brand-primary flex-shrink-0" />
                 <span className="text-[10px] font-display font-bold uppercase tracking-[0.3em] text-brand-primary">The Process</span>
               </div>
-              <h2 className="font-display font-bold uppercase tracking-tight text-brand-text leading-none" style={{ fontSize: "clamp(1.3rem, 2.4vw, 2.1rem)" }}>
+              <h2 className="font-display font-bold uppercase tracking-tight text-brand-text leading-none" style={{ fontSize: "clamp(1.1rem, 2vw, 1.75rem)" }}>
                 How Every Order<br />Gets Built.
               </h2>
             </div>
@@ -429,14 +429,14 @@ export default function LoginPage() {
       {/* ══════════════════════════════════════════════════════════════════
           ROLES — three-panel editorial
       ══════════════════════════════════════════════════════════════════ */}
-      <section className="px-6 sm:px-10 lg:px-12 py-12 sm:py-16 border-b border-brand-border">
-        <div className="max-w-6xl mx-auto">
+      <section className="px-8 sm:px-14 lg:px-20 py-12 sm:py-16 border-b border-brand-border">
+        <div className="max-w-5xl mx-auto">
 
           <div className="flex items-center gap-2.5 mb-4">
             <div className="w-[3px] h-5 bg-brand-primary flex-shrink-0" />
             <span className="text-[10px] font-display font-bold uppercase tracking-[0.3em] text-brand-primary">Every Role Has a Home</span>
           </div>
-          <h2 className="font-display font-bold uppercase tracking-tight text-brand-text leading-none mb-12" style={{ fontSize: "clamp(1.3rem, 2.4vw, 2.1rem)" }}>
+          <h2 className="font-display font-bold uppercase tracking-tight text-brand-text leading-none mb-12" style={{ fontSize: "clamp(1.1rem, 2vw, 1.75rem)" }}>
             Built for Three Sides<br />of the Network.
           </h2>
 
@@ -481,7 +481,7 @@ export default function LoginPage() {
       {/* ══════════════════════════════════════════════════════════════════
           MOBILE SIGN-IN
       ══════════════════════════════════════════════════════════════════ */}
-      <section id="sign-in" className="px-6 sm:px-10 py-16 border-b border-brand-border lg:hidden">
+      <section id="sign-in" className="px-8 sm:px-14 lg:px-20 py-12 sm:py-16 border-b border-brand-border lg:hidden">
         <div className="max-w-sm mx-auto">
           <div className="flex items-center gap-2.5 mb-6">
             <div className="w-[3px] h-6 bg-brand-primary flex-shrink-0" />
@@ -523,14 +523,14 @@ export default function LoginPage() {
       {/* ══════════════════════════════════════════════════════════════════
           FINAL CTA — editorial split
       ══════════════════════════════════════════════════════════════════ */}
-      <section className="px-6 sm:px-10 lg:px-12 py-12 sm:py-16 border-b border-brand-border">
-        <div className="max-w-6xl mx-auto flex flex-col lg:flex-row items-start lg:items-end justify-between gap-10">
+      <section className="px-8 sm:px-14 lg:px-20 py-12 sm:py-16 border-b border-brand-border">
+        <div className="max-w-5xl mx-auto flex flex-col lg:flex-row items-start lg:items-end justify-between gap-10">
           <div>
             <div className="flex items-center gap-2.5 mb-6">
               <div className="w-[3px] h-5 bg-brand-primary flex-shrink-0" />
               <span className="text-[10px] font-display font-bold uppercase tracking-[0.3em] text-brand-primary">Ready to Build</span>
             </div>
-            <h2 className="font-display font-bold uppercase tracking-tight text-brand-text leading-[0.9]" style={{ fontSize: "clamp(1.6rem, 3vw, 2.6rem)" }}>
+            <h2 className="font-display font-bold uppercase tracking-tight text-brand-text leading-[0.9]" style={{ fontSize: "clamp(1.4rem, 2.5vw, 2.2rem)" }}>
               Your Program's<br />
               <span className="text-brand-primary">Identity</span><br />
               Starts Here.
@@ -563,8 +563,8 @@ export default function LoginPage() {
       {/* ══════════════════════════════════════════════════════════════════
           FOOTER
       ══════════════════════════════════════════════════════════════════ */}
-      <footer className="border-t border-brand-border px-6 sm:px-10 lg:px-12 py-8">
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+      <footer className="border-t border-brand-border px-8 sm:px-14 lg:px-20 py-8">
+        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/grace-enterprise-logo.jpeg" alt="Grace Enterprise" style={{ width: 140 }} className="h-auto object-contain opacity-50" />
           <div className="flex items-center gap-6 flex-wrap justify-center">
