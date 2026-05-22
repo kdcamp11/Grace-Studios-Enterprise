@@ -16,23 +16,30 @@ const STEPS = [
   },
   {
     number: "02",
-    who: "AI + Designer",
-    title: "Concepts Generated & Refined",
-    body: "AI generates initial concept renders from your brief. Your assigned designer then builds production-ready AI/SVG mockups from those concepts.",
+    who: "AI",
+    title: "AI Generates Concepts",
+    body: "Our AI instantly produces multiple concept renders based on your brief. You review them in your portal and approve the direction you want to move forward with.",
     color: "bg-violet-500",
   },
   {
     number: "03",
-    who: "Program",
-    title: "Review & Approve Mockups",
-    body: "You review exactly what the designer built — not just a rough concept. Approve it or request changes. Nothing moves to production without your sign-off.",
-    color: "bg-brand-primary",
+    who: "Designer",
+    title: "Designer Builds Your Files",
+    body: "Your assigned designer takes the approved concept and creates production-ready mockups in Adobe Illustrator. When it's ready, you get a second review in your portal.",
+    color: "bg-violet-400",
   },
   {
     number: "04",
+    who: "Program",
+    title: "Approve the Final Mockup",
+    body: "You review the designer's actual production file — not just a render. Approve it or request changes. Nothing moves to production without your explicit sign-off.",
+    color: "bg-brand-primary",
+  },
+  {
+    number: "05",
     who: "Supplier",
     title: "Produced & Delivered",
-    body: "Approved files go directly to your supplier. They produce a first piece for your review, then run full production. Track every step in your portal.",
+    body: "Approved files go directly to your supplier. They produce a first piece for your review, then run full bulk production. Track every step in your portal.",
     color: "bg-emerald-500",
   },
 ];
@@ -41,7 +48,7 @@ const ROLES = [
   {
     label: "PROGRAM PARTNER",
     headline: "Your team. Your identity.",
-    body: "Submit briefs, review designer mockups, approve what goes to production, and track your order from first stitch to delivery.",
+    body: "Submit briefs, approve AI concepts, review designer mockups, and give final sign-off before production. Track your order from first stitch to delivery.",
     href: "/portal",
     badge: "text-brand-primary bg-brand-primary/10 border-brand-primary/30",
     bar: "bg-brand-primary",
@@ -195,11 +202,11 @@ export default function LoginPage() {
           <p className="text-[10px] font-display uppercase tracking-[0.3em] text-brand-primary mb-3 text-center">The Process</p>
           <h2 className="font-display font-bold uppercase tracking-tight text-brand-text text-3xl sm:text-4xl text-center mb-4">How It Works</h2>
           <p className="text-sm font-barlow text-brand-muted text-center max-w-xl mx-auto mb-14 leading-relaxed">
-            Every order moves through a structured workflow — brief to approved mockup to production —
-            with your team and ours accountable at every step.
+            Every order moves through a structured workflow — brief to AI concept approval, to designer mockup approval, to production —
+            with two client sign-offs before anything goes to a supplier.
           </p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
             {STEPS.map((step, i) => (
               <div key={step.number} className="relative flex flex-col">
                 {/* Connector */}
@@ -237,11 +244,11 @@ export default function LoginPage() {
               </svg>
             </div>
             <div>
-              <p className="font-display font-bold uppercase tracking-wide text-brand-text text-sm mb-1">AI Concepts Are the Starting Point, Not the Final Product</p>
+              <p className="font-display font-bold uppercase tracking-wide text-brand-text text-sm mb-1">You Approve Twice. Nothing Slips Through.</p>
               <p className="text-xs font-barlow text-brand-muted leading-relaxed max-w-2xl">
-                Our AI generates multiple concept directions instantly from your brief. A Grace Enterprise designer then takes those renders
-                and builds production-quality AI/SVG mockups — the actual files your supplier needs to put on fabric.
-                You approve the designer's work, not a raw AI image.
+                First, you pick the AI concept direction you like. Then your designer builds a production-ready Adobe Illustrator mockup from that concept
+                and sends it back for your review. You approve the actual design file — not a rough render — before anything ever goes to a supplier.
+                Two checkpoints. Your design, your call.
               </p>
             </div>
           </div>
