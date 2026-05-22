@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { createClient, sessionReady } from "@/lib/supabase/client";
 import { getProfile, rolePortal } from "@/lib/profile";
 import type { UserRole } from "@/lib/profile";
 import OrgLogo from "@/components/OrgLogo";
@@ -56,6 +56,9 @@ function PortalContent() {
 
   useEffect(() => {
     async function load() {
+      // Await any one-time localStorage→cookie session migration so users
+      // upgraded from the old supabase-js client don't get bounced to /login.
+      await sessionReady();
       const { data: { user: u } } = await supabase.auth.getUser();
       if (!u) { router.replace("/login"); return; }
       setUser(u);
