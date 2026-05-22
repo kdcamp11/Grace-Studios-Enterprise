@@ -264,8 +264,8 @@ export default function LoginPage() {
           </div>
 
           {/* Right — live order tracker preview */}
-          <div className="hidden lg:flex flex-col justify-end pt-12 pl-8 xl:pl-10">
-            <div className="bg-brand-surface border border-brand-border border-b-0 rounded-t-2xl overflow-hidden shadow-[0_-8px_40px_rgba(0,0,0,0.25)]">
+          <div className="hidden lg:flex flex-col justify-end pt-12 pl-8 xl:pl-10 pb-8">
+            <div className="bg-brand-surface border border-brand-border rounded-2xl overflow-hidden shadow-[0_4px_32px_rgba(0,0,0,0.18)]">
               {/* Panel chrome */}
               <div className="border-b border-brand-border px-5 py-4 flex items-center justify-between bg-brand-bg/50">
                 <div className="flex items-center gap-2.5">
@@ -346,15 +346,15 @@ export default function LoginPage() {
           JERSEY STRIP — visual proof of work
       ══════════════════════════════════════════════════════════════════ */}
       <div className="border-b border-brand-border px-5 sm:px-8 lg:px-10 pt-12 sm:pt-16 pb-8 sm:pb-10">
-        <div className="max-w-5xl mx-auto grid grid-cols-4 gap-6">
+        <div className="max-w-5xl mx-auto grid grid-cols-2 gap-6">
           {JERSEYS.map((j) => (
             <div key={j.name} className="group flex flex-col items-center gap-3">
-              <div className="bg-white rounded-xl w-full flex items-center justify-center px-5 py-8 sm:py-12">
+              <div className="bg-white rounded-xl w-full flex items-center justify-center px-8 py-12 sm:py-16">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={j.src}
                   alt={j.name}
-                  className="w-full max-h-[600px] object-contain group-hover:scale-105 transition-transform duration-500 ease-out"
+                  className="w-full object-contain group-hover:scale-105 transition-transform duration-500 ease-out"
                 />
               </div>
               <span className="text-[9px] font-display font-bold uppercase tracking-[0.3em] text-brand-muted/60 text-center">{j.name}</span>
