@@ -4,10 +4,10 @@
  * OrgLogo — displays the logged-in user's organization branding in the navbar.
  *
  * Resolution order:
- *  1. Client's own org logo  (clients.logo_url)
- *  2. Client's org name text (clients.name)
- *  3. Studio logo            (tenant.logo_url)
- *  4. Studio name text       (tenant.name)   ← always available, never null
+ *  1. Client's own org logo    (clients.logo_url)
+ *  2. Client's org name text   (clients.name)
+ *  3. Studio logo              (tenant.logo_url, set via Admin → Settings)
+ *  4. Grace Enterprise logo    (/grace-enterprise-logo.jpeg — always present)
  *
  * For non-client users (admin, designer, supplier) there is no client record,
  * so the component falls straight through to studio branding — exactly what
@@ -83,44 +83,44 @@ export default function OrgLogo({ href = "/portal", className = "h-7" }: Props) 
   const isPending   = org === "pending";
   const clientOrg   = isPending ? null : (org as OrgBrand | null);
 
+  // The Grace Enterprise logo is the guaranteed last-resort fallback.
+  // It lives in /public so it's always available with no network dependency.
+  const DEFAULT_LOGO = "/grace-enterprise-logo.jpeg";
+
   // ── Logo src resolution ──────────────────────────────────────────────────
-  // Show client logo if present; fall back to tenant logo only when there is
-  // no client record at all (i.e. admin / designer / supplier views).
-  let logoSrc: string | null = null;
+  // 1. Client's own logo (if they've uploaded one)
+  // 2. Tenant/studio logo (set via Admin → Settings)
+  // 3. Grace Enterprise logo (always present)
+  let logoSrc: string = DEFAULT_LOGO;
   if (!imgError) {
     if (clientOrg?.logo_url) {
       logoSrc = clientOrg.logo_url;
-    } else if (!clientOrg && !isPending && tenant.logo_url) {
+    } else if (!clientOrg && tenant.logo_url) {
+      // No client record = admin/designer/supplier view → use studio logo
       logoSrc = tenant.logo_url;
     }
+    // If there IS a client record but they have no logo, we still show the
+    // Grace Enterprise default rather than their name — keeps the navbar
+    // visually consistent until they upload their own.
   }
 
-  // ── Display name ──────────────────────────────────────────────────────────
-  // Prefer client org name; fall back to tenant/studio name.
+  // ── Display name (used as alt text) ──────────────────────────────────────
   const displayName = clientOrg?.name ?? tenant.name;
 
   return (
     <Link href={href} className="inline-flex items-center focus:outline-none">
-      {logoSrc ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={logoSrc}
-          alt={displayName}
-          className={`w-auto object-contain transition-opacity duration-200 ${
-            isPending ? "opacity-50" : "opacity-100"
-          } ${className}`}
-          onError={() => setImgError(true)}
-        />
-      ) : (
-        <span
-          className={`font-display font-bold tracking-tight text-brand-text transition-opacity duration-200 ${
-            isPending ? "opacity-50" : "opacity-100"
-          }`}
-          style={{ fontSize: "1.25rem" }}
-        >
-          {displayName}
-        </span>
-      )}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={logoSrc}
+        alt={displayName}
+        className={`w-auto object-contain transition-opacity duration-200 ${
+          isPending ? "opacity-50" : "opacity-100"
+        } ${className}`}
+        onError={() => {
+          // If the resolved URL fails, fall all the way back to the local file
+          if (logoSrc !== DEFAULT_LOGO) setImgError(true);
+        }}
+      />
     </Link>
   );
 }
