@@ -354,7 +354,7 @@ export default function LoginPage() {
                 <img
                   src={j.src}
                   alt={j.name}
-                  className="w-full max-h-80 sm:max-h-96 object-contain group-hover:scale-105 transition-transform duration-500 ease-out"
+                  className="w-full max-h-[480px] object-contain group-hover:scale-105 transition-transform duration-500 ease-out"
                 />
               </div>
               <span className="text-[10px] font-display font-bold uppercase tracking-[0.25em] text-brand-muted text-center">{j.name}</span>
