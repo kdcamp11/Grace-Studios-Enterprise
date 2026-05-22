@@ -346,9 +346,9 @@ export default function LoginPage() {
           JERSEY STRIP — visual proof of work
       ══════════════════════════════════════════════════════════════════ */}
       <div className="border-b border-brand-border px-5 sm:px-8 lg:px-10">
-        <div className="max-w-5xl mx-auto grid grid-cols-4 gap-3">
+        <div className="max-w-5xl mx-auto grid grid-cols-4 gap-6">
           {JERSEYS.map((j) => (
-            <div key={j.name} className="relative group bg-white rounded-xl flex items-center justify-center px-4 py-6 sm:py-8 border border-brand-border/20">
+            <div key={j.name} className="relative group bg-white rounded-xl flex items-center justify-center px-6 py-8 sm:py-10">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={j.src}
