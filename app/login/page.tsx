@@ -127,10 +127,10 @@ const ROLES = [
 ];
 
 const JERSEYS = [
-  { name: "Bold",     src: "/Jerseys/bold.jpeg"     },
-  { name: "Gradient", src: "/Jerseys/gradient.jpeg" },
-  { name: "Program",  src: "/Jerseys/program.jpeg"  },
-  { name: "Culture",  src: "/Jerseys/culture.jpeg"  },
+  { name: "Bold",     src: "/jerseys/bold.jpeg"     },
+  { name: "Gradient", src: "/jerseys/gradient.jpeg" },
+  { name: "Program",  src: "/jerseys/program.jpeg"  },
+  { name: "Culture",  src: "/jerseys/culture.jpeg"  },
 ];
 
 // ── Component ────────────────────────────────────────────────────────────────
