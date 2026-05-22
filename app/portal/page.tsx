@@ -11,9 +11,9 @@ import type { User } from "@supabase/supabase-js";
 import type { OrderStage } from "@/types/database";
 
 const STAGE_LABELS: Record<OrderStage, string> = {
-  onboarding:              "Brief Submitted",
-  design_confirmed:        "Concepts Generating",
-  files_sent:              "In Production",
+  onboarding:              "Brief Submitted — Awaiting Concepts",
+  design_confirmed:        "Designer Mockup Ready — Review Required",
+  files_sent:              "Files Approved — In Production",
   first_piece_in_progress: "First Piece In Progress",
   first_piece_review:      "⚡ First Piece Ready for Review",
   bulk_production:         "Bulk Production",
