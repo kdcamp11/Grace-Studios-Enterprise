@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useRef } from "react";
 import BriefProgress from "./BriefProgress";
-import TenantLogo from "@/components/TenantLogo";
+import OrgLogo from "@/components/OrgLogo";
 
 interface BriefLayoutProps {
   children: React.ReactNode;
@@ -29,7 +29,7 @@ export default function BriefLayout({ children, currentStep, title, subtitle, ma
       {/* Header */}
       <header className="px-6 sm:px-10 py-5 flex items-center justify-between border-b border-brand-border">
         <div className="flex items-center gap-4">
-          <TenantLogo className="h-7" href="/portal" />
+          <OrgLogo className="h-7" href="/portal" />
           <a href="/portal" className="text-xs font-display font-bold uppercase tracking-widest text-brand-primary hover:text-brand-secondary transition-colors">
             Client Portal
           </a>

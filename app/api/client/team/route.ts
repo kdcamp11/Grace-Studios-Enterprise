@@ -6,7 +6,7 @@ import { getRequestTenant } from "@/lib/tenant/get-request-tenant";
 async function getClientRow(userId: string, tenantId: string) {
   return createAdminClient()
     .from("clients")
-    .select("id, name, contact_name, city")
+    .select("id, name, contact_name, city, logo_url")
     .eq("user_id", userId)
     .eq("tenant_id", tenantId)
     .single();
@@ -32,10 +32,11 @@ export async function PATCH(req: NextRequest) {
   const tenant = await getRequestTenant();
   if (!tenant) return NextResponse.json({ error: "Tenant not found" }, { status: 400 });
 
-  const { name, contact_name, city } = await req.json() as {
+  const { name, contact_name, city, logo_url } = await req.json() as {
     name?: string;
     contact_name?: string;
     city?: string;
+    logo_url?: string | null;
   };
 
   if (!name?.trim()) {
@@ -48,13 +49,16 @@ export async function PATCH(req: NextRequest) {
   const { data: existing } = await getClientRow(user.id, tenant.id);
   if (!existing) return NextResponse.json({ error: "No team profile found" }, { status: 404 });
 
+  const updatePayload: Record<string, string | null> = {
+    name:         name.trim(),
+    contact_name: contact_name?.trim() || null,
+    city:         city?.trim() || null,
+  };
+  if (logo_url !== undefined) updatePayload.logo_url = logo_url;
+
   const { error } = await admin
     .from("clients")
-    .update({
-      name:         name.trim(),
-      contact_name: contact_name?.trim() || null,
-      city:         city?.trim() || null,
-    })
+    .update(updatePayload)
     .eq("id", existing.id);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

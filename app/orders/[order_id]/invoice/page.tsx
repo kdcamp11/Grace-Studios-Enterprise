@@ -3,7 +3,7 @@
 import { useEffect, useState, Suspense } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import TenantLogo from "@/components/TenantLogo";
+import OrgLogo from "@/components/OrgLogo";
 import { formatCurrency } from "@/lib/payments/thresholds";
 import { useTenant } from "@/lib/tenant/context";
 
@@ -188,7 +188,7 @@ function InvoicePageContent() {
       {/* Header */}
       <header className="border-b border-brand-border px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <TenantLogo className="h-7" href="/" />
+          <OrgLogo className="h-7" href="/portal" />
         </div>
         <a
           href={`/orders/${order_id}/tracker`}

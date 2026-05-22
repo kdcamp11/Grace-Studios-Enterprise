@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { getProfile, rolePortal } from "@/lib/profile";
-import TenantLogo from "@/components/TenantLogo";
+import OrgLogo, { invalidateOrgCache } from "@/components/OrgLogo";
 import { useTenant } from "@/lib/tenant/context";
 import type { UserRole } from "@/lib/profile";
 
@@ -33,10 +33,17 @@ export default function SettingsPage() {
   const [teamName, setTeamName]         = useState("");
   const [contactName, setContactName]   = useState("");
   const [city, setCity]                 = useState("");
+  const [clientId, setClientId]         = useState<string | null>(null);
   const [hasTeam, setHasTeam]           = useState(false);
   const [teamSaving, setTeamSaving]     = useState(false);
   const [teamSaved, setTeamSaved]       = useState(false);
   const [teamError, setTeamError]       = useState("");
+
+  // Org logo upload
+  const logoInputRef                      = useRef<HTMLInputElement>(null);
+  const [logoUrl, setLogoUrl]           = useState<string | null>(null);
+  const [logoUploading, setLogoUploading] = useState(false);
+  const [logoError, setLogoError]       = useState("");
 
   // Profile save
   const [profileSaving, setProfileSaving] = useState(false);
@@ -67,9 +74,11 @@ export default function SettingsPage() {
           const { client } = await res.json();
           if (client) {
             setHasTeam(true);
+            setClientId(client.id);
             setTeamName(client.name ?? "");
             setContactName(client.contact_name ?? "");
             setCity(client.city ?? "");
+            setLogoUrl(client.logo_url ?? null);
           }
         }
       }
@@ -78,6 +87,58 @@ export default function SettingsPage() {
     }
     load();
   }, [router]);
+
+  async function handleLogoUpload(file: File) {
+    if (!clientId) return;
+    setLogoUploading(true);
+    setLogoError("");
+
+    const ext  = file.name.split(".").pop() ?? "png";
+    const path = `logos/clients/${clientId}/logo.${ext}`;
+    const supabase = createClient();
+
+    const { error: uploadErr } = await supabase.storage
+      .from("assets")
+      .upload(path, file, { upsert: true, contentType: file.type });
+
+    if (uploadErr) {
+      setLogoError(`Upload failed: ${uploadErr.message}`);
+      setLogoUploading(false);
+      return;
+    }
+
+    const { data: { publicUrl } } = supabase.storage.from("assets").getPublicUrl(path);
+
+    // Persist URL to client record
+    const res = await fetch("/api/client/team", {
+      method:  "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ name: teamName, contact_name: contactName, city, logo_url: publicUrl }),
+    });
+    if (!res.ok) {
+      const d = await res.json();
+      setLogoError(d.error ?? "Failed to save logo URL");
+    } else {
+      setLogoUrl(publicUrl);
+      invalidateOrgCache(); // refresh OrgLogo across the page
+    }
+    setLogoUploading(false);
+  }
+
+  async function removeLogo() {
+    if (!clientId || !logoUrl) return;
+    setLogoUploading(true);
+    const res = await fetch("/api/client/team", {
+      method:  "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ name: teamName, contact_name: contactName, city, logo_url: null }),
+    });
+    if (res.ok) {
+      setLogoUrl(null);
+      invalidateOrgCache();
+    }
+    setLogoUploading(false);
+  }
 
   async function saveTeamInfo(e: React.FormEvent) {
     e.preventDefault();
@@ -90,7 +151,11 @@ export default function SettingsPage() {
     });
     const data = await res.json();
     if (!res.ok) setTeamError(data.error ?? "Failed to save");
-    else { setTeamSaved(true); setTimeout(() => setTeamSaved(false), 2500); }
+    else {
+      setTeamSaved(true);
+      invalidateOrgCache(); // name may have changed — refresh navbar
+      setTimeout(() => setTeamSaved(false), 2500);
+    }
     setTeamSaving(false);
   }
 
@@ -150,7 +215,7 @@ export default function SettingsPage() {
     <div className="min-h-screen bg-brand-bg flex flex-col">
       <header className="border-b border-brand-border px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <TenantLogo className="h-7" href={backHref} />
+          <OrgLogo className="h-7" href={backHref} />
           <a href={backHref} className="text-xs font-display font-bold uppercase tracking-widest text-brand-primary hover:text-brand-secondary transition-colors">
             {role === "admin" ? "Admin Portal" : role === "supplier" ? "Supplier Portal" : "Client Portal"}
           </a>
@@ -227,6 +292,60 @@ export default function SettingsPage() {
                     className="w-full bg-brand-bg border border-brand-border rounded-lg px-4 py-3 text-brand-text font-barlow text-sm placeholder-brand-muted/60 focus:outline-none focus:border-brand-primary transition-colors"
                   />
                 </div>
+              </div>
+
+              {/* Org logo upload */}
+              <div>
+                <label className="block text-[10px] font-display uppercase tracking-[0.2em] text-brand-muted mb-2">
+                  Organization Logo
+                </label>
+                <input
+                  ref={logoInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/svg+xml,image/webp"
+                  className="hidden"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handleLogoUpload(f); }}
+                />
+                <div
+                  onClick={() => !logoUploading && logoInputRef.current?.click()}
+                  className={`flex items-center gap-4 border border-dashed border-brand-border rounded-xl px-5 py-4 transition-colors ${
+                    logoUploading ? "opacity-60 cursor-wait" : "cursor-pointer hover:border-brand-primary"
+                  }`}
+                >
+                  {logoUrl ? (
+                    <>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={logoUrl} alt="Org logo" className="h-10 w-auto object-contain rounded flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-barlow text-brand-text">{logoUploading ? "Uploading…" : "Logo uploaded"}</p>
+                        <p className="text-xs text-brand-muted font-barlow mt-0.5">Click to replace</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); removeLogo(); }}
+                        disabled={logoUploading}
+                        className="flex-shrink-0 text-[10px] font-display uppercase tracking-wider text-brand-muted hover:text-[#C41E1E] transition-colors disabled:opacity-40"
+                      >
+                        Remove
+                      </button>
+                    </>
+                  ) : (
+                    <div className="flex items-center gap-3 w-full">
+                      <div className="w-10 h-10 rounded-lg bg-brand-border flex items-center justify-center flex-shrink-0">
+                        <svg className="w-5 h-5 text-brand-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="text-sm font-barlow text-brand-text">{logoUploading ? "Uploading…" : "Upload your logo"}</p>
+                        <p className="text-xs text-brand-muted font-barlow mt-0.5">PNG, JPG, SVG or WebP · Shows in your portal navbar</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {logoError && (
+                  <p className="text-[#C41E1E] text-xs font-barlow mt-2">{logoError}</p>
+                )}
               </div>
 
               {teamError && (

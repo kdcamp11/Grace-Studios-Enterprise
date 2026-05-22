@@ -4,7 +4,8 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { getProfile } from "@/lib/profile";
-import TenantLogo from "@/components/TenantLogo";
+import TenantLogo from "@/components/TenantLogo"; // kept for studio watermarks
+import OrgLogo from "@/components/OrgLogo";
 import { useTenant } from "@/lib/tenant/context";
 import type { DesignMetadata, GenerationStatus } from "@/app/api/generate-concepts/route";
 
@@ -798,7 +799,7 @@ export default function ConceptsPage() {
 
       <header className="border-b border-brand-border px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <TenantLogo className="h-7" href="/portal" />
+          <OrgLogo className="h-7" href="/portal" />
           <a href="/portal" className="text-xs font-display font-bold uppercase tracking-widest text-brand-primary hover:text-brand-secondary transition-colors">
             Client Portal
           </a>

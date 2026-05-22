@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { getProfile, rolePortal } from "@/lib/profile";
 import type { UserRole } from "@/lib/profile";
-import TenantLogo from "@/components/TenantLogo";
+import OrgLogo from "@/components/OrgLogo";
 import { useTenant } from "@/lib/tenant/context";
 import type { User } from "@supabase/supabase-js";
 import type { OrderStage } from "@/types/database";
@@ -142,7 +142,7 @@ function PortalContent() {
       {/* Header */}
       <header className="border-b border-brand-border px-6 sm:px-10 py-5 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <TenantLogo className="h-7" href="/portal" />
+          <OrgLogo className="h-7" href="/portal" />
           <a href="/portal" className="text-xs font-display font-bold uppercase tracking-widest text-brand-primary hover:text-brand-secondary transition-colors">
             Client Portal
           </a>

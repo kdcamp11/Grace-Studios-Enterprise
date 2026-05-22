@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import TenantLogo from "@/components/TenantLogo";
+import OrgLogo from "@/components/OrgLogo";
 
 // ─── Pricing env vars ─────────────────────────────────────────────────────────
 // Set these in Vercel environment settings to update pricing without a deploy.
@@ -130,7 +130,7 @@ export default function ProductionChoicePage() {
   return (
     <div className="min-h-screen bg-brand-bg flex flex-col">
       <header className="border-b border-brand-border px-6 py-4 flex items-center justify-between">
-        <TenantLogo className="h-7" href="/portal" />
+        <OrgLogo className="h-7" href="/portal" />
         <a href="/portal" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">
           Home
         </a>
