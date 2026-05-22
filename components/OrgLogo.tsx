@@ -63,7 +63,7 @@ export function invalidateOrgCache(): void {
 }
 
 // ── Component ───────────────────────────────────────────────────────────────
-export default function OrgLogo({ href = "/portal", className = "h-7" }: Props) {
+export default function OrgLogo({ href = "/portal", className = "h-10" }: Props) {
   const tenant = useTenant();
 
   // "pending" while the fetch is in-flight so we can show a faded placeholder

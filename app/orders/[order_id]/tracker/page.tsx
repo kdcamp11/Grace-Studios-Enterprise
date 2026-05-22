@@ -176,7 +176,7 @@ export default function TrackerPage() {
       )}
       <header className="border-b border-brand-border px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <OrgLogo className="h-7" href="/portal" />
+          <OrgLogo className="h-10" href="/portal" />
           <a href="/portal" className="text-xs font-display font-bold uppercase tracking-widest text-brand-primary hover:text-brand-secondary transition-colors">
             Client Portal
           </a>

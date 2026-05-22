@@ -6,7 +6,7 @@ import { useTenant } from "@/lib/tenant/context";
 
 const DEFAULT_LOGO = "/grace-enterprise-logo.jpeg";
 
-export default function TenantLogo({ className = "h-8", href = "/portal" }: {
+export default function TenantLogo({ className = "h-10", href = "/portal" }: {
   className?: string;
   href?: string;
 }) {

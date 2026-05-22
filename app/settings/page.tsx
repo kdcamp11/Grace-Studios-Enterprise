@@ -215,7 +215,7 @@ export default function SettingsPage() {
     <div className="min-h-screen bg-brand-bg flex flex-col">
       <header className="border-b border-brand-border px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <OrgLogo className="h-7" href={backHref} />
+          <OrgLogo className="h-10" href={backHref} />
           <a href={backHref} className="text-xs font-display font-bold uppercase tracking-widest text-brand-primary hover:text-brand-secondary transition-colors">
             {role === "admin" ? "Admin Portal" : role === "supplier" ? "Supplier Portal" : "Client Portal"}
           </a>

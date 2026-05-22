@@ -90,7 +90,7 @@ export default function CheckoutPage() {
   return (
     <div className="min-h-screen bg-brand-bg flex flex-col">
       <header className="border-b border-brand-border px-6 py-4 flex items-center justify-between">
-        <OrgLogo className="h-7" href="/portal" />
+        <OrgLogo className="h-10" href="/portal" />
         <button
           type="button"
           onClick={() => router.back()}

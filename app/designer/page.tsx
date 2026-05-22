@@ -92,7 +92,7 @@ export default function DesignerQueuePage() {
     <div className="min-h-screen bg-brand-bg flex flex-col">
       <header className="border-b border-brand-border px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <TenantLogo className="h-7" href="/designer" />
+          <TenantLogo className="h-10" href="/designer" />
           <div>
             <p className="text-[10px] font-display uppercase tracking-[0.25em] text-brand-muted">Designer</p>
             <h1 className="font-display text-base font-bold uppercase tracking-wide text-brand-text">Concept Queue</h1>
