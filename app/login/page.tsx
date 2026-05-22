@@ -236,9 +236,9 @@ export default function LoginPage() {
             </div>
 
             <h1 className="font-display font-bold uppercase text-brand-text leading-[0.9] tracking-tight mb-6">
-              <span className="block" style={{ fontSize: "clamp(1.9rem, 4vw, 3.5rem)" }}>The Operating</span>
-              <span className="block" style={{ fontSize: "clamp(1.9rem, 4vw, 3.5rem)" }}>System for</span>
-              <span className="block text-brand-primary" style={{ fontSize: "clamp(1.9rem, 4vw, 3.5rem)" }}>Elite Programs.</span>
+              <span className="block" style={{ fontSize: "clamp(1.7rem, 3.4vw, 3rem)" }}>The Operating</span>
+              <span className="block" style={{ fontSize: "clamp(1.7rem, 3.4vw, 3rem)" }}>System for</span>
+              <span className="block text-brand-primary" style={{ fontSize: "clamp(1.7rem, 3.4vw, 3rem)" }}>Elite Programs.</span>
             </h1>
 
             <p className="text-sm text-brand-muted font-barlow max-w-[420px] leading-relaxed mb-8">
@@ -345,19 +345,18 @@ export default function LoginPage() {
       {/* ══════════════════════════════════════════════════════════════════
           JERSEY STRIP — visual proof of work
       ══════════════════════════════════════════════════════════════════ */}
-      <div className="border-b border-brand-border overflow-hidden">
-        <div className="grid grid-cols-4 h-36 sm:h-52">
+      <div className="border-b border-brand-border">
+        <div className="grid grid-cols-4">
           {JERSEYS.map((j) => (
-            <div key={j.name} className="relative overflow-hidden group border-r last:border-r-0 border-brand-border">
+            <div key={j.name} className="relative group border-r last:border-r-0 border-brand-border bg-brand-bg flex items-center justify-center px-4 py-6 sm:py-8">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={j.src}
                 alt={j.name}
-                className="w-full h-full object-cover scale-105 group-hover:scale-110 transition-transform duration-700 ease-out"
+                className="w-full max-h-52 sm:max-h-64 object-contain group-hover:scale-105 transition-transform duration-500 ease-out"
               />
-              <div className="absolute inset-0 bg-brand-bg/30 group-hover:bg-brand-bg/10 transition-colors duration-300" />
-              <div className="absolute bottom-3 left-3">
-                <span className="text-[9px] font-display font-bold uppercase tracking-[0.25em] text-white/70">{j.name}</span>
+              <div className="absolute bottom-2 left-3">
+                <span className="text-[9px] font-display font-bold uppercase tracking-[0.25em] text-brand-muted/60">{j.name}</span>
               </div>
             </div>
           ))}
@@ -367,7 +366,7 @@ export default function LoginPage() {
       {/* ══════════════════════════════════════════════════════════════════
           PROCESS — connected step grid
       ══════════════════════════════════════════════════════════════════ */}
-      <section id="how-it-works" className="px-6 sm:px-10 lg:px-12 py-16 sm:py-20 border-b border-brand-border">
+      <section id="how-it-works" className="px-6 sm:px-10 lg:px-12 py-12 sm:py-16 border-b border-brand-border">
         <div className="max-w-6xl mx-auto">
 
           <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-5 mb-10">
@@ -376,7 +375,7 @@ export default function LoginPage() {
                 <div className="w-[3px] h-5 bg-brand-primary flex-shrink-0" />
                 <span className="text-[10px] font-display font-bold uppercase tracking-[0.3em] text-brand-primary">The Process</span>
               </div>
-              <h2 className="font-display font-bold uppercase tracking-tight text-brand-text leading-none" style={{ fontSize: "clamp(1.5rem, 2.8vw, 2.5rem)" }}>
+              <h2 className="font-display font-bold uppercase tracking-tight text-brand-text leading-none" style={{ fontSize: "clamp(1.3rem, 2.4vw, 2.1rem)" }}>
                 How Every Order<br />Gets Built.
               </h2>
             </div>
@@ -430,14 +429,14 @@ export default function LoginPage() {
       {/* ══════════════════════════════════════════════════════════════════
           ROLES — three-panel editorial
       ══════════════════════════════════════════════════════════════════ */}
-      <section className="px-6 sm:px-10 lg:px-12 py-16 sm:py-20 border-b border-brand-border">
+      <section className="px-6 sm:px-10 lg:px-12 py-12 sm:py-16 border-b border-brand-border">
         <div className="max-w-6xl mx-auto">
 
           <div className="flex items-center gap-2.5 mb-4">
             <div className="w-[3px] h-5 bg-brand-primary flex-shrink-0" />
             <span className="text-[10px] font-display font-bold uppercase tracking-[0.3em] text-brand-primary">Every Role Has a Home</span>
           </div>
-          <h2 className="font-display font-bold uppercase tracking-tight text-brand-text leading-none mb-12" style={{ fontSize: "clamp(1.5rem, 2.8vw, 2.5rem)" }}>
+          <h2 className="font-display font-bold uppercase tracking-tight text-brand-text leading-none mb-12" style={{ fontSize: "clamp(1.3rem, 2.4vw, 2.1rem)" }}>
             Built for Three Sides<br />of the Network.
           </h2>
 
@@ -524,14 +523,14 @@ export default function LoginPage() {
       {/* ══════════════════════════════════════════════════════════════════
           FINAL CTA — editorial split
       ══════════════════════════════════════════════════════════════════ */}
-      <section className="px-6 sm:px-10 lg:px-12 py-16 sm:py-20 border-b border-brand-border">
+      <section className="px-6 sm:px-10 lg:px-12 py-12 sm:py-16 border-b border-brand-border">
         <div className="max-w-6xl mx-auto flex flex-col lg:flex-row items-start lg:items-end justify-between gap-10">
           <div>
             <div className="flex items-center gap-2.5 mb-6">
               <div className="w-[3px] h-5 bg-brand-primary flex-shrink-0" />
               <span className="text-[10px] font-display font-bold uppercase tracking-[0.3em] text-brand-primary">Ready to Build</span>
             </div>
-            <h2 className="font-display font-bold uppercase tracking-tight text-brand-text leading-[0.9]" style={{ fontSize: "clamp(1.8rem, 3.5vw, 3rem)" }}>
+            <h2 className="font-display font-bold uppercase tracking-tight text-brand-text leading-[0.9]" style={{ fontSize: "clamp(1.6rem, 3vw, 2.6rem)" }}>
               Your Program's<br />
               <span className="text-brand-primary">Identity</span><br />
               Starts Here.
