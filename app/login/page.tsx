@@ -34,7 +34,7 @@ const PREVIEW_ORDERS = [
     stage: "In Production",
     cta: "View Status →",
     urgent: false,
-    dot: "bg-blue-400",
+    dot: "bg-brand-muted/60",
   },
   {
     id: "GE-2025-0807",
@@ -43,7 +43,7 @@ const PREVIEW_ORDERS = [
     stage: "Shipped",
     cta: "Track Order →",
     urgent: false,
-    dot: "bg-emerald-400",
+    dot: "bg-brand-muted/40",
   },
 ];
 
@@ -66,7 +66,7 @@ const STEPS = [
   {
     num: "02",
     who: "AI",
-    whoClass: "text-violet-400 bg-violet-400/10 border-violet-400/30",
+    whoClass: "text-brand-muted bg-brand-surface border-brand-border",
     title: "AI Generates Concepts",
     detail: "Multiple renders from your brief. You select the direction you want.",
     isApproval: true,
@@ -75,7 +75,7 @@ const STEPS = [
   {
     num: "03",
     who: "Designer",
-    whoClass: "text-violet-300 bg-violet-300/10 border-violet-300/30",
+    whoClass: "text-brand-muted bg-brand-surface border-brand-border",
     title: "Illustrator Mockup",
     detail: "Designer builds production-ready files from your approved concept.",
     isApproval: false,
@@ -92,7 +92,7 @@ const STEPS = [
   {
     num: "05",
     who: "Supplier",
-    whoClass: "text-emerald-400 bg-emerald-400/10 border-emerald-400/30",
+    whoClass: "text-brand-muted bg-brand-surface border-brand-border",
     title: "Production & Delivery",
     detail: "First piece review, then full production. Every step tracked.",
     isApproval: false,
@@ -113,16 +113,16 @@ const ROLES = [
     headline: "AI-assisted.\nHuman-crafted.",
     body: "Receive assigned briefs, use AI renders as a starting point, and deliver production-ready Illustrator mockups your clients can actually approve.",
     href: "/designer",
-    badge: "text-violet-400 bg-violet-400/10 border-violet-400/30",
-    topBar: "bg-violet-500",
+    badge: "text-brand-muted bg-brand-surface border-brand-border",
+    topBar: "bg-brand-border",
   },
   {
     label: "SUPPLIER",
     headline: "Clear files.\nClean runs.",
     body: "Receive fully approved production files, submit first-piece photos for client review, then run bulk production with confidence.",
     href: "/supplier",
-    badge: "text-emerald-400 bg-emerald-400/10 border-emerald-400/30",
-    topBar: "bg-emerald-500",
+    badge: "text-brand-muted bg-brand-surface border-brand-border",
+    topBar: "bg-brand-border",
   },
 ];
 
@@ -224,24 +224,24 @@ export default function LoginPage() {
           HERO — asymmetric split
       ══════════════════════════════════════════════════════════════════ */}
       <section className="border-b border-brand-border overflow-hidden">
-        <div className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16 grid lg:grid-cols-[1fr_460px] xl:grid-cols-[1fr_520px] gap-0 min-h-[620px] lg:min-h-[680px]">
+        <div className="max-w-6xl mx-auto px-6 sm:px-10 lg:px-12 grid lg:grid-cols-[1fr_400px] xl:grid-cols-[1fr_440px] gap-0 min-h-[540px] lg:min-h-[600px]">
 
           {/* Left — editorial headline */}
-          <div className="flex flex-col justify-center py-20 lg:py-24 lg:pr-16 border-b lg:border-b-0 lg:border-r border-brand-border">
-            <div className="flex items-center gap-2.5 mb-10">
-              <div className="w-[3px] h-7 bg-brand-primary flex-shrink-0" />
+          <div className="flex flex-col justify-center py-14 lg:py-20 lg:pr-14 border-b lg:border-b-0 lg:border-r border-brand-border">
+            <div className="flex items-center gap-2.5 mb-7">
+              <div className="w-[3px] h-5 bg-brand-primary flex-shrink-0" />
               <span className="text-[10px] font-display font-bold uppercase tracking-[0.3em] text-brand-primary">
                 Programs · Designers · Suppliers
               </span>
             </div>
 
-            <h1 className="font-display font-bold uppercase text-brand-text leading-[0.9] tracking-tight mb-8">
-              <span className="block" style={{ fontSize: "clamp(2.8rem, 6.5vw, 5.5rem)" }}>The Operating</span>
-              <span className="block" style={{ fontSize: "clamp(2.8rem, 6.5vw, 5.5rem)" }}>System for</span>
-              <span className="block text-brand-primary" style={{ fontSize: "clamp(2.8rem, 6.5vw, 5.5rem)" }}>Elite Programs.</span>
+            <h1 className="font-display font-bold uppercase text-brand-text leading-[0.9] tracking-tight mb-6">
+              <span className="block" style={{ fontSize: "clamp(1.9rem, 4vw, 3.5rem)" }}>The Operating</span>
+              <span className="block" style={{ fontSize: "clamp(1.9rem, 4vw, 3.5rem)" }}>System for</span>
+              <span className="block text-brand-primary" style={{ fontSize: "clamp(1.9rem, 4vw, 3.5rem)" }}>Elite Programs.</span>
             </h1>
 
-            <p className="text-[15px] text-brand-muted font-barlow max-w-[480px] leading-relaxed mb-10">
+            <p className="text-sm text-brand-muted font-barlow max-w-[420px] leading-relaxed mb-8">
               AI-accelerated concept generation. Designer-built Illustrator files.
               Two client approvals before a single garment is cut.
               This is how elite programs run their apparel operations.
@@ -250,13 +250,13 @@ export default function LoginPage() {
             <div className="flex flex-col sm:flex-row items-start gap-3">
               <Link
                 href="/signup"
-                className="px-8 py-4 rounded-lg bg-brand-primary text-white font-display font-bold text-sm uppercase tracking-widest hover:bg-brand-secondary transition-colors"
+                className="px-7 py-3.5 rounded-lg bg-brand-primary text-white font-display font-bold text-xs uppercase tracking-widest hover:bg-brand-secondary transition-colors"
               >
                 Get Started →
               </Link>
               <a
                 href="#how-it-works"
-                className="px-8 py-4 rounded-lg border border-brand-border text-brand-muted font-display font-bold text-sm uppercase tracking-widest hover:border-brand-primary hover:text-brand-primary transition-colors"
+                className="px-7 py-3.5 rounded-lg border border-brand-border text-brand-muted font-display font-bold text-xs uppercase tracking-widest hover:border-brand-primary hover:text-brand-primary transition-colors"
               >
                 See the Process
               </a>
@@ -264,7 +264,7 @@ export default function LoginPage() {
           </div>
 
           {/* Right — live order tracker preview */}
-          <div className="hidden lg:flex flex-col justify-end pt-16 pl-10 xl:pl-12">
+          <div className="hidden lg:flex flex-col justify-end pt-12 pl-8 xl:pl-10">
             <div className="bg-brand-surface border border-brand-border border-b-0 rounded-t-2xl overflow-hidden shadow-[0_-8px_40px_rgba(0,0,0,0.25)]">
               {/* Panel chrome */}
               <div className="border-b border-brand-border px-5 py-4 flex items-center justify-between bg-brand-bg/50">
@@ -273,7 +273,7 @@ export default function LoginPage() {
                   <span className="text-[10px] font-display font-bold uppercase tracking-[0.2em] text-brand-text">Order Tracker</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                  <div className="w-1.5 h-1.5 rounded-full bg-brand-muted/50" />
                   <span className="text-[9px] font-barlow text-brand-muted">Live</span>
                 </div>
               </div>
@@ -329,13 +329,13 @@ export default function LoginPage() {
           STATS BAR
       ══════════════════════════════════════════════════════════════════ */}
       <div className="border-b border-brand-border">
-        <div className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16 grid grid-cols-2 sm:grid-cols-4">
+        <div className="max-w-6xl mx-auto px-6 sm:px-10 lg:px-12 grid grid-cols-2 sm:grid-cols-4">
           {STATS.map((s, i) => (
             <div
               key={s.label}
-              className={`py-8 flex flex-col gap-1 ${i > 0 ? "border-l border-brand-border pl-8 sm:pl-10" : ""} ${i < STATS.length - 1 ? "pr-8 sm:pr-10" : ""}`}
+              className={`py-6 flex flex-col gap-1 ${i > 0 ? "border-l border-brand-border pl-6 sm:pl-8" : ""} ${i < STATS.length - 1 ? "pr-6 sm:pr-8" : ""}`}
             >
-              <span className="font-display font-bold text-brand-text text-3xl tracking-tight leading-none">{s.value}</span>
+              <span className="font-display font-bold text-brand-text text-2xl tracking-tight leading-none">{s.value}</span>
               <span className="text-[10px] font-display uppercase tracking-[0.2em] text-brand-muted mt-1">{s.label}</span>
             </div>
           ))}
@@ -346,7 +346,7 @@ export default function LoginPage() {
           JERSEY STRIP — visual proof of work
       ══════════════════════════════════════════════════════════════════ */}
       <div className="border-b border-brand-border overflow-hidden">
-        <div className="grid grid-cols-4 h-48 sm:h-64">
+        <div className="grid grid-cols-4 h-36 sm:h-52">
           {JERSEYS.map((j) => (
             <div key={j.name} className="relative overflow-hidden group border-r last:border-r-0 border-brand-border">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -367,35 +367,35 @@ export default function LoginPage() {
       {/* ══════════════════════════════════════════════════════════════════
           PROCESS — connected step grid
       ══════════════════════════════════════════════════════════════════ */}
-      <section id="how-it-works" className="px-6 sm:px-10 lg:px-16 py-24 border-b border-brand-border">
-        <div className="max-w-[1400px] mx-auto">
+      <section id="how-it-works" className="px-6 sm:px-10 lg:px-12 py-16 sm:py-20 border-b border-brand-border">
+        <div className="max-w-6xl mx-auto">
 
-          <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6 mb-14">
+          <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-5 mb-10">
             <div>
-              <div className="flex items-center gap-2.5 mb-5">
-                <div className="w-[3px] h-6 bg-brand-primary flex-shrink-0" />
+              <div className="flex items-center gap-2.5 mb-4">
+                <div className="w-[3px] h-5 bg-brand-primary flex-shrink-0" />
                 <span className="text-[10px] font-display font-bold uppercase tracking-[0.3em] text-brand-primary">The Process</span>
               </div>
-              <h2 className="font-display font-bold uppercase tracking-tight text-brand-text leading-none" style={{ fontSize: "clamp(2rem, 4vw, 3.5rem)" }}>
+              <h2 className="font-display font-bold uppercase tracking-tight text-brand-text leading-none" style={{ fontSize: "clamp(1.5rem, 2.8vw, 2.5rem)" }}>
                 How Every Order<br />Gets Built.
               </h2>
             </div>
-            <p className="text-sm font-barlow text-brand-muted max-w-[300px] leading-relaxed lg:text-right lg:pb-1">
+            <p className="text-xs font-barlow text-brand-muted max-w-[260px] leading-relaxed lg:text-right lg:pb-0.5">
               Two client sign-offs. Zero guesswork.
               Every file reviewed by a human before it touches a supplier.
             </p>
           </div>
 
           {/* Steps grid — gap-px + parent bg trick creates seamless inner borders */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-px bg-brand-border border border-brand-border rounded-2xl overflow-hidden">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-px bg-brand-border border border-brand-border rounded-xl overflow-hidden">
             {STEPS.map((step) => (
               <div
                 key={step.num}
-                className={`flex flex-col gap-5 p-7 ${step.isApproval ? "bg-brand-surface" : "bg-brand-bg"}`}
+                className={`flex flex-col gap-4 p-5 sm:p-6 ${step.isApproval ? "bg-brand-surface" : "bg-brand-bg"}`}
               >
                 {/* Top row: step number + approval badge */}
                 <div className="flex items-start justify-between">
-                  <span className="font-display font-bold text-[3rem] leading-none text-brand-border select-none">{step.num}</span>
+                  <span className="font-display font-bold text-[2.25rem] leading-none text-brand-border select-none">{step.num}</span>
                   {step.isApproval && (
                     <span className="px-2 py-1 rounded bg-brand-primary/10 border border-brand-primary/30 text-brand-primary font-display font-bold text-[8px] uppercase tracking-widest whitespace-nowrap">
                       ✓ Approval
@@ -408,13 +408,13 @@ export default function LoginPage() {
                   <span className={`self-start text-[8px] font-display font-bold uppercase tracking-[0.2em] px-2 py-0.5 rounded border ${step.whoClass}`}>
                     {step.who}
                   </span>
-                  <p className="font-display font-bold uppercase tracking-wide text-brand-text text-xs leading-snug">{step.title}</p>
+                  <p className="font-display font-bold uppercase tracking-wide text-brand-text text-[11px] leading-snug">{step.title}</p>
                   <p className="text-[11px] font-barlow text-brand-muted leading-relaxed">{step.detail}</p>
                 </div>
 
                 {/* Approval indicator */}
                 {step.isApproval && "approvalLabel" in step && (
-                  <div className="flex items-center gap-2 pt-4 border-t border-brand-border mt-auto">
+                  <div className="flex items-center gap-2 pt-3 border-t border-brand-border mt-auto">
                     <div className="w-1.5 h-1.5 rounded-full bg-brand-primary flex-shrink-0" />
                     <span className="text-[9px] font-display uppercase tracking-widest text-brand-primary">
                       {(step as typeof step & { approvalLabel: string }).approvalLabel}
@@ -430,38 +430,38 @@ export default function LoginPage() {
       {/* ══════════════════════════════════════════════════════════════════
           ROLES — three-panel editorial
       ══════════════════════════════════════════════════════════════════ */}
-      <section className="px-6 sm:px-10 lg:px-16 py-24 border-b border-brand-border">
-        <div className="max-w-[1400px] mx-auto">
+      <section className="px-6 sm:px-10 lg:px-12 py-16 sm:py-20 border-b border-brand-border">
+        <div className="max-w-6xl mx-auto">
 
-          <div className="flex items-center gap-2.5 mb-5">
-            <div className="w-[3px] h-6 bg-brand-primary flex-shrink-0" />
+          <div className="flex items-center gap-2.5 mb-4">
+            <div className="w-[3px] h-5 bg-brand-primary flex-shrink-0" />
             <span className="text-[10px] font-display font-bold uppercase tracking-[0.3em] text-brand-primary">Every Role Has a Home</span>
           </div>
-          <h2 className="font-display font-bold uppercase tracking-tight text-brand-text leading-none mb-16" style={{ fontSize: "clamp(2rem, 4vw, 3.5rem)" }}>
+          <h2 className="font-display font-bold uppercase tracking-tight text-brand-text leading-none mb-12" style={{ fontSize: "clamp(1.5rem, 2.8vw, 2.5rem)" }}>
             Built for Three Sides<br />of the Network.
           </h2>
 
           {/* Connected panel — no gutter, inner borders only */}
-          <div className="border border-brand-border rounded-2xl overflow-hidden grid grid-cols-1 lg:grid-cols-3">
+          <div className="border border-brand-border rounded-xl overflow-hidden grid grid-cols-1 lg:grid-cols-3">
             {ROLES.map((role, i) => (
               <div
                 key={role.label}
-                className={`group relative flex flex-col gap-6 p-8 xl:p-10 hover:bg-brand-surface transition-colors duration-300
+                className={`group relative flex flex-col gap-5 p-6 xl:p-8 hover:bg-brand-surface transition-colors duration-300
                   ${i > 0 ? "border-t lg:border-t-0 lg:border-l border-brand-border" : ""}
                 `}
               >
                 {/* Hover accent top bar */}
                 <div className={`absolute top-0 left-0 right-0 h-[2px] ${role.topBar} opacity-0 group-hover:opacity-100 transition-opacity duration-300`} />
 
-                <span className={`self-start text-[8px] font-display font-bold uppercase tracking-[0.2em] px-2 py-1 rounded border ${role.badge}`}>
+                <span className={`self-start text-[8px] font-display font-bold uppercase tracking-[0.2em] px-2 py-0.5 rounded border ${role.badge}`}>
                   {role.label}
                 </span>
 
-                <div className="flex flex-col gap-3 flex-1">
-                  <p className="font-display font-bold uppercase tracking-wide text-brand-text text-xl xl:text-2xl leading-tight whitespace-pre-line">
+                <div className="flex flex-col gap-2.5 flex-1">
+                  <p className="font-display font-bold uppercase tracking-wide text-brand-text text-lg xl:text-xl leading-tight whitespace-pre-line">
                     {role.headline}
                   </p>
-                  <p className="text-[13px] font-barlow text-brand-muted leading-relaxed">{role.body}</p>
+                  <p className="text-xs font-barlow text-brand-muted leading-relaxed">{role.body}</p>
                 </div>
 
                 <Link
@@ -488,7 +488,7 @@ export default function LoginPage() {
             <div className="w-[3px] h-6 bg-brand-primary flex-shrink-0" />
             <span className="text-[10px] font-display font-bold uppercase tracking-[0.3em] text-brand-primary">Existing Partner</span>
           </div>
-          <h2 className="font-display font-bold uppercase tracking-tight text-brand-text text-3xl mb-8">Sign In</h2>
+          <h2 className="font-display font-bold uppercase tracking-tight text-brand-text text-2xl mb-6">Sign In</h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             <input
               type="email" value={email} onChange={(e) => setEmail(e.target.value)}
@@ -524,35 +524,35 @@ export default function LoginPage() {
       {/* ══════════════════════════════════════════════════════════════════
           FINAL CTA — editorial split
       ══════════════════════════════════════════════════════════════════ */}
-      <section className="px-6 sm:px-10 lg:px-16 py-24 border-b border-brand-border">
-        <div className="max-w-[1400px] mx-auto flex flex-col lg:flex-row items-start lg:items-end justify-between gap-12">
+      <section className="px-6 sm:px-10 lg:px-12 py-16 sm:py-20 border-b border-brand-border">
+        <div className="max-w-6xl mx-auto flex flex-col lg:flex-row items-start lg:items-end justify-between gap-10">
           <div>
-            <div className="flex items-center gap-2.5 mb-7">
-              <div className="w-[3px] h-6 bg-brand-primary flex-shrink-0" />
+            <div className="flex items-center gap-2.5 mb-6">
+              <div className="w-[3px] h-5 bg-brand-primary flex-shrink-0" />
               <span className="text-[10px] font-display font-bold uppercase tracking-[0.3em] text-brand-primary">Ready to Build</span>
             </div>
-            <h2 className="font-display font-bold uppercase tracking-tight text-brand-text leading-[0.9]" style={{ fontSize: "clamp(2.5rem, 5.5vw, 5rem)" }}>
+            <h2 className="font-display font-bold uppercase tracking-tight text-brand-text leading-[0.9]" style={{ fontSize: "clamp(1.8rem, 3.5vw, 3rem)" }}>
               Your Program's<br />
               <span className="text-brand-primary">Identity</span><br />
               Starts Here.
             </h2>
           </div>
 
-          <div className="flex flex-col gap-5 lg:items-end lg:pb-1">
-            <p className="text-sm font-barlow text-brand-muted max-w-[280px] leading-relaxed lg:text-right">
+          <div className="flex flex-col gap-4 lg:items-end lg:pb-0.5">
+            <p className="text-xs font-barlow text-brand-muted max-w-[260px] leading-relaxed lg:text-right">
               Concepts in 48 hours. Designer-reviewed files.
               Full production tracking from brief to delivery.
             </p>
             <div className="flex flex-col sm:flex-row gap-3">
               <Link
                 href="/signup"
-                className="px-8 py-4 rounded-lg bg-brand-primary text-white font-display font-bold text-sm uppercase tracking-widest hover:bg-brand-secondary transition-colors"
+                className="px-7 py-3.5 rounded-lg bg-brand-primary text-white font-display font-bold text-xs uppercase tracking-widest hover:bg-brand-secondary transition-colors"
               >
                 Submit Your First Brief →
               </Link>
               <a
                 href="#sign-in"
-                className="px-8 py-4 rounded-lg border border-brand-border text-brand-muted font-display font-bold text-sm uppercase tracking-widest hover:border-brand-primary hover:text-brand-primary transition-colors lg:hidden"
+                className="px-7 py-3.5 rounded-lg border border-brand-border text-brand-muted font-display font-bold text-xs uppercase tracking-widest hover:border-brand-primary hover:text-brand-primary transition-colors lg:hidden"
               >
                 Sign In
               </a>
@@ -564,8 +564,8 @@ export default function LoginPage() {
       {/* ══════════════════════════════════════════════════════════════════
           FOOTER
       ══════════════════════════════════════════════════════════════════ */}
-      <footer className="border-t border-brand-border px-6 sm:px-10 lg:px-16 py-8">
-        <div className="max-w-[1400px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+      <footer className="border-t border-brand-border px-6 sm:px-10 lg:px-12 py-8">
+        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/grace-enterprise-logo.jpeg" alt="Grace Enterprise" style={{ width: 140 }} className="h-auto object-contain opacity-50" />
           <div className="flex items-center gap-6 flex-wrap justify-center">
