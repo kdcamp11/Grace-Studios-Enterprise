@@ -10,15 +10,6 @@ import type { Tenant } from "@/lib/supabase/types";
 const SPORTS   = ["basketball","football","soccer","baseball","softball","volleyball","lacrosse","hockey","tennis","wrestling"];
 const PRODUCTS = ["jersey","shorts","tracksuit","jacket","hoodie","pants","socks"];
 
-const COLORS: [keyof Tenant, string][] = [
-  ["brand_primary",   "Primary"],
-  ["brand_secondary", "Secondary"],
-  ["brand_bg",        "Background"],
-  ["brand_surface",   "Surface"],
-  ["brand_border",    "Border"],
-  ["brand_text",      "Text"],
-  ["brand_muted",     "Muted"],
-];
 
 export default function AdminSettingsPage() {
   const router      = useRouter();
@@ -190,33 +181,6 @@ export default function AdminSettingsPage() {
                   </div>
                 )}
               </div>
-            </div>
-          </section>
-
-          {/* Brand Colors */}
-          <section className={section}>
-            <h2 className="font-display font-bold uppercase tracking-widest text-xs text-brand-muted border-b border-brand-border pb-3">
-              Brand Colors
-            </h2>
-            <div className="grid grid-cols-4 gap-4">
-              {COLORS.map(([key, lbl]) => (
-                <div key={key} className="flex flex-col items-center gap-2">
-                  <div className="relative">
-                    <input
-                      type="color"
-                      className="w-12 h-12 rounded-xl border border-brand-border cursor-pointer p-1 bg-brand-surface"
-                      value={(form[key] as string) ?? "#000000"}
-                      onChange={(e) => set(key, e.target.value)}
-                    />
-                  </div>
-                  <span className="text-[10px] font-display uppercase tracking-wider text-brand-muted text-center">
-                    {lbl}
-                  </span>
-                  <span className="text-[9px] font-mono text-brand-muted opacity-60">
-                    {(form[key] as string) ?? ""}
-                  </span>
-                </div>
-              ))}
             </div>
           </section>
 

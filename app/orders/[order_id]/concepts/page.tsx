@@ -341,7 +341,12 @@ function RendersBoard({ data, studioName }: { data: BoardData; studioName?: stri
           <div className="px-4 pt-5 pb-4">
             <p className="text-[7px] font-bold uppercase tracking-[0.28em] text-gray-400 mb-2">Design Notes</p>
             <p className="text-[8px] text-gray-500 leading-relaxed">
-              {(metadata.description ?? "").slice(0, 200)}
+              {(() => {
+                const desc = (metadata.description ?? "").trim();
+                // Don't show raw JSON blobs — only human-readable text
+                if (!desc || desc.startsWith("{") || desc.startsWith("[")) return null;
+                return desc.slice(0, 200);
+              })()}
             </p>
           </div>
 
