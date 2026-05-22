@@ -105,7 +105,7 @@ const ROLES = [
     headline: "Your team.\nYour identity.",
     body: "Submit briefs, approve AI concepts, review designer mockups, and give final sign-off before production. Track your order from first stitch to delivery.",
     href: "/portal",
-    badge: "text-brand-primary bg-brand-primary/10 border-brand-primary/30",
+    badge: "text-brand-muted/70 bg-transparent border-brand-border/50",
     topBar: "bg-brand-primary",
   },
   {
@@ -113,7 +113,7 @@ const ROLES = [
     headline: "AI-assisted.\nHuman-crafted.",
     body: "Receive assigned briefs, use AI renders as a starting point, and deliver production-ready Illustrator mockups your clients can actually approve.",
     href: "/designer",
-    badge: "text-brand-muted bg-brand-surface border-brand-border",
+    badge: "text-brand-muted/70 bg-transparent border-brand-border/50",
     topBar: "bg-brand-border",
   },
   {
@@ -121,7 +121,7 @@ const ROLES = [
     headline: "Clear files.\nClean runs.",
     body: "Receive fully approved production files, submit first-piece photos for client review, then run bulk production with confidence.",
     href: "/supplier",
-    badge: "text-brand-muted bg-brand-surface border-brand-border",
+    badge: "text-brand-muted/70 bg-transparent border-brand-border/50",
     topBar: "bg-brand-border",
   },
 ];
@@ -314,7 +314,7 @@ export default function LoginPage() {
               </div>
 
               {/* Panel footer */}
-              <div className="border-t border-brand-border px-5 py-3.5 flex items-center justify-between bg-brand-bg/30">
+              <div className="border-t border-brand-border px-5 py-5 flex items-center justify-between bg-brand-bg/30">
                 <span className="text-[9px] font-barlow text-brand-muted">4 active orders</span>
                 <span className="text-[9px] font-display font-bold uppercase tracking-widest text-brand-primary hover:text-brand-secondary cursor-pointer transition-colors">
                   + New Brief
@@ -349,12 +349,12 @@ export default function LoginPage() {
         <div className="max-w-5xl mx-auto grid grid-cols-4 gap-6">
           {JERSEYS.map((j) => (
             <div key={j.name} className="group flex flex-col items-center gap-4">
-              <div className="bg-white rounded-xl w-full flex items-center justify-center px-4 py-6">
+              <div className="bg-white rounded-xl w-full flex items-center justify-center px-6 py-10 sm:py-14">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={j.src}
                   alt={j.name}
-                  className="w-full max-h-[480px] object-contain group-hover:scale-105 transition-transform duration-500 ease-out"
+                  className="w-full max-h-[600px] object-contain group-hover:scale-105 transition-transform duration-500 ease-out"
                 />
               </div>
               <span className="text-[10px] font-display font-bold uppercase tracking-[0.25em] text-brand-muted text-center">{j.name}</span>
