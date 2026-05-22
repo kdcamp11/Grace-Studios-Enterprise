@@ -127,10 +127,10 @@ const ROLES = [
 ];
 
 const JERSEYS = [
-  { name: "Bold",     src: "/jerseys/bold.png"     },
-  { name: "Gradient", src: "/jerseys/gradient.png" },
-  { name: "Program",  src: "/jerseys/program.png"  },
-  { name: "Culture",  src: "/jerseys/culture.png"  },
+  { name: "Bold",     src: "/jerseys/bold.jpg"     },
+  { name: "Gradient", src: "/jerseys/gradient.jpg" },
+  { name: "Program",  src: "/jerseys/program.jpg"  },
+  { name: "Culture",  src: "/jerseys/culture.jpg"  },
 ];
 
 // ── Component ────────────────────────────────────────────────────────────────
@@ -333,7 +333,7 @@ export default function LoginPage() {
           {STATS.map((s, i) => (
             <div
               key={s.label}
-              className={`py-6 flex flex-col gap-1 ${i > 0 ? "border-l border-brand-border pl-6 sm:pl-8" : ""} ${i < STATS.length - 1 ? "pr-6 sm:pr-8" : ""}`}
+              className={`py-8 flex flex-col gap-1 ${i > 0 ? "border-l border-brand-border pl-6 sm:pl-8" : ""} ${i < STATS.length - 1 ? "pr-6 sm:pr-8" : ""}`}
             >
               <span className="font-display font-bold text-brand-text text-2xl tracking-tight leading-none">{s.value}</span>
               <span className="text-[10px] font-display uppercase tracking-[0.2em] text-brand-muted mt-1">{s.label}</span>
@@ -345,11 +345,11 @@ export default function LoginPage() {
       {/* ══════════════════════════════════════════════════════════════════
           JERSEY STRIP — visual proof of work
       ══════════════════════════════════════════════════════════════════ */}
-      <div className="border-b border-brand-border px-5 sm:px-8 lg:px-10">
+      <div className="border-b border-brand-border px-5 sm:px-8 lg:px-10 pt-12 sm:pt-16 pb-8 sm:pb-10">
         <div className="max-w-5xl mx-auto grid grid-cols-4 gap-6">
           {JERSEYS.map((j) => (
-            <div key={j.name} className="group flex flex-col items-center gap-4">
-              <div className="bg-white rounded-xl w-full flex items-center justify-center px-6 py-10 sm:py-14">
+            <div key={j.name} className="group flex flex-col items-center gap-3">
+              <div className="bg-white rounded-xl w-full flex items-center justify-center px-5 py-8 sm:py-12">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={j.src}
@@ -357,7 +357,7 @@ export default function LoginPage() {
                   className="w-full max-h-[600px] object-contain group-hover:scale-105 transition-transform duration-500 ease-out"
                 />
               </div>
-              <span className="text-[10px] font-display font-bold uppercase tracking-[0.25em] text-brand-muted text-center">{j.name}</span>
+              <span className="text-[9px] font-display font-bold uppercase tracking-[0.3em] text-brand-muted/60 text-center">{j.name}</span>
             </div>
           ))}
         </div>
