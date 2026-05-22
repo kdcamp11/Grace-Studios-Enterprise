@@ -5,6 +5,9 @@ import { cookies } from "next/headers";
  * Creates a Supabase client that reads the authenticated user's session
  * from request cookies. Use this in all API route handlers so
  * auth.getUser() returns the real logged-in user instead of null.
+ *
+ * Uses getAll/setAll (non-deprecated) so the server can also refresh
+ * an expired access token and write updated cookies back to the response.
  */
 export const createServerClient = () => {
   const cookieStore = cookies();
@@ -13,16 +16,17 @@ export const createServerClient = () => {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value;
+        getAll() {
+          return cookieStore.getAll();
         },
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        set(name: string, value: string, options: any) {
-          try { cookieStore.set(name, value, options); } catch { /* read-only in some contexts */ }
-        },
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        remove(name: string, options: any) {
-          try { cookieStore.delete(name); } catch { /* read-only in some contexts */ }
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            );
+          } catch {
+            // Read-only in some contexts (e.g. Server Components) — safe to ignore
+          }
         },
       },
     }

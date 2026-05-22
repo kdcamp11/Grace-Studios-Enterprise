@@ -1,7 +1,8 @@
+import { createServerClient } from "@supabase/auth-helpers-nextjs";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const hostname = request.headers.get("host") ?? "localhost:3000";
   const platformDomain = process.env.NEXT_PUBLIC_PLATFORM_DOMAIN ?? "localhost:3000";
 
@@ -27,7 +28,37 @@ export function middleware(request: NextRequest) {
   requestHeaders.set("x-tenant-slug", tenantSlug);
   requestHeaders.set("x-hostname", hostname);
 
-  return NextResponse.next({ request: { headers: requestHeaders } });
+  // Build the initial response (carries tenant headers forward)
+  let response = NextResponse.next({ request: { headers: requestHeaders } });
+
+  // Refresh the Supabase session on every request so the access token stays
+  // fresh in cookies. Without this, an expired token would cause 401s on
+  // all protected API routes even when the user is logged in.
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          // Forward updated cookies to both the forwarded request and the response
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+          response = NextResponse.next({ request: { headers: requestHeaders } });
+          cookiesToSet.forEach(({ name, value, options }) =>
+            response.cookies.set(name, value, options)
+          );
+        },
+      },
+    }
+  );
+
+  // Calling getUser() triggers a token refresh if the access token is expired.
+  // We intentionally ignore the result here — auth checks happen in route handlers.
+  await supabase.auth.getUser();
+
+  return response;
 }
 
 export const config = {
