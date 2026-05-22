@@ -21,10 +21,10 @@ export default function TeamInfoPage() {
   const [error, setError]       = useState("");
   const [authChecked, setAuthChecked] = useState(false);
 
-  // Returning-client state
+  // Returning-client state (has a clients row — only ask for sport)
   const [existingClient, setExistingClient] = useState<ClientProfile | null>(null);
 
-  // New-client form state
+  // New-client form state (also used for is_prefill — pre-filled but editable)
   const [teamName, setTeamName]       = useState("");
   const [contactName, setContactName] = useState("");
   const [email, setEmail]             = useState("");
@@ -41,7 +41,16 @@ export default function TeamInfoPage() {
       if (res.ok) {
         const { client } = await res.json() as { client: ClientProfile | null };
         if (client) {
-          setExistingClient(client);
+          if (client.is_prefill) {
+            // First-timer: pre-fill the new-client form fields but keep them editable
+            setTeamName(client.name ?? "");
+            setContactName(client.contact_name ?? "");
+            setEmail(client.email ?? "");
+            setCity(client.city ?? "");
+          } else {
+            // Returning client: they have a full clients row → sport-only form
+            setExistingClient(client);
+          }
         }
       }
       setAuthChecked(true);
@@ -189,15 +198,20 @@ export default function TeamInfoPage() {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // NEW CLIENT — full team-info form
+  // NEW CLIENT — full team-info form (pre-filled from profile if available)
   // ─────────────────────────────────────────────────────────────────────────
   const canSubmit = teamName && contactName && email && city && sport;
+  const hasPrefill = Boolean(teamName || contactName || email);
 
   return (
     <BriefLayout
       currentStep={1}
       title="Tell us about your team"
-      subtitle="This information will appear on your order and design brief."
+      subtitle={
+        hasPrefill
+          ? "We pre-filled your info from your account. Update anything that's changed."
+          : "This information will appear on your order and design brief."
+      }
     >
       <form onSubmit={handleNewSubmit} className="space-y-5">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">

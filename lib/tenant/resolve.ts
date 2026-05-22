@@ -4,6 +4,12 @@ import type { Tenant } from "@/lib/supabase/types";
 // Fallback tenant used in local dev when there's no subdomain
 export const DEV_TENANT_SLUG = "dev";
 
+// Strip protocol + trailing slash from a URL string so we can compare to
+// a raw hostname (e.g. "https://grace-studios-enterprise.vercel.app" → "grace-studios-enterprise.vercel.app")
+function stripProtocol(url: string): string {
+  return url.replace(/^https?:\/\//, "").replace(/\/$/, "");
+}
+
 export async function resolveTenant(hostname: string): Promise<Tenant | null> {
   const admin = createAdminClient();
   const platformDomain = process.env.NEXT_PUBLIC_PLATFORM_DOMAIN ?? "localhost:3000";
@@ -41,6 +47,31 @@ export async function resolveTenant(hostname: string): Promise<Tenant | null> {
       .single();
 
     if (devTenant) return devTenant as Tenant;
+  }
+
+  // 4. Platform main-domain fallback
+  //    Matches the primary production URL (e.g. grace-studios-enterprise.vercel.app)
+  //    or any hostname listed in PLATFORM_HOSTNAME (comma-separated for multiple).
+  //    Set PLATFORM_HOSTNAME and PLATFORM_SLUG in your Vercel environment variables.
+  //
+  //    PLATFORM_HOSTNAME=grace-studios-enterprise.vercel.app
+  //    PLATFORM_SLUG=grace-studios          ← the slug of your root tenant in Supabase
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
+  const platformHostnames = [
+    appUrl ? stripProtocol(appUrl) : "",
+    ...(process.env.PLATFORM_HOSTNAME ?? "").split(",").map((h) => h.trim()),
+  ].filter(Boolean);
+
+  if (platformHostnames.includes(hostname)) {
+    const platformSlug = process.env.PLATFORM_SLUG ?? DEV_TENANT_SLUG;
+    const { data: platformTenant } = await admin
+      .from("tenants")
+      .select("*")
+      .eq("slug", platformSlug)
+      .eq("active", true)
+      .single();
+
+    if (platformTenant) return platformTenant as Tenant;
   }
 
   return null;
