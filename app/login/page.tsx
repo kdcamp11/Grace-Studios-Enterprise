@@ -488,57 +488,116 @@ export default function LoginPage() {
       ══════════════════════════════════════════════════════════════════ */}
       {view === "client" && (<>
       <section className="border-b border-brand-border overflow-hidden">
-        <div className="max-w-5xl mx-auto px-5 sm:px-8 lg:px-10">
+        <div className="max-w-5xl mx-auto px-5 sm:px-8 lg:px-10 py-14 lg:py-20">
 
-          {/* Desktop: headline left + path cards right */}
-          <div className="grid lg:grid-cols-[1fr_400px] xl:grid-cols-[1fr_440px] gap-0 min-h-[460px] lg:min-h-[520px]">
-
-            {/* Left — editorial headline */}
-            <div className="flex flex-col justify-center py-14 lg:py-20 lg:pr-14 border-b lg:border-b-0 lg:border-r border-brand-border">
-              <div className="flex items-center gap-2.5 mb-7">
-                <div className="w-[3px] h-5 bg-brand-primary flex-shrink-0" />
-                <span className="text-[10px] font-display font-bold uppercase tracking-[0.3em] text-brand-primary">
-                  Programs · Designers · Suppliers
-                </span>
-              </div>
-
-              <h1 className="font-display font-bold uppercase text-brand-text leading-[0.9] tracking-tight mb-6">
-                <span className="block" style={{ fontSize: "clamp(1.5rem, 2.8vw, 2.5rem)" }}>The Operating</span>
-                <span className="block" style={{ fontSize: "clamp(1.5rem, 2.8vw, 2.5rem)" }}>System for</span>
-                <span className="block text-brand-primary" style={{ fontSize: "clamp(1.5rem, 2.8vw, 2.5rem)" }}>Elite Programs.</span>
-              </h1>
-
-              <p className="text-xs text-brand-muted font-barlow max-w-[380px] leading-relaxed mb-7">
-                Design concepts ready in minutes, backed by Grace Studios design philosophy.
-                Designer-built Illustrator files. Two client approvals before a single garment is cut.
-              </p>
-
-              {/* Primary CTAs — map directly to paths */}
-              <div className="flex flex-col sm:flex-row items-start gap-3">
-                <Link href="/signup?path=consultation"
-                  className="px-7 py-3.5 rounded-lg bg-brand-primary text-white font-display font-bold text-xs uppercase tracking-widest hover:bg-brand-secondary transition-colors">
-                  Customization →
-                </Link>
-                <Link href="/signup?path=self-service"
-                  className="px-7 py-3.5 rounded-lg border border-brand-border text-brand-muted font-display font-bold text-xs uppercase tracking-widest hover:border-brand-primary hover:text-brand-primary transition-colors">
-                  Self Service →
-                </Link>
-              </div>
-            </div>
-
-            {/* Right — path cards (desktop only) */}
-            <div className="hidden lg:flex flex-col justify-center pt-10 pl-8 xl:pl-10 pb-10 gap-4">
-              <PathCard card={PATH_CARDS[0]} />
-              <PathCard card={PATH_CARDS[1]} />
-            </div>
+          {/* Eyebrow */}
+          <div className="flex items-center gap-2.5 mb-7">
+            <div className="w-[3px] h-5 bg-brand-primary flex-shrink-0" />
+            <span className="text-[10px] font-display font-bold uppercase tracking-[0.3em] text-brand-primary">
+              Programs · Designers · Suppliers
+            </span>
           </div>
 
-          {/* Mobile — path cards below headline, full width, side-by-side on sm */}
-          <div className="lg:hidden grid grid-cols-1 sm:grid-cols-2 gap-4 py-8 border-t border-brand-border">
-            <PathCard card={PATH_CARDS[0]} />
-            <PathCard card={PATH_CARDS[1]} />
-          </div>
+          {/* Headline */}
+          <h1 className="font-display font-bold uppercase text-brand-text leading-[0.9] tracking-tight mb-5">
+            <span className="block" style={{ fontSize: "clamp(1.5rem, 2.8vw, 2.5rem)" }}>The Operating</span>
+            <span className="block" style={{ fontSize: "clamp(1.5rem, 2.8vw, 2.5rem)" }}>System for</span>
+            <span className="block text-brand-primary" style={{ fontSize: "clamp(1.5rem, 2.8vw, 2.5rem)" }}>Elite Programs.</span>
+          </h1>
 
+          <p className="text-xs text-brand-muted font-barlow max-w-[480px] leading-relaxed mb-10">
+            Design concepts ready in minutes, backed by Grace Studios design philosophy.
+            Designer-built Illustrator files. Two client approvals before a single garment is cut.
+          </p>
+
+          {/* Path cards — same width as headline, side by side */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+
+            <a href="#path-customization"
+              className="group relative flex flex-col gap-4 p-6 sm:p-7 rounded-2xl border border-brand-border bg-brand-bg hover:bg-brand-surface transition-colors duration-300 shadow-sm cursor-pointer">
+              <div className="absolute top-0 left-0 right-0 h-[2px] bg-brand-primary opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-t-2xl" />
+              <div className="flex items-center justify-between">
+                <span className="text-[9px] font-display font-bold uppercase tracking-[0.2em] px-2.5 py-1 rounded border text-brand-primary bg-brand-primary/10 border-brand-primary/30">Customization</span>
+                <span className="text-[9px] font-display uppercase tracking-widest text-brand-muted/60">Full Service</span>
+              </div>
+              <p className="font-display font-bold uppercase tracking-wide text-brand-text leading-snug whitespace-pre-line" style={{ fontSize: "clamp(1rem, 1.6vw, 1.25rem)" }}>{"Custom. Collaborative.\nBuilt to Brief."}</p>
+              <ul className="space-y-2">
+                {PATH_CARDS[0].bullets.map((item) => (
+                  <li key={item} className="flex items-center gap-2.5">
+                    <span className="w-1 h-1 rounded-full bg-brand-primary flex-shrink-0" />
+                    <span className="text-xs font-barlow text-brand-muted leading-none">{item}</span>
+                  </li>
+                ))}
+              </ul>
+              <span className="text-[10px] font-display font-bold uppercase tracking-widest text-brand-muted group-hover:text-brand-primary transition-colors">Work Directly with Grace Studios →</span>
+            </a>
+
+            <a href="#path-self-service"
+              className="group relative flex flex-col gap-4 p-6 sm:p-7 rounded-2xl border border-brand-border bg-brand-bg hover:bg-brand-surface transition-colors duration-300 shadow-sm cursor-pointer">
+              <div className="absolute top-0 left-0 right-0 h-[2px] bg-brand-primary opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-t-2xl" />
+              <div className="flex items-center justify-between">
+                <span className="text-[9px] font-display font-bold uppercase tracking-[0.2em] px-2.5 py-1 rounded border text-brand-primary bg-brand-primary/10 border-brand-primary/30">Self Service</span>
+                <span className="text-[9px] font-display uppercase tracking-widest text-brand-muted/60">Design Library</span>
+              </div>
+              <p className="font-display font-bold uppercase tracking-wide text-brand-text leading-snug whitespace-pre-line" style={{ fontSize: "clamp(1rem, 1.6vw, 1.25rem)" }}>{"Grace Studios Design\nLanguage. Your Identity."}</p>
+              <ul className="space-y-2">
+                {PATH_CARDS[1].bullets.map((item) => (
+                  <li key={item} className="flex items-center gap-2.5">
+                    <span className="w-1 h-1 rounded-full bg-brand-primary flex-shrink-0" />
+                    <span className="text-xs font-barlow text-brand-muted leading-none">{item}</span>
+                  </li>
+                ))}
+              </ul>
+              <span className="text-[10px] font-display font-bold uppercase tracking-widest text-brand-muted group-hover:text-brand-primary transition-colors">Start with the Design Library →</span>
+            </a>
+
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════════════════════
+          PATH DETAIL — Customization
+      ══════════════════════════════════════════════════════════════════ */}
+      <section id="path-customization" className="border-b border-brand-border scroll-mt-20">
+        <div className="max-w-5xl mx-auto px-5 sm:px-8 lg:px-10 py-14 lg:py-20">
+          <div className="flex items-center gap-2.5 mb-5">
+            <div className="w-[3px] h-5 bg-brand-primary flex-shrink-0" />
+            <span className="text-[10px] font-display font-bold uppercase tracking-[0.3em] text-brand-primary">Customization — Full Service</span>
+          </div>
+          <h2 className="font-display font-bold uppercase tracking-tight text-brand-text leading-none mb-4" style={{ fontSize: "clamp(1.5rem, 2.8vw, 2.5rem)" }}>
+            Custom. Collaborative.<br />Built to Brief.
+          </h2>
+          <p className="text-xs font-barlow text-brand-muted max-w-[480px] leading-relaxed mb-8">
+            For programs that want a design built entirely around their identity. You brief us, we design,
+            you approve at every step — concept, mockup, and final production file.
+          </p>
+          <Link href="/signup?path=consultation"
+            className="inline-block px-8 py-4 rounded-lg bg-brand-primary text-white font-display font-bold text-xs uppercase tracking-widest hover:bg-brand-secondary transition-colors">
+            Get Started with Customization →
+          </Link>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════════════════════
+          PATH DETAIL — Self Service
+      ══════════════════════════════════════════════════════════════════ */}
+      <section id="path-self-service" className="border-b border-brand-border scroll-mt-20">
+        <div className="max-w-5xl mx-auto px-5 sm:px-8 lg:px-10 py-14 lg:py-20">
+          <div className="flex items-center gap-2.5 mb-5">
+            <div className="w-[3px] h-5 bg-brand-primary flex-shrink-0" />
+            <span className="text-[10px] font-display font-bold uppercase tracking-[0.3em] text-brand-primary">Self Service — Design Library</span>
+          </div>
+          <h2 className="font-display font-bold uppercase tracking-tight text-brand-text leading-none mb-4" style={{ fontSize: "clamp(1.5rem, 2.8vw, 2.5rem)" }}>
+            Grace Studios Design<br />Language. Your Identity.
+          </h2>
+          <p className="text-xs font-barlow text-brand-muted max-w-[480px] leading-relaxed mb-8">
+            Choose from curated Grace Studios silhouettes built on our design philosophy. Apply your
+            colors, logo, and identity — get a concept ready in minutes.
+          </p>
+          <Link href="/signup?path=self-service"
+            className="inline-block px-8 py-4 rounded-lg bg-brand-primary text-white font-display font-bold text-xs uppercase tracking-widest hover:bg-brand-secondary transition-colors">
+            Start with the Design Library →
+          </Link>
         </div>
       </section>
 
