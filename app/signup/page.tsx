@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { getProfile, rolePortal } from "@/lib/profile";
@@ -23,9 +23,15 @@ const ROLE_OPTIONS: { value: Role; label: string; description: string }[] = [
   },
 ];
 
-export default function SignupPage() {
+function SignupForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const tenant = useTenant();
+
+  // path=consultation → land on /portal/consultation after confirming email
+  // path=self-service  → land on /portal (default)
+  const pathParam = searchParams.get("path");
+  const nextAfterSignup = pathParam === "consultation" ? "/portal/consultation" : "/portal";
   const [fullName, setFullName]   = useState("");
   const [company, setCompany]     = useState("");
   const [email, setEmail]         = useState("");
@@ -58,7 +64,7 @@ export default function SignupPage() {
       email,
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextAfterSignup)}`,
         data: { full_name: fullName, role },
       },
     });
@@ -297,5 +303,13 @@ export default function SignupPage() {
 
       <div className="h-px w-full bg-brand-border" />
     </div>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense>
+      <SignupForm />
+    </Suspense>
   );
 }

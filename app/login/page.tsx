@@ -65,10 +65,10 @@ const STEPS = [
   },
   {
     num: "02",
-    who: "AI",
+    who: "Design",
     whoClass: "text-brand-primary bg-brand-primary/10 border-brand-primary/30",
-    title: "AI Generates Concepts",
-    detail: "Multiple renders from your brief. You select the direction you want.",
+    title: "Concept Ready in Minutes",
+    detail: "Your concept — built on Grace Studios design philosophy — is ready for review in minutes. You choose the direction.",
     isApproval: true,
     approvalLabel: "You approve the direction",
   },
@@ -103,15 +103,15 @@ const ROLES = [
   {
     label: "PROGRAM PARTNER",
     headline: "Your team.\nYour identity.",
-    body: "Submit briefs, approve AI concepts, review designer mockups, and give final sign-off before production. Track your order from first stitch to delivery.",
+    body: "Submit briefs, approve design concepts, review designer mockups, and give final sign-off before production. Track your order from first stitch to delivery.",
     href: "/portal",
     badge: "text-brand-muted/70 bg-transparent border-brand-border/50",
     topBar: "bg-brand-primary",
   },
   {
     label: "DESIGNER",
-    headline: "AI-assisted.\nHuman-crafted.",
-    body: "Receive assigned briefs, use AI renders as a starting point, and deliver production-ready Illustrator mockups your clients can actually approve.",
+    headline: "Concept-driven.\nHuman-crafted.",
+    body: "Receive assigned briefs, use the design concept as a starting point, and deliver production-ready Illustrator mockups your clients can actually approve.",
     href: "/designer",
     badge: "text-brand-muted/70 bg-transparent border-brand-border/50",
     topBar: "bg-brand-border",
@@ -453,9 +453,8 @@ export default function LoginPage() {
             </h1>
 
             <p className="text-xs text-brand-muted font-barlow max-w-[380px] leading-relaxed mb-7">
-              AI-accelerated concept generation. Designer-built Illustrator files.
-              Two client approvals before a single garment is cut.
-              This is how elite programs run their apparel operations.
+              Design concepts ready in minutes, backed by Grace Studios design philosophy.
+              Designer-built Illustrator files. Two client approvals before a single garment is cut.
             </p>
 
             <div className="flex flex-col sm:flex-row items-start gap-3">
@@ -474,190 +473,68 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/* Right — live order tracker preview */}
-          <div className="hidden lg:flex flex-col justify-end pt-12 pl-8 xl:pl-10 pb-8">
-            <div className="bg-brand-surface border border-brand-border rounded-2xl overflow-hidden shadow-[0_4px_32px_rgba(0,0,0,0.18)]">
-              {/* Panel chrome */}
-              <div className="border-b border-brand-border px-5 py-4 flex items-center justify-between bg-brand-bg/50">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-2 h-2 rounded-full bg-brand-primary animate-pulse" />
-                  <span className="text-[10px] font-display font-bold uppercase tracking-[0.2em] text-brand-text">Order Tracker</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <div className="w-1.5 h-1.5 rounded-full bg-brand-muted/50" />
-                  <span className="text-[9px] font-barlow text-brand-muted">Live</span>
-                </div>
-              </div>
+          {/* Right — two paths */}
+          <div className="hidden lg:flex flex-col justify-center pt-10 pl-8 xl:pl-10 pb-10 gap-4">
 
-              {/* Order rows */}
-              <div className="divide-y divide-brand-border">
-                {PREVIEW_ORDERS.map((order) => (
-                  <div
-                    key={order.id}
-                    className={`px-5 py-4 flex items-start justify-between gap-4 cursor-default transition-colors duration-200 ${
-                      order.urgent ? "hover:bg-amber-400/5" : "hover:bg-brand-bg/40"
-                    }`}
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${order.dot}`} />
-                        <span className="text-[11px] font-display font-bold text-brand-text tracking-wide truncate">
-                          {order.team}
-                        </span>
-                        {order.urgent && (
-                          <span className="flex-shrink-0 px-1.5 py-0.5 rounded bg-amber-400/10 border border-amber-400/30 text-amber-400 font-display font-bold text-[8px] uppercase tracking-widest">
-                            Action
-                          </span>
-                        )}
-                      </div>
-                      <div className="ml-3.5 space-y-0.5">
-                        <p className="text-[9px] font-barlow text-brand-muted">{order.id} · {order.sport}</p>
-                        <p className="text-[10px] font-barlow text-brand-muted/80">{order.stage}</p>
-                      </div>
-                    </div>
-                    <span className={`text-[9px] font-display font-bold uppercase tracking-widest flex-shrink-0 mt-0.5 ${
-                      order.urgent ? "text-amber-500" : "text-brand-muted"
-                    }`}>
-                      {order.cta}
-                    </span>
-                  </div>
-                ))}
-              </div>
-
-              {/* Panel footer */}
-              <div className="border-t border-brand-border px-5 py-5 flex items-center justify-between bg-brand-bg/30">
-                <span className="text-[9px] font-barlow text-brand-muted">4 active orders</span>
-                <span className="text-[9px] font-display font-bold uppercase tracking-widest text-brand-primary hover:text-brand-secondary cursor-pointer transition-colors">
-                  + New Brief
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ══════════════════════════════════════════════════════════════════
-          TWO PATHS — Consultation vs. Design Library
-      ══════════════════════════════════════════════════════════════════ */}
-      <section className="px-5 sm:px-8 lg:px-10 py-12 sm:py-16 border-b border-brand-border">
-        <div className="max-w-5xl mx-auto">
-
-          <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-5 mb-10">
-            <div>
-              <div className="flex items-center gap-2.5 mb-4">
-                <div className="w-[3px] h-5 bg-brand-primary flex-shrink-0" />
-                <span className="text-[10px] font-display font-bold uppercase tracking-[0.3em] text-brand-primary">How We Work With You</span>
-              </div>
-              <h2 className="font-display font-bold uppercase tracking-tight text-brand-text leading-none" style={{ fontSize: "clamp(1.1rem, 2vw, 1.75rem)" }}>
-                Two Ways to Build<br />with Grace Studios.
-              </h2>
-            </div>
-            <p className="text-xs font-barlow text-brand-muted max-w-[280px] leading-relaxed lg:text-right">
-              Whether you want a fully custom design or want to move fast using our proven design library —
-              both paths deliver the same production quality.
-            </p>
-          </div>
-
-          <div className="border border-brand-border rounded-xl overflow-hidden grid grid-cols-1 lg:grid-cols-2">
-
-            {/* ── PATH 1: CONSULTATION ─────────────────────────────────── */}
-            <div className="group relative flex flex-col gap-5 p-6 xl:p-8 bg-brand-bg hover:bg-brand-surface transition-colors duration-300">
-              <div className="absolute top-0 left-0 right-0 h-[2px] bg-brand-primary opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-
-              <div className="flex items-start justify-between gap-4">
-                <span className="self-start text-[8px] font-display font-bold uppercase tracking-[0.2em] px-2 py-0.5 rounded border text-brand-primary bg-brand-primary/10 border-brand-primary/30">
+            {/* PATH 1 — Customization */}
+            <Link href="/signup?path=consultation" className="group relative flex flex-col gap-3 p-5 rounded-2xl border border-brand-border bg-brand-bg hover:bg-brand-surface transition-colors duration-300 shadow-sm">
+              <div className="absolute top-0 left-0 right-0 h-[2px] bg-brand-primary opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-t-2xl" />
+              <div className="flex items-center justify-between">
+                <span className="text-[8px] font-display font-bold uppercase tracking-[0.2em] px-2 py-0.5 rounded border text-brand-primary bg-brand-primary/10 border-brand-primary/30">
                   Customization
                 </span>
-                <span className="text-[8px] font-display uppercase tracking-widest text-brand-muted border border-brand-border rounded px-2 py-0.5">
-                  Full Service
-                </span>
+                <span className="text-[8px] font-display uppercase tracking-widest text-brand-muted/60">Full Service</span>
               </div>
+              <p className="font-display font-bold uppercase tracking-wide text-brand-text text-sm leading-snug">
+                Custom. Collaborative.<br />Built to Brief.
+              </p>
+              <ul className="space-y-1.5">
+                {[
+                  "Design consultation included",
+                  "Concepts built from your brief",
+                  "Designer-built production files",
+                  "Two client approvals",
+                ].map((item) => (
+                  <li key={item} className="flex items-center gap-2">
+                    <span className="w-1 h-1 rounded-full bg-brand-primary flex-shrink-0" />
+                    <span className="text-[10px] font-barlow text-brand-muted leading-none">{item}</span>
+                  </li>
+                ))}
+              </ul>
+              <span className="text-[9px] font-display font-bold uppercase tracking-widest text-brand-muted group-hover:text-brand-primary transition-colors">
+                Work Directly with Grace Studios →
+              </span>
+            </Link>
 
-              <div className="flex flex-col gap-2.5 flex-1">
-                <p className="font-display font-bold uppercase tracking-wide text-brand-text text-lg xl:text-xl leading-tight">
-                  Custom.<br />Collaborative.<br />Built to Brief.
-                </p>
-                <p className="text-xs font-barlow text-brand-muted leading-relaxed">
-                  Submit your vision and work directly with our team. Receive fully custom concepts
-                  built around your program — colors, identity, and design direction all tailored to you.
-                </p>
-
-                <ul className="mt-2 space-y-2.5">
-                  {[
-                    "Design consultation included",
-                    "Custom concepts developed from your brief",
-                    "Designer-built Illustrator production files",
-                    "Two client approvals before a single garment is cut",
-                    "End-to-end tracking from brief to delivery",
-                  ].map((item) => (
-                    <li key={item} className="flex items-start gap-2.5">
-                      <div className="w-[3px] h-3.5 bg-brand-primary flex-shrink-0 mt-[3px]" />
-                      <span className="text-xs font-barlow text-brand-muted leading-snug">{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <a
-                href="#contact"
-                className="inline-flex items-center gap-2 text-[10px] font-display font-bold uppercase tracking-widest text-brand-muted group-hover:text-brand-primary transition-colors duration-200 mt-2"
-              >
-                Request Consultation
-                <svg className="w-3 h-3 group-hover:translate-x-0.5 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-                </svg>
-              </a>
-            </div>
-
-            {/* ── PATH 2: DESIGN LIBRARY / SELF SERVICE ────────────────── */}
-            <div className="group relative flex flex-col gap-5 p-6 xl:p-8 bg-brand-bg hover:bg-brand-surface transition-colors duration-300 border-t lg:border-t-0 lg:border-l border-brand-border">
-              <div className="absolute top-0 left-0 right-0 h-[2px] bg-brand-primary opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-
-              <div className="flex items-start justify-between gap-4">
-                <span className="self-start text-[8px] font-display font-bold uppercase tracking-[0.2em] px-2 py-0.5 rounded border text-brand-primary bg-brand-primary/10 border-brand-primary/30">
+            {/* PATH 2 — Design Library */}
+            <Link href="/signup?path=self-service" className="group relative flex flex-col gap-3 p-5 rounded-2xl border border-brand-border bg-brand-bg hover:bg-brand-surface transition-colors duration-300 shadow-sm">
+              <div className="absolute top-0 left-0 right-0 h-[2px] bg-brand-primary opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-t-2xl" />
+              <div className="flex items-center justify-between">
+                <span className="text-[8px] font-display font-bold uppercase tracking-[0.2em] px-2 py-0.5 rounded border text-brand-primary bg-brand-primary/10 border-brand-primary/30">
                   Self Service
                 </span>
-                <span className="text-[8px] font-display uppercase tracking-widest text-brand-muted border border-brand-border rounded px-2 py-0.5">
-                  Design Library
-                </span>
+                <span className="text-[8px] font-display uppercase tracking-widest text-brand-muted/60">Design Library</span>
               </div>
-
-              <div className="flex flex-col gap-2.5 flex-1">
-                <p className="font-display font-bold uppercase tracking-wide text-brand-text text-lg xl:text-xl leading-tight">
-                  Grace Studios<br />Design Language.<br />Your Identity.
-                </p>
-                <p className="text-xs font-barlow text-brand-muted leading-relaxed">
-                  Build your uniform on the same design philosophy that powers our elite programs.
-                  Select from our curated silhouette library — each design system refined to carry
-                  your colors, logo, and identity.
-                </p>
-
-                <ul className="mt-2 space-y-2.5">
-                  {[
-                    "Curated Grace Studios silhouettes and design systems",
-                    "Design language refined across hundreds of elite programs",
-                    "Your colors, your logo — our proven framework",
-                    "Faster brief-to-production turnaround",
-                    "Same approval process and production quality",
-                  ].map((item) => (
-                    <li key={item} className="flex items-start gap-2.5">
-                      <div className="w-[3px] h-3.5 bg-brand-primary flex-shrink-0 mt-[3px]" />
-                      <span className="text-xs font-barlow text-brand-muted leading-snug">{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <Link
-                href="/signup"
-                className="inline-flex items-center gap-2 text-[10px] font-display font-bold uppercase tracking-widest text-brand-muted group-hover:text-brand-primary transition-colors duration-200 mt-2"
-              >
-                Get Started
-                <svg className="w-3 h-3 group-hover:translate-x-0.5 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-                </svg>
-              </Link>
-            </div>
+              <p className="font-display font-bold uppercase tracking-wide text-brand-text text-sm leading-snug">
+                Grace Studios Design<br />Language. Your Identity.
+              </p>
+              <ul className="space-y-1.5">
+                {[
+                  "Curated Grace Studios silhouettes",
+                  "Design concepts ready in minutes",
+                  "Your colors and logo — our framework",
+                  "Faster turnaround, same quality",
+                ].map((item) => (
+                  <li key={item} className="flex items-center gap-2">
+                    <span className="w-1 h-1 rounded-full bg-brand-primary flex-shrink-0" />
+                    <span className="text-[10px] font-barlow text-brand-muted leading-none">{item}</span>
+                  </li>
+                ))}
+              </ul>
+              <span className="text-[9px] font-display font-bold uppercase tracking-widest text-brand-muted group-hover:text-brand-primary transition-colors">
+                Start with the Design Library →
+              </span>
+            </Link>
 
           </div>
         </div>

@@ -124,7 +124,7 @@ function PortalContent() {
             <a href="/admin" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Admin Portal</a>
           )}
           <a href="/portfolio" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Portfolio</a>
-          <a href="/contact" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Consultation</a>
+          <a href="/portal/consultation" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Work with Grace Studios</a>
           <a href="/billing" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Billing</a>
           <a href="/portal/settings" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Settings</a>
           <button type="button" onClick={handleSignOut} className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Sign Out</button>
@@ -145,7 +145,7 @@ function PortalContent() {
               <div className="flex-1 min-w-0">
                 <p className="font-display font-bold uppercase tracking-wide text-brand-text">Brief Received</p>
                 <p className="text-sm text-brand-muted font-barlow mt-1 leading-relaxed">
-                  Concept generation is underway. Our AI is designing your jerseys now — check back in a few minutes.
+                  Your design concept is being prepared now — backed by Grace Studios design philosophy. Check back in a few minutes.
                 </p>
                 <a
                   href={`/orders/${submitted}/concepts`}
@@ -172,7 +172,7 @@ function PortalContent() {
                   No orders yet
                 </p>
                 <p className="text-sm text-brand-muted font-barlow">
-                  Submit your first brief and our AI will generate custom concepts within minutes.
+                  Submit your first brief and receive a design concept — backed by Grace Studios design philosophy — within minutes.
                 </p>
               </div>
               <a
