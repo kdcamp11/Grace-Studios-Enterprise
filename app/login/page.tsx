@@ -570,20 +570,6 @@ export default function LoginPage() {
       {/* ══════════════════════════════════════════════════════════════════
           STATS BAR
       ══════════════════════════════════════════════════════════════════ */}
-      <div className="border-b border-brand-border">
-        <div className="max-w-5xl mx-auto px-5 sm:px-8 lg:px-10 grid grid-cols-2 sm:grid-cols-4">
-          {STATS.map((s, i) => (
-            <div
-              key={s.label}
-              className={`py-8 flex flex-col gap-1 ${i > 0 ? "border-l border-brand-border pl-6 sm:pl-8" : ""} ${i < STATS.length - 1 ? "pr-6 sm:pr-8" : ""}`}
-            >
-              <span className="font-display font-bold text-brand-text text-2xl tracking-tight leading-none">{s.value}</span>
-              <span className="text-[10px] font-display uppercase tracking-[0.2em] text-brand-muted mt-1">{s.label}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
       {/* ══════════════════════════════════════════════════════════════════
           JERSEY STRIP — visual proof of work
       ══════════════════════════════════════════════════════════════════ */}
@@ -600,6 +586,23 @@ export default function LoginPage() {
                 />
               </div>
               <span className="text-[9px] font-display font-bold uppercase tracking-[0.3em] text-brand-muted/60 text-center">{j.name}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ══════════════════════════════════════════════════════════════════
+          STATS BAR — below jerseys
+      ══════════════════════════════════════════════════════════════════ */}
+      <div className="border-b border-brand-border">
+        <div className="max-w-5xl mx-auto px-5 sm:px-8 lg:px-10 grid grid-cols-2 sm:grid-cols-4">
+          {STATS.map((s, i) => (
+            <div
+              key={s.label}
+              className={`py-8 flex flex-col gap-1 ${i > 0 ? "border-l border-brand-border pl-6 sm:pl-8" : ""} ${i < STATS.length - 1 ? "pr-6 sm:pr-8" : ""}`}
+            >
+              <span className="font-display font-bold text-brand-text text-2xl tracking-tight leading-none">{s.value}</span>
+              <span className="text-[10px] font-display uppercase tracking-[0.2em] text-brand-muted mt-1">{s.label}</span>
             </div>
           ))}
         </div>

@@ -12,21 +12,21 @@
      spacing, padding, gaps — all 25% larger
    ───────────────────────────────────────────────────────────────────────── */
 html {
-  font-size: 20px;
+  font-size: 18px;
 }
 
-/* Body copy boost — Barlow (non-display) text gets an extra size step so
-   paragraphs, labels, and UI copy are noticeably larger than headings feel.
+/* Body copy boost — Barlow (non-display) text gets a slight size step so
+   paragraphs, labels, and UI copy read larger than headings relative weight.
    font-display (Barlow Condensed) is unaffected — headings stay the same.  */
 .font-barlow {
-  font-size: 1.125em;
+  font-size: 1.05em;
 }
 
 /* Bump hardcoded bracket text sizes that don't respond to font-size changes */
-.text-\[8px\]  { font-size: 11px !important; }
-.text-\[9px\]  { font-size: 13px !important; }
-.text-\[10px\] { font-size: 15px !important; }
-.text-\[11px\] { font-size: 16px !important; }
+.text-\[8px\]  { font-size: 10px !important; }
+.text-\[9px\]  { font-size: 11px !important; }
+.text-\[10px\] { font-size: 13px !important; }
+.text-\[11px\] { font-size: 14px !important; }
 
 /* Jersey strip image cards — pixel-locked so they never scale with root font.
    Values match what px-6 py-14 / sm:px-8 sm:py-16 were at 16px base.      */
