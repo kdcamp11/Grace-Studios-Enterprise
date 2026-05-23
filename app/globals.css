@@ -3,11 +3,22 @@
 @tailwind utilities;
 
 /* ── Global base size — scales all rem-based spacing and text ──────────────
-   Increased from browser default 16px → 17px for improved readability.
-   Jersey strip images use w-full (viewport-width-based) so they're unaffected.
+   Increased from browser default 16px → 18px for improved readability.
+   Jersey strip cards use .jersey-img-card (fixed px padding) so they stay
+   locked at their original visual size regardless of root font changes.
    ───────────────────────────────────────────────────────────────────────── */
 html {
-  font-size: 17px;
+  font-size: 18px;
+}
+
+/* Jersey strip image cards — pixel-locked so they never scale with root font */
+.jersey-img-card {
+  padding: 56px 24px;
+}
+@media (min-width: 640px) {
+  .jersey-img-card {
+    padding: 64px 32px;
+  }
 }
 
 :root {

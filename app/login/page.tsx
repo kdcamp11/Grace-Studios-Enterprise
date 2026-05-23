@@ -451,7 +451,7 @@ export default function LoginPage() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
           {JERSEYS.map((j) => (
             <div key={j.name} className="group flex flex-col items-center gap-3">
-              <div className="bg-white rounded-xl w-full flex items-center justify-center px-6 py-14 sm:px-8 sm:py-16">
+              <div className="jersey-img-card bg-white rounded-xl w-full flex items-center justify-center">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={j.src}
