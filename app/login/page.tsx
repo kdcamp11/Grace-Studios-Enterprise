@@ -515,59 +515,57 @@ export default function LoginPage() {
             concept to final delivery.
           </p>
 
-          {/* Path cards — full width of content column, side by side */}
-          <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5 text-left">
+          {/* Path cards — each card paired with its own CTA button */}
+          <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-5 text-left">
 
-            <Link href="/signup?path=consultation"
-              className="group relative flex flex-col gap-4 p-6 sm:p-7 rounded-2xl border border-brand-border bg-brand-bg hover:bg-brand-surface transition-colors duration-300 shadow-sm">
-              <div className="absolute top-0 left-0 right-0 h-[2px] bg-brand-primary opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-t-2xl" />
-              <div className="flex items-center justify-between">
-                <span className="text-[9px] font-display font-bold uppercase tracking-[0.2em] px-2.5 py-1 rounded border text-brand-primary bg-brand-primary/10 border-brand-primary/30">Customization</span>
-                <span className="text-[9px] font-display uppercase tracking-widest text-brand-muted/60">Full Service</span>
+            {/* Customization column */}
+            <div className="flex flex-col gap-3">
+              <div className="group relative flex flex-col gap-4 p-6 sm:p-7 rounded-2xl border border-brand-border bg-brand-bg hover:bg-brand-surface transition-colors duration-300 shadow-sm">
+                <div className="absolute top-0 left-0 right-0 h-[2px] bg-brand-primary opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-t-2xl" />
+                <div className="flex items-center justify-between">
+                  <span className="text-[9px] font-display font-bold uppercase tracking-[0.2em] px-2.5 py-1 rounded border text-brand-primary bg-brand-primary/10 border-brand-primary/30">Customization</span>
+                  <span className="text-[9px] font-display uppercase tracking-widest text-brand-muted/60">Full Service</span>
+                </div>
+                <p className="font-display font-bold uppercase tracking-wide text-brand-text leading-snug whitespace-pre-line" style={{ fontSize: "clamp(1rem, 1.6vw, 1.25rem)" }}>{"Custom. Collaborative.\nBuilt to Brief."}</p>
+                <ul className="space-y-2">
+                  {PATH_CARDS[0].bullets.map((item) => (
+                    <li key={item} className="flex items-center gap-2.5">
+                      <span className="w-1 h-1 rounded-full bg-brand-primary flex-shrink-0" />
+                      <span className="text-xs font-barlow text-brand-muted leading-none">{item}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <p className="font-display font-bold uppercase tracking-wide text-brand-text leading-snug whitespace-pre-line" style={{ fontSize: "clamp(1rem, 1.6vw, 1.25rem)" }}>{"Custom. Collaborative.\nBuilt to Brief."}</p>
-              <ul className="space-y-2">
-                {PATH_CARDS[0].bullets.map((item) => (
-                  <li key={item} className="flex items-center gap-2.5">
-                    <span className="w-1 h-1 rounded-full bg-brand-primary flex-shrink-0" />
-                    <span className="text-xs font-barlow text-brand-muted leading-none">{item}</span>
-                  </li>
-                ))}
-              </ul>
-              <span className="text-[10px] font-display font-bold uppercase tracking-widest text-brand-muted group-hover:text-brand-primary transition-colors">Work Directly with Grace Studios →</span>
-            </Link>
+              <Link href="/signup?path=consultation"
+                className="flex items-center justify-center py-4 rounded-xl bg-brand-primary text-white font-display font-bold text-sm uppercase tracking-widest hover:bg-brand-secondary transition-colors shadow-sm">
+                Customization →
+              </Link>
+            </div>
 
-            <Link href="/signup?path=self-service"
-              className="group relative flex flex-col gap-4 p-6 sm:p-7 rounded-2xl border border-brand-border bg-brand-bg hover:bg-brand-surface transition-colors duration-300 shadow-sm">
-              <div className="absolute top-0 left-0 right-0 h-[2px] bg-brand-primary opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-t-2xl" />
-              <div className="flex items-center justify-between">
-                <span className="text-[9px] font-display font-bold uppercase tracking-[0.2em] px-2.5 py-1 rounded border text-brand-primary bg-brand-primary/10 border-brand-primary/30">Self Service</span>
-                <span className="text-[9px] font-display uppercase tracking-widest text-brand-muted/60">Design Library</span>
+            {/* Self Service column */}
+            <div className="flex flex-col gap-3">
+              <div className="group relative flex flex-col gap-4 p-6 sm:p-7 rounded-2xl border border-brand-border bg-brand-bg hover:bg-brand-surface transition-colors duration-300 shadow-sm">
+                <div className="absolute top-0 left-0 right-0 h-[2px] bg-brand-primary opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-t-2xl" />
+                <div className="flex items-center justify-between">
+                  <span className="text-[9px] font-display font-bold uppercase tracking-[0.2em] px-2.5 py-1 rounded border text-brand-primary bg-brand-primary/10 border-brand-primary/30">Self Service</span>
+                  <span className="text-[9px] font-display uppercase tracking-widest text-brand-muted/60">Design Library</span>
+                </div>
+                <p className="font-display font-bold uppercase tracking-wide text-brand-text leading-snug whitespace-pre-line" style={{ fontSize: "clamp(1rem, 1.6vw, 1.25rem)" }}>{"Grace Studios Design\nLanguage. Your Identity."}</p>
+                <ul className="space-y-2">
+                  {PATH_CARDS[1].bullets.map((item) => (
+                    <li key={item} className="flex items-center gap-2.5">
+                      <span className="w-1 h-1 rounded-full bg-brand-primary flex-shrink-0" />
+                      <span className="text-xs font-barlow text-brand-muted leading-none">{item}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <p className="font-display font-bold uppercase tracking-wide text-brand-text leading-snug whitespace-pre-line" style={{ fontSize: "clamp(1rem, 1.6vw, 1.25rem)" }}>{"Grace Studios Design\nLanguage. Your Identity."}</p>
-              <ul className="space-y-2">
-                {PATH_CARDS[1].bullets.map((item) => (
-                  <li key={item} className="flex items-center gap-2.5">
-                    <span className="w-1 h-1 rounded-full bg-brand-primary flex-shrink-0" />
-                    <span className="text-xs font-barlow text-brand-muted leading-none">{item}</span>
-                  </li>
-                ))}
-              </ul>
-              <span className="text-[10px] font-display font-bold uppercase tracking-widest text-brand-muted group-hover:text-brand-primary transition-colors">Start with the Design Library →</span>
-            </Link>
+              <Link href="/signup?path=self-service"
+                className="flex items-center justify-center py-4 rounded-xl border-2 border-brand-primary text-brand-primary font-display font-bold text-sm uppercase tracking-widest hover:bg-brand-primary hover:text-white transition-colors">
+                Self Service →
+              </Link>
+            </div>
 
-          </div>
-
-          {/* Prominent CTA buttons */}
-          <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5 mt-5">
-            <Link href="/signup?path=consultation"
-              className="flex items-center justify-center gap-2 py-4 rounded-xl bg-brand-primary text-white font-display font-bold text-sm uppercase tracking-widest hover:bg-brand-secondary transition-colors shadow-sm">
-              Customization →
-            </Link>
-            <Link href="/signup?path=self-service"
-              className="flex items-center justify-center gap-2 py-4 rounded-xl border-2 border-brand-primary text-brand-primary font-display font-bold text-sm uppercase tracking-widest hover:bg-brand-primary hover:text-white transition-colors">
-              Self Service →
-            </Link>
           </div>
 
         </div>
@@ -735,47 +733,6 @@ export default function LoginPage() {
         </div>
       </section>
 
-      {/* ══════════════════════════════════════════════════════════════════
-          MOBILE SIGN-IN
-      ══════════════════════════════════════════════════════════════════ */}
-      <section id="sign-in" className="px-5 sm:px-8 lg:px-10 py-12 sm:py-16 border-b border-brand-border lg:hidden">
-        <div className="max-w-sm mx-auto">
-          <div className="flex items-center gap-2.5 mb-6">
-            <div className="w-[3px] h-6 bg-brand-primary flex-shrink-0" />
-            <span className="text-[10px] font-display font-bold uppercase tracking-[0.3em] text-brand-primary">Existing Partner</span>
-          </div>
-          <h2 className="font-display font-bold uppercase tracking-tight text-brand-text text-2xl mb-6">Sign In</h2>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <input
-              type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-              placeholder="Email address" required
-              className="w-full bg-brand-surface border border-brand-border rounded-lg px-4 py-3.5 text-brand-text font-barlow text-sm placeholder-brand-muted/50 focus:outline-none focus:border-brand-primary transition-colors"
-            />
-            <input
-              type="password" value={password} onChange={(e) => setPassword(e.target.value)}
-              placeholder="Password" required
-              className="w-full bg-brand-surface border border-brand-border rounded-lg px-4 py-3.5 text-brand-text font-barlow text-sm placeholder-brand-muted/50 focus:outline-none focus:border-brand-primary transition-colors"
-            />
-            {error && (
-              <p className="text-[#C41E1E] text-sm font-barlow bg-[#C41E1E]/10 border border-[#C41E1E]/30 rounded-lg px-4 py-3">
-                {error}
-              </p>
-            )}
-            <button
-              type="submit"
-              disabled={submitting || !email || !password}
-              className="w-full py-4 rounded-lg bg-brand-primary text-white font-display font-bold text-sm uppercase tracking-widest hover:bg-brand-secondary disabled:opacity-40 transition-colors"
-            >
-              {submitting ? "Signing in…" : "Sign In →"}
-            </button>
-            <p className="text-center text-xs font-barlow text-brand-muted">
-              <Link href="/forgot-password" className="hover:text-brand-primary transition-colors">
-                Forgot password?
-              </Link>
-            </p>
-          </form>
-        </div>
-      </section>
 
       {/* ══════════════════════════════════════════════════════════════════
           ORDER TRACKER — last section
