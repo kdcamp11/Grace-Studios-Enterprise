@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { createClient, sessionReady } from "@/lib/supabase/client";
 import { getProfile } from "@/lib/profile";
 import TenantLogo from "@/components/TenantLogo"; // kept for studio watermarks
 import OrgLogo from "@/components/OrgLogo";
@@ -706,6 +706,9 @@ export default function ConceptsPage() {
     let cancelled = false;
 
     async function init() {
+      // Ensure localStorage→cookie session migration is complete before any
+      // auth-gated fetch (generate-concepts, status) — prevents silent 401s
+      await sessionReady();
       const profile = await getProfile();
       if (cancelled) return;
       if (profile) {
