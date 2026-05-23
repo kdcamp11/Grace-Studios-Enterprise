@@ -235,11 +235,88 @@ function ConsultationForm() {
   );
 }
 
+// ── Supplier landing data ─────────────────────────────────────────────────────
+
+const SUPPLIER_STATS = [
+  { value: "2×",        label: "Client Approvals Before Files Ship" },
+  { value: "100%",      label: "Files Designer-Reviewed" },
+  { value: "0",         label: "Surprise Revisions" },
+  { value: "Built-in",  label: "First-Piece Review" },
+];
+
+const SUPPLIER_STEPS = [
+  {
+    num: "01",
+    title: "Get Assigned",
+    detail: "Accept orders that match your production catalog — sport, garment type, and capacity.",
+  },
+  {
+    num: "02",
+    title: "Receive Approved Files",
+    detail: "Every file arrives double-approved: client signed off on the AI concept and the Illustrator mockup.",
+  },
+  {
+    num: "03",
+    title: "Produce First Piece",
+    detail: "Run your sample. Upload photos directly to the platform for client review.",
+  },
+  {
+    num: "04",
+    title: "Client Signs Off",
+    detail: "Client approves or requests changes on the first piece. Everything logged, nothing verbal.",
+  },
+  {
+    num: "05",
+    title: "Bulk Production",
+    detail: "Run the full order with confidence. Ship and mark complete. Payment triggered on delivery.",
+  },
+];
+
+const SUPPLIER_FEATURES = [
+  {
+    icon: (
+      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+      </svg>
+    ),
+    title: "Production-Ready Files",
+    body: "Receive fully approved Illustrator files. No ambiguity, no back-and-forth. Every spec confirmed before it reaches you.",
+  },
+  {
+    icon: (
+      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+      </svg>
+    ),
+    title: "Portfolio Showcase",
+    body: "Upload your best work. Programs browse supplier portfolios when choosing who to work with — your quality speaks for you.",
+  },
+  {
+    icon: (
+      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12zm0 3h.008v.008H6.75V15zm0 3h.008v.008H6.75V18z" />
+      </svg>
+    ),
+    title: "Production Catalog",
+    body: "Define exactly which sports and garment types you produce. Orders route to suppliers who match — no mismatched briefs.",
+  },
+  {
+    icon: (
+      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+      </svg>
+    ),
+    title: "Order Tracking",
+    body: "Every order stage tracked and logged. Upload first-piece photos, mark milestones, and communicate directly inside the platform.",
+  },
+];
+
 // ── Component ────────────────────────────────────────────────────────────────
 
 export default function LoginPage() {
   const router = useRouter();
 
+  const [view, setView]             = useState<"client" | "supplier">("client");
   const [email, setEmail]           = useState("");
   const [password, setPassword]     = useState("");
   const [loading, setLoading]       = useState(true);
@@ -323,8 +400,40 @@ export default function LoginPage() {
       </header>
 
       {/* ══════════════════════════════════════════════════════════════════
+          ROLE TOGGLE — client / supplier switcher
+      ══════════════════════════════════════════════════════════════════ */}
+      <div className="border-b border-brand-border bg-brand-surface">
+        <div className="max-w-5xl mx-auto px-5 sm:px-8 lg:px-10 flex items-center gap-1 py-3">
+          <span className="text-[10px] font-display uppercase tracking-[0.25em] text-brand-muted mr-4 flex-shrink-0">I am a</span>
+          <button
+            type="button"
+            onClick={() => setView("client")}
+            className={`px-5 py-2 rounded-lg font-display font-bold text-xs uppercase tracking-widest transition-all duration-200 ${
+              view === "client"
+                ? "bg-brand-primary text-white shadow-sm"
+                : "text-brand-muted hover:text-brand-text"
+            }`}
+          >
+            Client / Program
+          </button>
+          <button
+            type="button"
+            onClick={() => setView("supplier")}
+            className={`px-5 py-2 rounded-lg font-display font-bold text-xs uppercase tracking-widest transition-all duration-200 ${
+              view === "supplier"
+                ? "bg-brand-primary text-white shadow-sm"
+                : "text-brand-muted hover:text-brand-text"
+            }`}
+          >
+            Supplier / Manufacturer
+          </button>
+        </div>
+      </div>
+
+      {/* ══════════════════════════════════════════════════════════════════
           HERO — asymmetric split
       ══════════════════════════════════════════════════════════════════ */}
+      {view === "client" && (<>
       <section className="border-b border-brand-border overflow-hidden">
         <div className="max-w-5xl mx-auto px-5 sm:px-8 lg:px-10 grid lg:grid-cols-[1fr_400px] xl:grid-cols-[1fr_440px] gap-0 min-h-[460px] lg:min-h-[520px]">
 
@@ -705,6 +814,250 @@ export default function LoginPage() {
           <ConsultationForm />
         </div>
       </section>
+
+      {/* end client view */}
+      </>)}
+
+      {/* ══════════════════════════════════════════════════════════════════
+          SUPPLIER VIEW
+      ══════════════════════════════════════════════════════════════════ */}
+      {view === "supplier" && (
+      <>
+
+        {/* SUPPLIER HERO */}
+        <section className="border-b border-brand-border overflow-hidden">
+          <div className="max-w-5xl mx-auto px-5 sm:px-8 lg:px-10 grid lg:grid-cols-[1fr_400px] xl:grid-cols-[1fr_440px] gap-0 min-h-[460px] lg:min-h-[520px]">
+
+            {/* Left — headline */}
+            <div className="flex flex-col justify-center py-14 lg:py-20 lg:pr-14 border-b lg:border-b-0 lg:border-r border-brand-border">
+              <div className="flex items-center gap-2.5 mb-7">
+                <div className="w-[3px] h-5 bg-brand-primary flex-shrink-0" />
+                <span className="text-[10px] font-display font-bold uppercase tracking-[0.3em] text-brand-primary">
+                  For Manufacturers & Factories
+                </span>
+              </div>
+
+              <h1 className="font-display font-bold uppercase text-brand-text leading-[0.9] tracking-tight mb-6">
+                <span className="block" style={{ fontSize: "clamp(1.5rem, 2.8vw, 2.5rem)" }}>Clean Files.</span>
+                <span className="block" style={{ fontSize: "clamp(1.5rem, 2.8vw, 2.5rem)" }}>Clear Orders.</span>
+                <span className="block text-brand-primary" style={{ fontSize: "clamp(1.5rem, 2.8vw, 2.5rem)" }}>No Surprises.</span>
+              </h1>
+
+              <p className="text-xs text-brand-muted font-barlow max-w-[380px] leading-relaxed mb-7">
+                Every file you receive has been approved twice — by the client and by a designer.
+                First-piece review is built into every order. Run production with confidence.
+              </p>
+
+              <div className="flex flex-col sm:flex-row items-start gap-3">
+                <Link
+                  href="/signup"
+                  className="px-7 py-3.5 rounded-lg bg-brand-primary text-white font-display font-bold text-xs uppercase tracking-widest hover:bg-brand-secondary transition-colors"
+                >
+                  Apply as a Supplier →
+                </Link>
+                <a
+                  href="#supplier-how-it-works"
+                  className="px-7 py-3.5 rounded-lg border border-brand-border text-brand-muted font-display font-bold text-xs uppercase tracking-widest hover:border-brand-primary hover:text-brand-primary transition-colors"
+                >
+                  See How It Works
+                </a>
+              </div>
+            </div>
+
+            {/* Right — supplier feature preview panel */}
+            <div className="hidden lg:flex flex-col justify-end pt-12 pl-8 xl:pl-10 pb-8">
+              <div className="bg-brand-surface border border-brand-border rounded-2xl overflow-hidden shadow-[0_4px_32px_rgba(0,0,0,0.18)]">
+                {/* Panel chrome */}
+                <div className="border-b border-brand-border px-5 py-4 flex items-center justify-between bg-brand-bg/50">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-2 h-2 rounded-full bg-brand-primary animate-pulse" />
+                    <span className="text-[10px] font-display font-bold uppercase tracking-[0.2em] text-brand-text">Supplier Dashboard</span>
+                  </div>
+                  <span className="text-[9px] font-barlow text-brand-muted">Active Orders</span>
+                </div>
+
+                {/* Mock order rows */}
+                {[
+                  { id: "GE-2025-0847", sport: "Basketball", garment: "Full Uniform", stage: "Files Ready", badge: "bg-brand-primary/10 text-brand-primary border-brand-primary/30" },
+                  { id: "GE-2025-0831", sport: "Soccer",     garment: "Jersey + Shorts", stage: "First Piece Review", badge: "bg-amber-400/10 text-amber-500 border-amber-400/30" },
+                  { id: "GE-2025-0819", sport: "Football",   garment: "Practice Kit",  stage: "In Production", badge: "bg-brand-muted/10 text-brand-muted border-brand-border" },
+                ].map((o) => (
+                  <div key={o.id} className="px-5 py-4 border-b border-brand-border flex items-start justify-between gap-4">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[11px] font-display font-bold text-brand-text tracking-wide">{o.sport} — {o.garment}</p>
+                      <p className="text-[9px] font-barlow text-brand-muted mt-0.5">{o.id}</p>
+                    </div>
+                    <span className={`flex-shrink-0 px-2 py-0.5 rounded border text-[8px] font-display font-bold uppercase tracking-widest ${o.badge}`}>
+                      {o.stage}
+                    </span>
+                  </div>
+                ))}
+
+                <div className="px-5 py-4 flex items-center justify-between bg-brand-bg/30">
+                  <span className="text-[9px] font-barlow text-brand-muted">3 active orders</span>
+                  <span className="text-[9px] font-display font-bold uppercase tracking-widest text-brand-primary cursor-pointer">View All →</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* SUPPLIER STATS */}
+        <div className="border-b border-brand-border">
+          <div className="max-w-5xl mx-auto px-5 sm:px-8 lg:px-10 grid grid-cols-2 sm:grid-cols-4">
+            {SUPPLIER_STATS.map((s, i) => (
+              <div
+                key={s.label}
+                className={`py-8 flex flex-col gap-1 ${i > 0 ? "border-l border-brand-border pl-6 sm:pl-8" : ""} ${i < SUPPLIER_STATS.length - 1 ? "pr-6 sm:pr-8" : ""}`}
+              >
+                <span className="font-display font-bold text-brand-text text-2xl tracking-tight leading-none">{s.value}</span>
+                <span className="text-[10px] font-display uppercase tracking-[0.2em] text-brand-muted mt-1">{s.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* SUPPLIER HOW IT WORKS */}
+        <section id="supplier-how-it-works" className="px-5 sm:px-8 lg:px-10 py-12 sm:py-16 border-b border-brand-border">
+          <div className="max-w-5xl mx-auto">
+            <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-5 mb-10">
+              <div>
+                <div className="flex items-center gap-2.5 mb-4">
+                  <div className="w-[3px] h-5 bg-brand-primary flex-shrink-0" />
+                  <span className="text-[10px] font-display font-bold uppercase tracking-[0.3em] text-brand-primary">The Process</span>
+                </div>
+                <h2 className="font-display font-bold uppercase tracking-tight text-brand-text leading-none" style={{ fontSize: "clamp(1.1rem, 2vw, 1.75rem)" }}>
+                  How Orders<br />Flow to You.
+                </h2>
+              </div>
+              <p className="text-xs font-barlow text-brand-muted max-w-[260px] leading-relaxed lg:text-right">
+                Every brief arrives client-approved. Every file arrives designer-reviewed.
+                You produce. You deliver.
+              </p>
+            </div>
+
+            <div className="border border-brand-border rounded-xl overflow-hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5">
+              {SUPPLIER_STEPS.map((step, i) => (
+                <div
+                  key={step.num}
+                  className={`group relative flex flex-col gap-4 p-6 xl:p-7 bg-brand-bg hover:bg-brand-surface transition-colors duration-300
+                    ${i > 0 ? "border-t sm:border-t-0 sm:border-l border-brand-border" : ""}
+                    ${i === 2 ? "sm:border-t lg:border-t-0 border-brand-border" : ""}
+                  `}
+                >
+                  <div className="absolute top-0 left-0 right-0 h-[2px] opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-brand-primary" />
+                  <span className="font-display font-bold text-[2rem] leading-none text-brand-border select-none">{step.num}</span>
+                  <div className="flex flex-col gap-2 flex-1">
+                    <p className="font-display font-bold uppercase tracking-wide text-brand-text text-sm leading-snug">{step.title}</p>
+                    <p className="text-xs font-barlow text-brand-muted leading-relaxed">{step.detail}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* SUPPLIER FEATURES */}
+        <section className="px-5 sm:px-8 lg:px-10 py-12 sm:py-16 border-b border-brand-border">
+          <div className="max-w-5xl mx-auto">
+            <div className="flex items-center gap-2.5 mb-4">
+              <div className="w-[3px] h-5 bg-brand-primary flex-shrink-0" />
+              <span className="text-[10px] font-display font-bold uppercase tracking-[0.3em] text-brand-primary">Platform Features</span>
+            </div>
+            <h2 className="font-display font-bold uppercase tracking-tight text-brand-text leading-none mb-12" style={{ fontSize: "clamp(1.1rem, 2vw, 1.75rem)" }}>
+              Everything You Need<br />to Run Clean.
+            </h2>
+
+            <div className="border border-brand-border rounded-xl overflow-hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2">
+              {SUPPLIER_FEATURES.map((f, i) => (
+                <div
+                  key={f.title}
+                  className={`group relative flex flex-col gap-4 p-6 xl:p-8 bg-brand-bg hover:bg-brand-surface transition-colors duration-300
+                    ${i % 2 === 1 ? "border-t sm:border-t-0 sm:border-l border-brand-border" : ""}
+                    ${i >= 2 ? "border-t border-brand-border" : ""}
+                  `}
+                >
+                  <div className="absolute top-0 left-0 right-0 h-[2px] opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-brand-primary" />
+                  <div className="w-10 h-10 rounded-lg bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center text-brand-primary flex-shrink-0">
+                    {f.icon}
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <p className="font-display font-bold uppercase tracking-wide text-brand-text text-sm">{f.title}</p>
+                    <p className="text-xs font-barlow text-brand-muted leading-relaxed">{f.body}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* SUPPLIER CTA */}
+        <section className="px-5 sm:px-8 lg:px-10 py-12 sm:py-16 border-b border-brand-border">
+          <div className="max-w-5xl mx-auto flex flex-col lg:flex-row items-start lg:items-end justify-between gap-10">
+            <div>
+              <div className="flex items-center gap-2.5 mb-6">
+                <div className="w-[3px] h-5 bg-brand-primary flex-shrink-0" />
+                <span className="text-[10px] font-display font-bold uppercase tracking-[0.3em] text-brand-primary">Join the Network</span>
+              </div>
+              <h2 className="font-display font-bold uppercase tracking-tight text-brand-text leading-[0.9]" style={{ fontSize: "clamp(1.4rem, 2.5vw, 2.2rem)" }}>
+                Run Better<br />
+                <span className="text-brand-primary">Orders.</span><br />
+                Build Your Book.
+              </h2>
+            </div>
+            <div className="flex flex-col gap-4 lg:items-end lg:pb-0.5">
+              <p className="text-xs font-barlow text-brand-muted max-w-[260px] leading-relaxed lg:text-right">
+                Apply to join the supplier network. Set your catalog, upload your portfolio, and start receiving
+                pre-approved production orders.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Link
+                  href="/signup"
+                  className="px-7 py-3.5 rounded-lg bg-brand-primary text-white font-display font-bold text-xs uppercase tracking-widest hover:bg-brand-secondary transition-colors"
+                >
+                  Apply as a Supplier →
+                </Link>
+                <a
+                  href="#sign-in"
+                  className="px-7 py-3.5 rounded-lg border border-brand-border text-brand-muted font-display font-bold text-xs uppercase tracking-widest hover:border-brand-primary hover:text-brand-primary transition-colors lg:hidden"
+                >
+                  Sign In
+                </a>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* SUPPLIER MOBILE SIGN-IN */}
+        <section id="sign-in" className="px-5 sm:px-8 lg:px-10 py-12 sm:py-16 border-b border-brand-border lg:hidden">
+          <div className="max-w-sm mx-auto">
+            <div className="flex items-center gap-2.5 mb-6">
+              <div className="w-[3px] h-6 bg-brand-primary flex-shrink-0" />
+              <span className="text-[10px] font-display font-bold uppercase tracking-[0.3em] text-brand-primary">Existing Supplier</span>
+            </div>
+            <h2 className="font-display font-bold uppercase tracking-tight text-brand-text text-2xl mb-6">Sign In</h2>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email address" required
+                className="w-full bg-brand-surface border border-brand-border rounded-lg px-4 py-3.5 text-brand-text font-barlow text-sm placeholder-brand-muted/50 focus:outline-none focus:border-brand-primary transition-colors"
+              />
+              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" required
+                className="w-full bg-brand-surface border border-brand-border rounded-lg px-4 py-3.5 text-brand-text font-barlow text-sm placeholder-brand-muted/50 focus:outline-none focus:border-brand-primary transition-colors"
+              />
+              {error && <p className="text-[#C41E1E] text-sm font-barlow bg-[#C41E1E]/10 border border-[#C41E1E]/30 rounded-lg px-4 py-3">{error}</p>}
+              <button type="submit" disabled={submitting || !email || !password}
+                className="w-full py-4 rounded-lg bg-brand-primary text-white font-display font-bold text-sm uppercase tracking-widest hover:bg-brand-secondary disabled:opacity-40 transition-colors"
+              >
+                {submitting ? "Signing in…" : "Sign In →"}
+              </button>
+              <p className="text-center text-xs font-barlow text-brand-muted">
+                <Link href="/forgot-password" className="hover:text-brand-primary transition-colors">Forgot password?</Link>
+              </p>
+            </form>
+          </div>
+        </section>
+
+      </>
+      )} {/* end supplier view */}
 
       {/* ══════════════════════════════════════════════════════════════════
           FOOTER
