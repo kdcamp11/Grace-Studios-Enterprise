@@ -76,6 +76,7 @@ export default function AdminHeader({ onSignOut, activePath }: AdminHeaderProps)
         {navLink("/admin/suppliers", "Suppliers")}
         {navLink("/admin/team",      "Team")}
         {navLink("/portal",          "Client Portal")}
+        {navLink("/supplier",        "Supplier Portal")}
         {navLink("/admin/billing",   "Billing")}
         {navLink("/admin/settings",  "Settings")}
 

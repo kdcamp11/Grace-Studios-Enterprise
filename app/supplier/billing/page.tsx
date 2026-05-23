@@ -66,7 +66,9 @@ export default function SupplierBillingPage() {
   useEffect(() => {
     async function load() {
       const profile = await getProfile();
-      if (!profile || profile.role !== "supplier") {
+      if (!profile) { router.replace("/login"); return; }
+      const allowed = ["supplier", "admin", "super_admin"];
+      if (!allowed.includes(profile.role)) {
         router.replace("/portal");
         return;
       }
