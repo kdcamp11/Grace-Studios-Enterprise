@@ -552,6 +552,19 @@ export default function LoginPage() {
             </Link>
 
           </div>
+
+          {/* Prominent CTA buttons */}
+          <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5 mt-5">
+            <Link href="/signup?path=consultation"
+              className="flex items-center justify-center gap-2 py-4 rounded-xl bg-brand-primary text-white font-display font-bold text-sm uppercase tracking-widest hover:bg-brand-secondary transition-colors shadow-sm">
+              Customization →
+            </Link>
+            <Link href="/signup?path=self-service"
+              className="flex items-center justify-center gap-2 py-4 rounded-xl border-2 border-brand-primary text-brand-primary font-display font-bold text-sm uppercase tracking-widest hover:bg-brand-primary hover:text-white transition-colors">
+              Self Service →
+            </Link>
+          </div>
+
         </div>
       </section>
 
