@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import type { Subscription, TenantPlan } from "@/lib/supabase/types";
 import type { PlanConfig } from "@/lib/payments/plans";
 import { PLANS } from "@/lib/payments/plans";
@@ -49,11 +49,13 @@ interface ConnectStatus {
 }
 
 export default function BillingPage() {
+  const router       = useRouter();
   const searchParams = useSearchParams();
   const [data, setData]             = useState<BillingData | null>(null);
   const [connect, setConnect]       = useState<ConnectStatus | null>(null);
   const [loading, setLoading]       = useState(true);
   const [upgrading, setUpgrading]   = useState<TenantPlan | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<TenantPlan | null>(null);
   const [portalLoading, setPortalLoading]   = useState(false);
   const [onboarding, setOnboarding]         = useState(false);
   const [loginLoading, setLoginLoading]     = useState(false);
@@ -142,9 +144,22 @@ export default function BillingPage() {
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: "var(--brand-bg)", color: "var(--brand-text)" }}>
-      <header className="border-b px-6 py-4" style={{ borderColor: "var(--brand-border)" }}>
-        <p className="text-[10px] font-display uppercase tracking-[0.25em]" style={{ color: "var(--brand-muted)" }}>Admin</p>
-        <h1 className="font-display text-xl font-bold uppercase tracking-wide">Billing & Plan</h1>
+      <header className="border-b px-6 py-4 flex items-center gap-5" style={{ borderColor: "var(--brand-border)" }}>
+        <button
+          onClick={() => router.back()}
+          className="flex items-center gap-1.5 text-[10px] font-display font-bold uppercase tracking-widest transition-opacity hover:opacity-60 flex-shrink-0"
+          style={{ color: "var(--brand-muted)" }}
+        >
+          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+          </svg>
+          Back
+        </button>
+        <div className="w-px h-6 flex-shrink-0" style={{ background: "var(--brand-border)" }} />
+        <div>
+          <p className="text-[10px] font-display uppercase tracking-[0.25em]" style={{ color: "var(--brand-muted)" }}>Admin</p>
+          <h1 className="font-display text-xl font-bold uppercase tracking-wide">Billing & Plan</h1>
+        </div>
       </header>
 
       <main className="flex-1 px-4 py-8 flex justify-center">
@@ -228,28 +243,61 @@ export default function BillingPage() {
             </ul>
           </section>
 
-          {/* Plan comparison / upgrade */}
+          {/* Client tier info */}
+          <section className="space-y-3">
+            <h2 className="font-display font-bold uppercase tracking-widest text-xs border-b pb-2" style={{ borderColor: "var(--brand-border)", color: "var(--brand-muted)" }}>
+              Client Access
+            </h2>
+            <div className="rounded-xl border p-5" style={{ borderColor: "var(--brand-border)", background: "var(--brand-surface)" }}>
+              <div className="flex items-start gap-4">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-1.5">
+                    <p className="font-display font-bold uppercase tracking-wider">Free Tier</p>
+                    <span className="text-[10px] font-display uppercase tracking-wider px-2 py-0.5 rounded-full border" style={{ borderColor: "var(--brand-border)", color: "var(--brand-muted)" }}>
+                      For Programs
+                    </span>
+                  </div>
+                  <p className="text-sm font-barlow" style={{ color: "var(--brand-muted)" }}>
+                    Client teams access the platform as a service at no cost — brief submission, AI concepts, order tracking, and approvals are free. Rate limits apply to AI generation.
+                  </p>
+                </div>
+                <span className="font-display font-bold text-xl flex-shrink-0">Free</span>
+              </div>
+            </div>
+          </section>
+
+          {/* Studio license / upgrade */}
           <section className="space-y-4">
             <h2 className="font-display font-bold uppercase tracking-widest text-xs border-b pb-2" style={{ borderColor: "var(--brand-border)", color: "var(--brand-muted)" }}>
-              {current === "enterprise" ? "All Plans" : "Upgrade"}
+              Studio License
             </h2>
+            <p className="text-xs font-barlow" style={{ color: "var(--brand-muted)" }}>
+              Select a plan to upgrade your studio license. Pro and Enterprise unlock unlimited orders, custom domains, and priority support.
+            </p>
+
+            {/* Selectable plan cards */}
             <div className="grid sm:grid-cols-3 gap-4">
               {(Object.values(PLANS) as PlanConfig[]).map((plan) => {
-                const isCurrent = plan.id === current;
-                const isDowngrade = (
-                  (current === "enterprise" && plan.id !== "enterprise") ||
-                  (current === "pro" && plan.id === "starter")
-                );
+                const isCurrent  = plan.id === current;
+                const isSelected = selectedPlan === plan.id;
+                const isClient   = plan.id === "starter";
+
                 return (
                   <div
                     key={plan.id}
-                    className={`rounded-xl border p-5 flex flex-col gap-3 transition-colors ${
-                      isCurrent ? "ring-2" : ""
+                    onClick={() => !isCurrent && !isClient && setSelectedPlan(plan.id === selectedPlan ? null : plan.id)}
+                    className={`rounded-xl border p-5 flex flex-col gap-3 transition-all duration-200 ${
+                      isClient ? "opacity-50" : isCurrent ? "" : "cursor-pointer hover:border-opacity-80"
                     }`}
                     style={{
-                      borderColor: isCurrent ? "var(--brand-primary)" : "var(--brand-border)",
-                      background: "var(--brand-surface)",
-                      ...(isCurrent ? { "--tw-ring-color": "var(--brand-primary)" } as React.CSSProperties : {}),
+                      borderColor: isSelected
+                        ? "var(--brand-primary)"
+                        : isCurrent
+                        ? "var(--brand-primary)"
+                        : "var(--brand-border)",
+                      background: isSelected ? "var(--brand-primary)08" : "var(--brand-surface)",
+                      outline: isSelected ? "2px solid var(--brand-primary)" : "none",
+                      outlineOffset: "0px",
                     }}
                   >
                     <div>
@@ -258,6 +306,16 @@ export default function BillingPage() {
                         {isCurrent && (
                           <span className="text-[10px] font-display uppercase tracking-wider px-2 py-0.5 rounded-full" style={{ background: "var(--brand-primary)", color: "#fff" }}>
                             Current
+                          </span>
+                        )}
+                        {isSelected && !isCurrent && (
+                          <span className="text-[10px] font-display uppercase tracking-wider px-2 py-0.5 rounded-full border" style={{ borderColor: "var(--brand-primary)", color: "var(--brand-primary)" }}>
+                            Selected
+                          </span>
+                        )}
+                        {isClient && (
+                          <span className="text-[10px] font-display uppercase tracking-wider px-2 py-0.5 rounded-full border" style={{ borderColor: "var(--brand-border)", color: "var(--brand-muted)" }}>
+                            Clients Only
                           </span>
                         )}
                       </div>
@@ -274,30 +332,45 @@ export default function BillingPage() {
                         </li>
                       ))}
                     </ul>
-                    {!isCurrent && !isDowngrade && plan.stripePriceId && (
-                      <button
-                        onClick={() => upgrade(plan.id)}
-                        disabled={upgrading === plan.id}
-                        className="w-full py-2.5 rounded-lg text-xs font-display font-bold uppercase tracking-widest text-white transition-opacity hover:opacity-80 disabled:opacity-40"
-                        style={{ background: "var(--brand-primary)" }}
-                      >
-                        {upgrading === plan.id ? "Redirecting…" : `Upgrade to ${plan.label}`}
-                      </button>
-                    )}
-                    {!isCurrent && isDowngrade && (
-                      <p className="text-xs text-center font-barlow" style={{ color: "var(--brand-muted)" }}>
-                        Manage via billing portal
-                      </p>
-                    )}
-                    {!isCurrent && !isDowngrade && !plan.stripePriceId && plan.id !== "starter" && (
-                      <p className="text-xs text-center font-barlow" style={{ color: "var(--brand-muted)" }}>
-                        Contact us to upgrade
-                      </p>
-                    )}
                   </div>
                 );
               })}
             </div>
+
+            {/* Upgrade CTA */}
+            {selectedPlan && selectedPlan !== current && (
+              <div className="flex items-center justify-between rounded-xl border p-4" style={{ borderColor: "var(--brand-border)", background: "var(--brand-surface)" }}>
+                <p className="text-sm font-barlow" style={{ color: "var(--brand-muted)" }}>
+                  Upgrading to <strong style={{ color: "var(--brand-text)" }}>{PLANS[selectedPlan].label}</strong> — {fmt$(PLANS[selectedPlan].priceMonthly)}/mo
+                </p>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setSelectedPlan(null)}
+                    className="text-xs font-display font-bold uppercase tracking-widest transition-opacity hover:opacity-60"
+                    style={{ color: "var(--brand-muted)" }}
+                  >
+                    Cancel
+                  </button>
+                  {PLANS[selectedPlan].stripePriceId ? (
+                    <button
+                      onClick={() => upgrade(selectedPlan)}
+                      disabled={upgrading === selectedPlan}
+                      className="px-5 py-2.5 rounded-lg text-xs font-display font-bold uppercase tracking-widest text-white transition-opacity hover:opacity-80 disabled:opacity-40"
+                      style={{ background: "var(--brand-primary)" }}
+                    >
+                      {upgrading === selectedPlan ? "Redirecting…" : `Upgrade to ${PLANS[selectedPlan].label} →`}
+                    </button>
+                  ) : (
+                    <button
+                      className="px-5 py-2.5 rounded-lg text-xs font-display font-bold uppercase tracking-widest text-white transition-opacity hover:opacity-80"
+                      style={{ background: "var(--brand-primary)" }}
+                    >
+                      Contact Us →
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
           </section>
 
           {/* ── Stripe Connect ── */}

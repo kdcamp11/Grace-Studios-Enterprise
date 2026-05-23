@@ -190,9 +190,6 @@ function PortalContent() {
 
           {/* Section header */}
           <div className="border-b border-brand-border pb-4">
-            <p className="text-[10px] font-display uppercase tracking-[0.25em] text-brand-muted mb-1">
-              {tenant.name}
-            </p>
             <h2 className="font-display text-3xl font-bold uppercase tracking-wide text-brand-text leading-none">
               Your Orders
             </h2>

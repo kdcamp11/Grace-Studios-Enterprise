@@ -133,6 +133,108 @@ const JERSEYS = [
   { name: "Culture",  src: "/jerseys/culture.jpg"  },
 ];
 
+// ── Consultation form ────────────────────────────────────────────────────────
+
+function ConsultationForm() {
+  const [fields, setFields] = useState({ name: "", email: "", program: "", message: "" });
+  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
+
+  function set(k: keyof typeof fields, v: string) {
+    setFields((f) => ({ ...f, [k]: v }));
+  }
+
+  async function handleSend(e: React.FormEvent) {
+    e.preventDefault();
+    setStatus("sending");
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(fields),
+      });
+      setStatus(res.ok ? "sent" : "error");
+    } catch {
+      setStatus("error");
+    }
+  }
+
+  const inputCls = "w-full bg-brand-surface border border-brand-border rounded-lg px-4 py-3 text-brand-text font-barlow text-sm placeholder-brand-muted/50 focus:outline-none focus:border-brand-primary transition-colors";
+
+  if (status === "sent") {
+    return (
+      <div className="rounded-xl border border-brand-border bg-brand-surface p-8 flex flex-col items-start gap-4">
+        <div className="w-10 h-10 rounded-full bg-brand-primary/10 border border-brand-primary/30 flex items-center justify-center">
+          <svg className="w-5 h-5 text-brand-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+          </svg>
+        </div>
+        <div>
+          <p className="font-display font-bold uppercase tracking-wide text-brand-text">Message Received</p>
+          <p className="text-sm font-barlow text-brand-muted mt-1">We&apos;ll be in touch within 1–2 business days to schedule your consultation.</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSend} className="rounded-xl border border-brand-border bg-brand-surface p-6 space-y-4">
+      <div className="grid sm:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-[10px] font-display uppercase tracking-widest text-brand-muted mb-1.5">Name</label>
+          <input
+            required
+            className={inputCls}
+            placeholder="Your name"
+            value={fields.name}
+            onChange={(e) => set("name", e.target.value)}
+          />
+        </div>
+        <div>
+          <label className="block text-[10px] font-display uppercase tracking-widest text-brand-muted mb-1.5">Email</label>
+          <input
+            type="email"
+            required
+            className={inputCls}
+            placeholder="your@email.com"
+            value={fields.email}
+            onChange={(e) => set("email", e.target.value)}
+          />
+        </div>
+      </div>
+      <div>
+        <label className="block text-[10px] font-display uppercase tracking-widest text-brand-muted mb-1.5">Program / Organization</label>
+        <input
+          className={inputCls}
+          placeholder="Team name or organization"
+          value={fields.program}
+          onChange={(e) => set("program", e.target.value)}
+        />
+      </div>
+      <div>
+        <label className="block text-[10px] font-display uppercase tracking-widest text-brand-muted mb-1.5">Tell us about your project</label>
+        <textarea
+          required
+          rows={4}
+          className={`${inputCls} resize-none`}
+          placeholder="Sport, quantity, timeline, specific needs…"
+          value={fields.message}
+          onChange={(e) => set("message", e.target.value)}
+        />
+      </div>
+      {status === "error" && (
+        <p className="text-sm font-barlow text-red-600">Something went wrong — please try again.</p>
+      )}
+      <button
+        type="submit"
+        disabled={status === "sending"}
+        className="w-full py-3.5 rounded-lg bg-brand-primary text-white font-display font-bold text-xs uppercase tracking-widest hover:bg-brand-secondary disabled:opacity-40 transition-colors"
+      >
+        {status === "sending" ? "Sending…" : "Request Consultation →"}
+      </button>
+    </form>
+  );
+}
+
 // ── Component ────────────────────────────────────────────────────────────────
 
 export default function LoginPage() {
@@ -346,10 +448,10 @@ export default function LoginPage() {
           JERSEY STRIP — visual proof of work
       ══════════════════════════════════════════════════════════════════ */}
       <div className="border-b border-brand-border px-3 sm:px-4 lg:px-6 pt-12 sm:pt-16 pb-8 sm:pb-10">
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
           {JERSEYS.map((j) => (
             <div key={j.name} className="group flex flex-col items-center gap-3">
-              <div className="bg-white rounded-xl w-full flex items-center justify-center px-8 py-12 sm:py-16">
+              <div className="bg-white rounded-xl w-full flex items-center justify-center px-6 py-14 sm:px-8 sm:py-16">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={j.src}
@@ -385,18 +487,26 @@ export default function LoginPage() {
             </p>
           </div>
 
-          {/* Steps grid — gap-px + parent bg trick creates seamless inner borders */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-px bg-brand-border border border-brand-border rounded-xl overflow-hidden">
-            {STEPS.map((step) => (
+          {/* Steps grid — matches ROLES panel design for consistency */}
+          <div className="border border-brand-border rounded-xl overflow-hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5">
+            {STEPS.map((step, i) => (
               <div
                 key={step.num}
-                className="flex flex-col gap-4 p-5 sm:p-6 bg-brand-bg"
+                className={`group relative flex flex-col gap-4 p-6 xl:p-7 bg-brand-bg hover:bg-brand-surface transition-colors duration-300
+                  ${i > 0 ? "border-t sm:border-t-0 sm:border-l border-brand-border" : ""}
+                  ${i === 2 ? "sm:border-t lg:border-t-0 border-brand-border" : ""}
+                `}
               >
+                {/* Hover accent bar — matches ROLES section */}
+                <div className={`absolute top-0 left-0 right-0 h-[2px] opacity-0 group-hover:opacity-100 transition-opacity duration-300 ${
+                  step.isApproval ? "bg-brand-primary" : "bg-brand-border"
+                }`} />
+
                 {/* Top row: step number + approval badge */}
                 <div className="flex items-start justify-between">
-                  <span className="font-display font-bold text-[2.25rem] leading-none text-brand-border select-none">{step.num}</span>
+                  <span className="font-display font-bold text-[2rem] leading-none text-brand-border select-none">{step.num}</span>
                   {step.isApproval && (
-                    <span className="px-2 py-1 rounded bg-brand-primary/10 border border-brand-primary/30 text-brand-primary font-display font-bold text-[8px] uppercase tracking-widest whitespace-nowrap">
+                    <span className="px-2 py-0.5 rounded border bg-brand-primary/10 border-brand-primary/30 text-brand-primary font-display font-bold text-[8px] uppercase tracking-widest whitespace-nowrap">
                       ✓ Approval
                     </span>
                   )}
@@ -407,11 +517,11 @@ export default function LoginPage() {
                   <span className={`self-start text-[8px] font-display font-bold uppercase tracking-[0.2em] px-2 py-0.5 rounded border ${step.whoClass}`}>
                     {step.who}
                   </span>
-                  <p className="font-display font-bold uppercase tracking-wide text-brand-text text-[11px] leading-snug">{step.title}</p>
-                  <p className="text-[11px] font-barlow text-brand-muted leading-relaxed">{step.detail}</p>
+                  <p className="font-display font-bold uppercase tracking-wide text-brand-text text-sm leading-snug">{step.title}</p>
+                  <p className="text-xs font-barlow text-brand-muted leading-relaxed">{step.detail}</p>
                 </div>
 
-                {/* Approval indicator */}
+                {/* Approval indicator — matches ROLES "Enter Portal" link style */}
                 {step.isApproval && "approvalLabel" in step && (
                   <div className="flex items-center gap-2 pt-3 border-t border-brand-border mt-auto">
                     <div className="w-1.5 h-1.5 rounded-full bg-brand-primary flex-shrink-0" />
@@ -557,6 +667,44 @@ export default function LoginPage() {
               </a>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════════════════════
+          CONTACT — custom design consultation
+      ══════════════════════════════════════════════════════════════════ */}
+      <section className="px-5 sm:px-8 lg:px-10 py-12 sm:py-16 border-b border-brand-border">
+        <div className="max-w-5xl mx-auto grid lg:grid-cols-[1fr_480px] gap-12 lg:gap-16 items-start">
+
+          {/* Left — editorial intro */}
+          <div>
+            <div className="flex items-center gap-2.5 mb-4">
+              <div className="w-[3px] h-5 bg-brand-primary flex-shrink-0" />
+              <span className="text-[10px] font-display font-bold uppercase tracking-[0.3em] text-brand-primary">Design Consultation</span>
+            </div>
+            <h2 className="font-display font-bold uppercase tracking-tight text-brand-text leading-none mb-5" style={{ fontSize: "clamp(1.1rem, 2vw, 1.75rem)" }}>
+              Work Directly<br />with Grace Studios.
+            </h2>
+            <p className="text-xs font-barlow text-brand-muted leading-relaxed max-w-[320px]">
+              Have a complex program, need a full custom identity system, or want to talk
+              through a large order? Reach out and we&apos;ll set up a dedicated consultation session.
+            </p>
+            <div className="mt-6 space-y-3">
+              {[
+                "Full identity systems (jersey + shorts + warmups)",
+                "Large-program pricing and timelines",
+                "Branded custom colorways and exclusive design systems",
+              ].map((item) => (
+                <div key={item} className="flex items-start gap-2.5">
+                  <div className="w-[3px] h-3.5 bg-brand-primary flex-shrink-0 mt-0.5" />
+                  <span className="text-xs font-barlow text-brand-muted leading-relaxed">{item}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Right — contact form */}
+          <ConsultationForm />
         </div>
       </section>
 
