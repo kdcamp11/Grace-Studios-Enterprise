@@ -537,6 +537,133 @@ export default function LoginPage() {
       </section>
 
       {/* ══════════════════════════════════════════════════════════════════
+          TWO PATHS — Consultation vs. Design Library
+      ══════════════════════════════════════════════════════════════════ */}
+      <section className="px-5 sm:px-8 lg:px-10 py-12 sm:py-16 border-b border-brand-border">
+        <div className="max-w-5xl mx-auto">
+
+          <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-5 mb-10">
+            <div>
+              <div className="flex items-center gap-2.5 mb-4">
+                <div className="w-[3px] h-5 bg-brand-primary flex-shrink-0" />
+                <span className="text-[10px] font-display font-bold uppercase tracking-[0.3em] text-brand-primary">How We Work With You</span>
+              </div>
+              <h2 className="font-display font-bold uppercase tracking-tight text-brand-text leading-none" style={{ fontSize: "clamp(1.1rem, 2vw, 1.75rem)" }}>
+                Two Ways to Build<br />with Grace Studios.
+              </h2>
+            </div>
+            <p className="text-xs font-barlow text-brand-muted max-w-[280px] leading-relaxed lg:text-right">
+              Whether you want a fully custom design or want to move fast using our proven design library —
+              both paths deliver the same production quality.
+            </p>
+          </div>
+
+          <div className="border border-brand-border rounded-xl overflow-hidden grid grid-cols-1 lg:grid-cols-2">
+
+            {/* ── PATH 1: CONSULTATION ─────────────────────────────────── */}
+            <div className="group relative flex flex-col gap-5 p-6 xl:p-8 bg-brand-bg hover:bg-brand-surface transition-colors duration-300">
+              <div className="absolute top-0 left-0 right-0 h-[2px] bg-brand-primary opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
+              <div className="flex items-start justify-between gap-4">
+                <span className="self-start text-[8px] font-display font-bold uppercase tracking-[0.2em] px-2 py-0.5 rounded border text-brand-primary bg-brand-primary/10 border-brand-primary/30">
+                  Customization
+                </span>
+                <span className="text-[8px] font-display uppercase tracking-widest text-brand-muted border border-brand-border rounded px-2 py-0.5">
+                  Full Service
+                </span>
+              </div>
+
+              <div className="flex flex-col gap-2.5 flex-1">
+                <p className="font-display font-bold uppercase tracking-wide text-brand-text text-lg xl:text-xl leading-tight">
+                  Custom.<br />Collaborative.<br />Built to Brief.
+                </p>
+                <p className="text-xs font-barlow text-brand-muted leading-relaxed">
+                  Submit your vision and work directly with our team. Receive fully custom concepts
+                  built around your program — colors, identity, and design direction all tailored to you.
+                </p>
+
+                <ul className="mt-2 space-y-2.5">
+                  {[
+                    "Design consultation included",
+                    "Custom concepts developed from your brief",
+                    "Designer-built Illustrator production files",
+                    "Two client approvals before a single garment is cut",
+                    "End-to-end tracking from brief to delivery",
+                  ].map((item) => (
+                    <li key={item} className="flex items-start gap-2.5">
+                      <div className="w-[3px] h-3.5 bg-brand-primary flex-shrink-0 mt-[3px]" />
+                      <span className="text-xs font-barlow text-brand-muted leading-snug">{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <a
+                href="#contact"
+                className="inline-flex items-center gap-2 text-[10px] font-display font-bold uppercase tracking-widest text-brand-muted group-hover:text-brand-primary transition-colors duration-200 mt-2"
+              >
+                Request Consultation
+                <svg className="w-3 h-3 group-hover:translate-x-0.5 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                </svg>
+              </a>
+            </div>
+
+            {/* ── PATH 2: DESIGN LIBRARY / SELF SERVICE ────────────────── */}
+            <div className="group relative flex flex-col gap-5 p-6 xl:p-8 bg-brand-bg hover:bg-brand-surface transition-colors duration-300 border-t lg:border-t-0 lg:border-l border-brand-border">
+              <div className="absolute top-0 left-0 right-0 h-[2px] bg-brand-primary opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
+              <div className="flex items-start justify-between gap-4">
+                <span className="self-start text-[8px] font-display font-bold uppercase tracking-[0.2em] px-2 py-0.5 rounded border text-brand-primary bg-brand-primary/10 border-brand-primary/30">
+                  Self Service
+                </span>
+                <span className="text-[8px] font-display uppercase tracking-widest text-brand-muted border border-brand-border rounded px-2 py-0.5">
+                  Design Library
+                </span>
+              </div>
+
+              <div className="flex flex-col gap-2.5 flex-1">
+                <p className="font-display font-bold uppercase tracking-wide text-brand-text text-lg xl:text-xl leading-tight">
+                  Grace Studios<br />Design Language.<br />Your Identity.
+                </p>
+                <p className="text-xs font-barlow text-brand-muted leading-relaxed">
+                  Build your uniform on the same design philosophy that powers our elite programs.
+                  Select from our curated silhouette library — each design system refined to carry
+                  your colors, logo, and identity.
+                </p>
+
+                <ul className="mt-2 space-y-2.5">
+                  {[
+                    "Curated Grace Studios silhouettes and design systems",
+                    "Design language refined across hundreds of elite programs",
+                    "Your colors, your logo — our proven framework",
+                    "Faster brief-to-production turnaround",
+                    "Same approval process and production quality",
+                  ].map((item) => (
+                    <li key={item} className="flex items-start gap-2.5">
+                      <div className="w-[3px] h-3.5 bg-brand-primary flex-shrink-0 mt-[3px]" />
+                      <span className="text-xs font-barlow text-brand-muted leading-snug">{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <Link
+                href="/signup"
+                className="inline-flex items-center gap-2 text-[10px] font-display font-bold uppercase tracking-widest text-brand-muted group-hover:text-brand-primary transition-colors duration-200 mt-2"
+              >
+                Get Started
+                <svg className="w-3 h-3 group-hover:translate-x-0.5 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                </svg>
+              </Link>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════════════════════
           STATS BAR
       ══════════════════════════════════════════════════════════════════ */}
       <div className="border-b border-brand-border">
