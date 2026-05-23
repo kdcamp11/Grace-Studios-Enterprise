@@ -144,12 +144,7 @@ function PortalContent() {
     <div className="min-h-screen bg-brand-bg flex flex-col">
       {/* Header */}
       <header className="border-b border-brand-border px-6 sm:px-10 py-5 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <OrgLogo href="/portal" />
-          <a href="/portal" className="text-xs font-display font-bold uppercase tracking-widest text-brand-primary hover:text-brand-secondary transition-colors">
-            Client Portal
-          </a>
-        </div>
+        <OrgLogo href="/portal" />
         <div className="flex items-center gap-5">
           <a href="/brief/new" className="text-xs font-display font-bold uppercase tracking-wider text-brand-primary hover:text-brand-secondary transition-colors">
             {hasProfile ? "+ New Order" : "+ New Brief"}
@@ -157,6 +152,7 @@ function PortalContent() {
           {(role === "admin" || role === "super_admin") && (
             <a href="/admin" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Admin Portal</a>
           )}
+          <a href="/contact" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Consultation</a>
           <a href="/settings" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Settings</a>
           <button type="button" onClick={handleSignOut} className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Sign Out</button>
         </div>

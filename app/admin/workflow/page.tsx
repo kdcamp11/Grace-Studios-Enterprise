@@ -9,15 +9,15 @@ import type { OrderStage } from "@/lib/supabase/types";
 import type { WorkflowOrder } from "@/app/api/admin/workflow/route";
 
 const STAGES: { key: OrderStage; label: string; color: string }[] = [
-  { key: "onboarding",              label: "Brief",             color: "text-gray-500" },
-  { key: "design_confirmed",        label: "Design",            color: "text-amber-500" },
-  { key: "files_sent",              label: "Approved",          color: "text-blue-500" },
-  { key: "first_piece_in_progress", label: "First Piece",       color: "text-violet-500" },
-  { key: "first_piece_review",      label: "FP Review",         color: "text-purple-500" },
-  { key: "bulk_production",         label: "Bulk",              color: "text-indigo-500" },
-  { key: "qc_verified",             label: "QC",                color: "text-teal-500" },
-  { key: "shipped",                 label: "Shipped",           color: "text-cyan-500" },
-  { key: "delivered",               label: "Delivered",         color: "text-green-500" },
+  { key: "onboarding",              label: "Brief",       color: "text-brand-muted" },
+  { key: "design_confirmed",        label: "Design",      color: "text-brand-primary" },
+  { key: "files_sent",              label: "Approved",    color: "text-brand-muted" },
+  { key: "first_piece_in_progress", label: "First Piece", color: "text-brand-muted" },
+  { key: "first_piece_review",      label: "FP Review",   color: "text-brand-primary" },
+  { key: "bulk_production",         label: "Bulk",        color: "text-brand-muted" },
+  { key: "qc_verified",             label: "QC",          color: "text-brand-muted" },
+  { key: "shipped",                 label: "Shipped",     color: "text-brand-muted" },
+  { key: "delivered",               label: "Delivered",   color: "text-emerald-600" },
 ];
 
 function paymentRisk(order: WorkflowOrder): "ok" | "warn" | "block" {

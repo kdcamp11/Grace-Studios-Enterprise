@@ -28,15 +28,11 @@ export default function BriefLayout({ children, currentStep, title, subtitle, ma
     <div className="min-h-screen bg-brand-bg flex flex-col">
       {/* Header */}
       <header className="px-6 sm:px-10 py-5 flex items-center justify-between border-b border-brand-border">
-        <div className="flex items-center gap-4">
-          <OrgLogo href="/portal" />
-          <a href="/portal" className="text-xs font-display font-bold uppercase tracking-widest text-brand-primary hover:text-brand-secondary transition-colors">
-            Client Portal
-          </a>
-        </div>
+        <OrgLogo href="/portal" />
         <div className="flex items-center gap-5">
           <a href="/portal" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Home</a>
           <button type="button" onClick={() => router.back()} className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">← Back</button>
+          <a href="/contact" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Consultation</a>
           <button type="button" onClick={signOut} className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Sign Out</button>
         </div>
       </header>

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { useTenant } from "@/lib/tenant/context";
 import TenantLogo from "@/components/TenantLogo";
 
 interface Notification {
@@ -20,7 +19,6 @@ interface AdminHeaderProps {
 }
 
 export default function AdminHeader({ onSignOut, activePath }: AdminHeaderProps) {
-  const tenant = useTenant();
   const [unread, setUnread]         = useState(0);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [bellOpen, setBellOpen]     = useState(false);
@@ -71,15 +69,6 @@ export default function AdminHeader({ onSignOut, activePath }: AdminHeaderProps)
     <header className="border-b border-brand-border px-6 py-4 flex items-center justify-between sticky top-0 bg-brand-bg z-40">
       <div className="flex items-center gap-4">
         <TenantLogo href="/admin" />
-        <div>
-          <p className="text-[9px] font-display uppercase tracking-[0.3em] text-brand-muted leading-none">Operations</p>
-          <a
-            href="/admin"
-            className="text-xs font-display font-bold uppercase tracking-widest text-brand-primary hover:text-brand-secondary transition-colors leading-tight"
-          >
-            {tenant.name}
-          </a>
-        </div>
       </div>
 
       <nav className="flex items-center gap-5">
