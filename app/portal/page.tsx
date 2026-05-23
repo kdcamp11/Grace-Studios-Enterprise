@@ -71,59 +71,28 @@ function PortalContent() {
         return;
       }
 
-      // Check if this user has an existing client profile (for smart CTA)
-      fetch("/api/brief/client-profile")
-        .then((r) => r.json())
-        .then(({ client: cp }) => { if (cp) setHasProfile(true); })
-        .catch(() => {});
-
-      // Match by user_id (preferred) OR email to handle both new and legacy rows
-      const { data: clientRows } = await supabase
-        .from("clients")
-        .select("id")
-        .or(`user_id.eq.${u.id},email.eq.${u.email}`)
-        .limit(1);
-      const client = clientRows?.[0] ?? null;
-
-      if (!client) { setLoading(false); return; }
-
-      const { data: orderRows } = await supabase
-        .from("orders")
-        .select("id, order_number, stage, created_at")
-        .eq("client_id", client.id)
-        .order("created_at", { ascending: false });
-
-      if (!orderRows) { setLoading(false); return; }
-
-      const orderIds = orderRows.map((o) => o.id);
-
-      // Fetch concepts and first-piece-media in parallel
-      const [{ data: concepts }, { data: mediaRows }] = await Promise.all([
-        supabase.from("concepts").select("order_id").in("order_id", orderIds),
-        supabase
-          .from("first_piece_media")
-          .select("order_id, client_approved")
-          .in("order_id", orderIds)
-          .eq("client_visible", true),
+      // Use admin API for all data — bypasses RLS on clients + orders tables.
+      // Direct Supabase client reads were being silently blocked by RLS policies.
+      const [profileRes, ordersRes] = await Promise.all([
+        fetch("/api/brief/client-profile"),
+        fetch("/api/portal/orders"),
       ]);
 
-      const conceptOrderIds = new Set((concepts ?? []).map((c) => c.order_id));
+      if (profileRes.ok) {
+        const { client: cp } = await profileRes.json();
+        if (cp && !cp.is_prefill) setHasProfile(true);
+      }
 
-      // Orders with at least one client-visible item not yet reviewed by client
-      const pendingReviewIds = new Set(
-        (mediaRows ?? [])
-          .filter((m) => m.client_approved === null)
-          .map((m) => m.order_id)
-      );
+      if (ordersRes.ok) {
+        const { orders: fetchedOrders } = await ordersRes.json();
+        setOrders(
+          (fetchedOrders ?? []).map((o: Order & { stage: string }) => ({
+            ...o,
+            stage: o.stage as OrderStage,
+          }))
+        );
+      }
 
-      setOrders(
-        orderRows.map((o) => ({
-          ...o,
-          stage: o.stage as OrderStage,
-          has_concepts:       conceptOrderIds.has(o.id),
-          has_pending_review: pendingReviewIds.has(o.id),
-        }))
-      );
       setLoading(false);
     }
     load();

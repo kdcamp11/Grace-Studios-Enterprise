@@ -161,20 +161,14 @@ function SupplierPortalContent() {
         </div>
       )}
       <header className="border-b border-brand-border px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <TenantLogo href="/supplier" />
-          <a href="/supplier" className="text-xs font-display font-bold uppercase tracking-widest text-brand-primary hover:text-brand-secondary transition-colors">
-            Supplier Portal
-          </a>
-        </div>
+        <TenantLogo href="/supplier" />
         <div className="flex items-center gap-5">
           <span className="text-xs text-brand-muted font-barlow hidden sm:block">{name}</span>
           <a href="/supplier/portfolio" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Portfolio</a>
-          {!isAdminView && (
-            <>
-              <a href="/supplier/billing" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Billing</a>
-              <a href="/settings" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Settings</a>
-            </>
+          <a href="/supplier/billing" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Billing</a>
+          <a href="/settings" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Settings</a>
+          {isAdminView && (
+            <a href="/admin" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Admin</a>
           )}
           <button type="button" onClick={signOut} className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Sign Out</button>
         </div>

@@ -162,6 +162,65 @@ function DetailRow({ label, value }: { label: string; value: string | null | und
   );
 }
 
+/** Parses the AI design brief JSON and renders it as clean structured prose. */
+function AiDesignBrief({ raw }: { raw: string }) {
+  // If it's not JSON, just render as plain text
+  let parsed: Record<string, unknown> | null = null;
+  try {
+    const v = JSON.parse(raw);
+    if (typeof v === "object" && v !== null && !Array.isArray(v)) parsed = v as Record<string, unknown>;
+  } catch {
+    // not JSON
+  }
+
+  if (!parsed) {
+    return <p className="text-xs font-barlow text-brand-muted leading-relaxed">{raw}</p>;
+  }
+
+  // Extract readable fields
+  const description  = typeof parsed.description  === "string" ? parsed.description  : null;
+  const garmentType  = typeof parsed.garmentType  === "string" ? parsed.garmentType  : null;
+  const features     = Array.isArray(parsed.features)     ? (parsed.features as string[])     : [];
+  const materials    = Array.isArray(parsed.materials)     ? (parsed.materials as string[])    : [];
+  const logoPlace    = typeof parsed.logoPlacement === "string" ? parsed.logoPlacement : null;
+
+  return (
+    <div className="space-y-3">
+      {garmentType && (
+        <p className="text-xs font-display uppercase tracking-wider text-brand-primary">{garmentType}</p>
+      )}
+      {description && (
+        <p className="text-xs font-barlow text-brand-muted leading-relaxed">{description}</p>
+      )}
+      {features.length > 0 && (
+        <div>
+          <p className="text-[10px] font-display uppercase tracking-widest text-brand-muted mb-1.5">Key Features</p>
+          <ul className="space-y-1">
+            {features.map((f, i) => (
+              <li key={i} className="flex items-start gap-2">
+                <div className="w-[3px] h-3 bg-brand-primary flex-shrink-0 mt-0.5" />
+                <span className="text-xs font-barlow text-brand-muted leading-snug">{f}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {materials.length > 0 && (
+        <div>
+          <p className="text-[10px] font-display uppercase tracking-widest text-brand-muted mb-1.5">Materials</p>
+          <p className="text-xs font-barlow text-brand-muted leading-relaxed">{materials.join(" · ")}</p>
+        </div>
+      )}
+      {logoPlace && (
+        <div>
+          <p className="text-[10px] font-display uppercase tracking-widest text-brand-muted mb-1">Logo Placement</p>
+          <p className="text-xs font-barlow text-brand-muted">{logoPlace}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AdminOrderPage() {
   const { order_id } = useParams<{ order_id: string }>();
   const router = useRouter();
@@ -860,9 +919,9 @@ export default function AdminOrderPage() {
                   </div>
                 )}
                 {order.brief.ai_prompt && (
-                  <div className="pt-3">
-                    <p className="text-xs font-display uppercase tracking-wider text-brand-muted mb-2">AI Design Brief</p>
-                    <p className="text-xs font-barlow text-brand-muted leading-relaxed">{order.brief.ai_prompt}</p>
+                  <div className="pt-3 border-t border-brand-border">
+                    <p className="text-xs font-display uppercase tracking-wider text-brand-muted mb-3">AI Design Brief</p>
+                    <AiDesignBrief raw={order.brief.ai_prompt} />
                   </div>
                 )}
               </div>
