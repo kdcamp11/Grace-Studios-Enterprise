@@ -1,28 +1,33 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient, sessionReady } from "@/lib/supabase/client";
 import { getProfile } from "@/lib/profile";
 import OrgLogo from "@/components/OrgLogo";
+import { CLIENT_PLANS, fmt$, type ClientAiPlan } from "@/lib/payments/client-plans";
+import { Suspense } from "react";
 
-// ── Rate card ─────────────────────────────────────────────────────────────────
-// Each "generation run" = 1 order's AI concepts (4 concept images per run).
-// Clients get N runs included per billing cycle; additional runs billed per-run.
-const INCLUDED_RUNS_PER_MONTH = 3;   // free included monthly runs
-const RATE_PER_ADDITIONAL     = 25;  // $25 per additional generation run
-const PRIORITY_RATE           = 49;  // $49 per priority (same-day) generation
+const PLANS_ORDER: ClientAiPlan[] = ["starter", "growth", "studio"];
 
 interface UsageData {
-  totalOrders:       number;
+  totalOrders:        number;
   ordersWithConcepts: number;
-  thisMonth:         number;
-  conceptsGenerated: number;
+  thisMonth:          number;
+  conceptsGenerated:  number;
   history: { month: string; runs: number }[];
 }
 
-function UsageBar({ used, included }: { used: number; included: number }) {
-  const pct = Math.min((used / Math.max(included, 1)) * 100, 100);
+function UsageBar({ used, included }: { used: number; included: number | null }) {
+  if (included === null) {
+    return (
+      <div className="space-y-1.5">
+        <div className="h-2 rounded-full bg-brand-primary w-full" />
+        <span className="text-[10px] font-barlow text-brand-muted">Unlimited runs — no cap</span>
+      </div>
+    );
+  }
+  const pct  = Math.min((used / Math.max(included, 1)) * 100, 100);
   const over = used > included;
   return (
     <div className="space-y-1.5">
@@ -36,7 +41,7 @@ function UsageBar({ used, included }: { used: number; included: number }) {
         <span className="text-[10px] font-barlow text-brand-muted">{used} of {included} included runs used</span>
         {over && (
           <span className="text-[10px] font-display uppercase tracking-wider text-amber-500 font-bold">
-            {used - included} additional
+            {used - included} over limit
           </span>
         )}
       </div>
@@ -44,29 +49,47 @@ function UsageBar({ used, included }: { used: number; included: number }) {
   );
 }
 
-export default function ClientBillingPage() {
-  const router      = useRouter();
-  const supabaseRef = useRef(createClient());
-  const supabase    = supabaseRef.current;
+function BillingContent() {
+  const router       = useRouter();
+  const searchParams = useSearchParams();
+  const supabaseRef  = useRef(createClient());
+  const supabase     = supabaseRef.current;
 
-  const [loading, setLoading] = useState(true);
-  const [email, setEmail]     = useState("");
-  const [usage, setUsage]     = useState<UsageData | null>(null);
+  const [loading, setLoading]       = useState(true);
+  const [email, setEmail]           = useState("");
+  const [usage, setUsage]           = useState<UsageData | null>(null);
+  const [currentPlan, setCurrentPlan] = useState<ClientAiPlan>("starter");
+  const [runsIncluded, setRunsIncluded] = useState<number | null>(3);
+  const [selected, setSelected]     = useState<ClientAiPlan | null>(null);
+  const [upgrading, setUpgrading]   = useState(false);
+
+  const successMsg = searchParams.get("success") === "1"
+    ? `Plan activated! You're now on ${CLIENT_PLANS[searchParams.get("plan") as ClientAiPlan ?? "starter"]?.label ?? "your new plan"}.`
+    : searchParams.get("canceled") === "1"
+    ? "Checkout canceled — no changes were made."
+    : null;
 
   useEffect(() => {
     async function load() {
       await sessionReady();
       const profile = await getProfile();
       if (!profile) { router.replace("/login"); return; }
-      // Suppliers have their own billing page; everyone else (including admins
-      // testing the client portal) sees the client usage dashboard here.
       if (profile.role === "supplier") { router.replace("/supplier/billing"); return; }
       setEmail(profile.email);
 
-      const res = await fetch("/api/portal/usage");
-      if (res.ok) {
-        const { usage: u } = await res.json();
+      const [usageRes, subRes] = await Promise.all([
+        fetch("/api/portal/usage"),
+        fetch("/api/billing/client-subscription"),
+      ]);
+
+      if (usageRes.ok) {
+        const { usage: u } = await usageRes.json();
         setUsage(u);
+      }
+      if (subRes.ok) {
+        const d = await subRes.json();
+        setCurrentPlan(d.plan ?? "starter");
+        setRunsIncluded(d.runsIncluded ?? 3);
       }
       setLoading(false);
     }
@@ -78,13 +101,30 @@ export default function ClientBillingPage() {
     router.replace("/login");
   }
 
-  const thisMonth  = usage?.thisMonth  ?? 0;
-  const additional = Math.max(0, thisMonth - INCLUDED_RUNS_PER_MONTH);
-  const monthCost  = additional * RATE_PER_ADDITIONAL;
+  async function handleUpgrade() {
+    if (!selected || selected === currentPlan) return;
+    if (selected === "starter") return; // downgrade — contact support
+    setUpgrading(true);
+    try {
+      const res = await fetch("/api/billing/client-checkout", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ plan: selected }),
+      });
+      const { url, error } = await res.json();
+      if (url) { window.location.href = url; return; }
+      console.error("Checkout error:", error);
+    } catch (e) {
+      console.error(e);
+    }
+    setUpgrading(false);
+  }
 
-  const now = new Date();
-  const cycleEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-  const daysLeft = Math.ceil((cycleEnd.getTime() - now.getTime()) / 86400000);
+  const thisMonth  = usage?.thisMonth  ?? 0;
+  const over       = runsIncluded !== null ? Math.max(0, thisMonth - runsIncluded) : 0;
+  const now        = new Date();
+  const cycleEnd   = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  const daysLeft   = Math.ceil((cycleEnd.getTime() - now.getTime()) / 86400000);
 
   if (loading) {
     return (
@@ -120,38 +160,50 @@ export default function ClientBillingPage() {
                 AI Usage & Billing
               </span>
             </div>
-            <h1
-              className="font-display font-bold uppercase tracking-tight text-brand-text leading-none mb-2"
-              style={{ fontSize: "clamp(1.8rem, 3vw, 2.6rem)" }}
-            >
+            <h1 className="font-display font-bold uppercase tracking-tight text-brand-text leading-none mb-2"
+                style={{ fontSize: "clamp(1.8rem, 3vw, 2.6rem)" }}>
               Concept Generation
             </h1>
             <p className="text-sm font-barlow text-brand-muted max-w-md leading-relaxed">
-              Each order includes AI-generated concept designs. Your included runs reset on the 1st of each month.
+              Each run generates 4 AI concept designs. Your included runs reset on the 1st of each month.
             </p>
           </div>
 
-          {/* ── This month ─────────────────────────────────────── */}
+          {/* Success / canceled banner */}
+          {successMsg && (
+            <div className={`rounded-xl border px-5 py-4 text-sm font-barlow ${
+              searchParams.get("success") === "1"
+                ? "border-emerald-400/30 bg-emerald-400/5 text-emerald-600"
+                : "border-brand-border bg-brand-surface text-brand-muted"
+            }`}>
+              {successMsg}
+            </div>
+          )}
+
+          {/* ── This month usage ──────────────────────────────── */}
           <div className="bg-brand-surface border border-brand-border rounded-xl p-6 space-y-5">
             <div className="flex items-center justify-between">
               <p className="text-xs font-display uppercase tracking-widest text-brand-primary">
                 {now.toLocaleDateString("en-US", { month: "long", year: "numeric" })}
               </p>
-              <span className="text-[10px] font-barlow text-brand-muted">{daysLeft} days left in cycle</span>
+              <div className="flex items-center gap-3">
+                <span className="px-2 py-0.5 rounded-full bg-brand-primary/10 border border-brand-primary/30 text-brand-primary font-display font-bold text-[8px] uppercase tracking-widest">
+                  {CLIENT_PLANS[currentPlan].label}
+                </span>
+                <span className="text-[10px] font-barlow text-brand-muted">{daysLeft} days left</span>
+              </div>
             </div>
 
-            <UsageBar used={thisMonth} included={INCLUDED_RUNS_PER_MONTH} />
+            <UsageBar used={thisMonth} included={runsIncluded} />
 
             <div className="grid grid-cols-3 gap-4 pt-1">
               {[
-                { label: "Included",   value: INCLUDED_RUNS_PER_MONTH, sub: "runs/month" },
-                { label: "Used",       value: thisMonth,                sub: "this month" },
-                { label: "Additional", value: additional,               sub: additional > 0 ? `$${monthCost} due` : "none", alert: additional > 0 },
+                { label: "Included",   value: runsIncluded === null ? "∞" : runsIncluded, sub: "runs/month" },
+                { label: "Used",       value: thisMonth,  sub: "this month" },
+                { label: "Additional", value: over,       sub: over > 0 ? `$${over * 25} due` : "none", alert: over > 0 },
               ].map(({ label, value, sub, alert }) => (
                 <div key={label} className="text-center">
-                  <p className={`font-display font-bold text-2xl leading-none ${alert ? "text-amber-500" : "text-brand-text"}`}>
-                    {value}
-                  </p>
+                  <p className={`font-display font-bold text-2xl leading-none ${alert ? "text-amber-500" : "text-brand-text"}`}>{value}</p>
                   <p className="text-[10px] font-display uppercase tracking-widest text-brand-muted mt-1">{label}</p>
                   <p className="text-[10px] font-barlow text-brand-muted mt-0.5">{sub}</p>
                 </div>
@@ -159,48 +211,113 @@ export default function ClientBillingPage() {
             </div>
           </div>
 
-          {/* ── Rate card ──────────────────────────────────────── */}
-          <div className="bg-brand-surface border border-brand-border rounded-xl overflow-hidden">
-            <div className="px-6 py-4 border-b border-brand-border">
-              <p className="text-xs font-display uppercase tracking-widest text-brand-primary">Rate Card</p>
+          {/* ── Plan selector ─────────────────────────────────── */}
+          <div className="space-y-3">
+            <p className="text-[10px] font-display uppercase tracking-widest text-brand-muted">Choose a Plan</p>
+
+            <div className="grid sm:grid-cols-3 gap-4">
+              {PLANS_ORDER.map((planId) => {
+                const plan      = CLIENT_PLANS[planId];
+                const isCurrent = planId === currentPlan;
+                const isSelected = planId === selected;
+
+                return (
+                  <button
+                    key={planId}
+                    type="button"
+                    onClick={() => !isCurrent && setSelected(isSelected ? null : planId)}
+                    disabled={isCurrent}
+                    className={`relative text-left rounded-xl border p-5 flex flex-col gap-4 transition-all duration-200 focus:outline-none ${
+                      isCurrent
+                        ? "border-brand-primary bg-brand-primary/5 cursor-default"
+                        : isSelected
+                        ? "border-brand-text bg-brand-surface shadow-[0_0_0_1px_theme(colors.black)]"
+                        : "border-brand-border bg-brand-surface hover:border-brand-text/50 cursor-pointer"
+                    }`}
+                  >
+                    {/* Badges */}
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="font-display font-bold uppercase tracking-widest text-brand-text text-sm">{plan.label}</p>
+                      <div className="flex gap-1.5">
+                        {isCurrent && (
+                          <span className="px-2 py-0.5 rounded-full bg-brand-primary/10 border border-brand-primary/30 text-brand-primary font-display font-bold text-[8px] uppercase tracking-widest">
+                            Current
+                          </span>
+                        )}
+                        {plan.priorityAccess && (
+                          <span className="px-2 py-0.5 rounded-full bg-amber-400/10 border border-amber-400/30 text-amber-600 font-display font-bold text-[8px] uppercase tracking-widest">
+                            Priority
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Price */}
+                    <div className="flex items-end gap-1">
+                      <span className="font-display font-bold text-3xl text-brand-text leading-none">
+                        {plan.priceMonthly === 0 ? "Free" : `$${plan.priceMonthly / 100}`}
+                      </span>
+                      {plan.priceMonthly > 0 && (
+                        <span className="text-xs font-barlow text-brand-muted mb-0.5">/mo</span>
+                      )}
+                    </div>
+
+                    <p className="text-[11px] font-barlow text-brand-muted leading-snug">{plan.tagline}</p>
+
+                    {/* Features */}
+                    <ul className="space-y-1.5 flex-1">
+                      {plan.features.map((f) => (
+                        <li key={f} className="flex items-start gap-2">
+                          <div className={`w-[3px] h-3 flex-shrink-0 mt-0.5 ${isCurrent || isSelected ? "bg-brand-primary" : "bg-brand-border"}`} />
+                          <span className="text-[11px] font-barlow text-brand-muted leading-snug">{f}</span>
+                        </li>
+                      ))}
+                    </ul>
+
+                    {/* Selection radio */}
+                    {!isCurrent && (
+                      <div className={`flex items-center gap-2 pt-3 border-t ${isSelected ? "border-brand-text/20" : "border-brand-border"}`}>
+                        <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
+                          isSelected ? "border-brand-text bg-brand-text" : "border-brand-border"
+                        }`}>
+                          {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                        </div>
+                        <span className={`text-[10px] font-display uppercase tracking-widest transition-colors ${
+                          isSelected ? "text-brand-text" : "text-brand-muted"
+                        }`}>
+                          {isSelected ? "Selected" : "Select Plan"}
+                        </span>
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
             </div>
-            {[
-              {
-                label:   "Included Runs",
-                rate:    `${INCLUDED_RUNS_PER_MONTH} runs / month`,
-                detail:  "4 AI concept designs per run. Resets on the 1st.",
-                price:   "Free",
-                highlight: false,
-              },
-              {
-                label:   "Additional Runs",
-                rate:    "Per run, same cycle",
-                detail:  "Charged when you exceed your monthly included runs.",
-                price:   `$${RATE_PER_ADDITIONAL}`,
-                highlight: false,
-              },
-              {
-                label:   "Priority Generation",
-                rate:    "Same-day turnaround",
-                detail:  "Moves your order to the front of the AI queue.",
-                price:   `$${PRIORITY_RATE}`,
-                highlight: false,
-              },
-            ].map((row, i) => (
-              <div key={row.label} className={`px-6 py-4 flex items-center justify-between gap-4 ${i > 0 ? "border-t border-brand-border" : ""}`}>
-                <div className="flex items-start gap-3 min-w-0">
-                  <div className="w-[3px] h-3.5 bg-brand-primary flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-display font-bold uppercase tracking-wide text-brand-text">{row.label}</p>
-                    <p className="text-[11px] font-barlow text-brand-muted mt-0.5">{row.rate} · {row.detail}</p>
-                  </div>
-                </div>
-                <span className="text-sm font-display font-bold text-brand-text flex-shrink-0">{row.price}</span>
-              </div>
-            ))}
           </div>
 
-          {/* ── Monthly history ────────────────────────────────── */}
+          {/* ── Sticky CTA ────────────────────────────────────── */}
+          {selected && selected !== currentPlan && (
+            <div className="sticky bottom-6 rounded-xl border border-brand-text/20 bg-brand-surface shadow-lg px-6 py-4 flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm font-display font-bold uppercase tracking-wide text-brand-text">
+                  Upgrade to {CLIENT_PLANS[selected].label}
+                </p>
+                <p className="text-xs font-barlow text-brand-muted mt-0.5">
+                  {fmt$(CLIENT_PLANS[selected].priceMonthly)}/mo · billed monthly · cancel anytime
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleUpgrade}
+                disabled={upgrading}
+                className="flex-shrink-0 px-6 py-3 rounded-lg bg-brand-text text-white font-display font-bold text-xs uppercase tracking-widest hover:opacity-80 disabled:opacity-40 transition-all"
+              >
+                {upgrading ? "Redirecting…" : "Upgrade Now →"}
+              </button>
+            </div>
+          )}
+
+          {/* ── Generation history ────────────────────────────── */}
           {usage && usage.history.some((h) => h.runs > 0) && (
             <div className="bg-brand-surface border border-brand-border rounded-xl overflow-hidden">
               <div className="px-6 py-4 border-b border-brand-border">
@@ -208,27 +325,25 @@ export default function ClientBillingPage() {
               </div>
               <div className="divide-y divide-brand-border">
                 {usage.history.map((h) => {
-                  const add = Math.max(0, h.runs - INCLUDED_RUNS_PER_MONTH);
+                  const inc = runsIncluded ?? 999;
+                  const add = Math.max(0, h.runs - inc);
                   return (
                     <div key={h.month} className="px-6 py-3 flex items-center justify-between gap-4">
                       <div className="flex items-center gap-3">
-                        <p className="text-xs font-barlow text-brand-muted w-24">{h.month}</p>
+                        <p className="text-xs font-barlow text-brand-muted w-20">{h.month}</p>
                         <div className="flex gap-1">
-                          {Array.from({ length: Math.max(h.runs, INCLUDED_RUNS_PER_MONTH) }).map((_, i) => (
-                            <div
-                              key={i}
-                              className={`w-2 h-2 rounded-sm ${
-                                i < h.runs
-                                  ? i < INCLUDED_RUNS_PER_MONTH ? "bg-brand-primary" : "bg-amber-400"
-                                  : "bg-brand-border"
-                              }`}
-                            />
+                          {Array.from({ length: Math.max(h.runs, runsIncluded ?? 3) }).map((_, i) => (
+                            <div key={i} className={`w-2 h-2 rounded-sm ${
+                              i < h.runs
+                                ? i < (runsIncluded ?? 999) ? "bg-brand-primary" : "bg-amber-400"
+                                : "bg-brand-border"
+                            }`} />
                           ))}
                         </div>
                         <span className="text-xs font-barlow text-brand-muted">{h.runs} run{h.runs !== 1 ? "s" : ""}</span>
                       </div>
                       <span className="text-xs font-barlow text-brand-muted">
-                        {add > 0 ? `+$${add * RATE_PER_ADDITIONAL}` : "—"}
+                        {add > 0 ? `+$${add * 25}` : "—"}
                       </span>
                     </div>
                   );
@@ -239,10 +354,10 @@ export default function ClientBillingPage() {
 
           {/* ── All-time stats ─────────────────────────────────── */}
           {usage && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               {[
-                { label: "Total Orders",           value: usage.totalOrders },
-                { label: "Orders with Concepts",   value: usage.ordersWithConcepts },
+                { label: "Total Orders",             value: usage.totalOrders },
+                { label: "Orders with Concepts",     value: usage.ordersWithConcepts },
                 { label: "Concept Images Generated", value: usage.conceptsGenerated },
               ].map(({ label, value }) => (
                 <div key={label} className="bg-brand-surface border border-brand-border rounded-xl px-5 py-4 text-center">
@@ -253,24 +368,6 @@ export default function ClientBillingPage() {
             </div>
           )}
 
-          {/* ── Need more / questions ──────────────────────────── */}
-          <div className="border-t border-brand-border pt-8 flex items-center justify-between gap-4 flex-wrap">
-            <div>
-              <p className="text-sm font-display font-bold uppercase tracking-wide text-brand-text">
-                Need a higher monthly limit?
-              </p>
-              <p className="text-xs font-barlow text-brand-muted mt-1 leading-relaxed">
-                Programs with multiple active orders can request an increased included allowance.
-              </p>
-            </div>
-            <a
-              href="/contact"
-              className="flex-shrink-0 px-6 py-3 rounded-lg bg-brand-primary text-white font-display font-bold text-xs uppercase tracking-widest hover:bg-brand-secondary transition-colors"
-            >
-              Contact Us →
-            </a>
-          </div>
-
         </div>
       </main>
 
@@ -280,5 +377,13 @@ export default function ClientBillingPage() {
         </p>
       </footer>
     </div>
+  );
+}
+
+export default function ClientBillingPage() {
+  return (
+    <Suspense>
+      <BillingContent />
+    </Suspense>
   );
 }
