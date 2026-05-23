@@ -2,26 +2,27 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ── Global zoom — scales everything: rem, px, em, images, spacing ─────────
-   CSS zoom acts like the user pressing Ctrl+Plus — every pixel on the page
-   grows, including hardcoded text-[9px] / text-xs values.
-   1.2 = ~20% larger than browser default (≈ one browser zoom step).
+/* ── Global base size ───────────────────────────────────────────────────────
+   20px = 25% larger than the browser default 16px.
+   Every rem-based Tailwind class scales up automatically:
+     text-xs  → 15px  (was 12px)
+     text-sm  → 17.5px (was 14px)
+     text-base → 20px  (was 16px)
+     text-lg  → 22.5px (was 18px)
+     spacing, padding, gaps — all 25% larger
    ───────────────────────────────────────────────────────────────────────── */
 html {
-  font-size: 16px; /* reset to browser default — zoom handles the scaling */
+  font-size: 20px;
 }
 
-body {
-  zoom: 1.2;
-}
+/* Bump hardcoded bracket text sizes that don't respond to font-size changes */
+.text-\[8px\]  { font-size: 10px !important; }
+.text-\[9px\]  { font-size: 11px !important; }
+.text-\[10px\] { font-size: 13px !important; }
+.text-\[11px\] { font-size: 14px !important; }
 
-/* Jersey strip section — counter-zoom so the images stay original size.
-   0.8333 × 1.2 body = 1.0 effective scale (exact inverse).              */
-.jersey-strip-section {
-  zoom: 0.8333;
-}
-
-/* Jersey strip image cards — pixel-locked padding at original 16px-base values */
+/* Jersey strip image cards — pixel-locked so they never scale with root font.
+   Values match what px-6 py-14 / sm:px-8 sm:py-16 were at 16px base.      */
 .jersey-img-card {
   padding: 56px 24px;
 }
