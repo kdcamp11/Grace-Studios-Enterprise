@@ -494,20 +494,21 @@ export default function LoginPage() {
           <div className="flex items-center gap-2.5 mb-7">
             <div className="w-[3px] h-5 bg-brand-primary flex-shrink-0" />
             <span className="text-[10px] font-display font-bold uppercase tracking-[0.3em] text-brand-primary">
-              Programs · Designers · Suppliers
+              Apparel · Brand Identity · Team Gear
             </span>
           </div>
 
           {/* Headline */}
           <h1 className="font-display font-bold uppercase text-brand-text leading-[0.9] tracking-tight mb-6">
-            <span className="block" style={{ fontSize: "clamp(1.8rem, 3.5vw, 3.2rem)" }}>The Operating</span>
-            <span className="block" style={{ fontSize: "clamp(1.8rem, 3.5vw, 3.2rem)" }}>System for</span>
-            <span className="block text-brand-primary" style={{ fontSize: "clamp(1.8rem, 3.5vw, 3.2rem)" }}>Elite Programs.</span>
+            <span className="block" style={{ fontSize: "clamp(1.8rem, 3.5vw, 3.2rem)" }}>The Identity</span>
+            <span className="block" style={{ fontSize: "clamp(1.8rem, 3.5vw, 3.2rem)" }}>Your Program</span>
+            <span className="block text-brand-primary" style={{ fontSize: "clamp(1.8rem, 3.5vw, 3.2rem)" }}>Was Built For.</span>
           </h1>
 
-          <p className="text-xs text-brand-muted font-barlow max-w-[480px] leading-relaxed mb-12">
-            Design concepts ready in minutes, backed by Grace Studios design philosophy.
-            Designer-built Illustrator files. Two client approvals before a single garment is cut.
+          <p className="text-xs text-brand-muted font-barlow max-w-[500px] leading-relaxed mb-12">
+            Grace Studios helps elite programs achieve their ultimate brand identity through custom apparel
+            and team gear — designed around your program, produced with precision, and tracked from first
+            concept to final delivery.
           </p>
 
           {/* Path cards — full width of content column, side by side */}
