@@ -770,46 +770,6 @@ export default function LoginPage() {
       </section>
 
       {/* ══════════════════════════════════════════════════════════════════
-          FINAL CTA — editorial split
-      ══════════════════════════════════════════════════════════════════ */}
-      <section className="px-5 sm:px-8 lg:px-10 py-12 sm:py-16 border-b border-brand-border">
-        <div className="max-w-5xl mx-auto flex flex-col lg:flex-row items-start lg:items-end justify-between gap-10">
-          <div>
-            <div className="flex items-center gap-2.5 mb-6">
-              <div className="w-[3px] h-5 bg-brand-primary flex-shrink-0" />
-              <span className="text-[10px] font-display font-bold uppercase tracking-[0.3em] text-brand-primary">Ready to Build</span>
-            </div>
-            <h2 className="font-display font-bold uppercase tracking-tight text-brand-text leading-[0.9]" style={{ fontSize: "clamp(1.4rem, 2.5vw, 2.2rem)" }}>
-              Your Program's<br />
-              <span className="text-brand-primary">Identity</span><br />
-              Starts Here.
-            </h2>
-          </div>
-
-          <div className="flex flex-col gap-4 lg:items-end lg:pb-0.5">
-            <p className="text-xs font-barlow text-brand-muted max-w-[260px] leading-relaxed lg:text-right">
-              Concepts in 48 hours. Designer-reviewed files.
-              Full production tracking from brief to delivery.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-3">
-              <Link
-                href="/signup"
-                className="px-7 py-3.5 rounded-lg bg-brand-primary text-white font-display font-bold text-xs uppercase tracking-widest hover:bg-brand-secondary transition-colors"
-              >
-                Submit Your First Brief →
-              </Link>
-              <a
-                href="#sign-in"
-                className="px-7 py-3.5 rounded-lg border border-brand-border text-brand-muted font-display font-bold text-xs uppercase tracking-widest hover:border-brand-primary hover:text-brand-primary transition-colors lg:hidden"
-              >
-                Sign In
-              </a>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ══════════════════════════════════════════════════════════════════
           ORDER TRACKER — last section
       ══════════════════════════════════════════════════════════════════ */}
       <div className="border-b border-brand-border">
