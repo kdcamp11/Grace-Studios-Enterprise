@@ -499,10 +499,8 @@ export default function LoginPage() {
           </div>
 
           {/* Headline */}
-          <h1 className="font-display font-bold uppercase text-brand-text leading-[0.9] tracking-tight mb-6">
-            <span className="block" style={{ fontSize: "clamp(1.8rem, 3.5vw, 3.2rem)" }}>The Identity</span>
-            <span className="block" style={{ fontSize: "clamp(1.8rem, 3.5vw, 3.2rem)" }}>Your Program</span>
-            <span className="block text-brand-primary" style={{ fontSize: "clamp(1.8rem, 3.5vw, 3.2rem)" }}>Was Built For.</span>
+          <h1 className="font-display font-bold uppercase text-brand-text leading-none tracking-tight mb-6 whitespace-nowrap" style={{ fontSize: "clamp(1.1rem, 2.6vw, 3rem)" }}>
+            The Identity Your Program <span className="text-brand-primary">Was Built For.</span>
           </h1>
 
           <p className="text-xs text-brand-muted font-barlow max-w-[500px] leading-relaxed mb-12">
