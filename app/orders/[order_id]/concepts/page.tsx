@@ -588,14 +588,23 @@ export default function ConceptsPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [order_id]);
 
-  // ── Load board from DB ────────────────────────────────────────────────────
+  // ── Load board from DB (via admin API to bypass RLS) ─────────────────────
 
   const loadBoard = useCallback(async (): Promise<boolean> => {
-    const { data: briefRow } = await supabase
-      .from("briefs")
-      .select("ai_prompt, logo_urls, logo_placement")
-      .eq("order_id", order_id)
-      .single();
+    let res: Response;
+    try {
+      res = await fetch(`/api/portal/board-data?order_id=${order_id}`);
+    } catch {
+      return false;
+    }
+    if (!res.ok) return false;
+
+    const { brief: briefRow, conceptRows, order: orderRow } =
+      await res.json() as {
+        brief: { ai_prompt?: string; logo_urls?: unknown; logo_placement?: string } | null;
+        conceptRows: { concept_number: number; image_url: string }[];
+        order: { order_number?: string; clients?: { name?: string } | { name?: string }[] } | null;
+      };
 
     let metadata: DesignMetadata | null = null;
 
@@ -608,12 +617,6 @@ export default function ConceptsPage() {
 
     // Legacy fallback: concepts table (old multiview format)
     if (!metadata) {
-      const { data: conceptRows } = await supabase
-        .from("concepts")
-        .select("concept_number, image_url")
-        .eq("order_id", order_id)
-        .order("concept_number");
-
       if (!conceptRows || conceptRows.length === 0) return false;
 
       const findUrl = (n: number) => conceptRows.find(r => r.concept_number === n)?.image_url ?? "";
@@ -654,12 +657,6 @@ export default function ConceptsPage() {
         };
       }
     }
-
-    const { data: orderRow } = await supabase
-      .from("orders")
-      .select("order_number, clients(name)")
-      .eq("id", order_id)
-      .single();
 
     const clientData  = Array.isArray(orderRow?.clients) ? orderRow?.clients[0] : orderRow?.clients;
     const teamName    = (clientData as { name?: string })?.name ?? "Your Team";
@@ -760,16 +757,23 @@ export default function ConceptsPage() {
   async function handleApprove() {
     if (!boardData) return;
     setApproving(true);
-    const { data: conceptRows } = await supabase
-      .from("concepts").select("id, concept_number").eq("order_id", order_id);
-    if (conceptRows) {
-      const target = conceptRows.find(r => r.concept_number === 1) ?? conceptRows[0];
-      if (target) {
-        await fetch(`/api/orders/${order_id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "select_concept", concept_id: target.id }),
-        });
+    // Fetch concept rows via admin API to bypass RLS, get IDs
+    const boardRes = await fetch(`/api/portal/board-data?order_id=${order_id}`);
+    if (boardRes.ok) {
+      const { conceptRows } = await boardRes.json() as {
+        conceptRows: { id: string; concept_number: number; image_url: string }[];
+        brief: unknown;
+        order: unknown;
+      };
+      if (conceptRows && conceptRows.length > 0) {
+        const target = conceptRows.find(r => r.concept_number === 1) ?? conceptRows[0];
+        if (target?.id) {
+          await fetch(`/api/orders/${order_id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "select_concept", concept_id: target.id }),
+          });
+        }
       }
     }
     router.push(`/orders/${order_id}/approve`);

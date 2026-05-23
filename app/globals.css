@@ -2,6 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Global base size — scales all rem-based spacing and text ──────────────
+   Increased from browser default 16px → 17px for improved readability.
+   Jersey strip images use w-full (viewport-width-based) so they're unaffected.
+   ───────────────────────────────────────────────────────────────────────── */
+html {
+  font-size: 17px;
+}
+
 :root {
   /* Brand tokens — overridden per-tenant by TenantProvider */
   --brand-primary:   #111111;

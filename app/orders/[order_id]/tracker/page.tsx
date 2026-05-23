@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { createClient, sessionReady } from "@/lib/supabase/client";
 import { getProfile } from "@/lib/profile";
 import OrgLogo from "@/components/OrgLogo";
 import { useTenant } from "@/lib/tenant/context";
@@ -70,47 +70,24 @@ export default function TrackerPage() {
 
   useEffect(() => {
     async function load() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { router.replace("/login"); return; }
+      await sessionReady();
       const profile = await getProfile();
-      if (profile?.role === "supplier") { router.replace("/supplier"); return; }
-      if (profile?.role === "admin" || profile?.role === "super_admin") setIsAdminView(true);
+      if (!profile) { router.replace("/login"); return; }
+      if (profile.role === "supplier") { router.replace("/supplier"); return; }
+      if (profile.role === "admin" || profile.role === "super_admin") setIsAdminView(true);
 
-      const { data: o } = await supabase
-        .from("orders")
-        .select("id, order_number, stage, created_at, estimated_delivery, tracking_number")
-        .eq("id", order_id)
-        .single();
+      const res = await fetch(`/api/portal/order-detail?order_id=${order_id}`);
+      if (!res.ok) { setLoading(false); return; }
 
+      const { order: o } = await res.json() as { order: OrderData };
       if (!o) { setLoading(false); return; }
 
-      const [{ data: concepts }, { data: media }, { data: fileRows }] = await Promise.all([
-        supabase.from("concepts").select("id").eq("order_id", order_id).limit(1),
-        supabase
-          .from("first_piece_media")
-          .select("id, media_url, media_type, caption, client_approved, client_note")
-          .eq("order_id", order_id)
-          .eq("client_visible", true)
-          .order("created_at", { ascending: true }),
-        supabase
-          .from("order_files")
-          .select("id, file_url, file_name, file_size, file_type, label")
-          .eq("order_id", order_id)
-          .eq("client_visible", true)
-          .order("created_at", { ascending: true }),
-      ]);
-
-      setOrder({
-        ...o,
-        stage: o.stage as OrderStage,
-        has_concepts: (concepts?.length ?? 0) > 0,
-        media: (media ?? []) as MediaItem[],
-        files: (fileRows ?? []) as OrderFile[],
-      });
+      setOrder({ ...o, stage: o.stage as OrderStage });
       setLoading(false);
     }
     load();
-  }, [supabase, order_id]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [order_id]);
 
   async function signOut() {
     await supabase.auth.signOut();
