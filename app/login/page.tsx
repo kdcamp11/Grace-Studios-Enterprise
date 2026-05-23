@@ -133,6 +133,59 @@ const JERSEYS = [
   { name: "Culture",  src: "/jerseys/culture.jpg"  },
 ];
 
+// ── Path cards ───────────────────────────────────────────────────────────────
+
+const PATH_CARDS = [
+  {
+    href: "/signup?path=consultation",
+    badge: "Customization",
+    sub: "Full Service",
+    headline: "Custom. Collaborative.\nBuilt to Brief.",
+    bullets: [
+      "Design consultation included",
+      "Concepts built from your brief",
+      "Designer-built production files",
+      "Two client approvals",
+    ],
+    cta: "Work Directly with Grace Studios →",
+  },
+  {
+    href: "/signup?path=self-service",
+    badge: "Self Service",
+    sub: "Design Library",
+    headline: "Grace Studios Design\nLanguage. Your Identity.",
+    bullets: [
+      "Curated Grace Studios silhouettes",
+      "Design concepts ready in minutes",
+      "Your colors and logo — our framework",
+      "Faster turnaround, same quality",
+    ],
+    cta: "Start with the Design Library →",
+  },
+];
+
+function PathCard({ card, className = "" }: { card: typeof PATH_CARDS[0]; className?: string }) {
+  return (
+    <Link href={card.href} className={`group relative flex flex-col gap-3 p-5 rounded-2xl border border-brand-border bg-brand-bg hover:bg-brand-surface transition-colors duration-300 shadow-sm ${className}`}>
+      <div className="absolute top-0 left-0 right-0 h-[2px] bg-brand-primary opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-t-2xl" />
+      <div className="flex items-center justify-between">
+        <span className="text-[8px] font-display font-bold uppercase tracking-[0.2em] px-2 py-0.5 rounded border text-brand-primary bg-brand-primary/10 border-brand-primary/30">{card.badge}</span>
+        <span className="text-[8px] font-display uppercase tracking-widest text-brand-muted/60">{card.sub}</span>
+      </div>
+      <p className="font-display font-bold uppercase tracking-wide text-brand-text text-sm leading-snug whitespace-pre-line">{card.headline}</p>
+      <ul className="space-y-1.5">
+        {card.bullets.map((item) => (
+          <li key={item} className="flex items-center gap-2">
+            <span className="w-1 h-1 rounded-full bg-brand-primary flex-shrink-0" />
+            <span className="text-[10px] font-barlow text-brand-muted leading-none">{item}</span>
+          </li>
+        ))}
+      </ul>
+      <span className="text-[9px] font-display font-bold uppercase tracking-widest text-brand-muted group-hover:text-brand-primary transition-colors">{card.cta}</span>
+    </Link>
+  );
+}
+
 // ── Consultation form ────────────────────────────────────────────────────────
 
 function ConsultationForm() {
@@ -435,110 +488,122 @@ export default function LoginPage() {
       ══════════════════════════════════════════════════════════════════ */}
       {view === "client" && (<>
       <section className="border-b border-brand-border overflow-hidden">
-        <div className="max-w-5xl mx-auto px-5 sm:px-8 lg:px-10 grid lg:grid-cols-[1fr_400px] xl:grid-cols-[1fr_440px] gap-0 min-h-[460px] lg:min-h-[520px]">
+        <div className="max-w-5xl mx-auto px-5 sm:px-8 lg:px-10">
 
-          {/* Left — editorial headline */}
-          <div className="flex flex-col justify-center py-14 lg:py-20 lg:pr-14 border-b lg:border-b-0 lg:border-r border-brand-border">
-            <div className="flex items-center gap-2.5 mb-7">
-              <div className="w-[3px] h-5 bg-brand-primary flex-shrink-0" />
-              <span className="text-[10px] font-display font-bold uppercase tracking-[0.3em] text-brand-primary">
-                Programs · Designers · Suppliers
-              </span>
+          {/* Desktop: headline left + path cards right */}
+          <div className="grid lg:grid-cols-[1fr_400px] xl:grid-cols-[1fr_440px] gap-0 min-h-[460px] lg:min-h-[520px]">
+
+            {/* Left — editorial headline */}
+            <div className="flex flex-col justify-center py-14 lg:py-20 lg:pr-14 border-b lg:border-b-0 lg:border-r border-brand-border">
+              <div className="flex items-center gap-2.5 mb-7">
+                <div className="w-[3px] h-5 bg-brand-primary flex-shrink-0" />
+                <span className="text-[10px] font-display font-bold uppercase tracking-[0.3em] text-brand-primary">
+                  Programs · Designers · Suppliers
+                </span>
+              </div>
+
+              <h1 className="font-display font-bold uppercase text-brand-text leading-[0.9] tracking-tight mb-6">
+                <span className="block" style={{ fontSize: "clamp(1.5rem, 2.8vw, 2.5rem)" }}>The Operating</span>
+                <span className="block" style={{ fontSize: "clamp(1.5rem, 2.8vw, 2.5rem)" }}>System for</span>
+                <span className="block text-brand-primary" style={{ fontSize: "clamp(1.5rem, 2.8vw, 2.5rem)" }}>Elite Programs.</span>
+              </h1>
+
+              <p className="text-xs text-brand-muted font-barlow max-w-[380px] leading-relaxed mb-7">
+                Design concepts ready in minutes, backed by Grace Studios design philosophy.
+                Designer-built Illustrator files. Two client approvals before a single garment is cut.
+              </p>
+
+              {/* Primary CTAs — map directly to paths */}
+              <div className="flex flex-col sm:flex-row items-start gap-3">
+                <Link href="/signup?path=consultation"
+                  className="px-7 py-3.5 rounded-lg bg-brand-primary text-white font-display font-bold text-xs uppercase tracking-widest hover:bg-brand-secondary transition-colors">
+                  Customization →
+                </Link>
+                <Link href="/signup?path=self-service"
+                  className="px-7 py-3.5 rounded-lg border border-brand-border text-brand-muted font-display font-bold text-xs uppercase tracking-widest hover:border-brand-primary hover:text-brand-primary transition-colors">
+                  Self Service →
+                </Link>
+              </div>
             </div>
 
-            <h1 className="font-display font-bold uppercase text-brand-text leading-[0.9] tracking-tight mb-6">
-              <span className="block" style={{ fontSize: "clamp(1.5rem, 2.8vw, 2.5rem)" }}>The Operating</span>
-              <span className="block" style={{ fontSize: "clamp(1.5rem, 2.8vw, 2.5rem)" }}>System for</span>
-              <span className="block text-brand-primary" style={{ fontSize: "clamp(1.5rem, 2.8vw, 2.5rem)" }}>Elite Programs.</span>
-            </h1>
-
-            <p className="text-xs text-brand-muted font-barlow max-w-[380px] leading-relaxed mb-7">
-              Design concepts ready in minutes, backed by Grace Studios design philosophy.
-              Designer-built Illustrator files. Two client approvals before a single garment is cut.
-            </p>
-
-            <div className="flex flex-col sm:flex-row items-start gap-3">
-              <Link
-                href="/signup"
-                className="px-7 py-3.5 rounded-lg bg-brand-primary text-white font-display font-bold text-xs uppercase tracking-widest hover:bg-brand-secondary transition-colors"
-              >
-                Get Started →
-              </Link>
-              <a
-                href="#how-it-works"
-                className="px-7 py-3.5 rounded-lg border border-brand-border text-brand-muted font-display font-bold text-xs uppercase tracking-widest hover:border-brand-primary hover:text-brand-primary transition-colors"
-              >
-                See the Process
-              </a>
+            {/* Right — path cards (desktop only) */}
+            <div className="hidden lg:flex flex-col justify-center pt-10 pl-8 xl:pl-10 pb-10 gap-4">
+              <PathCard card={PATH_CARDS[0]} />
+              <PathCard card={PATH_CARDS[1]} />
             </div>
           </div>
 
-          {/* Right — two paths */}
-          <div className="hidden lg:flex flex-col justify-center pt-10 pl-8 xl:pl-10 pb-10 gap-4">
+          {/* Mobile — path cards below headline, full width, side-by-side on sm */}
+          <div className="lg:hidden grid grid-cols-1 sm:grid-cols-2 gap-4 py-8 border-t border-brand-border">
+            <PathCard card={PATH_CARDS[0]} />
+            <PathCard card={PATH_CARDS[1]} />
+          </div>
 
-            {/* PATH 1 — Customization */}
-            <Link href="/signup?path=consultation" className="group relative flex flex-col gap-3 p-5 rounded-2xl border border-brand-border bg-brand-bg hover:bg-brand-surface transition-colors duration-300 shadow-sm">
-              <div className="absolute top-0 left-0 right-0 h-[2px] bg-brand-primary opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-t-2xl" />
-              <div className="flex items-center justify-between">
-                <span className="text-[8px] font-display font-bold uppercase tracking-[0.2em] px-2 py-0.5 rounded border text-brand-primary bg-brand-primary/10 border-brand-primary/30">
-                  Customization
-                </span>
-                <span className="text-[8px] font-display uppercase tracking-widest text-brand-muted/60">Full Service</span>
-              </div>
-              <p className="font-display font-bold uppercase tracking-wide text-brand-text text-sm leading-snug">
-                Custom. Collaborative.<br />Built to Brief.
-              </p>
-              <ul className="space-y-1.5">
-                {[
-                  "Design consultation included",
-                  "Concepts built from your brief",
-                  "Designer-built production files",
-                  "Two client approvals",
-                ].map((item) => (
-                  <li key={item} className="flex items-center gap-2">
-                    <span className="w-1 h-1 rounded-full bg-brand-primary flex-shrink-0" />
-                    <span className="text-[10px] font-barlow text-brand-muted leading-none">{item}</span>
-                  </li>
-                ))}
-              </ul>
-              <span className="text-[9px] font-display font-bold uppercase tracking-widest text-brand-muted group-hover:text-brand-primary transition-colors">
-                Work Directly with Grace Studios →
-              </span>
-            </Link>
+        </div>
+      </section>
 
-            {/* PATH 2 — Design Library */}
-            <Link href="/signup?path=self-service" className="group relative flex flex-col gap-3 p-5 rounded-2xl border border-brand-border bg-brand-bg hover:bg-brand-surface transition-colors duration-300 shadow-sm">
-              <div className="absolute top-0 left-0 right-0 h-[2px] bg-brand-primary opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-t-2xl" />
-              <div className="flex items-center justify-between">
-                <span className="text-[8px] font-display font-bold uppercase tracking-[0.2em] px-2 py-0.5 rounded border text-brand-primary bg-brand-primary/10 border-brand-primary/30">
-                  Self Service
-                </span>
-                <span className="text-[8px] font-display uppercase tracking-widest text-brand-muted/60">Design Library</span>
+      {/* ══════════════════════════════════════════════════════════════════
+          ORDER TRACKER PANEL — restored below hero
+      ══════════════════════════════════════════════════════════════════ */}
+      <div className="border-b border-brand-border">
+        <div className="max-w-5xl mx-auto px-5 sm:px-8 lg:px-10 py-10">
+          <div className="grid lg:grid-cols-[1fr_400px] xl:grid-cols-[1fr_440px] gap-8 lg:gap-14 items-start">
+
+            {/* Left label */}
+            <div className="flex flex-col justify-center">
+              <div className="flex items-center gap-2.5 mb-4">
+                <div className="w-[3px] h-5 bg-brand-primary flex-shrink-0" />
+                <span className="text-[10px] font-display font-bold uppercase tracking-[0.3em] text-brand-primary">Live Platform</span>
               </div>
-              <p className="font-display font-bold uppercase tracking-wide text-brand-text text-sm leading-snug">
-                Grace Studios Design<br />Language. Your Identity.
+              <h2 className="font-display font-bold uppercase tracking-tight text-brand-text leading-none mb-3" style={{ fontSize: "clamp(1rem, 1.8vw, 1.5rem)" }}>
+                Every Order.<br />Tracked End-to-End.
+              </h2>
+              <p className="text-xs font-barlow text-brand-muted leading-relaxed max-w-[300px]">
+                From brief submission to delivery — every stage visible to your program in real time.
               </p>
-              <ul className="space-y-1.5">
-                {[
-                  "Curated Grace Studios silhouettes",
-                  "Design concepts ready in minutes",
-                  "Your colors and logo — our framework",
-                  "Faster turnaround, same quality",
-                ].map((item) => (
-                  <li key={item} className="flex items-center gap-2">
-                    <span className="w-1 h-1 rounded-full bg-brand-primary flex-shrink-0" />
-                    <span className="text-[10px] font-barlow text-brand-muted leading-none">{item}</span>
-                  </li>
+            </div>
+
+            {/* Right — order tracker panel */}
+            <div className="bg-brand-surface border border-brand-border rounded-2xl overflow-hidden shadow-[0_4px_32px_rgba(0,0,0,0.10)]">
+              <div className="border-b border-brand-border px-5 py-4 flex items-center justify-between bg-brand-bg/50">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-2 h-2 rounded-full bg-brand-primary animate-pulse" />
+                  <span className="text-[10px] font-display font-bold uppercase tracking-[0.2em] text-brand-text">Order Tracker</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-1.5 h-1.5 rounded-full bg-brand-muted/50" />
+                  <span className="text-[9px] font-barlow text-brand-muted">Live</span>
+                </div>
+              </div>
+              <div className="divide-y divide-brand-border">
+                {PREVIEW_ORDERS.map((order) => (
+                  <div key={order.id} className={`px-5 py-4 flex items-start justify-between gap-4 cursor-default transition-colors duration-200 ${order.urgent ? "hover:bg-amber-400/5" : "hover:bg-brand-bg/40"}`}>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${order.dot}`} />
+                        <span className="text-[11px] font-display font-bold text-brand-text tracking-wide truncate">{order.team}</span>
+                        {order.urgent && (
+                          <span className="flex-shrink-0 px-1.5 py-0.5 rounded bg-amber-400/10 border border-amber-400/30 text-amber-400 font-display font-bold text-[8px] uppercase tracking-widest">Action</span>
+                        )}
+                      </div>
+                      <div className="ml-3.5 space-y-0.5">
+                        <p className="text-[9px] font-barlow text-brand-muted">{order.id} · {order.sport}</p>
+                        <p className="text-[10px] font-barlow text-brand-muted/80">{order.stage}</p>
+                      </div>
+                    </div>
+                    <span className={`text-[9px] font-display font-bold uppercase tracking-widest flex-shrink-0 mt-0.5 ${order.urgent ? "text-amber-500" : "text-brand-muted"}`}>{order.cta}</span>
+                  </div>
                 ))}
-              </ul>
-              <span className="text-[9px] font-display font-bold uppercase tracking-widest text-brand-muted group-hover:text-brand-primary transition-colors">
-                Start with the Design Library →
-              </span>
-            </Link>
+              </div>
+              <div className="border-t border-brand-border px-5 py-4 flex items-center justify-between bg-brand-bg/30">
+                <span className="text-[9px] font-barlow text-brand-muted">4 active orders</span>
+                <span className="text-[9px] font-display font-bold uppercase tracking-widest text-brand-primary cursor-pointer">+ New Brief</span>
+              </div>
+            </div>
 
           </div>
         </div>
-      </section>
+      </div>
 
       {/* ══════════════════════════════════════════════════════════════════
           STATS BAR
