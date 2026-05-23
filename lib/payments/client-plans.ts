@@ -30,7 +30,7 @@ export const CLIENT_PLANS: Record<ClientAiPlan, ClientPlanConfig> = {
   growth: {
     id:             "growth",
     label:          "Growth",
-    priceMonthly:   4900,  // $49/mo
+    priceMonthly:   2500,  // $25/mo
     stripePriceId:  process.env.STRIPE_PRICE_CLIENT_GROWTH ?? null,
     runsIncluded:   10,
     priorityAccess: true,
@@ -45,7 +45,7 @@ export const CLIENT_PLANS: Record<ClientAiPlan, ClientPlanConfig> = {
   studio: {
     id:             "studio",
     label:          "Studio",
-    priceMonthly:   9900,  // $99/mo
+    priceMonthly:   4500,  // $45/mo
     stripePriceId:  process.env.STRIPE_PRICE_CLIENT_STUDIO ?? null,
     runsIncluded:   null,
     priorityAccess: true,

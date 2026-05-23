@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { createClient, sessionReady } from "@/lib/supabase/client";
 import { getProfile } from "@/lib/profile";
 import OrgLogo from "@/components/OrgLogo";
-import { CLIENT_PLANS, type ClientAiPlan } from "@/lib/payments/client-plans";
+import { CLIENT_PLANS, fmt$, type ClientAiPlan } from "@/lib/payments/client-plans";
 import { Suspense } from "react";
 
 const PLANS_ORDER: ClientAiPlan[] = ["starter", "growth", "studio"];
