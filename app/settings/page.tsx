@@ -248,6 +248,52 @@ export default function SettingsPage() {
             </div>
           </div>
 
+          {/* Supplier quick links */}
+          {role === "supplier" && (
+            <div className="bg-brand-surface border border-brand-border rounded-xl p-6 space-y-4">
+              <p className="text-xs font-display uppercase tracking-widest text-brand-primary">Supplier Portal</p>
+              <div className="space-y-2">
+                {[
+                  { href: "/supplier/portfolio", label: "Manage Portfolio", desc: "Add and curate your production work" },
+                  { href: "/supplier/billing",   label: "Studio License",   desc: "View and upgrade your plan" },
+                  { href: "/supplier",            label: "Active Orders",    desc: "See all orders assigned to you" },
+                ].map((link) => (
+                  <a
+                    key={link.href}
+                    href={link.href}
+                    className="flex items-center justify-between gap-4 px-4 py-3 rounded-lg border border-brand-border hover:border-brand-primary bg-brand-bg hover:bg-brand-surface transition-colors group"
+                  >
+                    <div>
+                      <p className="text-xs font-display font-bold uppercase tracking-wide text-brand-text group-hover:text-brand-primary transition-colors">
+                        {link.label}
+                      </p>
+                      <p className="text-[11px] font-barlow text-brand-muted mt-0.5">{link.desc}</p>
+                    </div>
+                    <span className="text-brand-muted group-hover:text-brand-primary text-xs transition-colors">→</span>
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Client free tier notice */}
+          {role === "client" && (
+            <div className="bg-brand-surface border border-brand-border rounded-xl px-6 py-4 flex items-start gap-3">
+              <div className="w-7 h-7 rounded-full bg-brand-primary/10 border border-brand-primary/30 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <svg className="w-3.5 h-3.5 text-brand-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-xs font-display font-bold uppercase tracking-wide text-brand-text">Free Access</p>
+                <p className="text-[11px] font-barlow text-brand-muted mt-0.5 leading-relaxed">
+                  Submitting briefs, reviewing concepts, and tracking your order are all free.
+                  Grace Studios covers the platform — you just use the service.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Team info — clients only */}
           {hasTeam && role === "client" && (
             <form onSubmit={saveTeamInfo} className="bg-brand-surface border border-brand-border rounded-xl p-6 space-y-5">

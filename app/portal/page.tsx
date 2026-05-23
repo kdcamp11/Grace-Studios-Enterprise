@@ -77,11 +77,13 @@ function PortalContent() {
         .then(({ client: cp }) => { if (cp) setHasProfile(true); })
         .catch(() => {});
 
-      const { data: client } = await supabase
+      // Match by user_id (preferred) OR email to handle both new and legacy rows
+      const { data: clientRows } = await supabase
         .from("clients")
         .select("id")
-        .eq("email", u.email)
-        .single();
+        .or(`user_id.eq.${u.id},email.eq.${u.email}`)
+        .limit(1);
+      const client = clientRows?.[0] ?? null;
 
       if (!client) { setLoading(false); return; }
 
@@ -152,6 +154,7 @@ function PortalContent() {
           {(role === "admin" || role === "super_admin") && (
             <a href="/admin" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Admin Portal</a>
           )}
+          <a href="/portfolio" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Portfolio</a>
           <a href="/contact" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Consultation</a>
           <a href="/settings" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Settings</a>
           <button type="button" onClick={handleSignOut} className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Sign Out</button>

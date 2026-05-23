@@ -88,20 +88,18 @@ export default function OrgLogo({ href = "/portal", className = "w-[200px] h-aut
   const DEFAULT_LOGO = "/grace-enterprise-logo.jpeg";
 
   // ── Logo src resolution ──────────────────────────────────────────────────
-  // 1. Client's own logo (if they've uploaded one)
-  // 2. Tenant/studio logo (set via Admin → Settings)
-  // 3. Grace Enterprise logo (always present)
+  // 1. Client's own org logo (if they've uploaded one)
+  // 2. Tenant/studio logo (set via Admin → Settings) — always used as
+  //    fallback so the client portal shows Grace Studios branding, not the
+  //    generic enterprise logo.
+  // 3. Grace Enterprise logo (always-present last resort)
   let logoSrc: string = DEFAULT_LOGO;
   if (!imgError) {
     if (clientOrg?.logo_url) {
       logoSrc = clientOrg.logo_url;
-    } else if (!clientOrg && tenant.logo_url) {
-      // No client record = admin/designer/supplier view → use studio logo
+    } else if (tenant.logo_url) {
       logoSrc = tenant.logo_url;
     }
-    // If there IS a client record but they have no logo, we still show the
-    // Grace Enterprise default rather than their name — keeps the navbar
-    // visually consistent until they upload their own.
   }
 
   // ── Display name (used as alt text) ──────────────────────────────────────
