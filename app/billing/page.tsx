@@ -58,8 +58,9 @@ export default function ClientBillingPage() {
       await sessionReady();
       const profile = await getProfile();
       if (!profile) { router.replace("/login"); return; }
-      if (profile.role === "supplier")                                        { router.replace("/supplier/billing"); return; }
-      if (profile.role === "admin" || profile.role === "super_admin")         { router.replace("/admin/billing");   return; }
+      // Suppliers have their own billing page; everyone else (including admins
+      // testing the client portal) sees the client usage dashboard here.
+      if (profile.role === "supplier") { router.replace("/supplier/billing"); return; }
       setEmail(profile.email);
 
       const res = await fetch("/api/portal/usage");
