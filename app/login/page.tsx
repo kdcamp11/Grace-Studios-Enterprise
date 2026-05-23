@@ -569,69 +569,6 @@ export default function LoginPage() {
       </section>
 
       {/* ══════════════════════════════════════════════════════════════════
-          ORDER TRACKER PANEL — restored below hero
-      ══════════════════════════════════════════════════════════════════ */}
-      <div className="border-b border-brand-border">
-        <div className="max-w-5xl mx-auto px-5 sm:px-8 lg:px-10 py-10">
-          <div className="grid lg:grid-cols-[1fr_400px] xl:grid-cols-[1fr_440px] gap-8 lg:gap-14 items-start">
-
-            {/* Left label */}
-            <div className="flex flex-col justify-center">
-              <div className="flex items-center gap-2.5 mb-4">
-                <div className="w-[3px] h-5 bg-brand-primary flex-shrink-0" />
-                <span className="text-[10px] font-display font-bold uppercase tracking-[0.3em] text-brand-primary">Live Platform</span>
-              </div>
-              <h2 className="font-display font-bold uppercase tracking-tight text-brand-text leading-none mb-3" style={{ fontSize: "clamp(1rem, 1.8vw, 1.5rem)" }}>
-                Every Order.<br />Tracked End-to-End.
-              </h2>
-              <p className="text-xs font-barlow text-brand-muted leading-relaxed max-w-[300px]">
-                From brief submission to delivery — every stage visible to your program in real time.
-              </p>
-            </div>
-
-            {/* Right — order tracker panel */}
-            <div className="bg-brand-surface border border-brand-border rounded-2xl overflow-hidden shadow-[0_4px_32px_rgba(0,0,0,0.10)]">
-              <div className="border-b border-brand-border px-5 py-4 flex items-center justify-between bg-brand-bg/50">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-2 h-2 rounded-full bg-brand-primary animate-pulse" />
-                  <span className="text-[10px] font-display font-bold uppercase tracking-[0.2em] text-brand-text">Order Tracker</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <div className="w-1.5 h-1.5 rounded-full bg-brand-muted/50" />
-                  <span className="text-[9px] font-barlow text-brand-muted">Live</span>
-                </div>
-              </div>
-              <div className="divide-y divide-brand-border">
-                {PREVIEW_ORDERS.map((order) => (
-                  <div key={order.id} className={`px-5 py-4 flex items-start justify-between gap-4 cursor-default transition-colors duration-200 ${order.urgent ? "hover:bg-amber-400/5" : "hover:bg-brand-bg/40"}`}>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${order.dot}`} />
-                        <span className="text-[11px] font-display font-bold text-brand-text tracking-wide truncate">{order.team}</span>
-                        {order.urgent && (
-                          <span className="flex-shrink-0 px-1.5 py-0.5 rounded bg-amber-400/10 border border-amber-400/30 text-amber-400 font-display font-bold text-[8px] uppercase tracking-widest">Action</span>
-                        )}
-                      </div>
-                      <div className="ml-3.5 space-y-0.5">
-                        <p className="text-[9px] font-barlow text-brand-muted">{order.id} · {order.sport}</p>
-                        <p className="text-[10px] font-barlow text-brand-muted/80">{order.stage}</p>
-                      </div>
-                    </div>
-                    <span className={`text-[9px] font-display font-bold uppercase tracking-widest flex-shrink-0 mt-0.5 ${order.urgent ? "text-amber-500" : "text-brand-muted"}`}>{order.cta}</span>
-                  </div>
-                ))}
-              </div>
-              <div className="border-t border-brand-border px-5 py-4 flex items-center justify-between bg-brand-bg/30">
-                <span className="text-[9px] font-barlow text-brand-muted">4 active orders</span>
-                <span className="text-[9px] font-display font-bold uppercase tracking-widest text-brand-primary cursor-pointer">+ New Brief</span>
-              </div>
-            </div>
-
-          </div>
-        </div>
-      </div>
-
-      {/* ══════════════════════════════════════════════════════════════════
           STATS BAR
       ══════════════════════════════════════════════════════════════════ */}
       <div className="border-b border-brand-border">
@@ -873,42 +810,67 @@ export default function LoginPage() {
       </section>
 
       {/* ══════════════════════════════════════════════════════════════════
-          CONTACT — custom design consultation
+          ORDER TRACKER — last section
       ══════════════════════════════════════════════════════════════════ */}
-      <section className="px-5 sm:px-8 lg:px-10 py-12 sm:py-16 border-b border-brand-border">
-        <div className="max-w-5xl mx-auto grid lg:grid-cols-[1fr_480px] gap-12 lg:gap-16 items-start">
+      <div className="border-b border-brand-border">
+        <div className="max-w-5xl mx-auto px-5 sm:px-8 lg:px-10 py-12 sm:py-16">
+          <div className="grid lg:grid-cols-[1fr_400px] xl:grid-cols-[1fr_440px] gap-8 lg:gap-14 items-start">
 
-          {/* Left — editorial intro */}
-          <div>
-            <div className="flex items-center gap-2.5 mb-4">
-              <div className="w-[3px] h-5 bg-brand-primary flex-shrink-0" />
-              <span className="text-[10px] font-display font-bold uppercase tracking-[0.3em] text-brand-primary">Design Consultation</span>
+            {/* Left label */}
+            <div className="flex flex-col justify-center">
+              <div className="flex items-center gap-2.5 mb-4">
+                <div className="w-[3px] h-5 bg-brand-primary flex-shrink-0" />
+                <span className="text-[10px] font-display font-bold uppercase tracking-[0.3em] text-brand-primary">Live Platform</span>
+              </div>
+              <h2 className="font-display font-bold uppercase tracking-tight text-brand-text leading-none mb-4" style={{ fontSize: "clamp(1.1rem, 2vw, 1.75rem)" }}>
+                Every Order.<br />Tracked End-to-End.
+              </h2>
+              <p className="text-xs font-barlow text-brand-muted leading-relaxed max-w-[300px]">
+                From brief submission to delivery — every stage visible to your program in real time.
+              </p>
             </div>
-            <h2 className="font-display font-bold uppercase tracking-tight text-brand-text leading-none mb-5" style={{ fontSize: "clamp(1.1rem, 2vw, 1.75rem)" }}>
-              Work Directly<br />with Grace Studios.
-            </h2>
-            <p className="text-xs font-barlow text-brand-muted leading-relaxed max-w-[320px]">
-              Have a complex program, need a full custom identity system, or want to talk
-              through a large order? Reach out and we&apos;ll set up a dedicated consultation session.
-            </p>
-            <div className="mt-6 space-y-3">
-              {[
-                "Full identity systems (jersey + shorts + warmups)",
-                "Large-program pricing and timelines",
-                "Branded custom colorways and exclusive design systems",
-              ].map((item) => (
-                <div key={item} className="flex items-start gap-2.5">
-                  <div className="w-[3px] h-3.5 bg-brand-primary flex-shrink-0 mt-0.5" />
-                  <span className="text-xs font-barlow text-brand-muted leading-relaxed">{item}</span>
+
+            {/* Right — order tracker panel */}
+            <div className="bg-brand-surface border border-brand-border rounded-2xl overflow-hidden shadow-[0_4px_32px_rgba(0,0,0,0.10)]">
+              <div className="border-b border-brand-border px-5 py-4 flex items-center justify-between bg-brand-bg/50">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-2 h-2 rounded-full bg-brand-primary animate-pulse" />
+                  <span className="text-[10px] font-display font-bold uppercase tracking-[0.2em] text-brand-text">Order Tracker</span>
                 </div>
-              ))}
+                <div className="flex items-center gap-1.5">
+                  <div className="w-1.5 h-1.5 rounded-full bg-brand-muted/50" />
+                  <span className="text-[9px] font-barlow text-brand-muted">Live</span>
+                </div>
+              </div>
+              <div className="divide-y divide-brand-border">
+                {PREVIEW_ORDERS.map((order) => (
+                  <div key={order.id} className={`px-5 py-4 flex items-start justify-between gap-4 cursor-default transition-colors duration-200 ${order.urgent ? "hover:bg-amber-400/5" : "hover:bg-brand-bg/40"}`}>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${order.dot}`} />
+                        <span className="text-[11px] font-display font-bold text-brand-text tracking-wide truncate">{order.team}</span>
+                        {order.urgent && (
+                          <span className="flex-shrink-0 px-1.5 py-0.5 rounded bg-amber-400/10 border border-amber-400/30 text-amber-400 font-display font-bold text-[8px] uppercase tracking-widest">Action</span>
+                        )}
+                      </div>
+                      <div className="ml-3.5 space-y-0.5">
+                        <p className="text-[9px] font-barlow text-brand-muted">{order.id} · {order.sport}</p>
+                        <p className="text-[10px] font-barlow text-brand-muted/80">{order.stage}</p>
+                      </div>
+                    </div>
+                    <span className={`text-[9px] font-display font-bold uppercase tracking-widest flex-shrink-0 mt-0.5 ${order.urgent ? "text-amber-500" : "text-brand-muted"}`}>{order.cta}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="border-t border-brand-border px-5 py-4 flex items-center justify-between bg-brand-bg/30">
+                <span className="text-[9px] font-barlow text-brand-muted">4 active orders</span>
+                <span className="text-[9px] font-display font-bold uppercase tracking-widest text-brand-primary cursor-pointer">+ New Brief</span>
+              </div>
             </div>
-          </div>
 
-          {/* Right — contact form */}
-          <ConsultationForm />
+          </div>
         </div>
-      </section>
+      </div>
 
       {/* end client view */}
       </>)}
