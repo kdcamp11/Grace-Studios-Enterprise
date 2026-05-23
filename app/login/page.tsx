@@ -455,31 +455,37 @@ export default function LoginPage() {
       {/* ══════════════════════════════════════════════════════════════════
           ROLE TOGGLE — client / supplier switcher
       ══════════════════════════════════════════════════════════════════ */}
-      <div className="border-b border-brand-border bg-brand-surface">
-        <div className="max-w-5xl mx-auto px-5 sm:px-8 lg:px-10 flex items-center gap-1 py-3">
-          <span className="text-[10px] font-display uppercase tracking-[0.25em] text-brand-muted mr-4 flex-shrink-0">I am a</span>
-          <button
-            type="button"
-            onClick={() => setView("client")}
-            className={`px-5 py-2 rounded-lg font-display font-bold text-xs uppercase tracking-widest transition-all duration-200 ${
-              view === "client"
-                ? "bg-brand-primary text-white shadow-sm"
-                : "text-brand-muted hover:text-brand-text"
-            }`}
-          >
-            Client / Program
-          </button>
-          <button
-            type="button"
-            onClick={() => setView("supplier")}
-            className={`px-5 py-2 rounded-lg font-display font-bold text-xs uppercase tracking-widest transition-all duration-200 ${
-              view === "supplier"
-                ? "bg-brand-primary text-white shadow-sm"
-                : "text-brand-muted hover:text-brand-text"
-            }`}
-          >
-            Supplier / Manufacturer
-          </button>
+      <div className="border-b border-brand-border bg-brand-surface py-4">
+        <div className="flex flex-col items-center gap-3">
+          <p className="font-display font-bold uppercase text-brand-text" style={{ fontSize: "clamp(0.85rem, 1.4vw, 1.1rem)", letterSpacing: "0.2em" }}>
+            Who Are You?
+          </p>
+          <div className="flex items-center gap-2 p-1 rounded-xl bg-brand-bg border border-brand-border shadow-sm">
+            <button
+              type="button"
+              onClick={() => setView("client")}
+              className={`px-7 py-2.5 rounded-lg font-display font-bold uppercase tracking-widest transition-all duration-200 ${
+                view === "client"
+                  ? "bg-brand-primary text-white shadow-sm"
+                  : "text-brand-muted hover:text-brand-text"
+              }`}
+              style={{ fontSize: "clamp(0.7rem, 1.1vw, 0.85rem)" }}
+            >
+              Client / Program
+            </button>
+            <button
+              type="button"
+              onClick={() => setView("supplier")}
+              className={`px-7 py-2.5 rounded-lg font-display font-bold uppercase tracking-widest transition-all duration-200 ${
+                view === "supplier"
+                  ? "bg-brand-primary text-white shadow-sm"
+                  : "text-brand-muted hover:text-brand-text"
+              }`}
+              style={{ fontSize: "clamp(0.7rem, 1.1vw, 0.85rem)" }}
+            >
+              Supplier / Manufacturer
+            </button>
+          </div>
         </div>
       </div>
 
