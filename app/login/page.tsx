@@ -66,7 +66,7 @@ const STEPS = [
   {
     num: "02",
     who: "AI",
-    whoClass: "text-brand-muted bg-brand-surface border-brand-border",
+    whoClass: "text-brand-primary bg-brand-primary/10 border-brand-primary/30",
     title: "AI Generates Concepts",
     detail: "Multiple renders from your brief. You select the direction you want.",
     isApproval: true,
@@ -75,7 +75,7 @@ const STEPS = [
   {
     num: "03",
     who: "Designer",
-    whoClass: "text-brand-muted bg-brand-surface border-brand-border",
+    whoClass: "text-brand-primary bg-brand-primary/10 border-brand-primary/30",
     title: "Illustrator Mockup",
     detail: "Designer builds production-ready files from your approved concept.",
     isApproval: false,
@@ -92,7 +92,7 @@ const STEPS = [
   {
     num: "05",
     who: "Supplier",
-    whoClass: "text-brand-muted bg-brand-surface border-brand-border",
+    whoClass: "text-brand-primary bg-brand-primary/10 border-brand-primary/30",
     title: "Production & Delivery",
     detail: "First piece review, then full production. Every step tracked.",
     isApproval: false,
@@ -498,9 +498,7 @@ export default function LoginPage() {
                 `}
               >
                 {/* Hover accent bar — matches ROLES section */}
-                <div className={`absolute top-0 left-0 right-0 h-[2px] opacity-0 group-hover:opacity-100 transition-opacity duration-300 ${
-                  step.isApproval ? "bg-brand-primary" : "bg-brand-border"
-                }`} />
+                <div className="absolute top-0 left-0 right-0 h-[2px] opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-brand-primary" />
 
                 {/* Top row: step number + approval badge */}
                 <div className="flex items-start justify-between">
