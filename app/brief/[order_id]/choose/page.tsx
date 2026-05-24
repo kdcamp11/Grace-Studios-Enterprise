@@ -1,7 +1,7 @@
 "use client";
 
-import { use } from "react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import BriefLayout from "@/components/brief/BriefLayout";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -46,8 +46,8 @@ const PATHS = [
   },
 ] as const;
 
-export default function ChoosePage({ params }: { params: Promise<{ order_id: string }> }) {
-  const { order_id } = use(params);
+export default function ChoosePage() {
+  const { order_id } = useParams<{ order_id: string }>();
 
   return (
     <BriefLayout
