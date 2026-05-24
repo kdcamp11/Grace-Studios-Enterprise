@@ -19,16 +19,16 @@ declare global {
   }
 }
 
-// ── Simple color picker row (no swatches) ────────────────────────────────────
+// ── Color picker row ──────────────────────────────────────────────────────────
 function ColorControl({ label, value, onChange }: {
   label: string; value: string; onChange: (v: string) => void;
 }) {
   return (
-    <div className="flex items-center justify-between">
-      <label className="text-[10px] font-display font-bold uppercase tracking-[0.2em] text-brand-muted">
+    <div className="flex items-center justify-between gap-3">
+      <label className="text-[10px] font-display font-bold uppercase tracking-[0.15em] text-brand-muted whitespace-nowrap">
         {label}
       </label>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-shrink-0">
         <span className="text-[10px] font-barlow text-brand-muted font-mono">{value.toUpperCase()}</span>
         <input
           type="color"
@@ -41,13 +41,38 @@ function ColorControl({ label, value, onChange }: {
   );
 }
 
+// ── GLB material zones ────────────────────────────────────────────────────────
+// Matches the material names baked into public/Jersey.glb
+const ZONES = [
+  { key: "jerseyTop",        matName: "jersey_top",          label: "Jersey Top"              },
+  { key: "collar",           matName: "collar",              label: "Collar"                  },
+  { key: "jerseyShorts",     matName: "jersey_shorts",       label: "Shorts"                  },
+  { key: "jerseySidePanels", matName: "jersey_side_panels",  label: "Jersey Side Panels"      },
+  { key: "jerseyLowerPanels",matName: "jersey_lower_panels", label: "Jersey Lower Side Panels"},
+  { key: "sleevePanels",     matName: "sleeve_panels",       label: "Sleeve Panels"           },
+  { key: "shortSidePanels",  matName: "short_side_panels",   label: "Shorts Side Panels"      },
+] as const;
+
+type ZoneKey = typeof ZONES[number]["key"];
+type ZoneColors = Record<ZoneKey, string>;
+
+const DEFAULT_COLORS: ZoneColors = {
+  jerseyTop:         "#1d3557",
+  collar:            "#f4d03f",
+  jerseyShorts:      "#1d3557",
+  jerseySidePanels:  "#f4d03f",
+  jerseyLowerPanels: "#f4d03f",
+  sleevePanels:      "#f4d03f",
+  shortSidePanels:   "#f4d03f",
+};
+
 // ── Per-logo state ────────────────────────────────────────────────────────────
 interface LogoItem {
   id: string;
   fileName: string;
-  originalUrl: string;
-  tintedUrl: string | null;
-  color: string;
+  originalUrl: string;   // always the unmodified blob URL
+  tintedUrl: string | null; // null = use original (no tint applied yet)
+  color: string;         // empty string = no tint
   pos: { x: number; y: number };
   size: number;
 }
@@ -72,25 +97,23 @@ function tintImage(src: string, color: string): Promise<string> {
 
 export default function JerseyBuilderPage() {
   const router = useRouter();
-  const [ready, setReady]               = useState(false);
+  const [ready, setReady] = useState(false);
 
-  // jersey colors
-  const [jerseyColor, setJerseyColor]       = useState("#1d3557");
-  const [shortsColor, setShortsColor]       = useState("#1d3557");
-  const [highlightColor, setHighlightColor] = useState("#f4d03f");
+  // One color state per zone
+  const [colors, setColors] = useState<ZoneColors>(DEFAULT_COLORS);
 
   // model-viewer state
   const [scriptLoaded, setScriptLoaded] = useState(false);
   const [modelLoaded, setModelLoaded]   = useState(false);
 
   // logos
-  const [logos, setLogos]               = useState<LogoItem[]>([]);
-  const [draggingId, setDraggingId]     = useState<string | null>(null);
-  const [resizingId, setResizingId]     = useState<string | null>(null);
-  const resizeStartRef                  = useRef<{ x: number; size: number } | null>(null);
+  const [logos, setLogos]           = useState<LogoItem[]>([]);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [resizingId, setResizingId] = useState<string | null>(null);
+  const resizeStartRef              = useRef<{ x: number; size: number } | null>(null);
 
-  const containerRef  = useRef<HTMLDivElement>(null);
-  const fileInputRef  = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // ── Auth ──────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -128,12 +151,7 @@ export default function JerseyBuilderPage() {
     return () => mv.removeEventListener("load", onLoad);
   }, [scriptLoaded]);
 
-  // ── Apply named-material colors ───────────────────────────────────────────
-  // Material mapping — Jersey.glb has exactly 3 OPAQUE materials (no diffuse
-  // texture) so setBaseColorFactor gives full, clean color control:
-  //   "jersey_body"  → jersey top (body, collar, stitching)
-  //   "shorts_body"  → shorts (legs, waist, side panels of shorts)
-  //   "panels"       → side panels + sleeve panels (jersey + shorts)
+  // ── Apply zone colors via model-viewer material API ───────────────────────
   useEffect(() => {
     if (!modelLoaded) return;
 
@@ -155,73 +173,58 @@ export default function JerseyBuilderPage() {
       if (!mats?.length) return false;
 
       mats.forEach((mat: any) => {
-        const n = (mat.name ?? "").toLowerCase();
-        let color: [number, number, number, number];
-
-        if (n === "jersey_body") {
-          color = toRgb(jerseyColor);
-        } else if (n === "shorts_body") {
-          color = toRgb(shortsColor);
-        } else {
-          // "panels" + any future materials default to panels/accent color
-          color = toRgb(highlightColor);
-        }
-
-        mat.pbrMetallicRoughness.setBaseColorFactor(color);
+        const n = mat.name as string;
+        const zone = ZONES.find((z) => z.matName === n);
+        if (!zone) return;
+        mat.pbrMetallicRoughness.setBaseColorFactor(toRgb(colors[zone.key]));
       });
       return true;
     }
 
-    // model-viewer fires 'load' slightly before mv.model.materials is populated.
-    // Retry with back-off so we never silently drop a color update.
     let cancelled = false;
     let attempt = 0;
     function tryApply() {
       if (cancelled) return;
       if (apply()) return;
-      if (attempt < 6) {
-        attempt++;
-        setTimeout(tryApply, attempt * 250);
-      }
+      if (attempt < 6) { attempt++; setTimeout(tryApply, attempt * 250); }
     }
     requestAnimationFrame(tryApply);
     return () => { cancelled = true; };
-  }, [jerseyColor, shortsColor, highlightColor, modelLoaded]);
+  }, [colors, modelLoaded]);
 
-  // ── Logo helpers ──────────────────────────────────────────────────────────
+  // ── Logo upload ───────────────────────────────────────────────────────────
   const handleLogoUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
     if (!files.length) return;
-    // Reset input so same file can be re-uploaded
     e.target.value = "";
     for (const file of files) {
       const originalUrl = URL.createObjectURL(file);
-      const tintedUrl   = await tintImage(originalUrl, "#ffffff");
       setLogos((prev) => [...prev, {
-        id: crypto.randomUUID(), fileName: file.name,
-        originalUrl, tintedUrl, color: "#ffffff",
-        pos: { x: 50, y: 40 }, size: 20,
+        id: crypto.randomUUID(),
+        fileName: file.name,
+        originalUrl,
+        tintedUrl: null,   // show original colors by default (no tint)
+        color: "",
+        pos: { x: 50, y: 40 },
+        size: 20,
       }]);
     }
   }, []);
 
   const updateLogoColor = useCallback(async (id: string, color: string) => {
+    const logo = logos.find((l) => l.id === id);
+    if (!logo) return;
+    // Optimistically clear tintedUrl while re-tinting
     setLogos((prev) => prev.map((l) => l.id === id ? { ...l, color, tintedUrl: null } : l));
-    setLogos((prev) => {
-      const logo = prev.find((l) => l.id === id);
-      if (!logo) return prev;
-      tintImage(logo.originalUrl, color).then((tintedUrl) => {
-        setLogos((p) => p.map((l) => l.id === id ? { ...l, tintedUrl } : l));
-      });
-      return prev;
-    });
-  }, []);
+    const tintedUrl = await tintImage(logo.originalUrl, color);
+    setLogos((prev) => prev.map((l) => l.id === id ? { ...l, tintedUrl } : l));
+  }, [logos]);
 
   const removeLogo = useCallback((id: string) => {
     setLogos((prev) => prev.filter((l) => l.id !== id));
   }, []);
 
-  // ── Drag / resize ─────────────────────────────────────────────────────────
+  // ── Logo drag / resize ────────────────────────────────────────────────────
   const handleLogoPointerDown = useCallback((e: React.PointerEvent, id: string) => {
     e.stopPropagation();
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
@@ -238,11 +241,13 @@ export default function JerseyBuilderPage() {
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     if (!containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
-
     if (resizingId && resizeStartRef.current) {
       const dx = ((e.clientX - resizeStartRef.current.x) / rect.width) * 100;
-      const newSize = Math.max(5, Math.min(60, resizeStartRef.current.size + dx));
-      setLogos((prev) => prev.map((l) => l.id === resizingId ? { ...l, size: newSize } : l));
+      setLogos((prev) => prev.map((l) =>
+        l.id === resizingId
+          ? { ...l, size: Math.max(5, Math.min(60, resizeStartRef.current!.size + dx)) }
+          : l
+      ));
       return;
     }
     if (draggingId) {
@@ -253,9 +258,7 @@ export default function JerseyBuilderPage() {
   }, [draggingId, resizingId]);
 
   const handlePointerUp = useCallback(() => {
-    setDraggingId(null);
-    setResizingId(null);
-    resizeStartRef.current = null;
+    setDraggingId(null); setResizingId(null); resizeStartRef.current = null;
   }, []);
 
   // ── Loading gate ──────────────────────────────────────────────────────────
@@ -284,7 +287,7 @@ export default function JerseyBuilderPage() {
 
       <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
 
-        {/* ── 3D Viewport ─────────────────────────────────────────────────── */}
+        {/* ── 3D Viewport ── */}
         <div
           ref={containerRef}
           className="relative flex-1 min-h-[420px] bg-[#f0f0f0]"
@@ -323,19 +326,9 @@ export default function JerseyBuilderPage() {
             <span className="text-[10px] font-display font-bold uppercase tracking-[0.25em] text-brand-text/70">Jersey Builder</span>
           </div>
 
-          {/* Color badges */}
-          <div className="absolute top-4 right-5 flex items-center gap-1.5 pointer-events-none">
-            {[["Jersey", jerseyColor], ["Shorts", shortsColor], ["Panels", highlightColor]].map(([label, color]) => (
-              <div key={label} className="flex items-center gap-1.5 bg-white/80 backdrop-blur px-2 py-1.5 rounded-full border border-gray-200 shadow-sm">
-                <div className="w-3 h-3 rounded-full border border-gray-300" style={{ backgroundColor: color }} />
-                <span className="text-[9px] font-barlow text-gray-500 uppercase tracking-wider">{label}</span>
-              </div>
-            ))}
-          </div>
-
-          {/* Logo overlays — each appears printed on the jersey surface */}
+          {/* Logo overlays */}
           {logos.map((logo) => {
-            if (!logo.tintedUrl) return null;
+            const src = logo.tintedUrl ?? logo.originalUrl;
             const isThisDragging = draggingId === logo.id;
             const isThisResizing = resizingId === logo.id;
             return (
@@ -349,13 +342,13 @@ export default function JerseyBuilderPage() {
                   width: `${logo.size}%`,
                   userSelect: "none",
                   touchAction: "none",
-                  // Mix-blend-mode multiply makes white areas transparent — logo
-                  // appears embedded in the fabric rather than floating above it
+                  // multiply blend: transparent areas stay clear, colored areas
+                  // appear embedded in the fabric; works best with transparent PNGs
                   mixBlendMode: "multiply",
                 }}
               >
                 <img
-                  src={logo.tintedUrl}
+                  src={src}
                   alt="logo"
                   onPointerDown={(e) => handleLogoPointerDown(e, logo.id)}
                   draggable={false}
@@ -382,7 +375,7 @@ export default function JerseyBuilderPage() {
             );
           })}
 
-          {/* Hint bar */}
+          {/* Hint */}
           {logos.length > 0 && !anyActive && (
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-brand-bg/80 backdrop-blur px-3 py-1.5 rounded-full border border-brand-border pointer-events-none">
               <p className="text-[10px] font-barlow text-brand-muted whitespace-nowrap">Drag logo to move · ◎ corner to resize · Drag background to rotate</p>
@@ -390,26 +383,32 @@ export default function JerseyBuilderPage() {
           )}
         </div>
 
-        {/* ── Controls Panel ───────────────────────────────────────────────── */}
+        {/* ── Controls Panel ── */}
         <div className="w-full lg:w-[320px] border-t lg:border-t-0 lg:border-l border-brand-border bg-brand-bg flex flex-col">
           <div className="flex-1 overflow-y-auto px-6 py-7 space-y-6">
 
             <p className="text-[10px] font-barlow text-brand-muted leading-relaxed">
-              Pick jersey, shorts, and accent colors, then upload your team logo(s) and position them on the jersey.
+              Pick a color for each zone, upload your team logo(s), then drag and resize them on the jersey.
             </p>
 
             <div className="h-px bg-brand-border" />
 
-            {/* Colors */}
+            {/* Zone color controls */}
             <div className="space-y-4">
-              <ColorControl label="Jersey Color"  value={jerseyColor}    onChange={setJerseyColor} />
-              <ColorControl label="Shorts Color"  value={shortsColor}    onChange={setShortsColor} />
-              <ColorControl label="Panels Color"  value={highlightColor} onChange={setHighlightColor} />
+              <p className="text-[9px] font-display font-bold uppercase tracking-[0.2em] text-brand-muted/60">Jersey Colors</p>
+              {ZONES.map((zone) => (
+                <ColorControl
+                  key={zone.key}
+                  label={zone.label}
+                  value={colors[zone.key]}
+                  onChange={(v) => setColors((prev) => ({ ...prev, [zone.key]: v }))}
+                />
+              ))}
             </div>
 
             <div className="h-px bg-brand-border" />
 
-            {/* Logos */}
+            {/* Logo upload */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <label className="text-[10px] font-display font-bold uppercase tracking-[0.2em] text-brand-muted">
@@ -442,15 +441,15 @@ export default function JerseyBuilderPage() {
               )}
 
               <p className="text-[9px] font-barlow text-brand-muted/60">
-                PNG with transparent background works best.
+                PNG with transparent background works best. Drag to reposition, corner handle to resize.
               </p>
 
               {/* Per-logo controls */}
               {logos.map((logo, i) => (
                 <div key={logo.id} className="rounded-xl border border-brand-border bg-brand-surface p-3 space-y-3">
-                  {/* Header row */}
                   <div className="flex items-center gap-2">
-                    <img src={logo.tintedUrl || logo.originalUrl} alt="" className="w-8 h-8 object-contain rounded flex-shrink-0" />
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={logo.tintedUrl ?? logo.originalUrl} alt="" className="w-8 h-8 object-contain rounded flex-shrink-0" />
                     <p className="text-[10px] font-barlow text-brand-text truncate flex-1">
                       Logo {i + 1}{logo.fileName ? ` — ${logo.fileName}` : ""}
                     </p>
@@ -462,20 +461,34 @@ export default function JerseyBuilderPage() {
                     </button>
                   </div>
 
-                  {/* Color + size row */}
+                  {/* Tint color */}
                   <div className="flex items-center justify-between gap-3">
-                    <label className="text-[9px] font-display font-bold uppercase tracking-[0.15em] text-brand-muted/70">Color</label>
+                    <label className="text-[9px] font-display font-bold uppercase tracking-[0.15em] text-brand-muted/70 whitespace-nowrap">
+                      Tint Color
+                    </label>
                     <div className="flex items-center gap-1.5">
-                      <span className="text-[9px] font-barlow text-brand-muted/70 font-mono">{logo.color.toUpperCase()}</span>
+                      {logo.color && (
+                        <span className="text-[9px] font-barlow text-brand-muted/70 font-mono">{logo.color.toUpperCase()}</span>
+                      )}
                       <input
                         type="color"
-                        value={logo.color}
+                        value={logo.color || "#000000"}
                         onChange={(e) => updateLogoColor(logo.id, e.target.value)}
                         className="w-7 h-7 rounded cursor-pointer border border-brand-border"
                       />
+                      {logo.color && (
+                        <button
+                          onClick={() => setLogos((prev) => prev.map((l) => l.id === logo.id ? { ...l, color: "", tintedUrl: null } : l))}
+                          className="text-[9px] font-barlow text-brand-muted/50 hover:text-brand-muted transition-colors"
+                          title="Remove tint"
+                        >
+                          ✕
+                        </button>
+                      )}
                     </div>
                   </div>
 
+                  {/* Size slider */}
                   <div className="space-y-1">
                     <div className="flex items-center justify-between">
                       <label className="text-[9px] font-display font-bold uppercase tracking-[0.15em] text-brand-muted/70">Size</label>
@@ -496,7 +509,9 @@ export default function JerseyBuilderPage() {
           {/* CTA */}
           <div className="border-t border-brand-border px-6 py-5 space-y-3">
             <Link
-              href={`/brief/new?jerseyColor=${encodeURIComponent(jerseyColor)}&shortsColor=${encodeURIComponent(shortsColor)}&accentColor=${encodeURIComponent(highlightColor)}`}
+              href={`/brief/new?${new URLSearchParams(
+                Object.fromEntries(ZONES.map((z) => [z.key + "Color", colors[z.key]]))
+              ).toString()}`}
               className="flex items-center justify-center w-full py-3.5 rounded-lg bg-brand-primary text-white font-display font-bold text-xs uppercase tracking-widest hover:bg-brand-secondary transition-colors"
             >
               Continue to Brief →
