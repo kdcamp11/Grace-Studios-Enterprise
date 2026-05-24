@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { sessionReady } from "@/lib/supabase/client";
+import { createClient, sessionReady } from "@/lib/supabase/client";
 import { getProfile } from "@/lib/profile";
 import Link from "next/link";
 
@@ -106,11 +106,14 @@ export default function JerseyBuilderPage() {
   const containerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Auth check
+  // Auth check — must call createClient() FIRST to start the localStorage→cookie
+  // session migration. sessionReady() waits for that migration to finish; if
+  // createClient() is never called the promise hangs forever (deadlock).
   useEffect(() => {
     async function check() {
       try {
-        await sessionReady();
+        createClient();          // kick off migration (no-op if already done)
+        await sessionReady();    // wait for migration to finish
         const profile = await getProfile();
         if (!profile) { router.replace("/login"); return; }
         if (profile.role === "supplier") { router.replace("/supplier"); return; }
@@ -120,7 +123,7 @@ export default function JerseyBuilderPage() {
       }
     }
     check();
-  }, [router]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Load model-viewer web component from CDN (no bundling, no eval issues)
   useEffect(() => {
