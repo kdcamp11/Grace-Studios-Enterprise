@@ -4,6 +4,7 @@ import { withSentryConfig } from "@sentry/nextjs";
 const nextConfig = {
   eslint: { ignoreDuringBuilds: true },
   typescript: { ignoreBuildErrors: true },
+  transpilePackages: ["three", "@react-three/fiber", "@react-three/drei"],
   async headers() {
     return [
       {
@@ -18,6 +19,7 @@ const nextConfig = {
               "font-src 'self' https://fonts.gstatic.com",
               "img-src 'self' data: blob: https: https://placehold.co",
               "connect-src 'self' https://*.supabase.co https://api.replicate.com https://delivery.replicate.com https://replicate.delivery wss://*.supabase.co https://*.sentry.io",
+              "worker-src blob:",
             ].join("; "),
           },
         ],
