@@ -129,23 +129,66 @@ export default function JerseyBuilderPage() {
   }, [scriptLoaded]);
 
   // ── Apply named-material colors ───────────────────────────────────────────
+  // Material mapping for current Jersey.glb (3 materials):
+  //   "rayon jersey_FRONT_2451" / "rayon jersey_FRONT_2425" → jersey body
+  //   "Material2880"                                         → shorts body
+  //   anything else (future trim material)                   → accent/trim
   useEffect(() => {
     if (!modelLoaded) return;
-    const mv = document.getElementById("jersey-mv") as (HTMLElement & { model?: { materials: unknown[] } }) | null;
-    if (!mv?.model?.materials?.length) return;
+
     const toRgb = (hex: string): [number, number, number, number] => {
       const h = hex.replace("#", "");
-      return [parseInt(h.slice(0,2),16)/255, parseInt(h.slice(2,4),16)/255, parseInt(h.slice(4,6),16)/255, 1];
+      return [
+        parseInt(h.slice(0,2), 16) / 255,
+        parseInt(h.slice(2,4), 16) / 255,
+        parseInt(h.slice(4,6), 16) / 255,
+        1,
+      ];
     };
-    const mats = mv.model.materials as Array<{ name: string; pbrMetallicRoughness: { setBaseColorFactor: (c: number[]) => void } }>;
-    mats.forEach((mat) => {
-      const n = (mat.name ?? "").toLowerCase();
-      mat.pbrMetallicRoughness.setBaseColorFactor(
-        n.includes("rayon jersey") ? toRgb(jerseyColor)
-        : (n.includes("waist band") || n.includes("waistband") || n.includes("short")) ? toRgb(shortsColor)
-        : toRgb(highlightColor)
-      );
-    });
+
+    function apply(): boolean {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mv = document.getElementById("jersey-mv") as any;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mats: Array<any> | undefined = mv?.model?.materials;
+      if (!mats?.length) return false;
+
+      mats.forEach((mat: any) => {
+        const n = (mat.name ?? "").toLowerCase();
+        let color: [number, number, number, number];
+
+        if (n.includes("rayon jersey")) {
+          color = toRgb(jerseyColor);
+        } else if (
+          n === "material2880" ||
+          n.includes("waist band") ||
+          n.includes("waistband") ||
+          n.includes("short")
+        ) {
+          color = toRgb(shortsColor);
+        } else {
+          color = toRgb(highlightColor);
+        }
+
+        mat.pbrMetallicRoughness.setBaseColorFactor(color);
+      });
+      return true;
+    }
+
+    // model-viewer fires 'load' slightly before mv.model.materials is populated.
+    // Retry with back-off so we never silently drop a color update.
+    let cancelled = false;
+    let attempt = 0;
+    function tryApply() {
+      if (cancelled) return;
+      if (apply()) return;
+      if (attempt < 6) {
+        attempt++;
+        setTimeout(tryApply, attempt * 250);
+      }
+    }
+    requestAnimationFrame(tryApply);
+    return () => { cancelled = true; };
   }, [jerseyColor, shortsColor, highlightColor, modelLoaded]);
 
   // ── Logo helpers ──────────────────────────────────────────────────────────
