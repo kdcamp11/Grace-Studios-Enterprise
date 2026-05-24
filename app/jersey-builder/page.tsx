@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState, useRef, useCallback, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient, sessionReady } from "@/lib/supabase/client";
 import { getProfile } from "@/lib/profile";
 import Link from "next/link";
@@ -95,8 +95,10 @@ function tintImage(src: string, color: string): Promise<string> {
   });
 }
 
-export default function JerseyBuilderPage() {
-  const router = useRouter();
+function JerseyBuilderInner() {
+  const router       = useRouter();
+  const searchParams = useSearchParams();
+  const orderId      = searchParams.get("orderId"); // set when entering from /brief/[id]/choose
   const [ready, setReady] = useState(false);
 
   // One color state per zone
@@ -508,14 +510,22 @@ export default function JerseyBuilderPage() {
 
           {/* CTA */}
           <div className="border-t border-brand-border px-6 py-5 space-y-3">
-            <Link
-              href={`/brief/new?${new URLSearchParams(
+            {(() => {
+              const colorParams = new URLSearchParams(
                 Object.fromEntries(ZONES.map((z) => [z.key + "Color", colors[z.key]]))
-              ).toString()}`}
-              className="flex items-center justify-center w-full py-3.5 rounded-lg bg-brand-primary text-white font-display font-bold text-xs uppercase tracking-widest hover:bg-brand-secondary transition-colors"
-            >
-              Continue to Brief →
-            </Link>
+              ).toString();
+              const href = orderId
+                ? `/brief/${orderId}/style?${colorParams}`
+                : `/brief/new?${colorParams}`;
+              return (
+                <Link
+                  href={href}
+                  className="flex items-center justify-center w-full py-3.5 rounded-lg bg-brand-primary text-white font-display font-bold text-xs uppercase tracking-widest hover:bg-brand-secondary transition-colors"
+                >
+                  {orderId ? "Continue to Design System →" : "Start Brief with These Colors →"}
+                </Link>
+              );
+            })()}
             <p className="text-[9px] font-barlow text-brand-muted/70 text-center leading-relaxed">
               Your color selections will be pre-filled in your design brief.
             </p>
@@ -524,5 +534,17 @@ export default function JerseyBuilderPage() {
 
       </div>
     </div>
+  );
+}
+
+export default function JerseyBuilderPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-brand-bg flex items-center justify-center">
+        <div className="w-5 h-5 border-2 border-brand-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    }>
+      <JerseyBuilderInner />
+    </Suspense>
   );
 }

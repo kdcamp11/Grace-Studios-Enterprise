@@ -117,7 +117,7 @@ function PortalContent() {
       <header className="border-b border-brand-border px-6 sm:px-10 py-5 flex items-center justify-between">
         <OrgLogo href="/portal" />
         <div className="flex items-center gap-5">
-          <a href="/start" className="text-xs font-display font-bold uppercase tracking-wider text-brand-primary hover:text-brand-secondary transition-colors">
+          <a href="/brief/new" className="text-xs font-display font-bold uppercase tracking-wider text-brand-primary hover:text-brand-secondary transition-colors">
             {hasProfile ? "+ New Order" : "+ New Brief"}
           </a>
           {(role === "admin" || role === "super_admin") && (
@@ -176,7 +176,7 @@ function PortalContent() {
                 </p>
               </div>
               <a
-                href="/start"
+                href="/brief/new"
                 className="inline-block px-8 py-4 rounded-lg font-display font-bold text-sm uppercase tracking-widest bg-brand-primary text-white hover:bg-brand-secondary transition-colors"
               >
                 {hasProfile ? "Start a New Order →" : "Submit Your First Brief →"}
