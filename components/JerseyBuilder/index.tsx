@@ -1,12 +1,29 @@
 "use client";
 
-import { Suspense, useRef, useState, useEffect, useCallback } from "react";
+import { Component, Suspense, useRef, useState, useEffect, useCallback } from "react";
+import type { ErrorInfo, ReactNode } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import Link from "next/link";
 // JerseyScene is a static import here — this whole file is already loaded
 // client-only via `dynamic({ ssr: false })` in the page, so no double-wrapping needed.
 import JerseyScene from "./JerseyScene";
+
+// ── Error boundary so a GLB / WebGL failure shows a message not a blank screen ──
+class CanvasErrorBoundary extends Component<
+  { children: ReactNode; fallback: ReactNode },
+  { error: Error | null }
+> {
+  state = { error: null };
+  static getDerivedStateFromError(error: Error) { return { error }; }
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error("[JerseyBuilder] Canvas error:", error, info);
+  }
+  render() {
+    if (this.state.error) return this.props.fallback;
+    return this.props.children;
+  }
+}
 
 const JERSEY_SWATCHES = [
   { hex: "#0a0a0a", label: "Black" },
@@ -92,6 +109,9 @@ export default function JerseyBuilder() {
   const [logoSize, setLogoSize]           = useState(20);
   const [dragging, setDragging]           = useState(false);
   const [orbitEnabled, setOrbitEnabled]   = useState(true);
+  // Gate Canvas mount to client-only — prevents any SSR/hydration mismatch with WebGL
+  const [mounted, setMounted]             = useState(false);
+  useEffect(() => { setMounted(true); }, []);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -173,28 +193,45 @@ export default function JerseyBuilder() {
           onPointerUp={handlePointerUp}
           onPointerLeave={handlePointerUp}
         >
-          <Canvas
-            camera={{ position: [0, 0.5, 3.5], fov: 42 }}
-            style={{ width: "100%", height: "100%" }}
-          >
-            <ambientLight intensity={0.8} />
-            <directionalLight position={[4, 6, 4]} intensity={1.4} />
-            <directionalLight position={[-4, 3, -2]} intensity={0.6} />
-            <directionalLight position={[0, -2, 4]} intensity={0.3} />
-            <pointLight position={[0, 4, 2]} intensity={0.5} />
+          {!mounted ? (
+            <div className="flex-1 flex items-center justify-center bg-[#f8f8f8]">
+              <div className="w-6 h-6 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : (
+            <CanvasErrorBoundary
+              fallback={
+                <div className="flex-1 flex flex-col items-center justify-center bg-[#f8f8f8] gap-3 p-6">
+                  <p className="text-sm font-barlow text-gray-500 text-center">
+                    3D preview unavailable in this browser. Your design choices are still saved.
+                  </p>
+                </div>
+              }
+            >
+              <Canvas
+                camera={{ position: [0, 0.5, 3.5], fov: 42 }}
+                style={{ width: "100%", height: "100%" }}
+                gl={{ preserveDrawingBuffer: true }}
+              >
+                <ambientLight intensity={0.8} />
+                <directionalLight position={[4, 6, 4]} intensity={1.4} />
+                <directionalLight position={[-4, 3, -2]} intensity={0.6} />
+                <directionalLight position={[0, -2, 4]} intensity={0.3} />
+                <pointLight position={[0, 4, 2]} intensity={0.5} />
 
-            <Suspense fallback={null}>
-              <JerseyScene jerseyColor={jerseyColor} highlightColor={highlightColor} />
-            </Suspense>
+                <Suspense fallback={null}>
+                  <JerseyScene jerseyColor={jerseyColor} highlightColor={highlightColor} />
+                </Suspense>
 
-            <OrbitControls
-              enabled={orbitEnabled}
-              enablePan={false}
-              minDistance={1.8}
-              maxDistance={7}
-              target={[0, 0, 0]}
-            />
-          </Canvas>
+                <OrbitControls
+                  enabled={orbitEnabled}
+                  enablePan={false}
+                  minDistance={1.8}
+                  maxDistance={7}
+                  target={[0, 0, 0]}
+                />
+              </Canvas>
+            </CanvasErrorBoundary>
+          )}
 
           {/* Logo overlay — draggable */}
           {tintedLogoUrl && (

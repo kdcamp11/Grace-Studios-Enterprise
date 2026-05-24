@@ -35,9 +35,7 @@ export default function JerseyScene({ jerseyColor, highlightColor }: Props) {
   useEffect(() => {
     if (!materialsRef.current.length) return;
     const color = new THREE.Color(jerseyColor);
-    // Apply to all materials — user can see the whole jersey change
     materialsRef.current.forEach((mat, i) => {
-      // First half of materials = body; second half = accents (rough split)
       const isAccent = i >= Math.ceil(materialsRef.current.length / 2);
       mat.color.copy(isAccent ? new THREE.Color(highlightColor) : color);
       mat.needsUpdate = true;
