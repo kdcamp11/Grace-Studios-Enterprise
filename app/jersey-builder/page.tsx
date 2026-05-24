@@ -141,13 +141,39 @@ export default function JerseyBuilderPage() {
   // Listen for model-viewer 'load' event to hide the loading overlay
   useEffect(() => {
     if (!scriptLoaded) return;
-    // model-viewer fires 'load' when the GLB is fully parsed and rendered
     const mv = document.getElementById("jersey-mv");
     if (!mv) return;
     const onLoad = () => setModelLoaded(true);
     mv.addEventListener("load", onLoad);
     return () => mv.removeEventListener("load", onLoad);
   }, [scriptLoaded]);
+
+  // Apply jersey + accent colors to model materials whenever they change
+  useEffect(() => {
+    if (!modelLoaded) return;
+    const mv = document.getElementById("jersey-mv") as (HTMLElement & { model?: { materials: unknown[] } }) | null;
+    if (!mv?.model?.materials?.length) return;
+
+    const toRgb = (hex: string): [number, number, number, number] => {
+      const h = hex.replace("#", "");
+      return [
+        parseInt(h.slice(0, 2), 16) / 255,
+        parseInt(h.slice(2, 4), 16) / 255,
+        parseInt(h.slice(4, 6), 16) / 255,
+        1,
+      ];
+    };
+
+    const mats = mv.model.materials as Array<{
+      pbrMetallicRoughness: { setBaseColorFactor: (c: number[]) => void };
+    }>;
+    const half = Math.ceil(mats.length / 2);
+    mats.forEach((mat, i) => {
+      mat.pbrMetallicRoughness.setBaseColorFactor(
+        i >= half ? toRgb(highlightColor) : toRgb(jerseyColor)
+      );
+    });
+  }, [jerseyColor, highlightColor, modelLoaded]);
 
   // Tint logo canvas
   useEffect(() => {
@@ -235,9 +261,9 @@ export default function JerseyBuilderPage() {
               camera-controls
               shadow-intensity="0.8"
               exposure="1.1"
-              min-camera-orbit="auto auto 1.8m"
-              max-camera-orbit="auto auto 7m"
-              camera-orbit="0deg 75deg 3.5m"
+              camera-orbit="0deg 70deg auto"
+              min-camera-orbit="auto 0deg 80%"
+              max-camera-orbit="auto 160deg 200%"
               style={{
                 width: "100%",
                 height: "100%",
