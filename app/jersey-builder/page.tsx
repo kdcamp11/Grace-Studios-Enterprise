@@ -101,6 +101,8 @@ export default function JerseyBuilderPage() {
   const [logoPos, setLogoPos]               = useState({ x: 50, y: 38 });
   const [logoSize, setLogoSize]             = useState(20);
   const [dragging, setDragging]             = useState(false);
+  const [resizing, setResizing]             = useState(false);
+  const resizeStartRef                      = useRef<{ x: number; size: number } | null>(null);
   const [scriptLoaded, setScriptLoaded]     = useState(false);
   const [modelLoaded, setModelLoaded]       = useState(false);
 
@@ -200,22 +202,39 @@ export default function JerseyBuilderPage() {
     setLogoUrl(URL.createObjectURL(file));
   }, []);
 
-  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+  const handleLogoPointerDown = useCallback((e: React.PointerEvent) => {
     e.stopPropagation();
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
     setDragging(true);
   }, []);
 
+  const handleResizePointerDown = useCallback((e: React.PointerEvent) => {
+    e.stopPropagation();
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    resizeStartRef.current = { x: e.clientX, size: logoSize };
+    setResizing(true);
+  }, [logoSize]);
+
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
+    if (resizing && resizeStartRef.current && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      const dx = ((e.clientX - resizeStartRef.current.x) / rect.width) * 100;
+      setLogoSize(Math.max(5, Math.min(60, resizeStartRef.current.size + dx)));
+      return;
+    }
     if (!dragging || !containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
     setLogoPos({
       x: Math.max(5, Math.min(95, ((e.clientX - rect.left) / rect.width) * 100)),
       y: Math.max(5, Math.min(95, ((e.clientY - rect.top) / rect.height) * 100)),
     });
-  }, [dragging]);
+  }, [dragging, resizing]);
 
-  const handlePointerUp = useCallback(() => { setDragging(false); }, []);
+  const handlePointerUp = useCallback(() => {
+    setDragging(false);
+    setResizing(false);
+    resizeStartRef.current = null;
+  }, []);
 
   if (!ready) {
     return (
@@ -305,30 +324,54 @@ export default function JerseyBuilderPage() {
             </div>
           </div>
 
-          {/* Logo overlay */}
+          {/* Logo overlay — draggable + resizable */}
           {tintedLogoUrl && (
-            <img
-              src={tintedLogoUrl}
-              alt="logo placement"
-              onPointerDown={handlePointerDown}
-              draggable={false}
+            <div
               style={{
                 position: "absolute",
                 left: `${logoPos.x}%`,
                 top: `${logoPos.y}%`,
                 transform: "translate(-50%, -50%)",
                 width: `${logoSize}%`,
-                cursor: dragging ? "grabbing" : "grab",
                 userSelect: "none",
                 touchAction: "none",
-                filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.35))",
               }}
-            />
+            >
+              <img
+                src={tintedLogoUrl}
+                alt="logo placement"
+                onPointerDown={handleLogoPointerDown}
+                draggable={false}
+                style={{
+                  width: "100%",
+                  display: "block",
+                  cursor: dragging ? "grabbing" : "grab",
+                  filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.35))",
+                }}
+              />
+              {/* Resize handle — bottom-right corner */}
+              <div
+                onPointerDown={handleResizePointerDown}
+                style={{
+                  position: "absolute",
+                  bottom: -6,
+                  right: -6,
+                  width: 16,
+                  height: 16,
+                  borderRadius: "50%",
+                  background: "white",
+                  border: "2px solid #888",
+                  cursor: resizing ? "ew-resize" : "se-resize",
+                  touchAction: "none",
+                  boxShadow: "0 1px 4px rgba(0,0,0,0.3)",
+                }}
+              />
+            </div>
           )}
 
-          {tintedLogoUrl && !dragging && (
+          {tintedLogoUrl && !dragging && !resizing && (
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-brand-bg/80 backdrop-blur px-3 py-1.5 rounded-full border border-brand-border">
-              <p className="text-[10px] font-barlow text-brand-muted whitespace-nowrap">Drag logo · Scroll to zoom · Drag viewport to rotate</p>
+              <p className="text-[10px] font-barlow text-brand-muted whitespace-nowrap">Drag logo to move · Drag ◎ corner to resize · Drag viewport to rotate</p>
             </div>
           )}
         </div>
