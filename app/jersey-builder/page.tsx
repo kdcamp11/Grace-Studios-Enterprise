@@ -102,6 +102,7 @@ export default function JerseyBuilderPage() {
   const [logoSize, setLogoSize]             = useState(20);
   const [dragging, setDragging]             = useState(false);
   const [scriptLoaded, setScriptLoaded]     = useState(false);
+  const [modelLoaded, setModelLoaded]       = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -136,6 +137,17 @@ export default function JerseyBuilderPage() {
     s.onload = () => setScriptLoaded(true);
     document.head.appendChild(s);
   }, [ready]);
+
+  // Listen for model-viewer 'load' event to hide the loading overlay
+  useEffect(() => {
+    if (!scriptLoaded) return;
+    // model-viewer fires 'load' when the GLB is fully parsed and rendered
+    const mv = document.getElementById("jersey-mv");
+    if (!mv) return;
+    const onLoad = () => setModelLoaded(true);
+    mv.addEventListener("load", onLoad);
+    return () => mv.removeEventListener("load", onLoad);
+  }, [scriptLoaded]);
 
   // Tint logo canvas
   useEffect(() => {
@@ -214,7 +226,8 @@ export default function JerseyBuilderPage() {
           onPointerUp={handlePointerUp}
           onPointerLeave={handlePointerUp}
         >
-          {scriptLoaded ? (
+          {/* model-viewer — always in DOM once script loads so the load event fires */}
+          {scriptLoaded && (
             <model-viewer
               id="jersey-mv"
               src="/Jersey.glb"
@@ -233,10 +246,18 @@ export default function JerseyBuilderPage() {
                 "--poster-color": "#f0f0f0",
               } as React.CSSProperties}
             />
-          ) : (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
+          )}
+
+          {/* Loading overlay — covers viewport until model is ready */}
+          {(!scriptLoaded || !modelLoaded) && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[#f0f0f0]">
               <div className="w-6 h-6 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
-              <p className="text-[11px] font-barlow text-gray-400 uppercase tracking-widest">Loading 3D viewer…</p>
+              <p className="text-[11px] font-barlow text-gray-400 uppercase tracking-widest">
+                {!scriptLoaded ? "Loading 3D viewer…" : "Loading jersey model…"}
+              </p>
+              {scriptLoaded && !modelLoaded && (
+                <p className="text-[10px] font-barlow text-gray-300 uppercase tracking-widest">25 MB · may take a moment</p>
+              )}
             </div>
           )}
 
