@@ -19,7 +19,8 @@ const nextConfig = {
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "font-src 'self' https://fonts.gstatic.com",
               "img-src 'self' data: blob: https: https://placehold.co",
-              "connect-src 'self' https://*.supabase.co https://api.replicate.com https://delivery.replicate.com https://replicate.delivery wss://*.supabase.co https://*.sentry.io",
+              // blob: required by model-viewer for internal texture blob URLs
+              "connect-src 'self' blob: https://*.supabase.co https://api.replicate.com https://delivery.replicate.com https://replicate.delivery wss://*.supabase.co https://*.sentry.io",
               "worker-src blob: 'unsafe-eval'",
               "child-src blob:",
             ].join("; "),
