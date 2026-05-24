@@ -129,10 +129,11 @@ export default function JerseyBuilderPage() {
   }, [scriptLoaded]);
 
   // ── Apply named-material colors ───────────────────────────────────────────
-  // Material mapping for current Jersey.glb (3 materials):
-  //   "rayon jersey_FRONT_2451" / "rayon jersey_FRONT_2425" → jersey body
-  //   "Material2880"                                         → shorts body
-  //   anything else (future trim material)                   → accent/trim
+  // Material mapping — Jersey.glb has exactly 3 OPAQUE materials (no diffuse
+  // texture) so setBaseColorFactor gives full, clean color control:
+  //   "jersey_body"  → jersey top (body, collar, stitching)
+  //   "shorts_body"  → shorts (legs, waist, side panels of shorts)
+  //   "panels"       → side panels + sleeve panels (jersey + shorts)
   useEffect(() => {
     if (!modelLoaded) return;
 
@@ -157,16 +158,12 @@ export default function JerseyBuilderPage() {
         const n = (mat.name ?? "").toLowerCase();
         let color: [number, number, number, number];
 
-        if (n.includes("rayon jersey")) {
+        if (n === "jersey_body") {
           color = toRgb(jerseyColor);
-        } else if (
-          n === "material2880" ||
-          n.includes("waist band") ||
-          n.includes("waistband") ||
-          n.includes("short")
-        ) {
+        } else if (n === "shorts_body") {
           color = toRgb(shortsColor);
         } else {
+          // "panels" + any future materials default to panels/accent color
           color = toRgb(highlightColor);
         }
 
@@ -328,7 +325,7 @@ export default function JerseyBuilderPage() {
 
           {/* Color badges */}
           <div className="absolute top-4 right-5 flex items-center gap-1.5 pointer-events-none">
-            {[["Jersey", jerseyColor], ["Shorts", shortsColor], ["Accent", highlightColor]].map(([label, color]) => (
+            {[["Jersey", jerseyColor], ["Shorts", shortsColor], ["Panels", highlightColor]].map(([label, color]) => (
               <div key={label} className="flex items-center gap-1.5 bg-white/80 backdrop-blur px-2 py-1.5 rounded-full border border-gray-200 shadow-sm">
                 <div className="w-3 h-3 rounded-full border border-gray-300" style={{ backgroundColor: color }} />
                 <span className="text-[9px] font-barlow text-gray-500 uppercase tracking-wider">{label}</span>
@@ -407,7 +404,7 @@ export default function JerseyBuilderPage() {
             <div className="space-y-4">
               <ColorControl label="Jersey Color"  value={jerseyColor}    onChange={setJerseyColor} />
               <ColorControl label="Shorts Color"  value={shortsColor}    onChange={setShortsColor} />
-              <ColorControl label="Accent / Trim" value={highlightColor} onChange={setHighlightColor} />
+              <ColorControl label="Panels Color"  value={highlightColor} onChange={setHighlightColor} />
             </div>
 
             <div className="h-px bg-brand-border" />
