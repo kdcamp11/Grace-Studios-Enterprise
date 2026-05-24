@@ -12,136 +12,113 @@ declare global {
     interface IntrinsicElements {
       "model-viewer": React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement> & {
         src?: string; alt?: string; "camera-controls"?: boolean | string;
-        "auto-rotate"?: boolean | string; "shadow-intensity"?: string;
-        exposure?: string; style?: React.CSSProperties;
-        "min-camera-orbit"?: string; "max-camera-orbit"?: string;
-        "camera-orbit"?: string; id?: string;
+        "shadow-intensity"?: string; exposure?: string; style?: React.CSSProperties;
+        "min-camera-orbit"?: string; "max-camera-orbit"?: string; "camera-orbit"?: string; id?: string;
       }, HTMLElement>;
     }
   }
 }
 
-const JERSEY_SWATCHES = [
-  { hex: "#0a0a0a", label: "Black" },
-  { hex: "#1d3557", label: "Navy" },
-  { hex: "#c41e1e", label: "Red" },
-  { hex: "#1b4332", label: "Forest" },
-  { hex: "#6a0dad", label: "Purple" },
-  { hex: "#c77dff", label: "Lavender" },
-  { hex: "#ffffff", label: "White" },
-  { hex: "#888888", label: "Grey" },
-];
-
-const ACCENT_SWATCHES = [
-  { hex: "#ffffff", label: "White" },
-  { hex: "#f4d03f", label: "Gold" },
-  { hex: "#e63946", label: "Red" },
-  { hex: "#0a0a0a", label: "Black" },
-  { hex: "#3498db", label: "Blue" },
-  { hex: "#2ecc71", label: "Green" },
-  { hex: "#e67e22", label: "Orange" },
-  { hex: "#c0c0c0", label: "Silver" },
-];
-
-function ColorSwatch({ hex, label, selected, onClick }: {
-  hex: string; label: string; selected: boolean; onClick: () => void;
+// ── Simple color picker row (no swatches) ────────────────────────────────────
+function ColorControl({ label, value, onChange }: {
+  label: string; value: string; onChange: (v: string) => void;
 }) {
   return (
-    <button
-      title={label}
-      onClick={onClick}
-      className="relative w-8 h-8 rounded-full border-2 transition-all duration-150 hover:scale-110"
-      style={{
-        backgroundColor: hex,
-        borderColor: selected ? "var(--brand-primary)" : "var(--brand-border)",
-        boxShadow: selected ? "0 0 0 2px var(--brand-primary)" : "none",
-        transform: selected ? "scale(1.15)" : "scale(1)",
-      }}
-    />
-  );
-}
-
-function ColorControl({ label, value, swatches, onChange }: {
-  label: string; value: string;
-  swatches: { hex: string; label: string }[];
-  onChange: (v: string) => void;
-}) {
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-3">
-        <label className="text-[10px] font-display font-bold uppercase tracking-[0.2em] text-brand-muted">
-          {label}
-        </label>
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] font-barlow text-brand-muted font-mono uppercase">{value}</span>
-          <input type="color" value={value} onChange={(e) => onChange(e.target.value)}
-            className="w-7 h-7 rounded cursor-pointer border border-brand-border" />
-        </div>
-      </div>
-      <div className="flex gap-2 flex-wrap">
-        {swatches.map((s) => (
-          <ColorSwatch key={s.hex} {...s} selected={value === s.hex} onClick={() => onChange(s.hex)} />
-        ))}
+    <div className="flex items-center justify-between">
+      <label className="text-[10px] font-display font-bold uppercase tracking-[0.2em] text-brand-muted">
+        {label}
+      </label>
+      <div className="flex items-center gap-2">
+        <span className="text-[10px] font-barlow text-brand-muted font-mono">{value.toUpperCase()}</span>
+        <input
+          type="color"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-8 h-8 rounded cursor-pointer border border-brand-border bg-transparent"
+        />
       </div>
     </div>
   );
 }
 
+// ── Per-logo state ────────────────────────────────────────────────────────────
+interface LogoItem {
+  id: string;
+  fileName: string;
+  originalUrl: string;
+  tintedUrl: string | null;
+  color: string;
+  pos: { x: number; y: number };
+  size: number;
+}
+
+function tintImage(src: string, color: string): Promise<string> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const c = document.createElement("canvas");
+      c.width = img.width; c.height = img.height;
+      const ctx = c.getContext("2d")!;
+      ctx.drawImage(img, 0, 0);
+      ctx.globalCompositeOperation = "source-in";
+      ctx.fillStyle = color;
+      ctx.fillRect(0, 0, c.width, c.height);
+      resolve(c.toDataURL());
+    };
+    img.src = src;
+  });
+}
+
 export default function JerseyBuilderPage() {
   const router = useRouter();
-  const [ready, setReady] = useState(false);
+  const [ready, setReady]               = useState(false);
 
-  // builder state
+  // jersey colors
   const [jerseyColor, setJerseyColor]       = useState("#1d3557");
   const [shortsColor, setShortsColor]       = useState("#1d3557");
   const [highlightColor, setHighlightColor] = useState("#f4d03f");
-  const [logoFile, setLogoFile]             = useState<File | null>(null);
-  const [logoUrl, setLogoUrl]               = useState<string | null>(null);
-  const [tintedLogoUrl, setTintedLogoUrl]   = useState<string | null>(null);
-  const [logoColor, setLogoColor]           = useState("#ffffff");
-  const [logoPos, setLogoPos]               = useState({ x: 50, y: 38 });
-  const [logoSize, setLogoSize]             = useState(20);
-  const [dragging, setDragging]             = useState(false);
-  const [resizing, setResizing]             = useState(false);
-  const resizeStartRef                      = useRef<{ x: number; size: number } | null>(null);
-  const [scriptLoaded, setScriptLoaded]     = useState(false);
-  const [modelLoaded, setModelLoaded]       = useState(false);
 
-  const containerRef = useRef<HTMLDivElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  // model-viewer state
+  const [scriptLoaded, setScriptLoaded] = useState(false);
+  const [modelLoaded, setModelLoaded]   = useState(false);
 
-  // Auth check — must call createClient() FIRST to start the localStorage→cookie
-  // session migration. sessionReady() waits for that migration to finish; if
-  // createClient() is never called the promise hangs forever (deadlock).
+  // logos
+  const [logos, setLogos]               = useState<LogoItem[]>([]);
+  const [draggingId, setDraggingId]     = useState<string | null>(null);
+  const [resizingId, setResizingId]     = useState<string | null>(null);
+  const resizeStartRef                  = useRef<{ x: number; size: number } | null>(null);
+
+  const containerRef  = useRef<HTMLDivElement>(null);
+  const fileInputRef  = useRef<HTMLInputElement>(null);
+
+  // ── Auth ──────────────────────────────────────────────────────────────────
   useEffect(() => {
     async function check() {
       try {
-        createClient();          // kick off migration (no-op if already done)
-        await sessionReady();    // wait for migration to finish
+        createClient();
+        await sessionReady();
         const profile = await getProfile();
         if (!profile) { router.replace("/login"); return; }
         if (profile.role === "supplier") { router.replace("/supplier"); return; }
         setReady(true);
-      } catch {
-        router.replace("/login");
-      }
+      } catch { router.replace("/login"); }
     }
     check();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Load model-viewer web component from CDN (no bundling, no eval issues)
+  // ── model-viewer script ───────────────────────────────────────────────────
   useEffect(() => {
     if (!ready) return;
-    if (document.querySelector('script[data-mv]')) { setScriptLoaded(true); return; }
+    if (document.querySelector("script[data-mv]")) { setScriptLoaded(true); return; }
     const s = document.createElement("script");
-    s.type = "module";
-    s.setAttribute("data-mv", "1");
+    s.type = "module"; s.setAttribute("data-mv", "1");
     s.src = "https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js";
     s.onload = () => setScriptLoaded(true);
     document.head.appendChild(s);
   }, [ready]);
 
-  // Listen for model-viewer 'load' event to hide the loading overlay
+  // ── model load event ──────────────────────────────────────────────────────
   useEffect(() => {
     if (!scriptLoaded) return;
     const mv = document.getElementById("jersey-mv");
@@ -151,104 +128,97 @@ export default function JerseyBuilderPage() {
     return () => mv.removeEventListener("load", onLoad);
   }, [scriptLoaded]);
 
-  // Apply named-material colors whenever any color or model load state changes.
-  // Material name mapping (from GLB inspect):
-  //   "rayon jersey*"   → jerseyColor  (main body fabric)
-  //   "WAIST BAND*"     → shortsColor  (shorts / waistband)
-  //   everything else   → highlightColor (stitching, trim, accents)
+  // ── Apply named-material colors ───────────────────────────────────────────
   useEffect(() => {
     if (!modelLoaded) return;
     const mv = document.getElementById("jersey-mv") as (HTMLElement & { model?: { materials: unknown[] } }) | null;
     if (!mv?.model?.materials?.length) return;
-
     const toRgb = (hex: string): [number, number, number, number] => {
       const h = hex.replace("#", "");
-      return [
-        parseInt(h.slice(0, 2), 16) / 255,
-        parseInt(h.slice(2, 4), 16) / 255,
-        parseInt(h.slice(4, 6), 16) / 255,
-        1,
-      ];
+      return [parseInt(h.slice(0,2),16)/255, parseInt(h.slice(2,4),16)/255, parseInt(h.slice(4,6),16)/255, 1];
     };
-
-    const mats = mv.model.materials as Array<{
-      name: string;
-      pbrMetallicRoughness: { setBaseColorFactor: (c: number[]) => void };
-    }>;
-
+    const mats = mv.model.materials as Array<{ name: string; pbrMetallicRoughness: { setBaseColorFactor: (c: number[]) => void } }>;
     mats.forEach((mat) => {
       const n = (mat.name ?? "").toLowerCase();
-      let color: [number, number, number, number];
-      if (n.includes("rayon jersey")) {
-        color = toRgb(jerseyColor);
-      } else if (n.includes("waist band") || n.includes("waistband") || n.includes("short")) {
-        color = toRgb(shortsColor);
-      } else {
-        color = toRgb(highlightColor);
-      }
-      mat.pbrMetallicRoughness.setBaseColorFactor(color);
+      mat.pbrMetallicRoughness.setBaseColorFactor(
+        n.includes("rayon jersey") ? toRgb(jerseyColor)
+        : (n.includes("waist band") || n.includes("waistband") || n.includes("short")) ? toRgb(shortsColor)
+        : toRgb(highlightColor)
+      );
     });
   }, [jerseyColor, shortsColor, highlightColor, modelLoaded]);
 
-  // Tint logo canvas
-  useEffect(() => {
-    if (!logoUrl) { setTintedLogoUrl(null); return; }
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => {
-      const c = document.createElement("canvas");
-      c.width = img.width; c.height = img.height;
-      const ctx = c.getContext("2d")!;
-      ctx.drawImage(img, 0, 0);
-      ctx.globalCompositeOperation = "source-in";
-      ctx.fillStyle = logoColor;
-      ctx.fillRect(0, 0, c.width, c.height);
-      setTintedLogoUrl(c.toDataURL());
-    };
-    img.src = logoUrl;
-  }, [logoUrl, logoColor]);
-
-  const handleLogoUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setLogoFile(file);
-    setLogoUrl(URL.createObjectURL(file));
+  // ── Logo helpers ──────────────────────────────────────────────────────────
+  const handleLogoUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length) return;
+    // Reset input so same file can be re-uploaded
+    e.target.value = "";
+    for (const file of files) {
+      const originalUrl = URL.createObjectURL(file);
+      const tintedUrl   = await tintImage(originalUrl, "#ffffff");
+      setLogos((prev) => [...prev, {
+        id: crypto.randomUUID(), fileName: file.name,
+        originalUrl, tintedUrl, color: "#ffffff",
+        pos: { x: 50, y: 40 }, size: 20,
+      }]);
+    }
   }, []);
 
-  const handleLogoPointerDown = useCallback((e: React.PointerEvent) => {
-    e.stopPropagation();
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
-    setDragging(true);
+  const updateLogoColor = useCallback(async (id: string, color: string) => {
+    setLogos((prev) => prev.map((l) => l.id === id ? { ...l, color, tintedUrl: null } : l));
+    setLogos((prev) => {
+      const logo = prev.find((l) => l.id === id);
+      if (!logo) return prev;
+      tintImage(logo.originalUrl, color).then((tintedUrl) => {
+        setLogos((p) => p.map((l) => l.id === id ? { ...l, tintedUrl } : l));
+      });
+      return prev;
+    });
   }, []);
 
-  const handleResizePointerDown = useCallback((e: React.PointerEvent) => {
+  const removeLogo = useCallback((id: string) => {
+    setLogos((prev) => prev.filter((l) => l.id !== id));
+  }, []);
+
+  // ── Drag / resize ─────────────────────────────────────────────────────────
+  const handleLogoPointerDown = useCallback((e: React.PointerEvent, id: string) => {
     e.stopPropagation();
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
-    resizeStartRef.current = { x: e.clientX, size: logoSize };
-    setResizing(true);
-  }, [logoSize]);
+    setDraggingId(id);
+  }, []);
+
+  const handleResizePointerDown = useCallback((e: React.PointerEvent, id: string, currentSize: number) => {
+    e.stopPropagation();
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    resizeStartRef.current = { x: e.clientX, size: currentSize };
+    setResizingId(id);
+  }, []);
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
-    if (resizing && resizeStartRef.current && containerRef.current) {
-      const rect = containerRef.current.getBoundingClientRect();
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+
+    if (resizingId && resizeStartRef.current) {
       const dx = ((e.clientX - resizeStartRef.current.x) / rect.width) * 100;
-      setLogoSize(Math.max(5, Math.min(60, resizeStartRef.current.size + dx)));
+      const newSize = Math.max(5, Math.min(60, resizeStartRef.current.size + dx));
+      setLogos((prev) => prev.map((l) => l.id === resizingId ? { ...l, size: newSize } : l));
       return;
     }
-    if (!dragging || !containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    setLogoPos({
-      x: Math.max(5, Math.min(95, ((e.clientX - rect.left) / rect.width) * 100)),
-      y: Math.max(5, Math.min(95, ((e.clientY - rect.top) / rect.height) * 100)),
-    });
-  }, [dragging, resizing]);
+    if (draggingId) {
+      const x = Math.max(5, Math.min(95, ((e.clientX - rect.left) / rect.width) * 100));
+      const y = Math.max(5, Math.min(95, ((e.clientY - rect.top) / rect.height) * 100));
+      setLogos((prev) => prev.map((l) => l.id === draggingId ? { ...l, pos: { x, y } } : l));
+    }
+  }, [draggingId, resizingId]);
 
   const handlePointerUp = useCallback(() => {
-    setDragging(false);
-    setResizing(false);
+    setDraggingId(null);
+    setResizingId(null);
     resizeStartRef.current = null;
   }, []);
 
+  // ── Loading gate ──────────────────────────────────────────────────────────
   if (!ready) {
     return (
       <div className="min-h-screen bg-brand-bg flex items-center justify-center">
@@ -256,6 +226,8 @@ export default function JerseyBuilderPage() {
       </div>
     );
   }
+
+  const anyActive = !!draggingId || !!resizingId;
 
   return (
     <div className="min-h-screen bg-brand-bg flex flex-col">
@@ -265,18 +237,14 @@ export default function JerseyBuilderPage() {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/grace-enterprise-logo.jpeg" alt="Grace Enterprise" style={{ width: 160 }} className="h-auto object-contain" />
         <div className="flex items-center gap-5">
-          <Link href="/portal" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">
-            ← Portal
-          </Link>
-          <Link href="/brief/new" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">
-            Text Brief
-          </Link>
+          <Link href="/portal" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">← Portal</Link>
+          <Link href="/brief/new" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Text Brief</Link>
         </div>
       </header>
 
       <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
 
-        {/* 3D Viewport */}
+        {/* ── 3D Viewport ─────────────────────────────────────────────────── */}
         <div
           ref={containerRef}
           className="relative flex-1 min-h-[420px] bg-[#f0f0f0]"
@@ -284,7 +252,6 @@ export default function JerseyBuilderPage() {
           onPointerUp={handlePointerUp}
           onPointerLeave={handlePointerUp}
         >
-          {/* model-viewer — always in DOM once script loads so the load event fires */}
           {scriptLoaded && (
             <model-viewer
               id="jersey-mv"
@@ -296,162 +263,193 @@ export default function JerseyBuilderPage() {
               camera-orbit="0deg 70deg auto"
               min-camera-orbit="auto 0deg 80%"
               max-camera-orbit="auto 160deg 200%"
-              style={{
-                width: "100%",
-                height: "100%",
-                minHeight: "420px",
-                backgroundColor: "#f0f0f0",
-                "--poster-color": "#f0f0f0",
-              } as React.CSSProperties}
+              style={{ width: "100%", height: "100%", minHeight: "420px", backgroundColor: "#f0f0f0", "--poster-color": "#f0f0f0" } as React.CSSProperties}
             />
           )}
 
-          {/* Loading overlay — covers viewport until model is ready */}
+          {/* Loading overlay */}
           {(!scriptLoaded || !modelLoaded) && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[#f0f0f0]">
               <div className="w-6 h-6 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
               <p className="text-[11px] font-barlow text-gray-400 uppercase tracking-widest">
                 {!scriptLoaded ? "Loading 3D viewer…" : "Loading jersey model…"}
               </p>
-              {scriptLoaded && !modelLoaded && (
-                <p className="text-[10px] font-barlow text-gray-300 uppercase tracking-widest">25 MB · may take a moment</p>
-              )}
             </div>
           )}
 
-          {/* Jersey color overlay hint — shown as two small swatches */}
-          <div className="absolute top-4 left-5 flex items-center gap-2">
+          {/* Viewport label */}
+          <div className="absolute top-4 left-5 flex items-center gap-2 pointer-events-none">
             <div className="w-[3px] h-4 bg-brand-primary" />
             <span className="text-[10px] font-display font-bold uppercase tracking-[0.25em] text-brand-text/70">Jersey Builder</span>
           </div>
 
-          {/* Color preview badges */}
-          <div className="absolute top-4 right-5 flex items-center gap-1.5">
-            <div className="flex items-center gap-1.5 bg-white/80 backdrop-blur px-2 py-1.5 rounded-full border border-gray-200 shadow-sm">
-              <div className="w-3 h-3 rounded-full border border-gray-300" style={{ backgroundColor: jerseyColor }} />
-              <span className="text-[9px] font-barlow text-gray-500 uppercase tracking-wider">Jersey</span>
-            </div>
-            <div className="flex items-center gap-1.5 bg-white/80 backdrop-blur px-2 py-1.5 rounded-full border border-gray-200 shadow-sm">
-              <div className="w-3 h-3 rounded-full border border-gray-300" style={{ backgroundColor: shortsColor }} />
-              <span className="text-[9px] font-barlow text-gray-500 uppercase tracking-wider">Shorts</span>
-            </div>
-            <div className="flex items-center gap-1.5 bg-white/80 backdrop-blur px-2 py-1.5 rounded-full border border-gray-200 shadow-sm">
-              <div className="w-3 h-3 rounded-full border border-gray-300" style={{ backgroundColor: highlightColor }} />
-              <span className="text-[9px] font-barlow text-gray-500 uppercase tracking-wider">Accent</span>
-            </div>
+          {/* Color badges */}
+          <div className="absolute top-4 right-5 flex items-center gap-1.5 pointer-events-none">
+            {[["Jersey", jerseyColor], ["Shorts", shortsColor], ["Accent", highlightColor]].map(([label, color]) => (
+              <div key={label} className="flex items-center gap-1.5 bg-white/80 backdrop-blur px-2 py-1.5 rounded-full border border-gray-200 shadow-sm">
+                <div className="w-3 h-3 rounded-full border border-gray-300" style={{ backgroundColor: color }} />
+                <span className="text-[9px] font-barlow text-gray-500 uppercase tracking-wider">{label}</span>
+              </div>
+            ))}
           </div>
 
-          {/* Logo overlay — draggable + resizable */}
-          {tintedLogoUrl && (
-            <div
-              style={{
-                position: "absolute",
-                left: `${logoPos.x}%`,
-                top: `${logoPos.y}%`,
-                transform: "translate(-50%, -50%)",
-                width: `${logoSize}%`,
-                userSelect: "none",
-                touchAction: "none",
-              }}
-            >
-              <img
-                src={tintedLogoUrl}
-                alt="logo placement"
-                onPointerDown={handleLogoPointerDown}
-                draggable={false}
-                style={{
-                  width: "100%",
-                  display: "block",
-                  cursor: dragging ? "grabbing" : "grab",
-                  filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.35))",
-                }}
-              />
-              {/* Resize handle — bottom-right corner */}
+          {/* Logo overlays — each appears printed on the jersey surface */}
+          {logos.map((logo) => {
+            if (!logo.tintedUrl) return null;
+            const isThisDragging = draggingId === logo.id;
+            const isThisResizing = resizingId === logo.id;
+            return (
               <div
-                onPointerDown={handleResizePointerDown}
+                key={logo.id}
                 style={{
                   position: "absolute",
-                  bottom: -6,
-                  right: -6,
-                  width: 16,
-                  height: 16,
-                  borderRadius: "50%",
-                  background: "white",
-                  border: "2px solid #888",
-                  cursor: resizing ? "ew-resize" : "se-resize",
+                  left: `${logo.pos.x}%`,
+                  top: `${logo.pos.y}%`,
+                  transform: "translate(-50%, -50%)",
+                  width: `${logo.size}%`,
+                  userSelect: "none",
                   touchAction: "none",
-                  boxShadow: "0 1px 4px rgba(0,0,0,0.3)",
+                  // Mix-blend-mode multiply makes white areas transparent — logo
+                  // appears embedded in the fabric rather than floating above it
+                  mixBlendMode: "multiply",
                 }}
-              />
-            </div>
-          )}
+              >
+                <img
+                  src={logo.tintedUrl}
+                  alt="logo"
+                  onPointerDown={(e) => handleLogoPointerDown(e, logo.id)}
+                  draggable={false}
+                  style={{
+                    width: "100%",
+                    display: "block",
+                    cursor: isThisDragging ? "grabbing" : "grab",
+                    opacity: isThisDragging ? 0.85 : 1,
+                  }}
+                />
+                {/* Resize handle */}
+                <div
+                  onPointerDown={(e) => handleResizePointerDown(e, logo.id, logo.size)}
+                  style={{
+                    position: "absolute", bottom: -7, right: -7,
+                    width: 15, height: 15, borderRadius: "50%",
+                    background: "white", border: "2px solid #666",
+                    cursor: isThisResizing ? "ew-resize" : "se-resize",
+                    touchAction: "none", boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
+                    mixBlendMode: "normal",
+                  }}
+                />
+              </div>
+            );
+          })}
 
-          {tintedLogoUrl && !dragging && !resizing && (
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-brand-bg/80 backdrop-blur px-3 py-1.5 rounded-full border border-brand-border">
-              <p className="text-[10px] font-barlow text-brand-muted whitespace-nowrap">Drag logo to move · Drag ◎ corner to resize · Drag viewport to rotate</p>
+          {/* Hint bar */}
+          {logos.length > 0 && !anyActive && (
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-brand-bg/80 backdrop-blur px-3 py-1.5 rounded-full border border-brand-border pointer-events-none">
+              <p className="text-[10px] font-barlow text-brand-muted whitespace-nowrap">Drag logo to move · ◎ corner to resize · Drag background to rotate</p>
             </div>
           )}
         </div>
 
-        {/* Controls Panel */}
+        {/* ── Controls Panel ───────────────────────────────────────────────── */}
         <div className="w-full lg:w-[320px] border-t lg:border-t-0 lg:border-l border-brand-border bg-brand-bg flex flex-col">
-          <div className="flex-1 overflow-y-auto px-6 py-7 space-y-8">
+          <div className="flex-1 overflow-y-auto px-6 py-7 space-y-6">
 
             <p className="text-[10px] font-barlow text-brand-muted leading-relaxed">
-              Select your jersey and accent colors, upload your team logo, and drag it into position. Your choices will be included in your design brief.
+              Pick jersey, shorts, and accent colors, then upload your team logo(s) and position them on the jersey.
             </p>
 
             <div className="h-px bg-brand-border" />
 
-            <ColorControl label="Jersey Color" value={jerseyColor} swatches={JERSEY_SWATCHES} onChange={setJerseyColor} />
-            <ColorControl label="Shorts Color" value={shortsColor} swatches={JERSEY_SWATCHES} onChange={setShortsColor} />
-            <ColorControl label="Accent / Trim" value={highlightColor} swatches={ACCENT_SWATCHES} onChange={setHighlightColor} />
+            {/* Colors */}
+            <div className="space-y-4">
+              <ColorControl label="Jersey Color"  value={jerseyColor}    onChange={setJerseyColor} />
+              <ColorControl label="Shorts Color"  value={shortsColor}    onChange={setShortsColor} />
+              <ColorControl label="Accent / Trim" value={highlightColor} onChange={setHighlightColor} />
+            </div>
 
             <div className="h-px bg-brand-border" />
 
-            {/* Logo upload */}
-            <div>
-              <label className="block text-[10px] font-display font-bold uppercase tracking-[0.2em] text-brand-muted mb-3">
-                Team Logo
-              </label>
-              <input ref={fileInputRef} type="file" accept="image/png,image/svg+xml,image/jpeg,image/webp"
-                onChange={handleLogoUpload} className="hidden" />
-              <button onClick={() => fileInputRef.current?.click()}
-                className="w-full py-3 rounded-lg border border-dashed border-brand-border text-xs font-barlow text-brand-muted hover:border-brand-primary hover:text-brand-primary transition-colors">
-                {logoFile ? `↺  Replace — ${logoFile.name}` : "Upload Logo (PNG, SVG, JPG)"}
-              </button>
-              <p className="text-[9px] font-barlow text-brand-muted/60 mt-1.5">
+            {/* Logos */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <label className="text-[10px] font-display font-bold uppercase tracking-[0.2em] text-brand-muted">
+                  Team Logos
+                </label>
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="text-[9px] font-display font-bold uppercase tracking-widest text-brand-primary hover:text-brand-secondary transition-colors"
+                >
+                  + Add Logo
+                </button>
+              </div>
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/png,image/svg+xml,image/jpeg,image/webp"
+                multiple
+                onChange={handleLogoUpload}
+                className="hidden"
+              />
+
+              {logos.length === 0 && (
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full py-3 rounded-lg border border-dashed border-brand-border text-xs font-barlow text-brand-muted hover:border-brand-primary hover:text-brand-primary transition-colors"
+                >
+                  Upload Logo (PNG, SVG, JPG)
+                </button>
+              )}
+
+              <p className="text-[9px] font-barlow text-brand-muted/60">
                 PNG with transparent background works best.
               </p>
-              {logoUrl && (
-                <div className="mt-3 flex items-center gap-3 p-3 rounded-lg bg-brand-surface border border-brand-border">
-                  <img src={tintedLogoUrl || logoUrl} alt="preview" className="w-10 h-10 object-contain rounded" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[10px] font-barlow text-brand-text truncate">{logoFile?.name}</p>
+
+              {/* Per-logo controls */}
+              {logos.map((logo, i) => (
+                <div key={logo.id} className="rounded-xl border border-brand-border bg-brand-surface p-3 space-y-3">
+                  {/* Header row */}
+                  <div className="flex items-center gap-2">
+                    <img src={logo.tintedUrl || logo.originalUrl} alt="" className="w-8 h-8 object-contain rounded flex-shrink-0" />
+                    <p className="text-[10px] font-barlow text-brand-text truncate flex-1">
+                      Logo {i + 1}{logo.fileName ? ` — ${logo.fileName}` : ""}
+                    </p>
+                    <button
+                      onClick={() => removeLogo(logo.id)}
+                      className="text-[9px] font-display uppercase tracking-widest text-brand-muted hover:text-red-500 transition-colors flex-shrink-0"
+                    >
+                      Remove
+                    </button>
                   </div>
-                  <button onClick={() => { setLogoUrl(null); setLogoFile(null); setTintedLogoUrl(null); }}
-                    className="text-[9px] font-display uppercase tracking-widest text-brand-muted hover:text-red-500 transition-colors flex-shrink-0">
-                    Remove
-                  </button>
+
+                  {/* Color + size row */}
+                  <div className="flex items-center justify-between gap-3">
+                    <label className="text-[9px] font-display font-bold uppercase tracking-[0.15em] text-brand-muted/70">Color</label>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[9px] font-barlow text-brand-muted/70 font-mono">{logo.color.toUpperCase()}</span>
+                      <input
+                        type="color"
+                        value={logo.color}
+                        onChange={(e) => updateLogoColor(logo.id, e.target.value)}
+                        className="w-7 h-7 rounded cursor-pointer border border-brand-border"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[9px] font-display font-bold uppercase tracking-[0.15em] text-brand-muted/70">Size</label>
+                      <span className="text-[9px] font-barlow text-brand-muted/70">{Math.round(logo.size)}%</span>
+                    </div>
+                    <input
+                      type="range" min={5} max={60} value={logo.size}
+                      onChange={(e) => setLogos((prev) => prev.map((l) => l.id === logo.id ? { ...l, size: Number(e.target.value) } : l))}
+                      className="w-full h-1.5 rounded-full appearance-none bg-brand-border accent-[var(--brand-primary)] cursor-pointer"
+                    />
+                  </div>
                 </div>
-              )}
+              ))}
             </div>
-
-            {logoUrl && (
-              <ColorControl label="Logo Color" value={logoColor} swatches={ACCENT_SWATCHES} onChange={setLogoColor} />
-            )}
-
-            {logoUrl && (
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-[10px] font-display font-bold uppercase tracking-[0.2em] text-brand-muted">Logo Size</label>
-                  <span className="text-[10px] font-barlow text-brand-muted">{logoSize}%</span>
-                </div>
-                <input type="range" min={8} max={40} value={logoSize}
-                  onChange={(e) => setLogoSize(Number(e.target.value))}
-                  className="w-full h-1.5 rounded-full appearance-none bg-brand-border accent-[var(--brand-primary)] cursor-pointer" />
-              </div>
-            )}
 
           </div>
 
@@ -464,7 +462,7 @@ export default function JerseyBuilderPage() {
               Continue to Brief →
             </Link>
             <p className="text-[9px] font-barlow text-brand-muted/70 text-center leading-relaxed">
-              Your color selections will be pre-filled in your design brief for the Grace Studios team.
+              Your color selections will be pre-filled in your design brief.
             </p>
           </div>
         </div>
