@@ -93,6 +93,7 @@ export default function JerseyBuilderPage() {
 
   // builder state
   const [jerseyColor, setJerseyColor]       = useState("#1d3557");
+  const [shortsColor, setShortsColor]       = useState("#1d3557");
   const [highlightColor, setHighlightColor] = useState("#f4d03f");
   const [logoFile, setLogoFile]             = useState<File | null>(null);
   const [logoUrl, setLogoUrl]               = useState<string | null>(null);
@@ -150,7 +151,11 @@ export default function JerseyBuilderPage() {
     return () => mv.removeEventListener("load", onLoad);
   }, [scriptLoaded]);
 
-  // Apply jersey + accent colors to model materials whenever they change
+  // Apply named-material colors whenever any color or model load state changes.
+  // Material name mapping (from GLB inspect):
+  //   "rayon jersey*"   → jerseyColor  (main body fabric)
+  //   "WAIST BAND*"     → shortsColor  (shorts / waistband)
+  //   everything else   → highlightColor (stitching, trim, accents)
   useEffect(() => {
     if (!modelLoaded) return;
     const mv = document.getElementById("jersey-mv") as (HTMLElement & { model?: { materials: unknown[] } }) | null;
@@ -167,15 +172,23 @@ export default function JerseyBuilderPage() {
     };
 
     const mats = mv.model.materials as Array<{
+      name: string;
       pbrMetallicRoughness: { setBaseColorFactor: (c: number[]) => void };
     }>;
-    const half = Math.ceil(mats.length / 2);
-    mats.forEach((mat, i) => {
-      mat.pbrMetallicRoughness.setBaseColorFactor(
-        i >= half ? toRgb(highlightColor) : toRgb(jerseyColor)
-      );
+
+    mats.forEach((mat) => {
+      const n = (mat.name ?? "").toLowerCase();
+      let color: [number, number, number, number];
+      if (n.includes("rayon jersey")) {
+        color = toRgb(jerseyColor);
+      } else if (n.includes("waist band") || n.includes("waistband") || n.includes("short")) {
+        color = toRgb(shortsColor);
+      } else {
+        color = toRgb(highlightColor);
+      }
+      mat.pbrMetallicRoughness.setBaseColorFactor(color);
     });
-  }, [jerseyColor, highlightColor, modelLoaded]);
+  }, [jerseyColor, shortsColor, highlightColor, modelLoaded]);
 
   // Tint logo canvas
   useEffect(() => {
@@ -313,13 +326,17 @@ export default function JerseyBuilderPage() {
           </div>
 
           {/* Color preview badges */}
-          <div className="absolute top-4 right-5 flex items-center gap-2">
-            <div className="flex items-center gap-1.5 bg-white/80 backdrop-blur px-2.5 py-1.5 rounded-full border border-gray-200 shadow-sm">
-              <div className="w-3.5 h-3.5 rounded-full border border-gray-300" style={{ backgroundColor: jerseyColor }} />
+          <div className="absolute top-4 right-5 flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 bg-white/80 backdrop-blur px-2 py-1.5 rounded-full border border-gray-200 shadow-sm">
+              <div className="w-3 h-3 rounded-full border border-gray-300" style={{ backgroundColor: jerseyColor }} />
               <span className="text-[9px] font-barlow text-gray-500 uppercase tracking-wider">Jersey</span>
             </div>
-            <div className="flex items-center gap-1.5 bg-white/80 backdrop-blur px-2.5 py-1.5 rounded-full border border-gray-200 shadow-sm">
-              <div className="w-3.5 h-3.5 rounded-full border border-gray-300" style={{ backgroundColor: highlightColor }} />
+            <div className="flex items-center gap-1.5 bg-white/80 backdrop-blur px-2 py-1.5 rounded-full border border-gray-200 shadow-sm">
+              <div className="w-3 h-3 rounded-full border border-gray-300" style={{ backgroundColor: shortsColor }} />
+              <span className="text-[9px] font-barlow text-gray-500 uppercase tracking-wider">Shorts</span>
+            </div>
+            <div className="flex items-center gap-1.5 bg-white/80 backdrop-blur px-2 py-1.5 rounded-full border border-gray-200 shadow-sm">
+              <div className="w-3 h-3 rounded-full border border-gray-300" style={{ backgroundColor: highlightColor }} />
               <span className="text-[9px] font-barlow text-gray-500 uppercase tracking-wider">Accent</span>
             </div>
           </div>
@@ -387,7 +404,8 @@ export default function JerseyBuilderPage() {
             <div className="h-px bg-brand-border" />
 
             <ColorControl label="Jersey Color" value={jerseyColor} swatches={JERSEY_SWATCHES} onChange={setJerseyColor} />
-            <ColorControl label="Accent / Highlight" value={highlightColor} swatches={ACCENT_SWATCHES} onChange={setHighlightColor} />
+            <ColorControl label="Shorts Color" value={shortsColor} swatches={JERSEY_SWATCHES} onChange={setShortsColor} />
+            <ColorControl label="Accent / Trim" value={highlightColor} swatches={ACCENT_SWATCHES} onChange={setHighlightColor} />
 
             <div className="h-px bg-brand-border" />
 
@@ -440,7 +458,7 @@ export default function JerseyBuilderPage() {
           {/* CTA */}
           <div className="border-t border-brand-border px-6 py-5 space-y-3">
             <Link
-              href={`/brief/new?jerseyColor=${encodeURIComponent(jerseyColor)}&accentColor=${encodeURIComponent(highlightColor)}`}
+              href={`/brief/new?jerseyColor=${encodeURIComponent(jerseyColor)}&shortsColor=${encodeURIComponent(shortsColor)}&accentColor=${encodeURIComponent(highlightColor)}`}
               className="flex items-center justify-center w-full py-3.5 rounded-lg bg-brand-primary text-white font-display font-bold text-xs uppercase tracking-widest hover:bg-brand-secondary transition-colors"
             >
               Continue to Brief →
