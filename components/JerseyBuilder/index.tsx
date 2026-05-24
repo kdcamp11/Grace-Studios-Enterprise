@@ -4,10 +4,9 @@ import { Suspense, useRef, useState, useEffect, useCallback } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import Link from "next/link";
-import dynamic from "next/dynamic";
-
-// Dynamically import the scene to keep R3F out of SSR
-const JerseyScene = dynamic(() => import("./JerseyScene"), { ssr: false });
+// JerseyScene is a static import here — this whole file is already loaded
+// client-only via `dynamic({ ssr: false })` in the page, so no double-wrapping needed.
+import JerseyScene from "./JerseyScene";
 
 const JERSEY_SWATCHES = [
   { hex: "#0a0a0a", label: "Black" },
