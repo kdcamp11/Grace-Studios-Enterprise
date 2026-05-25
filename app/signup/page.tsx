@@ -5,8 +5,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { getProfile, rolePortal } from "@/lib/profile";
-import TenantLogo from "@/components/TenantLogo";
-import { useTenant } from "@/lib/tenant/context";
 
 type Role = "client" | "supplier";
 
@@ -28,8 +26,6 @@ const inputCls = "w-full bg-brand-surface border border-brand-border rounded-lg 
 function SignupForm() {
   const router      = useRouter();
   const searchParams = useSearchParams();
-  const tenant      = useTenant();
-
   const pathParam          = searchParams.get("path");
   const isConsultation     = pathParam === "consultation";
   const nextAfterSignup    = isConsultation ? "/portal/consultation" : "/portal";
@@ -135,7 +131,9 @@ function SignupForm() {
           {/* Logo + heading */}
           <div className="text-center space-y-5">
             <div className="flex justify-center">
-              <TenantLogo href="/login" />
+              {/* Always show Grace Enterprise logo on signup — no tenant branding */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/grace-enterprise-logo.jpeg" alt="Grace Enterprise" className="w-[200px] h-auto object-contain" />
             </div>
             <div className="space-y-1">
               {isConsultation ? (
@@ -153,7 +151,7 @@ function SignupForm() {
                     Create Account
                   </h1>
                   <p className="text-xs font-display uppercase tracking-[0.2em] text-brand-muted">
-                    {tenant.name}
+                    Grace Enterprise
                   </p>
                 </>
               )}

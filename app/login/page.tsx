@@ -797,6 +797,38 @@ export default function LoginPage() {
         </div>
       </div>
 
+      {/* CLIENT MOBILE SIGN-IN — scrolled to by the header "Sign In" button on mobile */}
+      <section id="sign-in" className="px-5 sm:px-8 lg:px-10 py-12 sm:py-16 border-b border-brand-border lg:hidden">
+        <div className="max-w-sm mx-auto">
+          <div className="flex items-center gap-2.5 mb-6">
+            <div className="w-[3px] h-6 bg-brand-primary flex-shrink-0" />
+            <span className="text-[10px] font-display font-bold uppercase tracking-[0.3em] text-brand-primary">Existing Client</span>
+          </div>
+          <h2 className="font-display font-bold uppercase tracking-tight text-brand-text text-2xl mb-6">Sign In</h2>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email address" required
+              className="w-full bg-brand-surface border border-brand-border rounded-lg px-4 py-3.5 text-brand-text font-barlow text-sm placeholder-brand-muted/50 focus:outline-none focus:border-brand-primary transition-colors"
+            />
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" required
+              className="w-full bg-brand-surface border border-brand-border rounded-lg px-4 py-3.5 text-brand-text font-barlow text-sm placeholder-brand-muted/50 focus:outline-none focus:border-brand-primary transition-colors"
+            />
+            {error && <p className="text-[#C41E1E] text-sm font-barlow bg-[#C41E1E]/10 border border-[#C41E1E]/30 rounded-lg px-4 py-3">{error}</p>}
+            <button type="submit" disabled={submitting || !email || !password}
+              className="w-full py-4 rounded-lg bg-brand-primary text-white font-display font-bold text-sm uppercase tracking-widest hover:bg-brand-secondary disabled:opacity-40 transition-colors"
+            >
+              {submitting ? "Signing in…" : "Sign In →"}
+            </button>
+            <p className="text-center text-xs font-barlow text-brand-muted">
+              <Link href="/forgot-password" className="hover:text-brand-primary transition-colors">Forgot password?</Link>
+            </p>
+          </form>
+          <p className="mt-6 text-center text-xs font-barlow text-brand-muted">
+            Don&apos;t have an account?{" "}
+            <Link href="/signup" className="text-brand-text hover:text-brand-primary transition-colors underline underline-offset-2">Create one →</Link>
+          </p>
+        </div>
+      </section>
+
       {/* end client view */}
       </>)}
 

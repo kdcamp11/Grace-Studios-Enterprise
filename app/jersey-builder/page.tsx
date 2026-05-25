@@ -99,6 +99,9 @@ function JerseyBuilderInner() {
   const router       = useRouter();
   const searchParams = useSearchParams();
   const orderId      = searchParams.get("orderId"); // set when entering from /brief/[id]/choose
+  const sport        = (searchParams.get("sport") ?? "").toLowerCase();
+  // Only Basketball has a GLB for now; other sports show a placeholder
+  const hasModel     = sport === "" || sport === "basketball";
   const [ready, setReady] = useState(false);
 
   // One color state per zone
@@ -297,7 +300,8 @@ function JerseyBuilderInner() {
           onPointerUp={handlePointerUp}
           onPointerLeave={handlePointerUp}
         >
-          {scriptLoaded && (
+          {/* 3D model — only for sports with a GLB available */}
+          {hasModel && scriptLoaded && (
             <model-viewer
               id="jersey-mv"
               src="/Jersey.glb"
@@ -312,13 +316,32 @@ function JerseyBuilderInner() {
             />
           )}
 
-          {/* Loading overlay */}
-          {(!scriptLoaded || !modelLoaded) && (
+          {/* Loading overlay — shown while script / model loads */}
+          {hasModel && (!scriptLoaded || !modelLoaded) && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[#f0f0f0]">
               <div className="w-6 h-6 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
               <p className="text-[11px] font-barlow text-gray-400 uppercase tracking-widest">
                 {!scriptLoaded ? "Loading 3D viewer…" : "Loading jersey model…"}
               </p>
+            </div>
+          )}
+
+          {/* Placeholder — sport has no 3D model yet */}
+          {!hasModel && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-[#f0f0f0]">
+              <div className="w-20 h-20 rounded-2xl bg-brand-border/40 flex items-center justify-center">
+                <svg className="w-10 h-10 text-brand-muted/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15M14.25 3.104c.251.023.501.05.75.082M19.8 15l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23-.607L5 14.5m14.8.5l.032.093A9.097 9.097 0 0120.1 17.3M5 14.5l-.032.093A9.097 9.097 0 003.9 17.3" />
+                </svg>
+              </div>
+              <div className="text-center space-y-1">
+                <p className="text-sm font-display font-bold uppercase tracking-widest text-brand-muted">
+                  3D Preview Coming Soon
+                </p>
+                <p className="text-[11px] font-barlow text-brand-muted/60 max-w-[220px]">
+                  Visual builder for {sport ? sport.charAt(0).toUpperCase() + sport.slice(1) : "this sport"} is in progress. Use the color pickers and continue to your brief.
+                </p>
+              </div>
             </div>
           )}
 

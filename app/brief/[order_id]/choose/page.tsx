@@ -1,7 +1,8 @@
 "use client";
 
+import { Suspense } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import BriefLayout from "@/components/brief/BriefLayout";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -26,7 +27,7 @@ const PATHS = [
     ],
     cta: "Continue with AI Brief →",
     accentColor: "group-hover:bg-brand-primary",
-    hrefFn: (orderId: string) => `/brief/${orderId}/style`,
+    hrefFn: (orderId: string, _sport: string) => `/brief/${orderId}/style`,
   },
   {
     id: "builder",
@@ -42,12 +43,14 @@ const PATHS = [
     ],
     cta: "Open Jersey Builder →",
     accentColor: "group-hover:bg-brand-secondary",
-    hrefFn: (orderId: string) => `/jersey-builder?orderId=${orderId}`,
+    hrefFn: (orderId: string, sport: string) => `/jersey-builder?orderId=${orderId}&sport=${encodeURIComponent(sport)}`,
   },
 ] as const;
 
-export default function ChoosePage() {
+function ChooseInner() {
   const { order_id } = useParams<{ order_id: string }>();
+  const searchParams = useSearchParams();
+  const sport = searchParams.get("sport") ?? "";
 
   return (
     <BriefLayout
@@ -59,7 +62,7 @@ export default function ChoosePage() {
         {PATHS.map((path) => (
           <Link
             key={path.id}
-            href={path.hrefFn(order_id)}
+            href={path.hrefFn(order_id, sport)}
             className="group relative flex flex-col gap-5 p-6 rounded-2xl border border-brand-border bg-brand-bg hover:bg-brand-surface hover:border-brand-primary/40 transition-all duration-300 shadow-sm hover:shadow-md"
           >
             {/* Accent bar */}
@@ -105,5 +108,17 @@ export default function ChoosePage() {
         ))}
       </div>
     </BriefLayout>
+  );
+}
+
+export default function ChoosePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-brand-bg flex items-center justify-center">
+        <div className="w-5 h-5 border-2 border-brand-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    }>
+      <ChooseInner />
+    </Suspense>
   );
 }

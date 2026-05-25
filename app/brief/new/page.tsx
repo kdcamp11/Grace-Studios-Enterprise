@@ -86,7 +86,7 @@ export default function TeamInfoPage() {
         clientId:    data.clientId,
       });
 
-      router.push(`/brief/${data.orderId}/choose`);
+      router.push(`/brief/${data.orderId}/choose?sport=${encodeURIComponent(payload.sport)}`);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
     } finally {
