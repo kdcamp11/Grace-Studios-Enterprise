@@ -303,4 +303,15 @@ export interface BriefState {
   // Screen 6 — Roster (last step)
   playerRoster: RosterPlayer[];
   playerNames: boolean;
+
+  // Jersey Builder — 7-zone color data (optional, only set when builder path used)
+  zoneColors?: {
+    jerseyTop:          string;
+    collar:             string;
+    jerseyShorts:       string;
+    jerseySidePanels:   string;
+    jerseyLowerPanels:  string;
+    sleevePanels:       string;
+    shortSidePanels:    string;
+  } | null;
 }

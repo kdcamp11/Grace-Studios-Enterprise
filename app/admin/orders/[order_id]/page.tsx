@@ -146,6 +146,7 @@ interface OrderDetail {
   supplier_user_id: string | null;
   assigned_designer_id: string | null;
   notes: string | null;
+  production_file_url: string | null;
   client: { name: string; email: string; sport: string; city: string };
   brief: Brief | null;
   concepts: Concept[];
@@ -1077,6 +1078,28 @@ export default function AdminOrderPage() {
                 <DetailRow label="Submitted" value={new Date(order.created_at).toLocaleString()} />
                 {order.approved_at && <DetailRow label="Approved" value={new Date(order.approved_at).toLocaleString()} />}
               </div>
+
+              {/* Production File */}
+              {order.production_file_url && (
+                <div className="bg-brand-surface border border-brand-border rounded-xl p-5">
+                  <p className="text-xs font-display uppercase tracking-widest text-brand-primary mb-3">Production File</p>
+                  <p className="text-xs font-barlow text-brand-muted mb-3 leading-relaxed">
+                    Auto-generated on client approval. Contains flat jersey + shorts template with all 7 color zones and CMYK specifications.
+                  </p>
+                  <a
+                    href={order.production_file_url}
+                    download
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-brand-primary text-brand-bg text-xs font-display font-bold uppercase tracking-widest hover:bg-brand-secondary transition-colors"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Download SVG Template
+                  </a>
+                </div>
+              )}
             </div>
           </div>
 

@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient, sessionReady } from "@/lib/supabase/client";
 import { getProfile } from "@/lib/profile";
+import { saveBriefState } from "@/lib/brief-state";
 import Link from "next/link";
 
 // Extend JSX for the model-viewer web component
@@ -543,6 +544,20 @@ function JerseyBuilderInner() {
               return (
                 <Link
                   href={href}
+                  onClick={() => {
+                    // Persist zone colors to brief state so they're included in the production file
+                    saveBriefState({
+                      zoneColors: {
+                        jerseyTop:         colors.jerseyTop,
+                        collar:            colors.collar,
+                        jerseyShorts:      colors.jerseyShorts,
+                        jerseySidePanels:  colors.jerseySidePanels,
+                        jerseyLowerPanels: colors.jerseyLowerPanels,
+                        sleevePanels:      colors.sleevePanels,
+                        shortSidePanels:   colors.shortSidePanels,
+                      },
+                    });
+                  }}
                   className="flex items-center justify-center w-full py-3.5 rounded-lg bg-brand-primary text-white font-display font-bold text-xs uppercase tracking-widest hover:bg-brand-secondary transition-colors"
                 >
                   {orderId ? "Continue to Design System →" : "Start Brief with These Colors →"}

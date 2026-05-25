@@ -22,7 +22,7 @@ export async function GET(
   const { data: orderRow, error: orderError } = await serviceSupabase
     .from("orders")
     .select(
-      "id, order_number, stage, created_at, approved_at, estimated_delivery, tracking_number, supplier, supplier_user_id, assigned_designer_id, notes, design_fee_paid, production_choice, client_id",
+      "id, order_number, stage, created_at, approved_at, estimated_delivery, tracking_number, supplier, supplier_user_id, assigned_designer_id, notes, design_fee_paid, production_choice, production_file_url, client_id",
     )
     .eq("id", order_id)
     .eq("tenant_id", ctx.tenant.id)
@@ -97,8 +97,9 @@ export async function GET(
     supplier_user_id:      orderRow.supplier_user_id,
     assigned_designer_id:  orderRow.assigned_designer_id,
     notes:                 orderRow.notes,
-    design_fee_paid:   orderRow.design_fee_paid,
-    production_choice: orderRow.production_choice,
+    design_fee_paid:      orderRow.design_fee_paid,
+    production_choice:    orderRow.production_choice,
+    production_file_url:  (orderRow as Record<string, unknown>).production_file_url as string | null ?? null,
     client: clientRow ?? { name: "—", email: "—", sport: "—", city: "—" },
   };
 

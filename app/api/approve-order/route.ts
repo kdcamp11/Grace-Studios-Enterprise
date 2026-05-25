@@ -170,5 +170,28 @@ export async function POST(req: NextRequest) {
       .eq("id", logRow.id);
   }
 
-  return NextResponse.json({ status: "approved", order_id, emails_sent: emailsSucceeded });
+  // 5. Auto-generate production file (non-blocking — failure doesn't affect approval)
+  let productionFileUrl: string | null = null;
+  try {
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+    const genRes  = await fetch(
+      `${baseUrl}/api/orders/${order_id}/generate-production-file`,
+      { method: "POST" },
+    );
+    if (genRes.ok) {
+      const genData = await genRes.json() as { file_url?: string };
+      productionFileUrl = genData.file_url ?? null;
+    } else {
+      console.error("[approve-order] Production file generation failed:", await genRes.text());
+    }
+  } catch (genErr) {
+    console.error("[approve-order] Production file generation error:", genErr);
+  }
+
+  return NextResponse.json({
+    status: "approved",
+    order_id,
+    emails_sent:        emailsSucceeded,
+    production_file_url: productionFileUrl,
+  });
 }

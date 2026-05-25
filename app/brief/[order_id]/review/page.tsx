@@ -71,6 +71,7 @@ export default function ReviewPage() {
           secondary_colors: brief.secondaryColor || null,
           accent_color: brief.accentColor || null,
           player_roster: brief.playerRoster?.length ? brief.playerRoster : null,
+          zone_colors: brief.zoneColors ?? null,
         }),
       });
 
