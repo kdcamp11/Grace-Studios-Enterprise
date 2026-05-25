@@ -11,9 +11,13 @@ export type ClientOrderContext = {
 };
 
 /**
- * Verifies the caller is authenticated and that the given order's client
- * email matches the caller's JWT email. Returns context on success or a
- * 401/403 NextResponse on failure.
+ * Verifies the caller is authenticated and owns the given order.
+ * Ownership is granted when the order's client matches EITHER:
+ *   1. clients.email    = auth user's email  (legacy + email-based flow)
+ *   2. clients.user_id  = auth user's uid    (user_id-linked flow)
+ *
+ * This mirrors the orders_select_own RLS policy exactly so both
+ * authentication paths work consistently.
  */
 export async function assertClientOrder(orderId: string): Promise<ClientOrderContext | NextResponse> {
   const serverClient = createServerClient();
@@ -23,17 +27,23 @@ export async function assertClientOrder(orderId: string): Promise<ClientOrderCon
   const admin = createAdminClient();
   const { data: order } = await admin
     .from("orders")
-    .select("id, client_id, tenant_id, clients(email)")
+    .select("id, client_id, tenant_id, clients(email, user_id)")
     .eq("id", orderId)
     .single();
 
   if (!order) return NextResponse.json({ error: "Order not found" }, { status: 404 });
 
-  const clientEmail = Array.isArray(order.clients)
-    ? order.clients[0]?.email
-    : (order.clients as { email: string } | null)?.email;
+  const clientRaw = Array.isArray(order.clients)
+    ? order.clients[0]
+    : (order.clients as { email: string; user_id: string | null } | null);
 
-  if (clientEmail?.toLowerCase() !== user.email.toLowerCase()) {
+  const clientEmail  = clientRaw?.email   ?? "";
+  const clientUserId = clientRaw?.user_id ?? null;
+
+  const emailMatch  = clientEmail.toLowerCase() === user.email.toLowerCase();
+  const userIdMatch = clientUserId !== null && clientUserId === user.id;
+
+  if (!emailMatch && !userIdMatch) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
