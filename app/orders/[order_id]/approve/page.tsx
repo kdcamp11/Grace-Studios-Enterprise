@@ -184,91 +184,65 @@ export default function ApprovePage() {
         if (profile.role === "admin") setIsAdminView(true);
       }
 
-      const { data: order } = await supabase
-        .from("orders")
-        .select("client_id, order_number, stage, package_tier, account_lead, notes, deposit_paid, balance_paid")
-        .eq("id", order_id)
-        .single();
+      // Use server-side API (service-role key) to bypass RLS issues
+      const res = await fetch(`/api/orders/${order_id}/approve-summary`);
+      if (!res.ok) { setLoading(false); return; }
 
-      if (!order) { setLoading(false); return; }
+      const { order, client, brief, concept } = await res.json() as {
+        order:   { orderNumber: string | null; stage: string; packageTier: string | null; accountLead: string | null; notes: string | null; depositPaid: boolean; balancePaid: boolean };
+        client:  { teamName: string; contactName: string; email: string; sport: string; city: string };
+        brief:   Record<string, unknown> | null;
+        concept: { image_url: string; concept_number: number } | null;
+      };
 
       if (order.stage === "files_sent") {
         router.replace(`/orders/${order_id}/tracker`);
         return;
       }
 
-      const [{ data: client }, { data: brief }, { data: concept }] = await Promise.all([
-        supabase
-          .from("clients")
-          .select("name, contact_name, email, sport, city")
-          .eq("id", order.client_id)
-          .single(),
-        supabase
-          .from("briefs")
-          .select(`
-            design_system,
-            primary_colors, secondary_colors, accent_color, colors_to_avoid,
-            hex_confirmed, brand_match,
-            jersey_cut, sublimated,
-            home_colorway, away_colorway,
-            number_style, player_names,
-            logo_placement, logos_to_include, sponsor_text,
-            reference_image_url, vision_prompt, negative_references,
-            player_roster
-          `)
-          .eq("order_id", order_id)
-          .single(),
-        supabase
-          .from("concepts")
-          .select("image_url, concept_number")
-          .eq("order_id", order_id)
-          .eq("selected", true)
-          .single(),
-      ]);
-
       const roster: RosterPlayer[] = Array.isArray(brief?.player_roster)
         ? (brief.player_roster as RosterPlayer[])
         : [];
 
       setSummary({
-        orderNumber:      order.order_number ?? order_id.slice(0, 8).toUpperCase(),
-        packageTier:      order.package_tier,
-        accountLead:      order.account_lead,
-        depositPaid:      order.deposit_paid ?? false,
-        balancePaid:      order.balance_paid ?? false,
+        orderNumber:      order.orderNumber ?? order_id.slice(0, 8).toUpperCase(),
+        packageTier:      order.packageTier,
+        accountLead:      order.accountLead,
+        depositPaid:      order.depositPaid,
+        balancePaid:      order.balancePaid,
         orderNotes:       order.notes,
 
-        teamName:         client?.name ?? "",
-        contactName:      client?.contact_name ?? "",
-        email:            client?.email ?? "",
-        sport:            client?.sport ?? "",
-        city:             client?.city ?? "",
+        teamName:         client.teamName,
+        contactName:      client.contactName,
+        email:            client.email,
+        sport:            client.sport,
+        city:             client.city,
 
-        jerseycut:        brief?.jersey_cut ?? "",
-        sublimated:       brief?.sublimated ?? null,
-        homeColorway:     brief?.home_colorway ?? null,
-        awayColorway:     brief?.away_colorway ?? null,
+        jerseycut:        (brief?.jersey_cut as string) ?? "",
+        sublimated:       (brief?.sublimated as boolean | null) ?? null,
+        homeColorway:     (brief?.home_colorway as string | null) ?? null,
+        awayColorway:     (brief?.away_colorway as string | null) ?? null,
 
-        primaryColors:    brief?.primary_colors ?? "",
-        secondaryColors:  brief?.secondary_colors ?? "",
-        accentColor:      brief?.accent_color ?? null,
-        colorsToAvoid:    brief?.colors_to_avoid ?? null,
-        hexConfirmed:     brief?.hex_confirmed ?? false,
-        brandMatch:       brief?.brand_match ?? false,
+        primaryColors:    (brief?.primary_colors as string) ?? "",
+        secondaryColors:  (brief?.secondary_colors as string) ?? "",
+        accentColor:      (brief?.accent_color as string | null) ?? null,
+        colorsToAvoid:    (brief?.colors_to_avoid as string | null) ?? null,
+        hexConfirmed:     (brief?.hex_confirmed as boolean) ?? false,
+        brandMatch:       (brief?.brand_match as boolean) ?? false,
 
-        designSystem:     brief?.design_system ?? "",
-        visionPrompt:     brief?.vision_prompt ?? null,
-        numberStyle:      brief?.number_style ?? null,
-        negativeReferences: brief?.negative_references ?? null,
+        designSystem:     (brief?.design_system as string) ?? "",
+        visionPrompt:     (brief?.vision_prompt as string | null) ?? null,
+        numberStyle:      (brief?.number_style as string | null) ?? null,
+        negativeReferences: (brief?.negative_references as string | null) ?? null,
 
-        logoPlacement:    (brief?.logo_placement ?? "").replace(/_/g, " "),
-        logosToInclude:   brief?.logos_to_include ?? null,
-        sponsorText:      brief?.sponsor_text ?? null,
-        playerNames:      brief?.player_names ?? false,
+        logoPlacement:    ((brief?.logo_placement as string) ?? "").replace(/_/g, " "),
+        logosToInclude:   (brief?.logos_to_include as string | null) ?? null,
+        sponsorText:      (brief?.sponsor_text as string | null) ?? null,
+        playerNames:      (brief?.player_names as boolean) ?? false,
 
         playerRoster:     roster,
 
-        referenceImageUrl: brief?.reference_image_url ?? null,
+        referenceImageUrl: (brief?.reference_image_url as string | null) ?? null,
 
         conceptImageUrl:  concept?.image_url ?? "",
         conceptNumber:    concept?.concept_number ?? 0,
@@ -277,7 +251,7 @@ export default function ApprovePage() {
       setLoading(false);
     }
     load();
-  }, [order_id, supabase, router]);
+  }, [order_id, router]);
 
   async function signOut() {
     await supabase.auth.signOut();
