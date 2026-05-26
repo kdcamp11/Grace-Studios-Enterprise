@@ -539,13 +539,13 @@ function JerseyBuilderInner() {
                 Object.fromEntries(ZONES.map((z) => [z.key + "Color", colors[z.key]]))
               ).toString();
               const href = orderId
-                ? `/brief/${orderId}/style?${colorParams}`
-                : `/brief/new?path=ai&${colorParams}`;
+                ? `/brief/${orderId}/builder-review?${colorParams}`
+                : `/brief/new?path=builder`;
               return (
                 <Link
                   href={href}
                   onClick={() => {
-                    // Persist zone colors to brief state so they're included in the production file
+                    // Persist zone colors + logo filenames to brief state
                     saveBriefState({
                       zoneColors: {
                         jerseyTop:         colors.jerseyTop,
@@ -556,16 +556,17 @@ function JerseyBuilderInner() {
                         sleevePanels:      colors.sleevePanels,
                         shortSidePanels:   colors.shortSidePanels,
                       },
+                      logosToInclude: logos.map((l) => l.fileName).filter(Boolean).join(", "),
                     });
                   }}
                   className="flex items-center justify-center w-full py-3.5 rounded-lg bg-brand-primary text-white font-display font-bold text-xs uppercase tracking-widest hover:bg-brand-secondary transition-colors"
                 >
-                  {orderId ? "Continue to Design System →" : "Start Brief with These Colors →"}
+                  Review My Design →
                 </Link>
               );
             })()}
             <p className="text-[9px] font-barlow text-brand-muted/70 text-center leading-relaxed">
-              Your color selections will be pre-filled in your design brief.
+              Review your selections before submitting to Grace Studios.
             </p>
           </div>
         </div>

@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useRef } from "react";
-import BriefProgress from "./BriefProgress";
+import BriefProgress, { type Step } from "./BriefProgress";
 import OrgLogo from "@/components/OrgLogo";
 
 interface BriefLayoutProps {
@@ -12,9 +12,10 @@ interface BriefLayoutProps {
   title: string;
   subtitle?: string;
   maxWidth?: string;
+  steps?: Step[];
 }
 
-export default function BriefLayout({ children, currentStep, title, subtitle, maxWidth = "max-w-2xl" }: BriefLayoutProps) {
+export default function BriefLayout({ children, currentStep, title, subtitle, maxWidth = "max-w-2xl", steps }: BriefLayoutProps) {
   const router = useRouter();
   const supabaseRef = useRef(createClient());
   const supabase = supabaseRef.current;
@@ -39,7 +40,7 @@ export default function BriefLayout({ children, currentStep, title, subtitle, ma
 
       <main className="flex-1 flex flex-col items-center px-4 sm:px-6 py-10 sm:py-14">
         <div className={`w-full ${maxWidth} animate-fade-up`}>
-          <BriefProgress currentStep={currentStep} />
+          <BriefProgress currentStep={currentStep} steps={steps} />
 
           <div className="mb-8">
             <h1 className="font-display text-4xl sm:text-5xl font-bold uppercase tracking-wide text-brand-text leading-none">

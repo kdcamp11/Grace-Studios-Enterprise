@@ -4,7 +4,11 @@ import { getRequestTenant } from "@/lib/tenant/get-request-tenant";
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { order_id, ...briefFields } = body as { order_id: string; [key: string]: unknown };
+  const { order_id, concept_source, ...briefFields } = body as {
+    order_id: string;
+    concept_source?: string;
+    [key: string]: unknown;
+  };
 
   if (!order_id) {
     return NextResponse.json({ error: "order_id required" }, { status: 400 });
@@ -27,9 +31,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: briefError.message }, { status: 500 });
   }
 
+  // Build the order update — always set stage; also set concept_source if provided
+  const orderUpdate: Record<string, unknown> = { stage: "design_confirmed" };
+  if (concept_source) orderUpdate.concept_source = concept_source;
+
   const { error: orderError } = await admin
     .from("orders")
-    .update({ stage: "design_confirmed" })
+    .update(orderUpdate)
     .eq("id", order_id);
 
   if (orderError) {

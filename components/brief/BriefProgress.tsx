@@ -1,22 +1,30 @@
 "use client";
 
-interface Step {
+export interface Step {
   label: string;
   number: number;
 }
 
-const STEPS: Step[] = [
+export const DEFAULT_STEPS: Step[] = [
   { number: 1, label: "Team Info" },
   { number: 2, label: "Design System" },
   { number: 3, label: "Details & Logo" },
   { number: 4, label: "Review" },
 ];
 
+export const BUILDER_STEPS: Step[] = [
+  { number: 1, label: "Team Info" },
+  { number: 2, label: "Jersey Builder" },
+  { number: 3, label: "Review" },
+];
+
 interface BriefProgressProps {
   currentStep: number;
+  steps?: Step[];
 }
 
-export default function BriefProgress({ currentStep }: BriefProgressProps) {
+export default function BriefProgress({ currentStep, steps }: BriefProgressProps) {
+  const STEPS = steps ?? DEFAULT_STEPS;
   return (
     <div className="w-full mb-10">
       {/* Step counter */}
