@@ -8,18 +8,85 @@ import OrgLogo from "@/components/OrgLogo";
 import { useTenant } from "@/lib/tenant/context";
 import type { OrderStage } from "@/types/database";
 
-const PIPELINE: { stage: OrderStage; label: string; description: string }[] = [
-  { stage: "onboarding",              label: "Brief Submitted",    description: "Your design brief has been received." },
-  { stage: "design_confirmed",        label: "Concepts Generating",description: "AI is generating your design concepts." },
-  { stage: "files_sent",              label: "Design Approved",    description: "Your concept is approved and production files are ready." },
-  { stage: "first_piece_in_progress", label: "First Piece",        description: "Your first sample piece is now in production. Your studio will be in touch soon." },
-  { stage: "first_piece_review",      label: "First Piece Review", description: "Your sample is ready — review and approve below." },
-  { stage: "bulk_production",         label: "Bulk Production",    description: "Full order is in production." },
-  { stage: "qc_verified",             label: "Quality Check",      description: "All items have passed quality inspection." },
-  { stage: "shipped",                 label: "Shipped",            description: "Your order is on its way." },
-  { stage: "delivered",               label: "Delivered",          description: "Your order has been delivered." },
-  { stage: "complete",                label: "Complete",           description: "Your order is complete. Thank you for your business." },
+// ─── Pipeline definition ──────────────────────────────────────────────────────
+
+const PIPELINE: { stage: OrderStage; label: string }[] = [
+  { stage: "onboarding",              label: "Brief Submitted"      },
+  { stage: "design_confirmed",        label: "Concepts Generating"  },
+  { stage: "files_sent",              label: "Design Approved"      },
+  { stage: "first_piece_in_progress", label: "First Piece"          },
+  { stage: "first_piece_review",      label: "First Piece Review"   },
+  { stage: "bulk_production",         label: "Bulk Production"      },
+  { stage: "qc_verified",             label: "Quality Check"        },
+  { stage: "shipped",                 label: "Shipped"              },
+  { stage: "delivered",               label: "Delivered"            },
+  { stage: "complete",                label: "Complete"             },
 ];
+
+// Per-stage action card config
+interface StageCard {
+  title:       string;
+  description: string;
+  cta?:        string;
+  ctaHref?:    (order_id: string) => string;
+  urgent?:     boolean;   // amber highlight
+  success?:    boolean;   // green highlight
+}
+
+const STAGE_CARDS: Partial<Record<OrderStage, StageCard>> = {
+  onboarding: {
+    title:       "Brief Submitted",
+    description: "Your brief has been received. Head to your concept board — your studio is preparing your designs.",
+    cta:         "View Concept Board →",
+    ctaHref:     (id) => `/orders/${id}/concepts`,
+  },
+  design_confirmed: {
+    title:       "Concepts In Progress",
+    description: "Your design concepts are being built. Open the board to watch the progress live.",
+    cta:         "Open Concept Board →",
+    ctaHref:     (id) => `/orders/${id}/concepts`,
+  },
+  files_sent: {
+    title:       "Design Approved",
+    description: "Your design has been approved and production files are ready. Your studio is preparing your first sample.",
+    success:     true,
+  },
+  first_piece_in_progress: {
+    title:       "First Sample In Production",
+    description: "Your studio is crafting your first sample piece. You'll be notified as soon as it's ready to review.",
+  },
+  first_piece_review: {
+    title:       "Action Required — Review Your Sample",
+    description: "Your first piece is ready. Review the photos or video below and approve or request changes.",
+    urgent:      true,
+  },
+  bulk_production: {
+    title:       "Bulk Production Underway",
+    description: "Your full order is now in production.",
+  },
+  qc_verified: {
+    title:       "Quality Check Passed",
+    description: "All pieces have passed quality inspection and are ready to ship.",
+    success:     true,
+  },
+  shipped: {
+    title:       "Order Shipped",
+    description: "Your order is on its way. Track your shipment below.",
+    success:     true,
+  },
+  delivered: {
+    title:       "Order Delivered",
+    description: "Your order has been delivered.",
+    success:     true,
+  },
+  complete: {
+    title:       "Order Complete",
+    description: "Your order is complete. Thank you for choosing us!",
+    success:     true,
+  },
+};
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface MediaItem {
   id: string;
@@ -37,7 +104,6 @@ interface OrderFile {
   file_size: number | null;
   file_type: string | null;
   label: string | null;
-  client_note?: string | null;
 }
 
 interface OrderData {
@@ -52,6 +118,8 @@ interface OrderData {
   files: OrderFile[];
 }
 
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
 export default function TrackerPage() {
   const { order_id } = useParams<{ order_id: string }>();
   const router       = useRouter();
@@ -59,11 +127,10 @@ export default function TrackerPage() {
   const supabase     = supabaseRef.current;
   const tenant       = useTenant();
 
-  const [order, setOrder]       = useState<OrderData | null>(null);
-  const [loading, setLoading]   = useState(true);
+  const [order, setOrder]             = useState<OrderData | null>(null);
+  const [loading, setLoading]         = useState(true);
   const [isAdminView, setIsAdminView] = useState(false);
 
-  // Per-item review state
   const [reviewingId, setReviewingId] = useState<string | null>(null);
   const [clientNote, setClientNote]   = useState("");
   const [submitting, setSubmitting]   = useState(false);
@@ -79,15 +146,12 @@ export default function TrackerPage() {
 
       const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch(`/api/portal/order-detail?order_id=${order_id}`, {
-        headers: session?.access_token
-          ? { Authorization: `Bearer ${session.access_token}` }
-          : {},
+        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
       });
       if (!res.ok) { setLoading(false); return; }
 
       const { order: o } = await res.json() as { order: OrderData };
       if (!o) { setLoading(false); return; }
-
       setOrder({ ...o, stage: o.stage as OrderStage });
       setLoading(false);
     }
@@ -108,24 +172,17 @@ export default function TrackerPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "review_media", media_id: mediaId, approved, note }),
     });
-
     setOrder((prev) => {
       if (!prev) return prev;
-      return {
-        ...prev,
-        media: prev.media.map((m) =>
-          m.id === mediaId
-            ? { ...m, client_approved: approved, client_note: note }
-            : m
-        ),
-      };
+      return { ...prev, media: prev.media.map((m) => m.id === mediaId ? { ...m, client_approved: approved, client_note: note } : m) };
     });
-
     setReviewingId(null);
     setClientNote("");
     setSubmitting(false);
     setReviewDone(true);
   }
+
+  // ─── Loading / error states ────────────────────────────────────────────────
 
   if (loading) {
     return (
@@ -147,22 +204,37 @@ export default function TrackerPage() {
   const pendingMedia  = order.media.filter((m) => m.client_approved === null);
   const reviewedMedia = order.media.filter((m) => m.client_approved !== null);
 
+  // Override card if first piece media is pending
+  const card: StageCard = pendingMedia.length > 0
+    ? STAGE_CARDS.first_piece_review!
+    : (STAGE_CARDS[order.stage] ?? { title: PIPELINE[currentIndex]?.label ?? "", description: "" });
+
+  const cardBorder = card.urgent  ? "border-amber-400/50 bg-amber-400/5"
+    : card.success ? "border-green-500/40 bg-green-500/5"
+    : "border-brand-primary/40 bg-brand-surface";
+
+  const cardTitleColor = card.urgent  ? "text-amber-400"
+    : card.success ? "text-green-400"
+    : "text-brand-primary";
+
+  const cardDot = card.urgent  ? "bg-amber-400"
+    : card.success ? "bg-green-500"
+    : "bg-brand-primary";
+
   return (
     <div className="min-h-screen bg-brand-bg flex flex-col">
+
       {isAdminView && (
         <div className="bg-amber-50 border-b border-amber-200 px-6 py-2 flex items-center justify-between">
           <span className="text-xs font-display font-bold uppercase tracking-widest text-amber-700">Admin View — Client Portal</span>
-          <a href={`/admin/orders/${order_id}`} className="text-xs font-display font-bold uppercase tracking-wider text-amber-600 hover:text-amber-800 transition-colors">
-            Open in Admin →
-          </a>
+          <a href={`/admin/orders/${order_id}`} className="text-xs font-display font-bold uppercase tracking-wider text-amber-600 hover:text-amber-800 transition-colors">Open in Admin →</a>
         </div>
       )}
+
       <header className="border-b border-brand-border px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <OrgLogo href="/portal" />
-          <a href="/portal" className="text-xs font-display font-bold uppercase tracking-widest text-brand-primary hover:text-brand-secondary transition-colors">
-            Client Portal
-          </a>
+          <a href="/portal" className="text-xs font-display font-bold uppercase tracking-widest text-brand-primary hover:text-brand-secondary transition-colors">Client Portal</a>
         </div>
         <div className="flex items-center gap-5">
           <a href="/portal" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Home</a>
@@ -172,10 +244,10 @@ export default function TrackerPage() {
       </header>
 
       <main className="flex-1 flex flex-col items-center px-4 py-10">
-        <div className="w-full max-w-xl space-y-8">
+        <div className="w-full max-w-xl space-y-6">
 
           {/* Order header */}
-          <div className="space-y-1">
+          <div className="space-y-0.5">
             <p className="text-xs font-display uppercase tracking-widest text-brand-muted">Order Status</p>
             <h1 className="font-display text-2xl font-bold uppercase tracking-wide text-brand-text">
               {order.order_number || order.id.slice(0, 8).toUpperCase()}
@@ -185,77 +257,61 @@ export default function TrackerPage() {
             </p>
           </div>
 
-          {/* Concept board quick access */}
-          {order.has_concepts && (
-            <a
-              href={`/orders/${order_id}/concepts`}
-              className="flex items-center justify-between rounded-xl border border-brand-primary/30 bg-brand-surface px-5 py-4 hover:border-brand-primary/60 hover:bg-brand-surface transition-all group"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-brand-primary/10 border border-brand-primary/30 flex items-center justify-center flex-shrink-0">
-                  <svg className="w-4 h-4 text-brand-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+          {/* ── Stage action card ────────────────────────────────────────────── */}
+          <div className={`border rounded-xl p-5 space-y-4 ${cardBorder}`}>
+            <div className="flex items-start gap-4">
+              <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${cardDot}`}>
+                {card.success ? (
+                  <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
-                </div>
-                <div>
-                  <p className="text-xs font-display font-bold uppercase tracking-wider text-brand-primary">View Concept Board</p>
-                  <p className="text-[10px] text-brand-muted font-barlow mt-0.5">Your AI-generated design is ready to review</p>
-                </div>
+                ) : (
+                  <span className="font-display font-bold text-brand-bg text-sm">{currentIndex + 1}</span>
+                )}
               </div>
-              <span className="text-brand-muted group-hover:text-brand-primary transition-colors text-sm">→</span>
-            </a>
-          )}
+              <div className="flex-1 min-w-0">
+                <p className={`font-display font-bold uppercase tracking-wide text-sm ${cardTitleColor}`}>
+                  {card.title}
+                </p>
+                <p className="text-xs text-brand-muted font-barlow mt-1 leading-relaxed">
+                  {card.description}
+                </p>
+              </div>
+            </div>
 
-          {/* Current stage callout */}
-          <div className={`border rounded-xl p-5 flex items-center gap-4
-            ${pendingMedia.length > 0
-              ? "bg-amber-400/5 border-amber-400/40"
-              : "bg-brand-surface border-brand-primary/40"}`}>
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0
-              ${pendingMedia.length > 0 ? "bg-amber-400" : "bg-brand-primary"}`}>
-              <span className="font-display font-bold text-brand-bg text-sm">{currentIndex + 1}</span>
-            </div>
-            <div>
-              <p className={`font-display font-bold uppercase tracking-wide text-sm
-                ${pendingMedia.length > 0 ? "text-amber-400" : "text-brand-primary"}`}>
-                {pendingMedia.length > 0 ? "Action Required — Review First Piece" : PIPELINE[currentIndex]?.label}
-              </p>
-              <p className="text-xs text-brand-muted font-barlow mt-0.5">
-                {pendingMedia.length > 0
-                  ? `${pendingMedia.length} item${pendingMedia.length !== 1 ? "s" : ""} waiting for your approval.`
-                  : PIPELINE[currentIndex]?.description}
-              </p>
-            </div>
+            {/* CTA button — always shown for stages that need client action */}
+            {card.cta && card.ctaHref && (
+              <a
+                href={card.ctaHref(order_id as string)}
+                className="block w-full py-3.5 rounded-xl text-center font-display font-bold text-sm uppercase tracking-[0.15em]
+                  bg-brand-primary text-white hover:bg-brand-secondary transition-all duration-200
+                  shadow-[0_4px_20px_rgba(201,168,76,0.2)]"
+              >
+                {card.cta}
+              </a>
+            )}
           </div>
 
-          {/* ── First Piece Review ─────────────────────────────────────────── */}
+          {/* ── First Piece Review ───────────────────────────────────────────── */}
           {order.media.length > 0 && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <p className="text-xs font-display uppercase tracking-widest text-brand-primary">First Piece</p>
                 {pendingMedia.length === 0 && reviewedMedia.length > 0 && (
-                  <span className="text-[10px] font-display uppercase tracking-wider text-green-400">
-                    All reviewed ✓
-                  </span>
+                  <span className="text-[10px] font-display uppercase tracking-wider text-green-400">All reviewed ✓</span>
                 )}
               </div>
 
-              {/* Pending items */}
               {pendingMedia.map((item) => (
                 <div key={item.id} className="border border-amber-400/30 rounded-xl overflow-hidden bg-brand-surface">
-                  {/* Media */}
                   {item.media_type === "video" ? (
                     <video src={item.media_url} controls className="w-full aspect-video bg-black" />
                   ) : (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={item.media_url} alt={item.caption ?? "First piece"} className="w-full object-cover max-h-80" />
                   )}
-
                   <div className="p-4 space-y-3">
-                    {item.caption && (
-                      <p className="text-sm font-barlow text-brand-text">{item.caption}</p>
-                    )}
-
+                    {item.caption && <p className="text-sm font-barlow text-brand-text">{item.caption}</p>}
                     {reviewingId === item.id ? (
                       <div className="space-y-3">
                         <textarea
@@ -266,37 +322,23 @@ export default function TrackerPage() {
                           className="w-full bg-brand-bg border border-brand-border rounded-lg px-3 py-2.5 text-brand-text font-barlow text-sm placeholder-brand-muted/60 focus:outline-none focus:border-brand-primary transition-colors resize-none"
                         />
                         <div className="flex gap-2">
-                          <button
-                            type="button"
-                            onClick={() => submitReview(item.id, true)}
-                            disabled={submitting}
-                            className="flex-1 py-3 rounded-lg font-display font-bold text-xs uppercase tracking-widest bg-green-600 text-white hover:bg-green-500 disabled:opacity-40 transition-all"
-                          >
+                          <button type="button" onClick={() => submitReview(item.id, true)} disabled={submitting}
+                            className="flex-1 py-3 rounded-lg font-display font-bold text-xs uppercase tracking-widest bg-green-600 text-white hover:bg-green-500 disabled:opacity-40 transition-all">
                             {submitting ? "Submitting…" : "Approve ✓"}
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => submitReview(item.id, false)}
-                            disabled={submitting}
-                            className="flex-1 py-3 rounded-lg font-display font-bold text-xs uppercase tracking-widest border border-[#C41E1E]/40 text-[#C41E1E] hover:bg-[#C41E1E]/10 disabled:opacity-40 transition-all"
-                          >
+                          <button type="button" onClick={() => submitReview(item.id, false)} disabled={submitting}
+                            className="flex-1 py-3 rounded-lg font-display font-bold text-xs uppercase tracking-widest border border-[#C41E1E]/40 text-[#C41E1E] hover:bg-[#C41E1E]/10 disabled:opacity-40 transition-all">
                             Request Changes
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => { setReviewingId(null); setClientNote(""); }}
-                            className="px-3 py-3 rounded-lg border border-brand-border text-brand-muted hover:text-brand-text font-barlow text-xs transition-all"
-                          >
+                          <button type="button" onClick={() => { setReviewingId(null); setClientNote(""); }}
+                            className="px-3 py-3 rounded-lg border border-brand-border text-brand-muted hover:text-brand-text font-barlow text-xs transition-all">
                             Cancel
                           </button>
                         </div>
                       </div>
                     ) : (
-                      <button
-                        type="button"
-                        onClick={() => { setReviewingId(item.id); setClientNote(""); }}
-                        className="w-full py-3 rounded-lg font-display font-bold text-xs uppercase tracking-widest border border-amber-400/40 text-amber-400 hover:bg-amber-400/10 transition-all"
-                      >
+                      <button type="button" onClick={() => { setReviewingId(item.id); setClientNote(""); }}
+                        className="w-full py-3 rounded-lg font-display font-bold text-xs uppercase tracking-widest border border-amber-400/40 text-amber-400 hover:bg-amber-400/10 transition-all">
                         Review This Item →
                       </button>
                     )}
@@ -304,7 +346,6 @@ export default function TrackerPage() {
                 </div>
               ))}
 
-              {/* Already reviewed items */}
               {reviewedMedia.length > 0 && (
                 <div className="space-y-3">
                   {pendingMedia.length > 0 && (
@@ -313,7 +354,6 @@ export default function TrackerPage() {
                   {reviewedMedia.map((item) => (
                     <div key={item.id} className="border border-brand-border rounded-xl overflow-hidden bg-brand-surface">
                       <div className="flex gap-3 p-3">
-                        {/* Thumbnail */}
                         <div className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 bg-brand-bg border border-brand-border">
                           {item.media_type === "video" ? (
                             <video src={item.media_url} className="w-full h-full object-cover" />
@@ -323,21 +363,13 @@ export default function TrackerPage() {
                           )}
                         </div>
                         <div className="flex-1 min-w-0 space-y-1.5 pt-0.5">
-                          {item.caption && (
-                            <p className="text-xs font-barlow text-brand-text truncate">{item.caption}</p>
-                          )}
+                          {item.caption && <p className="text-xs font-barlow text-brand-text truncate">{item.caption}</p>}
                           {item.client_approved === true ? (
-                            <span className="inline-block text-[10px] font-display uppercase tracking-wider px-2 py-0.5 rounded-full border border-green-400/30 bg-green-400/10 text-green-400">
-                              Approved ✓
-                            </span>
+                            <span className="inline-block text-[10px] font-display uppercase tracking-wider px-2 py-0.5 rounded-full border border-green-400/30 bg-green-400/10 text-green-400">Approved ✓</span>
                           ) : (
-                            <span className="inline-block text-[10px] font-display uppercase tracking-wider px-2 py-0.5 rounded-full border border-[#C41E1E]/30 bg-[#C41E1E]/10 text-[#C41E1E]">
-                              Changes Requested
-                            </span>
+                            <span className="inline-block text-[10px] font-display uppercase tracking-wider px-2 py-0.5 rounded-full border border-[#C41E1E]/30 bg-[#C41E1E]/10 text-[#C41E1E]">Changes Requested</span>
                           )}
-                          {item.client_note && (
-                            <p className="text-[10px] font-barlow text-brand-muted leading-tight">"{item.client_note}"</p>
-                          )}
+                          {item.client_note && <p className="text-[10px] font-barlow text-brand-muted leading-tight">"{item.client_note}"</p>}
                         </div>
                       </div>
                     </div>
@@ -358,50 +390,33 @@ export default function TrackerPage() {
               <div>
                 <p className="font-display font-bold uppercase tracking-wide text-green-400 text-sm">Review Submitted</p>
                 <p className="text-xs font-barlow text-brand-muted mt-0.5">
-                  Thanks — {tenant.name} has been notified and will follow up shortly.
+                  {tenant.name} has been notified and will follow up shortly.
                 </p>
-                <button
-                  type="button"
-                  onClick={() => router.push("/portal")}
-                  className="mt-3 text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors"
-                >
+                <button type="button" onClick={() => router.push("/portal")}
+                  className="mt-3 text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">
                   ← Back to My Orders
                 </button>
               </div>
             </div>
           )}
 
-          {/* Concepts CTA */}
-          {order.has_concepts && order.stage !== "files_sent" && (
-            <a
-              href={`/orders/${order.id}/concepts`}
-              className="block w-full py-3 rounded-lg font-display font-bold text-sm uppercase tracking-widest text-center
-                border border-brand-primary text-brand-primary hover:bg-brand-primary hover:text-brand-bg transition-all duration-200"
-            >
-              View & Select Concepts →
-            </a>
-          )}
-
-          {/* Tracking info */}
+          {/* ── Tracking info ────────────────────────────────────────────────── */}
           {order.tracking_number && (
-            <div className="bg-brand-surface border border-brand-border rounded-xl p-4 flex items-center justify-between gap-4">
-              <div>
-                <p className="text-xs font-display uppercase tracking-wider text-brand-muted">Tracking</p>
-                <p className="text-sm font-barlow text-brand-text font-mono mt-0.5">{order.tracking_number}</p>
-              </div>
+            <div className="bg-brand-surface border border-brand-border rounded-xl p-4">
+              <p className="text-xs font-display uppercase tracking-wider text-brand-muted">Tracking Number</p>
+              <p className="text-sm font-barlow text-brand-text font-mono mt-1">{order.tracking_number}</p>
             </div>
           )}
-
           {order.estimated_delivery && (
             <div className="bg-brand-surface border border-brand-border rounded-xl p-4">
               <p className="text-xs font-display uppercase tracking-wider text-brand-muted">Estimated Delivery</p>
-              <p className="text-sm font-barlow text-brand-text mt-0.5">
+              <p className="text-sm font-barlow text-brand-text mt-1">
                 {new Date(order.estimated_delivery).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
               </p>
             </div>
           )}
 
-          {/* ── Final Files ───────────────────────────────────────────────── */}
+          {/* ── Files ────────────────────────────────────────────────────────── */}
           {order.files.length > 0 && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
@@ -412,36 +427,23 @@ export default function TrackerPage() {
               </div>
               <div className="bg-brand-surface border border-brand-border rounded-xl overflow-hidden">
                 {order.files.map((f, i) => (
-                  <div
-                    key={f.id}
-                    className={`flex items-center gap-4 px-4 py-3.5 ${i < order.files.length - 1 ? "border-b border-brand-border" : ""}`}
-                  >
-                    {/* File icon */}
+                  <div key={f.id} className={`flex items-center gap-4 px-4 py-3.5 ${i < order.files.length - 1 ? "border-b border-brand-border" : ""}`}>
                     <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-brand-bg border border-brand-border flex items-center justify-center">
                       <svg className="w-4 h-4 text-brand-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
                       </svg>
                     </div>
                     <div className="flex-1 min-w-0">
-                      {f.label && (
-                        <p className="text-[9px] font-display uppercase tracking-wider text-brand-primary mb-0.5">{f.label}</p>
-                      )}
+                      {f.label && <p className="text-[9px] font-display uppercase tracking-wider text-brand-primary mb-0.5">{f.label}</p>}
                       <p className="text-sm font-barlow text-brand-text truncate">{f.file_name}</p>
                       {f.file_size && (
                         <p className="text-[10px] font-barlow text-brand-muted">
-                          {f.file_size > 1024 * 1024
-                            ? `${(f.file_size / 1024 / 1024).toFixed(1)} MB`
-                            : `${(f.file_size / 1024).toFixed(0)} KB`}
+                          {f.file_size > 1024 * 1024 ? `${(f.file_size / 1024 / 1024).toFixed(1)} MB` : `${(f.file_size / 1024).toFixed(0)} KB`}
                         </p>
                       )}
                     </div>
-                    <a
-                      href={f.file_url}
-                      download={f.file_name}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex-shrink-0 text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors"
-                    >
+                    <a href={f.file_url} download={f.file_name} target="_blank" rel="noopener noreferrer"
+                      className="flex-shrink-0 flex items-center gap-1.5 text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">
                       <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
                       </svg>
@@ -453,7 +455,7 @@ export default function TrackerPage() {
             </div>
           )}
 
-          {/* Full pipeline timeline */}
+          {/* ── Full timeline ─────────────────────────────────────────────────── */}
           <div>
             <p className="text-xs font-display uppercase tracking-widest text-brand-muted mb-5">Full Timeline</p>
             <div className="space-y-0">
@@ -461,15 +463,13 @@ export default function TrackerPage() {
                 const isDone     = i < currentIndex;
                 const isCurrent  = i === currentIndex;
                 const isUpcoming = i > currentIndex;
-
                 return (
                   <div key={step.stage} className="flex gap-4">
                     <div className="flex flex-col items-center">
                       <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 border-2 transition-colors
-                        ${isDone     ? "bg-brand-primary border-brand-primary" : ""}
-                        ${isCurrent  ? "bg-brand-bg border-brand-primary" : ""}
-                        ${isUpcoming ? "bg-brand-surface border-brand-border" : ""}
-                      `}>
+                        ${isDone    ? "bg-brand-primary border-brand-primary" : ""}
+                        ${isCurrent ? "bg-brand-bg border-brand-primary" : ""}
+                        ${isUpcoming ? "bg-brand-surface border-brand-border" : ""}`}>
                         {isDone ? (
                           <svg className="w-3.5 h-3.5 text-brand-bg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
@@ -482,15 +482,11 @@ export default function TrackerPage() {
                         <div className={`w-0.5 flex-1 my-1 min-h-[24px] ${isDone ? "bg-brand-primary" : "bg-brand-border"}`} />
                       )}
                     </div>
-
                     <div className="pb-6 pt-0.5 min-w-0">
                       <p className={`font-display font-bold uppercase tracking-wide text-sm
                         ${isCurrent ? "text-brand-primary" : isDone ? "text-brand-text" : "text-brand-muted"}`}>
                         {step.label}
                       </p>
-                      {isCurrent && (
-                        <p className="text-xs text-brand-muted font-barlow mt-0.5">{step.description}</p>
-                      )}
                     </div>
                   </div>
                 );
