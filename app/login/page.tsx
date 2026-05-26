@@ -138,8 +138,8 @@ const JERSEYS = [
 const PATH_CARDS = [
   {
     href: "/signup?path=consultation",
-    badge: "Customization",
-    sub: "Full Service",
+    badge: "Full Service",
+    sub: "Consultation",
     headline: "Custom. Collaborative.\nBuilt to Brief.",
     bullets: [
       "Design consultation included",
@@ -152,15 +152,15 @@ const PATH_CARDS = [
   {
     href: "/signup?path=self-service",
     badge: "Self Service",
-    sub: "Design Brief",
-    headline: "Describe Your Vision.\nWe Handle the Rest.",
+    sub: "Two Paths",
+    headline: "Your Direction.\nOur Execution.",
     bullets: [
-      "Guided questions — under 3 minutes",
+      "Design Brief — describe your vision in minutes",
+      "Jersey Builder — color every zone in real-time 3D",
       "Concept built to Grace Studios standard",
-      "Designer mockup follows",
       "Two client approval checkpoints",
     ],
-    cta: "Start with a Design Brief →",
+    cta: "Start Self Service →",
   },
   {
     href: "/signup?path=upload",
@@ -532,13 +532,13 @@ export default function LoginPage() {
           {/* Path cards — each card paired with its own CTA button */}
           <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 text-left">
 
-            {/* Customization column */}
+            {/* Consultation column */}
             <div className="flex flex-col gap-3">
               <div className="group relative flex flex-col gap-4 p-6 sm:p-7 rounded-2xl border border-brand-border bg-brand-bg hover:bg-brand-surface transition-colors duration-300 shadow-sm flex-1">
                 <div className="absolute top-0 left-0 right-0 h-[2px] bg-brand-primary opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-t-2xl" />
                 <div className="flex items-center justify-between">
-                  <span className="text-[9px] font-display font-bold uppercase tracking-[0.2em] px-2.5 py-1 rounded border text-brand-primary bg-brand-primary/10 border-brand-primary/30">Customization</span>
-                  <span className="text-[9px] font-display uppercase tracking-widest text-brand-muted/60">Full Service</span>
+                  <span className="text-[9px] font-display font-bold uppercase tracking-[0.2em] px-2.5 py-1 rounded border text-brand-primary bg-brand-primary/10 border-brand-primary/30">Full Service</span>
+                  <span className="text-[9px] font-display uppercase tracking-widest text-brand-muted/60">Consultation</span>
                 </div>
                 <p className="font-display font-bold uppercase tracking-wide text-brand-text leading-snug whitespace-pre-line" style={{ fontSize: "clamp(1rem, 1.4vw, 1.1rem)" }}>{"Custom. Collaborative.\nBuilt to Brief."}</p>
                 <ul className="space-y-2 flex-1">
@@ -552,31 +552,38 @@ export default function LoginPage() {
               </div>
               <Link href="/signup?path=consultation"
                 className="flex items-center justify-center py-4 rounded-xl bg-brand-primary text-white font-display font-bold text-sm uppercase tracking-widest hover:bg-brand-secondary transition-colors shadow-sm">
-                Customization →
+                Consultation →
               </Link>
             </div>
 
-            {/* Self Service column */}
+            {/* Self Service column — two sub-paths */}
             <div className="flex flex-col gap-3">
-              <div className="group relative flex flex-col gap-4 p-6 sm:p-7 rounded-2xl border border-brand-border bg-brand-bg hover:bg-brand-surface transition-colors duration-300 shadow-sm flex-1">
-                <div className="absolute top-0 left-0 right-0 h-[2px] bg-brand-primary opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-t-2xl" />
+              <div className="relative flex flex-col gap-4 p-6 sm:p-7 rounded-2xl border border-brand-border bg-brand-bg shadow-sm flex-1">
+                <div className="absolute top-0 left-0 right-0 h-[2px] bg-brand-primary/60 rounded-t-2xl" />
                 <div className="flex items-center justify-between">
                   <span className="text-[9px] font-display font-bold uppercase tracking-[0.2em] px-2.5 py-1 rounded border text-brand-primary bg-brand-primary/10 border-brand-primary/30">Self Service</span>
-                  <span className="text-[9px] font-display uppercase tracking-widest text-brand-muted/60">Design Brief</span>
+                  <span className="text-[9px] font-display uppercase tracking-widest text-brand-muted/60">Two Paths</span>
                 </div>
-                <p className="font-display font-bold uppercase tracking-wide text-brand-text leading-snug whitespace-pre-line" style={{ fontSize: "clamp(1rem, 1.4vw, 1.1rem)" }}>{"Describe Your Vision.\nWe Handle the Rest."}</p>
-                <ul className="space-y-2 flex-1">
-                  {PATH_CARDS[1].bullets.map((item) => (
-                    <li key={item} className="flex items-center gap-2.5">
-                      <span className="w-1 h-1 rounded-full bg-brand-primary flex-shrink-0" />
-                      <span className="text-xs font-barlow text-brand-muted leading-none">{item}</span>
-                    </li>
-                  ))}
-                </ul>
+                <p className="font-display font-bold uppercase tracking-wide text-brand-text leading-snug whitespace-pre-line" style={{ fontSize: "clamp(1rem, 1.4vw, 1.1rem)" }}>{"Your Direction.\nOur Execution."}</p>
+                <p className="text-xs font-barlow text-brand-muted leading-relaxed">
+                  Build your brief and Grace Studios handles the rest. Choose how you want to describe your vision.
+                </p>
+                {/* Sub-path pills */}
+                <div className="flex flex-col gap-2 border-t border-brand-border pt-4 flex-1">
+                  <p className="text-[8px] font-display font-bold uppercase tracking-[0.28em] text-brand-muted mb-1">Choose your path</p>
+                  <div className="flex items-center gap-2 p-3 rounded-lg border border-brand-border bg-brand-surface">
+                    <span className="w-1.5 h-1.5 rounded-full bg-brand-primary flex-shrink-0" />
+                    <span className="text-[10px] font-barlow text-brand-muted"><span className="text-brand-text font-medium">Design Brief</span> — describe your vision in minutes</span>
+                  </div>
+                  <div className="flex items-center gap-2 p-3 rounded-lg border border-brand-border bg-brand-surface">
+                    <span className="w-1.5 h-1.5 rounded-full bg-brand-primary flex-shrink-0" />
+                    <span className="text-[10px] font-barlow text-brand-muted"><span className="text-brand-text font-medium">Jersey Builder</span> — color every zone in real-time 3D</span>
+                  </div>
+                </div>
               </div>
               <Link href="/signup?path=self-service"
                 className="flex items-center justify-center py-4 rounded-xl border-2 border-brand-primary text-brand-primary font-display font-bold text-sm uppercase tracking-widest hover:bg-brand-primary hover:text-white transition-colors">
-                Design Brief →
+                Self Service →
               </Link>
             </div>
 
