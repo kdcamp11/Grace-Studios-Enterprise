@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import BriefLayout from "@/components/brief/BriefLayout";
 import { saveBriefState } from "@/lib/brief-state";
 import { createClient } from "@/lib/supabase/client";
@@ -12,8 +12,13 @@ const SPORTS = [
   "Tracksuits",
 ];
 
-export default function TeamInfoPage() {
+function TeamInfoPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  // path=ai → go straight to AI brief after order creation
+  // path=builder → go straight to jersey builder after order creation
+  // (no path) → fall back to /brief/[orderId]/choose (legacy)
+  const designPath = searchParams.get("path") ?? null;
 
   // Shared state
   const [sport, setSport]       = useState("");
@@ -95,7 +100,15 @@ export default function TeamInfoPage() {
         clientId:    data.clientId,
       });
 
-      router.push(`/brief/${data.orderId}/choose?sport=${encodeURIComponent(payload.sport)}`);
+      // Route based on design path chosen before Team Info
+      if (designPath === "ai") {
+        router.push(`/brief/${data.orderId}/style`);
+      } else if (designPath === "builder") {
+        router.push(`/jersey-builder?orderId=${data.orderId}&sport=${encodeURIComponent(payload.sport)}`);
+      } else {
+        // Legacy fallback — direct links to /brief/new without a path param
+        router.push(`/brief/${data.orderId}/choose?sport=${encodeURIComponent(payload.sport)}`);
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
     } finally {
@@ -317,10 +330,22 @@ export default function TeamInfoPage() {
               bg-brand-primary text-brand-bg hover:bg-brand-secondary
               disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            {loading ? "Setting up your order…" : "Continue to Design System →"}
+            {loading ? "Setting up your order…" : "Continue →"}
           </button>
         </div>
       </form>
     </BriefLayout>
+  );
+}
+
+export default function TeamInfoPageWrapper() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-brand-bg flex items-center justify-center">
+        <div className="w-5 h-5 border-2 border-brand-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    }>
+      <TeamInfoPage />
+    </Suspense>
   );
 }

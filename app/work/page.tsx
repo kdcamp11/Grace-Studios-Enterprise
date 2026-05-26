@@ -72,7 +72,7 @@ function WorkGalleryContent() {
           <TenantLogo className="h-7" href="/" />
         </div>
         <nav className="flex items-center gap-5">
-          <a href="/brief/new" className="text-xs font-display font-bold uppercase tracking-wider text-brand-primary hover:text-brand-secondary transition-colors">
+          <a href="/brief/choose" className="text-xs font-display font-bold uppercase tracking-wider text-brand-primary hover:text-brand-secondary transition-colors">
             Start Your Order →
           </a>
           <a href="/login" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">
@@ -188,7 +188,7 @@ function WorkGalleryContent() {
                 Submit a brief and get AI-generated concepts within minutes.
               </p>
               <a
-                href="/brief/new"
+                href="/brief/choose"
                 className="inline-block mt-2 px-8 py-4 rounded-lg font-display font-bold text-sm uppercase tracking-widest bg-brand-primary text-white hover:bg-brand-secondary transition-colors"
               >
                 Start Your Order →

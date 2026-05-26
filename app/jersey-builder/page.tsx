@@ -287,7 +287,7 @@ function JerseyBuilderInner() {
         <img src="/grace-enterprise-logo.jpeg" alt="Grace Enterprise" style={{ width: 160 }} className="h-auto object-contain" />
         <div className="flex items-center gap-5">
           <Link href="/portal" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">← Portal</Link>
-          <Link href="/brief/new" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Text Brief</Link>
+          <Link href="/brief/new?path=ai" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Text Brief</Link>
         </div>
       </header>
 
@@ -540,7 +540,7 @@ function JerseyBuilderInner() {
               ).toString();
               const href = orderId
                 ? `/brief/${orderId}/style?${colorParams}`
-                : `/brief/new?${colorParams}`;
+                : `/brief/new?path=ai&${colorParams}`;
               return (
                 <Link
                   href={href}

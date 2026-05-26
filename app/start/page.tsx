@@ -14,7 +14,7 @@ import OrgLogo from "@/components/OrgLogo";
 const PATHS = [
   {
     id: "ai",
-    href: "/brief/new",
+    href: "/brief/choose",
     badge: "Self Service",
     sub: "AI-Powered Brief",
     headline: "Describe Your Vision.\nWe Handle the Rest.",

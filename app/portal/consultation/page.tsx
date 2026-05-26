@@ -244,7 +244,7 @@ export default function ConsultationPage() {
                     Our Design Library path lets you choose from curated Grace Studios silhouettes and receive
                     a design concept within minutes — no consultation required.
                   </p>
-                  <a href="/brief/new" className="text-[10px] font-display font-bold uppercase tracking-widest text-brand-primary hover:text-brand-secondary transition-colors">
+                  <a href="/brief/choose" className="text-[10px] font-display font-bold uppercase tracking-widest text-brand-primary hover:text-brand-secondary transition-colors">
                     Start with the Design Library →
                   </a>
                 </div>

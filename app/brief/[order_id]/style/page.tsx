@@ -334,7 +334,7 @@ export default function StylePage() {
         <div className="flex gap-3 pt-2">
           <button
             type="button"
-            onClick={() => router.push("/brief/new")}
+            onClick={() => router.push("/brief/choose")}
             className="px-6 py-3 rounded-lg font-display font-bold text-sm uppercase tracking-widest border border-brand-border text-brand-muted hover:text-brand-text hover:border-brand-muted transition-colors"
           >
             ← Back
