@@ -28,7 +28,12 @@ function SignupForm() {
   const searchParams = useSearchParams();
   const pathParam          = searchParams.get("path");
   const isConsultation     = pathParam === "consultation";
-  const nextAfterSignup    = isConsultation ? "/portal/consultation" : "/portal";
+  const isUpload           = pathParam === "upload";
+  const nextAfterSignup    = isConsultation
+    ? "/portal/consultation"
+    : isUpload
+      ? "/brief/new?path=upload"
+      : "/portal";
 
   // Account fields
   const [fullName, setFullName]   = useState("");

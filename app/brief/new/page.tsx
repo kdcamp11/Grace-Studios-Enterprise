@@ -105,6 +105,9 @@ function TeamInfoPage() {
         router.push(`/brief/${data.orderId}/style`);
       } else if (designPath === "builder") {
         router.push(`/jersey-builder?orderId=${data.orderId}&sport=${encodeURIComponent(payload.sport)}`);
+      } else if (designPath === "upload") {
+        // Client-provided concept — skip AI generation, go to upload page
+        router.push(`/orders/${data.orderId}/upload-concept`);
       } else {
         // Legacy fallback — direct links to /brief/new without a path param
         router.push(`/brief/${data.orderId}/choose?sport=${encodeURIComponent(payload.sport)}`);
