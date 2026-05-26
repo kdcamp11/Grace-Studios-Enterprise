@@ -23,7 +23,7 @@ function UsageBar({ used, included }: { used: number; included: number | null })
     return (
       <div className="space-y-1.5">
         <div className="h-2 rounded-full bg-brand-primary w-full" />
-        <span className="text-[10px] font-barlow text-brand-muted">Unlimited runs — no cap</span>
+        <span className="text-[10px] font-barlow text-brand-muted">Unlimited runs, no cap</span>
       </div>
     );
   }
@@ -66,7 +66,7 @@ function BillingContent() {
   const successMsg = searchParams.get("success") === "1"
     ? `Plan activated! You're now on ${CLIENT_PLANS[searchParams.get("plan") as ClientAiPlan ?? "starter"]?.label ?? "your new plan"}.`
     : searchParams.get("canceled") === "1"
-    ? "Checkout canceled — no changes were made."
+    ? "Checkout canceled. No changes were made."
     : null;
 
   useEffect(() => {

@@ -168,7 +168,7 @@ function SignupForm() {
               <p className="text-[10px] font-display font-bold uppercase tracking-[0.25em] text-brand-primary">What to Expect</p>
               <ul className="space-y-2">
                 {[
-                  "Design consultation included — we build around your brief",
+                  "Design consultation included, we build around your brief",
                   "Designer-built Illustrator production files",
                   "Two client approvals before anything moves to production",
                   "Matched supplier · First-piece review · Full tracking",
@@ -202,7 +202,7 @@ function SignupForm() {
                   We sent a confirmation link to{" "}
                   <span className="text-brand-text font-medium">{email}</span>.
                   {isConsultation
-                    ? " Confirm your email to activate your account — our team will reach out within 1–2 business days to schedule your design consultation."
+                    ? " Confirm your email to activate your account. Our team will reach out within 1–2 business days to schedule your design consultation."
                     : " Click it to activate your account."}
                 </p>
               </div>

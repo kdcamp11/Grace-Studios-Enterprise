@@ -143,7 +143,7 @@ export default function SupplierPortfolioPage() {
               className={inputCls}
             />
             <p className="text-[10px] font-barlow text-brand-muted mt-1.5 opacity-70">
-              Paste a direct link to an image — Imgur, Dropbox, Google Drive (shared), your own site, etc.
+              Paste a direct link to an image: Imgur, Dropbox, Google Drive (shared), your own site, etc.
             </p>
 
             {/* Preview */}
@@ -158,7 +158,7 @@ export default function SupplierPortfolioPage() {
                 />
                 {previewOk === false && (
                   <p className="text-xs font-barlow text-amber-400 mt-1">
-                    Could not load image — make sure the URL points directly to an image file.
+                    Could not load image. Make sure the URL points directly to an image file.
                   </p>
                 )}
               </div>
@@ -195,7 +195,7 @@ export default function SupplierPortfolioPage() {
               type="text"
               value={caption}
               onChange={(e) => setCaption(e.target.value)}
-              placeholder="e.g. Custom reversible set — Westside Warriors"
+              placeholder="e.g. Custom reversible set, Westside Warriors"
               className={inputCls}
             />
           </div>

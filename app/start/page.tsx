@@ -18,7 +18,7 @@ const PATHS = [
     badge: "Self Service",
     sub: "AI-Powered Brief",
     headline: "Describe Your Vision.\nWe Handle the Rest.",
-    body: "Answer a few questions about your team, sport, colors, and style. Our AI translates your input into a full design brief — ready for a Grace Studios designer in minutes.",
+    body: "Answer a few questions about your team, sport, colors, and style. Our AI translates your input into a full design brief, ready for a Grace Studios designer in minutes.",
     bullets: [
       "Ready in under 5 minutes",
       "AI concept generated immediately",
@@ -34,7 +34,7 @@ const PATHS = [
     badge: "Visual Design",
     sub: "Jersey Builder",
     headline: "Build It Visually.\nSee It in 3D.",
-    body: "Choose colors for every panel — jersey, shorts, collar, sleeves — upload your logo, and position it on a live 3D model. Your design choices flow directly into your brief.",
+    body: "Choose colors for every panel (jersey, shorts, collar, sleeves), upload your logo, and position it on a live 3D model. Your design choices flow directly into your brief.",
     bullets: [
       "Real-time 3D preview",
       "7 independently colorable zones",

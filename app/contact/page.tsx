@@ -106,7 +106,7 @@ function ConsultationForm() {
       </div>
       {status === "error" && (
         <p className="text-sm font-barlow text-red-600">
-          Something went wrong — please try again.
+          Something went wrong. Please try again.
         </p>
       )}
       <button
@@ -190,7 +190,7 @@ export default function ContactPage() {
                 {[
                   {
                     title: "Full Identity Systems",
-                    body: "Jersey + shorts + warmups + accessories — designed as one cohesive program.",
+                    body: "Jersey + shorts + warmups + accessories, designed as one cohesive program.",
                   },
                   {
                     title: "Large-Program Pricing",

@@ -66,7 +66,7 @@ export default function BillingPage() {
   const successMsg = searchParams.get("success") === "1"
     ? "Subscription activated! Your plan has been updated."
     : searchParams.get("canceled") === "1"
-    ? "Checkout canceled — no changes were made."
+    ? "Checkout canceled. No changes were made."
     : connectParam === "success"
     ? "Stripe account connected! Your payout settings are ready."
     : null;
@@ -258,7 +258,7 @@ export default function BillingPage() {
                     </span>
                   </div>
                   <p className="text-sm font-barlow" style={{ color: "var(--brand-muted)" }}>
-                    Client teams access the platform as a service at no cost — brief submission, AI concepts, order tracking, and approvals are free. Rate limits apply to AI generation.
+                    Client teams access the platform as a service at no cost: brief submission, AI concepts, order tracking, and approvals are free. Rate limits apply to AI generation.
                   </p>
                 </div>
                 <span className="font-display font-bold text-xl flex-shrink-0">Free</span>
@@ -341,7 +341,7 @@ export default function BillingPage() {
             {selectedPlan && selectedPlan !== current && (
               <div className="flex items-center justify-between rounded-xl border p-4" style={{ borderColor: "var(--brand-border)", background: "var(--brand-surface)" }}>
                 <p className="text-sm font-barlow" style={{ color: "var(--brand-muted)" }}>
-                  Upgrading to <strong style={{ color: "var(--brand-text)" }}>{PLANS[selectedPlan].label}</strong> — {fmt$(PLANS[selectedPlan].priceMonthly)}/mo
+                  Upgrading to <strong style={{ color: "var(--brand-text)" }}>{PLANS[selectedPlan].label}</strong>: {fmt$(PLANS[selectedPlan].priceMonthly)}/mo
                 </p>
                 <div className="flex items-center gap-3">
                   <button
@@ -461,7 +461,7 @@ export default function BillingPage() {
                       Link a Stripe account to receive automatic payouts when your clients pay invoices. The platform fee is deducted and the remainder is transferred to you instantly.
                     </p>
                     {connect?.stale && (
-                      <p className="text-xs font-barlow text-amber-600">Previous account may have been removed — connect a new one.</p>
+                      <p className="text-xs font-barlow text-amber-600">Previous account may have been removed. Connect a new one.</p>
                     )}
                   </div>
                   <button

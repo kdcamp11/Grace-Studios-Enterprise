@@ -124,7 +124,7 @@ function ConsultationForm() {
         />
       </div>
       {status === "error" && (
-        <p className="text-sm font-barlow text-red-600">Something went wrong — please try again.</p>
+        <p className="text-sm font-barlow text-red-600">Something went wrong. Please try again.</p>
       )}
       <button
         type="submit"
@@ -195,7 +195,7 @@ export default function ConsultationPage() {
             Work Directly<br />with Grace Studios.
           </h1>
           <p className="text-sm font-barlow text-brand-muted max-w-[480px] leading-relaxed mb-14">
-            Our full-service consultation path is for programs that want a custom design built around their identity —
+            Our full-service consultation path is for programs that want a custom design built around their identity,
             not selected from a library. You brief us, we design, you approve at every step.
           </p>
 
@@ -242,7 +242,7 @@ export default function ConsultationPage() {
                   <p className="text-xs font-display font-bold uppercase tracking-wide text-brand-text mb-1">Prefer to move faster?</p>
                   <p className="text-xs font-barlow text-brand-muted leading-relaxed mb-3">
                     Our Design Library path lets you choose from curated Grace Studios silhouettes and receive
-                    a design concept within minutes — no consultation required.
+                    a design concept within minutes, no consultation required.
                   </p>
                   <a href="/brief/choose" className="text-[10px] font-display font-bold uppercase tracking-widest text-brand-primary hover:text-brand-secondary transition-colors">
                     Start with the Design Library →

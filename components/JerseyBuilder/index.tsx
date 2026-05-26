@@ -314,7 +314,7 @@ export default function JerseyBuilder() {
                 onClick={() => fileInputRef.current?.click()}
                 className="w-full py-3 rounded-lg border border-dashed border-brand-border text-xs font-barlow text-brand-muted hover:border-brand-primary hover:text-brand-primary transition-colors"
               >
-                {logoFile ? `↺  Replace — ${logoFile.name}` : "Upload Logo (PNG, SVG, JPG)"}
+                {logoFile ? `↺  Replace: ${logoFile.name}` : "Upload Logo (PNG, SVG, JPG)"}
               </button>
               <p className="text-[9px] font-barlow text-brand-muted/60 mt-1.5">
                 PNG with transparent background works best for color tinting.

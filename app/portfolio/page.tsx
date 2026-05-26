@@ -103,7 +103,7 @@ export default function PortfolioPage() {
               What We Produce
             </h1>
             <p className="text-sm font-barlow text-brand-muted leading-relaxed max-w-[420px]">
-              Work from our production partners — custom sportswear built for programs like yours.
+              Work from our production partners, custom sportswear built for programs like yours.
             </p>
           </div>
 

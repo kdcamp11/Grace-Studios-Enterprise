@@ -155,7 +155,7 @@ export default function DesignerQueuePage() {
               </p>
               <p className="text-sm font-barlow text-brand-muted">
                 {tab === "needs_concepts"
-                  ? "All briefs have concepts — check back later."
+                  ? "All briefs have concepts. Check back later."
                   : "No clients have selected a concept yet."}
               </p>
             </div>
