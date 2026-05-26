@@ -133,6 +133,12 @@ const JERSEYS = [
   { name: "Culture",  src: "/jerseys/culture.jpg"  },
 ];
 
+const PARTNER_METRICS = [
+  { value: "Full Program",   sub: "Home, away, alternate, tracksuits" },
+  { value: "Adidas 3SSB",    sub: "Competing on the Adidas circuit"   },
+  { value: "Active Partner", sub: "Still partnered today"             },
+];
+
 // ── Path cards ───────────────────────────────────────────────────────────────
 
 const PATH_CARDS = [
@@ -629,6 +635,117 @@ export default function LoginPage() {
           </div>
 
         </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════════════════════
+          PARTNER SUCCESS — editorial case study
+      ══════════════════════════════════════════════════════════════════ */}
+      <section className="border-b border-brand-border">
+
+        {/* 3-column metrics strip */}
+        <div className="border-b border-brand-border">
+          <div className="max-w-5xl mx-auto px-5 sm:px-8 lg:px-10 grid grid-cols-3">
+            {PARTNER_METRICS.map((m, i) => (
+              <div
+                key={m.value}
+                className={`py-7 sm:py-8 flex flex-col gap-1.5
+                  ${i > 0 ? "border-l border-brand-border pl-5 sm:pl-8" : ""}
+                  ${i < 2 ? "pr-5 sm:pr-8" : ""}`}
+              >
+                <span className="font-display font-bold text-brand-text text-base sm:text-lg tracking-tight leading-none">{m.value}</span>
+                <span className="text-[9px] sm:text-[10px] font-display uppercase tracking-[0.18em] text-brand-muted leading-snug mt-0.5">{m.sub}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Case study block */}
+        <div className="max-w-5xl mx-auto px-5 sm:px-8 lg:px-10 py-12 sm:py-16 lg:py-20">
+          <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
+
+            {/* Left — editorial text */}
+            <div className="flex flex-col gap-5">
+              <div className="flex items-center gap-2.5">
+                <div className="w-[3px] h-5 bg-brand-primary flex-shrink-0" />
+                <span className="text-[10px] font-display font-bold uppercase tracking-[0.3em] text-brand-primary">Partner Work</span>
+              </div>
+
+              <h2
+                className="font-display font-bold uppercase tracking-tight text-brand-text leading-none"
+                style={{ fontSize: "clamp(1.3rem, 2.4vw, 2.1rem)" }}
+              >
+                From No Uniforms to<br />the Adidas 3SSB Circuit.
+              </h2>
+
+              <div className="space-y-3">
+                <p className="text-sm font-barlow text-brand-muted leading-relaxed">
+                  An AAU program came to us with no uniforms, no identity, and two teams to build from the ground up.
+                </p>
+                <p className="text-sm font-barlow text-brand-muted leading-relaxed">
+                  We developed the full system: home, away, alternate uniforms, and tracksuits.
+                </p>
+                <p className="text-sm font-barlow text-brand-muted leading-relaxed">
+                  They now compete on the Adidas 3SSB circuit and remain an active Grace Studios partner today.
+                </p>
+              </div>
+
+              <Link
+                href="/portfolio"
+                className="mt-2 self-start inline-flex items-center gap-2.5 px-5 py-3 rounded-xl border border-brand-border text-brand-muted font-display font-bold text-xs uppercase tracking-widest hover:border-brand-primary hover:text-brand-primary transition-colors duration-200"
+              >
+                View Program →
+              </Link>
+            </div>
+
+            {/* Right — partner media (swap placeholder for real asset when ready) */}
+            <div className="relative">
+              {/* Ambient glow */}
+              <div className="absolute -inset-4 rounded-3xl bg-brand-primary/5 blur-2xl pointer-events-none" />
+
+              <div className="relative rounded-2xl overflow-hidden border border-brand-border bg-brand-surface shadow-lg">
+
+                {/* ─── Replace this block with <img> once media is ready ─────────────
+                    Suggested path: /partner/aau-hero.jpg  (portrait, 3:4 ratio)
+                    <img
+                      src="/partner/aau-hero.jpg"
+                      alt="Partner program competing on the Adidas 3SSB circuit"
+                      className="w-full object-cover object-top"
+                      style={{ aspectRatio: "3/4" }}
+                    />
+                ─────────────────────────────────────────────────────────────── */}
+
+                {/* Media placeholder */}
+                <div
+                  className="w-full flex flex-col items-center justify-center gap-4 bg-brand-surface"
+                  style={{ aspectRatio: "3/4", maxHeight: 520 }}
+                >
+                  <div className="w-14 h-14 rounded-2xl border border-brand-border flex items-center justify-center">
+                    <svg className="w-6 h-6 text-brand-muted/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                    </svg>
+                  </div>
+                  <p className="text-[10px] font-display uppercase tracking-[0.25em] text-brand-muted/40">Partner Media</p>
+                </div>
+
+                {/* Gradient overlay — editorial depth */}
+                <div className="absolute bottom-0 left-0 right-0 h-1/4 bg-gradient-to-t from-brand-bg/50 to-transparent pointer-events-none" />
+
+                {/* Partner badge */}
+                <div className="absolute top-4 left-4">
+                  <span className="text-[8px] font-display font-bold uppercase tracking-[0.2em] px-2.5 py-1 rounded border text-brand-primary bg-brand-bg/80 border-brand-primary/30 backdrop-blur-sm">
+                    Adidas 3SSB
+                  </span>
+                </div>
+
+              </div>
+
+              {/* Corner accent dot */}
+              <div className="absolute -top-2 -right-2 w-4 h-4 rounded-full bg-brand-primary/40" />
+            </div>
+
+          </div>
+        </div>
+
       </section>
 
       {/* ══════════════════════════════════════════════════════════════════
