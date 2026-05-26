@@ -565,6 +565,8 @@ export default function ConceptsPage() {
   const [boardData, setBoardData]     = useState<BoardData | null>(null);
   const [gen, setGen]                 = useState<GenerationProgress>({ status: "not_started", progress: 0, total: 4, error: null });
   const [approving, setApproving]     = useState(false);
+  const [confirmStep, setConfirmStep] = useState(false); // true = show confirm banner
+  const [approveError, setApproveError] = useState<string | null>(null);
   const [isAdminView, setIsAdminView] = useState(false);
   const [feePaid, setFeePaid]         = useState<boolean | null>(null); // null = loading
 
@@ -765,30 +767,58 @@ export default function ConceptsPage() {
   }, [order_id]);
 
   // ── Approve ───────────────────────────────────────────────────────────────
-
-  async function handleApprove() {
+  // Step 1: first click shows inline confirm banner
+  function handleApprove() {
     if (!boardData) return;
+    setConfirmStep(true);
+    setApproveError(null);
+  }
+
+  // Step 2: confirmed — mark concept selected + call approve-order directly
+  async function handleConfirmApprove() {
     setApproving(true);
-    // Fetch concept rows via admin API to bypass RLS, get IDs
-    const boardRes = await fetch(`/api/portal/board-data?order_id=${order_id}`);
-    if (boardRes.ok) {
-      const { conceptRows } = await boardRes.json() as {
-        conceptRows: { id: string; concept_number: number; image_url: string }[];
-        brief: unknown;
-        order: unknown;
-      };
-      if (conceptRows && conceptRows.length > 0) {
-        const target = conceptRows.find(r => r.concept_number === 1) ?? conceptRows[0];
+    setApproveError(null);
+    try {
+      // Mark the concept as selected (best-effort, don't block on failure)
+      const boardRes = await fetch(`/api/portal/board-data?order_id=${order_id}`);
+      if (boardRes.ok) {
+        const { conceptRows } = await boardRes.json() as {
+          conceptRows: { id: string; concept_number: number; image_url: string }[];
+        };
+        const target = conceptRows?.find(r => r.concept_number === 1) ?? conceptRows?.[0];
         if (target?.id) {
           await fetch(`/api/orders/${order_id}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ action: "select_concept", concept_id: target.id }),
-          });
+          }).catch(() => {});
         }
       }
+
+      // Call approve-order directly — no separate page needed
+      const { data: { session } } = await supabase.auth.getSession();
+      const approveRes = await fetch("/api/approve-order", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
+        body: JSON.stringify({ order_id }),
+      });
+
+      if (!approveRes.ok) {
+        const body = await approveRes.json().catch(() => ({})) as { error?: string };
+        throw new Error(body.error ?? `Approval failed (${approveRes.status})`);
+      }
+
+      // Success — go to tracker
+      router.push(`/orders/${order_id}/tracker`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Something went wrong. Please try again.";
+      setApproveError(msg);
+      setApproving(false);
+      setConfirmStep(false);
     }
-    router.push(`/orders/${order_id}/approve`);
   }
 
   async function signOut() {
@@ -975,31 +1005,70 @@ export default function ConceptsPage() {
                    :               <LegacyBoard      data={boardData!} studioName={tenant.name} />
                   }
 
-                  <div className="flex items-center justify-between pt-1">
-                    <div className="flex flex-col gap-1">
+                  {/* ── Approve section ───────────────────────────────── */}
+                  {approveError && (
+                    <p className="text-xs text-red-400 font-barlow bg-red-950/30 border border-red-800 rounded-lg px-4 py-3">
+                      {approveError}
+                    </p>
+                  )}
+
+                  {confirmStep ? (
+                    /* Step 2 — confirm banner */
+                    <div className="rounded-xl border border-brand-primary/40 bg-brand-surface px-5 py-4 flex flex-col gap-3">
+                      <p className="text-sm font-barlow text-brand-text font-medium">
+                        Ready to approve this design and move into production?
+                      </p>
+                      <p className="text-xs font-barlow text-brand-muted leading-relaxed">
+                        Once approved, your studio will begin production. This cannot be undone.
+                      </p>
+                      <div className="flex gap-3 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => { setConfirmStep(false); setApproveError(null); }}
+                          disabled={approving}
+                          className="px-5 py-2.5 rounded-lg font-display font-bold text-xs uppercase tracking-widest border border-brand-border text-brand-muted hover:text-brand-text hover:border-brand-muted transition-colors disabled:opacity-40"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleConfirmApprove}
+                          disabled={approving}
+                          className="flex-1 py-2.5 rounded-lg font-display font-bold text-sm uppercase tracking-[0.15em] transition-all duration-200
+                            bg-brand-primary text-white hover:bg-brand-secondary
+                            disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          {approving ? "Approving…" : "Yes, Approve →"}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    /* Step 1 — initial action row */
+                    <div className="flex items-center justify-between pt-1">
+                      <div className="flex flex-col gap-1">
+                        <button
+                          type="button"
+                          disabled
+                          className="text-xs font-display uppercase tracking-wider text-brand-muted/40 cursor-not-allowed"
+                        >
+                          ↺ Regenerate
+                        </button>
+                        <span className="text-[9px] text-brand-muted/40 font-barlow max-w-[220px] leading-tight">
+                          Regeneration coming soon. Current concept is locked for review.
+                        </span>
+                      </div>
                       <button
                         type="button"
-                        disabled
-                        className="text-xs font-display uppercase tracking-wider text-brand-muted/40 cursor-not-allowed"
+                        onClick={handleApprove}
+                        disabled={approving}
+                        className="px-8 py-3.5 rounded-xl font-display font-bold text-sm uppercase tracking-[0.15em] transition-all duration-200
+                          bg-brand-text text-brand-bg hover:bg-brand-primary hover:text-white
+                          disabled:opacity-40 disabled:cursor-not-allowed"
                       >
-                        ↺ Regenerate
+                        Approve This Design →
                       </button>
-                      <span className="text-[9px] text-brand-muted/40 font-barlow max-w-[220px] leading-tight">
-                        Regeneration coming soon. Current concept is locked for review.
-                      </span>
                     </div>
-
-                    <button
-                      type="button"
-                      onClick={handleApprove}
-                      disabled={approving}
-                      className="px-8 py-3.5 rounded-xl font-display font-bold text-sm uppercase tracking-[0.15em] transition-all duration-200
-                        bg-brand-text text-brand-bg hover:bg-brand-primary hover:text-white
-                        disabled:opacity-40 disabled:cursor-not-allowed"
-                    >
-                      {approving ? "Saving…" : "Approve This Design →"}
-                    </button>
-                  </div>
+                  )}
                 </>
               )}
 

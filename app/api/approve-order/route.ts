@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { assertClientOrder, isErrorResponse } from "@/lib/api/assert-client-order";
+import { createServerClient } from "@/lib/supabase/server";
 
 export async function POST(req: NextRequest) {
   const { order_id } = await req.json();
@@ -9,8 +9,48 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "order_id required" }, { status: 400 });
   }
 
-  const ctx = await assertClientOrder(order_id);
-  if (isErrorResponse(ctx)) return ctx;
+  // Auth — same dual-method pattern (Bearer token first, then cookies)
+  const admin = createAdminClient();
+  let user: { id: string; email?: string | null } | null = null;
+
+  const authHeader = req.headers.get("Authorization") ?? "";
+  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
+  if (token) {
+    const { data } = await admin.auth.getUser(token);
+    if (data.user) user = data.user;
+  }
+  if (!user) {
+    const serverClient = createServerClient();
+    const { data: { user: cookieUser } } = await serverClient.auth.getUser();
+    user = cookieUser ?? null;
+  }
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Verify the order exists (admins can approve any order; clients verified below)
+  const { data: profile } = await admin.from("profiles").select("role").eq("id", user.id).single();
+  const isAdmin = profile?.role === "admin" || profile?.role === "super_admin";
+
+  if (!isAdmin) {
+    // Find this user's client record (user_id → email fallback, with back-fill)
+    let clientId: string | null = null;
+    const { data: c1 } = await admin.from("clients").select("id").eq("user_id", user.id).single();
+    if (c1) { clientId = c1.id; }
+    if (!clientId && user.email) {
+      const { data: c2 } = await admin.from("clients").select("id").eq("email", user.email.toLowerCase()).single();
+      if (c2) {
+        clientId = c2.id;
+        await admin.from("clients").update({ user_id: user.id }).eq("id", c2.id).is("user_id", null);
+      }
+    }
+    if (!clientId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+    const { data: orderCheck } = await admin.from("orders").select("id").eq("id", order_id).eq("client_id", clientId).single();
+    if (!orderCheck) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const supabase = admin;
 
   const supabase = createAdminClient();
 
