@@ -52,8 +52,6 @@ export async function POST(req: NextRequest) {
 
   const supabase = admin;
 
-  const supabase = createAdminClient();
-
   // Fetch everything needed
   const { data: order } = await supabase
     .from("orders")
