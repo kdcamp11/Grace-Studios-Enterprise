@@ -46,6 +46,7 @@ interface OrderDetail {
   estimated_delivery: string | null;
   tracking_number: string | null;
   supplier: string | null;
+  production_file_url: string | null;
   client: { name: string; email: string; sport: string; city: string };
   brief: Brief | null;
   concepts: { id: string; image_url: string; selected: boolean; concept_number: number }[];
@@ -104,7 +105,7 @@ export default function SupplierOrderPage() {
 
       const orderQuery = supabase
         .from("orders")
-        .select("id, order_number, stage, created_at, estimated_delivery, tracking_number, supplier, clients(name, email, sport, city)")
+        .select("id, order_number, stage, created_at, estimated_delivery, tracking_number, supplier, production_file_url, clients(name, email, sport, city)")
         .eq("id", order_id);
       // Suppliers can only see their own orders; admins can see any
       if (!adminViewing) orderQuery.eq("supplier_user_id", user.id);
@@ -132,6 +133,7 @@ export default function SupplierOrderPage() {
         estimated_delivery: o.estimated_delivery,
         tracking_number: o.tracking_number,
         supplier: o.supplier,
+        production_file_url: (o as Record<string, unknown>).production_file_url as string | null ?? null,
         client: client as OrderDetail["client"],
         brief: brief ?? null,
         concepts: (concepts ?? []) as OrderDetail["concepts"],
@@ -497,6 +499,35 @@ export default function SupplierOrderPage() {
                 </tbody>
               </table>
             </div>
+          </div>
+        )}
+
+        {/* ── Production Artwork File ─────────────────────────────────────────── */}
+        {order.production_file_url && (
+          <div className="bg-brand-surface border border-brand-primary/30 rounded-xl p-5 flex items-center gap-4">
+            <div className="w-10 h-10 rounded-lg bg-brand-primary/10 border border-brand-primary/30 flex items-center justify-center flex-shrink-0">
+              <svg className="w-5 h-5 text-brand-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+              </svg>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-display font-bold uppercase tracking-wider text-brand-primary">Production Artwork File</p>
+              <p className="text-[10px] text-brand-muted font-barlow mt-0.5">
+                Full vector artwork with zone colors, logos, names &amp; numbers. Open in Illustrator or Inkscape.
+              </p>
+            </div>
+            <a
+              href={order.production_file_url}
+              download={`production-artwork-${order.order_number}.svg`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-lg font-display font-bold text-xs uppercase tracking-widest bg-brand-primary text-white hover:bg-brand-secondary transition-all"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+              </svg>
+              Download SVG
+            </a>
           </div>
         )}
 

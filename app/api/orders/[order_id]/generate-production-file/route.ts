@@ -1,11 +1,16 @@
 /**
  * POST /api/orders/[order_id]/generate-production-file
  *
- * Generates a production-ready SVG flat template from the approved design data
- * and uploads it to Supabase Storage.
+ * Generates a full production artwork SVG including:
+ *   - Flat garment templates with zone colors
+ *   - Team logo(s) embedded
+ *   - Player name & number roster
+ *   - Color specs (HEX + CMYK)
+ *   - Design notes from brief
+ *   - Approved concept image reference
  *
  * Called automatically from /api/approve-order on client approval.
- * Can also be called manually by admins to regenerate the file.
+ * Can also be triggered manually by admins to regenerate.
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -13,10 +18,10 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import {
   generateJerseyProductionSVG,
   type ZoneColors,
+  type RosterEntry,
   type ProductionFileInput,
 } from "@/lib/production/jersey-svg";
 
-// Default zone colors — used when a brief has no zone_colors (AI brief path)
 const DEFAULT_ZONE_COLORS: ZoneColors = {
   jerseyTop:          "#1a1a1a",
   collar:             "#1a1a1a",
@@ -34,8 +39,8 @@ export async function POST(
   const { order_id } = params;
   const supabase = createAdminClient();
 
-  // ── 1. Fetch order + client + brief ────────────────────────────────────────
-  const [{ data: order }, { data: brief }] = await Promise.all([
+  // ── 1. Fetch order, brief, client, and approved concept in parallel ──────────
+  const [{ data: order }, { data: briefRaw }] = await Promise.all([
     supabase
       .from("orders")
       .select("id, order_number, tenant_id, client_id, stage")
@@ -43,7 +48,10 @@ export async function POST(
       .single(),
     supabase
       .from("briefs")
-      .select("zone_colors")
+      .select(
+        "zone_colors, primary_colors, secondary_colors, accent_color, " +
+        "logo_placement, design_system, vision_prompt, logo_urls, player_roster"
+      )
       .eq("order_id", order_id)
       .single(),
   ]);
@@ -52,14 +60,22 @@ export async function POST(
     return NextResponse.json({ error: "Order not found" }, { status: 404 });
   }
 
-  const { data: client } = await supabase
-    .from("clients")
-    .select("name, contact_name, email, sport, city, logo_url")
-    .eq("id", order.client_id)
-    .single();
+  const [{ data: client }, { data: approvedConcept }] = await Promise.all([
+    supabase
+      .from("clients")
+      .select("name, contact_name, email, sport, city, logo_url")
+      .eq("id", order.client_id)
+      .single(),
+    supabase
+      .from("concepts")
+      .select("image_url")
+      .eq("order_id", order_id)
+      .eq("selected", true)
+      .single(),
+  ]);
 
-  // ── 2. Resolve zone colors ──────────────────────────────────────────────────
-  // brief.zone_colors is saved when the jersey builder redirects to the brief
+  // ── 2. Resolve zone colors ────────────────────────────────────────────────────
+  const brief = briefRaw as Record<string, unknown> | null;
   const rawZones = brief?.zone_colors as Record<string, string> | null | undefined;
   const colors: ZoneColors = rawZones
     ? {
@@ -73,77 +89,89 @@ export async function POST(
       }
     : DEFAULT_ZONE_COLORS;
 
-  // ── 3. Build file data ──────────────────────────────────────────────────────
+  // ── 3. Resolve logos ──────────────────────────────────────────────────────────
+  // Prefer logo_urls array from brief (uploaded during brief flow),
+  // fall back to client.logo_url
+  const briefLogoUrls = Array.isArray(brief?.logo_urls)
+    ? (brief.logo_urls as unknown[]).filter((u): u is string => typeof u === "string" && u.startsWith("http"))
+    : [];
+  const clientLogoUrl = client?.logo_url ?? null;
+  const logoUrls: string[] = briefLogoUrls.length > 0
+    ? briefLogoUrls
+    : clientLogoUrl
+    ? [clientLogoUrl]
+    : [];
+
+  // ── 4. Resolve roster ─────────────────────────────────────────────────────────
+  type RawPlayer = { name?: string; number?: string; size?: string; cut?: string };
+  const rawRoster = Array.isArray(brief?.player_roster) ? (brief.player_roster as RawPlayer[]) : [];
+  const roster: RosterEntry[] = rawRoster
+    .filter((p) => p.name || p.number)
+    .map((p) => ({
+      name:   p.name   ?? "—",
+      number: p.number ?? "—",
+      size:   p.size   ?? undefined,
+      cut:    p.cut    ?? undefined,
+    }));
+
+  // ── 5. Build full production file input ───────────────────────────────────────
   const fileInput: ProductionFileInput = {
-    orderNumber: order.order_number ?? order_id.slice(0, 8).toUpperCase(),
-    teamName:    client?.name        ?? "Unknown Team",
-    sport:       client?.sport       ?? "Basketball",
-    contactName: client?.contact_name ?? undefined,
-    city:        client?.city         ?? undefined,
+    orderNumber:     order.order_number ?? order_id.slice(0, 8).toUpperCase(),
+    teamName:        client?.name          ?? "Unknown Team",
+    sport:           client?.sport         ?? "Basketball",
+    contactName:     client?.contact_name  ?? undefined,
+    city:            client?.city          ?? undefined,
     colors,
-    logoUrl:     client?.logo_url     ?? undefined,
+    primaryColors:   (brief?.primary_colors   as string | null) ?? undefined,
+    secondaryColors: (brief?.secondary_colors as string | null) ?? undefined,
+    accentColor:     (brief?.accent_color     as string | null) ?? undefined,
+    logoUrls:        logoUrls.length > 0 ? logoUrls : undefined,
+    logoPlacement:   (brief?.logo_placement   as string | null) ?? undefined,
+    designSystem:    (brief?.design_system    as string | null) ?? undefined,
+    visionPrompt:    (brief?.vision_prompt    as string | null) ?? undefined,
+    roster:          roster.length > 0 ? roster : undefined,
+    conceptImageUrl: approvedConcept?.image_url ?? undefined,
   };
 
-  // ── 4. Generate SVG ─────────────────────────────────────────────────────────
+  // ── 6. Generate SVG ────────────────────────────────────────────────────────────
   let svgContent: string;
   try {
     svgContent = generateJerseyProductionSVG(fileInput);
   } catch (err) {
     console.error("[generate-production-file] SVG generation error:", err);
-    return NextResponse.json(
-      { error: "Failed to generate production file" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Failed to generate production file" }, { status: 500 });
   }
 
-  // ── 5. Upload to Supabase Storage ───────────────────────────────────────────
+  // ── 7. Upload to Supabase Storage ──────────────────────────────────────────────
   const bucket   = "production-files";
   const filePath = `${order.tenant_id}/${order_id}.svg`;
 
-  // Ensure bucket exists (no-op if already created)
-  await supabase.storage
-    .createBucket(bucket, { public: true })
-    .catch(() => { /* already exists */ });
+  await supabase.storage.createBucket(bucket, { public: true }).catch(() => {});
 
   const { error: uploadError } = await supabase.storage
     .from(bucket)
     .upload(filePath, Buffer.from(svgContent, "utf-8"), {
       contentType: "image/svg+xml",
-      upsert: true,  // overwrite if regenerating
+      upsert: true,
     });
 
   if (uploadError) {
     console.error("[generate-production-file] Storage upload error:", uploadError);
-    return NextResponse.json(
-      { error: "Failed to upload production file", detail: uploadError.message },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Failed to upload production file", detail: uploadError.message }, { status: 500 });
   }
 
-  // ── 6. Get public URL and save to order ─────────────────────────────────────
-  const { data: urlData } = supabase.storage
-    .from(bucket)
-    .getPublicUrl(filePath);
-
+  const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(filePath);
   const fileUrl = urlData.publicUrl;
 
-  const { error: updateError } = await supabase
-    .from("orders")
-    .update({ production_file_url: fileUrl })
-    .eq("id", order_id);
-
-  if (updateError) {
-    console.error("[generate-production-file] Order update error:", updateError);
-    // Non-fatal — file is uploaded, URL is returned
+  // ── 8. Save URL to order (non-fatal if column missing) ────────────────────────
+  try {
+    await supabase.from("orders").update({ production_file_url: fileUrl }).eq("id", order_id);
+  } catch {
+    console.warn("[generate-production-file] Could not save production_file_url — run migration 016");
   }
 
-  // ── 7. Upsert into order_files so the client can see it on the tracker ──────
-  // Delete any existing production spec entry first (handles regeneration)
-  await supabase
-    .from("order_files")
-    .delete()
-    .eq("order_id", order_id)
-    .eq("label", "Production Spec");
+  // ── 9. Upsert into order_files so client sees it on tracker ───────────────────
+  await supabase.from("order_files").delete().eq("order_id", order_id).eq("label", "Production Artwork");
 
   const svgBytes = Buffer.from(svgContent, "utf-8").length;
   const { error: fileInsertError } = await supabase
@@ -152,22 +180,23 @@ export async function POST(
       tenant_id:      order.tenant_id,
       order_id,
       file_url:       fileUrl,
-      file_name:      `production-spec-${fileInput.orderNumber}.svg`,
+      file_name:      `production-artwork-${fileInput.orderNumber}.svg`,
       file_size:      svgBytes,
       file_type:      "image/svg+xml",
-      label:          "Production Spec",
+      label:          "Production Artwork",
       client_visible: true,
     });
 
   if (fileInsertError) {
     console.error("[generate-production-file] order_files insert error:", fileInsertError);
-    // Non-fatal
   }
 
   return NextResponse.json({
-    success:     true,
-    file_url:    fileUrl,
+    success:      true,
+    file_url:     fileUrl,
     order_id,
-    colors_used: Object.keys(rawZones ?? {}).length > 0 ? "jersey-builder" : "default",
+    roster_count: roster.length,
+    logos_count:  logoUrls.length,
+    colors_used:  Object.keys(rawZones ?? {}).length > 0 ? "jersey-builder" : "brief-colors",
   });
 }
