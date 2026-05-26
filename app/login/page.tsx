@@ -162,6 +162,19 @@ const PATH_CARDS = [
     ],
     cta: "Start with the Design Library →",
   },
+  {
+    href: "/signup?path=upload",
+    badge: "Bring Your Own",
+    sub: "Client Upload",
+    headline: "Have a Design?\nWe'll Execute It.",
+    bullets: [
+      "Upload your artwork or sketch",
+      "Designer executes to production spec",
+      "Production-ready Illustrator file",
+      "Full order tracking included",
+    ],
+    cta: "Upload Your Concept →",
+  },
 ];
 
 function PathCard({ card, className = "" }: { card: typeof PATH_CARDS[0]; className?: string }) {
@@ -516,18 +529,18 @@ export default function LoginPage() {
           </p>
 
           {/* Path cards — each card paired with its own CTA button */}
-          <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-5 text-left">
+          <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 text-left">
 
             {/* Customization column */}
             <div className="flex flex-col gap-3">
-              <div className="group relative flex flex-col gap-4 p-6 sm:p-7 rounded-2xl border border-brand-border bg-brand-bg hover:bg-brand-surface transition-colors duration-300 shadow-sm">
+              <div className="group relative flex flex-col gap-4 p-6 sm:p-7 rounded-2xl border border-brand-border bg-brand-bg hover:bg-brand-surface transition-colors duration-300 shadow-sm flex-1">
                 <div className="absolute top-0 left-0 right-0 h-[2px] bg-brand-primary opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-t-2xl" />
                 <div className="flex items-center justify-between">
                   <span className="text-[9px] font-display font-bold uppercase tracking-[0.2em] px-2.5 py-1 rounded border text-brand-primary bg-brand-primary/10 border-brand-primary/30">Customization</span>
                   <span className="text-[9px] font-display uppercase tracking-widest text-brand-muted/60">Full Service</span>
                 </div>
-                <p className="font-display font-bold uppercase tracking-wide text-brand-text leading-snug whitespace-pre-line" style={{ fontSize: "clamp(1rem, 1.6vw, 1.25rem)" }}>{"Custom. Collaborative.\nBuilt to Brief."}</p>
-                <ul className="space-y-2">
+                <p className="font-display font-bold uppercase tracking-wide text-brand-text leading-snug whitespace-pre-line" style={{ fontSize: "clamp(1rem, 1.4vw, 1.1rem)" }}>{"Custom. Collaborative.\nBuilt to Brief."}</p>
+                <ul className="space-y-2 flex-1">
                   {PATH_CARDS[0].bullets.map((item) => (
                     <li key={item} className="flex items-center gap-2.5">
                       <span className="w-1 h-1 rounded-full bg-brand-primary flex-shrink-0" />
@@ -544,14 +557,14 @@ export default function LoginPage() {
 
             {/* Self Service column */}
             <div className="flex flex-col gap-3">
-              <div className="group relative flex flex-col gap-4 p-6 sm:p-7 rounded-2xl border border-brand-border bg-brand-bg hover:bg-brand-surface transition-colors duration-300 shadow-sm">
+              <div className="group relative flex flex-col gap-4 p-6 sm:p-7 rounded-2xl border border-brand-border bg-brand-bg hover:bg-brand-surface transition-colors duration-300 shadow-sm flex-1">
                 <div className="absolute top-0 left-0 right-0 h-[2px] bg-brand-primary opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-t-2xl" />
                 <div className="flex items-center justify-between">
                   <span className="text-[9px] font-display font-bold uppercase tracking-[0.2em] px-2.5 py-1 rounded border text-brand-primary bg-brand-primary/10 border-brand-primary/30">Self Service</span>
                   <span className="text-[9px] font-display uppercase tracking-widest text-brand-muted/60">Design Library</span>
                 </div>
-                <p className="font-display font-bold uppercase tracking-wide text-brand-text leading-snug whitespace-pre-line" style={{ fontSize: "clamp(1rem, 1.6vw, 1.25rem)" }}>{"Grace Studios Design\nLanguage. Your Identity."}</p>
-                <ul className="space-y-2">
+                <p className="font-display font-bold uppercase tracking-wide text-brand-text leading-snug whitespace-pre-line" style={{ fontSize: "clamp(1rem, 1.4vw, 1.1rem)" }}>{"Grace Studios Design\nLanguage. Your Identity."}</p>
+                <ul className="space-y-2 flex-1">
                   {PATH_CARDS[1].bullets.map((item) => (
                     <li key={item} className="flex items-center gap-2.5">
                       <span className="w-1 h-1 rounded-full bg-brand-primary flex-shrink-0" />
@@ -563,6 +576,30 @@ export default function LoginPage() {
               <Link href="/signup?path=self-service"
                 className="flex items-center justify-center py-4 rounded-xl border-2 border-brand-primary text-brand-primary font-display font-bold text-sm uppercase tracking-widest hover:bg-brand-primary hover:text-white transition-colors">
                 Self Service →
+              </Link>
+            </div>
+
+            {/* Bring Your Own Concept column */}
+            <div className="flex flex-col gap-3">
+              <div className="group relative flex flex-col gap-4 p-6 sm:p-7 rounded-2xl border border-brand-border bg-brand-bg hover:bg-brand-surface transition-colors duration-300 shadow-sm flex-1">
+                <div className="absolute top-0 left-0 right-0 h-[2px] bg-brand-muted/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-t-2xl" />
+                <div className="flex items-center justify-between">
+                  <span className="text-[9px] font-display font-bold uppercase tracking-[0.2em] px-2.5 py-1 rounded border text-brand-muted bg-brand-muted/10 border-brand-muted/30">Bring Your Own</span>
+                  <span className="text-[9px] font-display uppercase tracking-widest text-brand-muted/60">Client Upload</span>
+                </div>
+                <p className="font-display font-bold uppercase tracking-wide text-brand-text leading-snug whitespace-pre-line" style={{ fontSize: "clamp(1rem, 1.4vw, 1.1rem)" }}>{"Have a Design?\nWe’ll Execute It."}</p>
+                <ul className="space-y-2 flex-1">
+                  {PATH_CARDS[2].bullets.map((item) => (
+                    <li key={item} className="flex items-center gap-2.5">
+                      <span className="w-1 h-1 rounded-full bg-brand-muted/60 flex-shrink-0" />
+                      <span className="text-xs font-barlow text-brand-muted leading-none">{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <Link href="/signup?path=upload"
+                className="flex items-center justify-center py-4 rounded-xl border border-brand-border text-brand-muted font-display font-bold text-sm uppercase tracking-widest hover:border-brand-primary hover:text-brand-primary transition-colors">
+                Upload Your Concept →
               </Link>
             </div>
 
