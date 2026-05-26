@@ -46,6 +46,22 @@ const PATHS = [
     accentColor: "group-hover:bg-brand-secondary",
     href: "/brief/new?path=builder",
   },
+  {
+    id: "upload",
+    badge: "Bring Your Own",
+    sub: "Client Concept Upload",
+    headline: "Have a Design?\nWe'll Execute It.",
+    body: "Already have artwork, a sketch, or a mockup? Upload it and a Grace Studios designer will turn it into a production-ready file — exact to your specifications.",
+    bullets: [
+      "Upload any image or PDF",
+      "Designer executes to production spec",
+      "Illustrator file delivered",
+      "Full order tracking included",
+    ],
+    cta: "Upload My Concept →",
+    accentColor: "group-hover:bg-brand-muted",
+    href: "/brief/new?path=upload",
+  },
 ] as const;
 
 export default function ChoosePage() {
@@ -84,7 +100,7 @@ export default function ChoosePage() {
             </p>
           </div>
 
-          <div className="grid sm:grid-cols-2 gap-5 mt-2">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 mt-2">
             {PATHS.map((path) => (
               <Link
                 key={path.id}

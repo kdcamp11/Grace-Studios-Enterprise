@@ -80,6 +80,8 @@ export async function POST(req: NextRequest) {
       const session = event.data.object as Stripe.Checkout.Session;
       if (session.mode === "subscription") {
         await handleSubscriptionCheckoutCompleted(session);
+      } else if (session.metadata?.payment_type === "design_deposit") {
+        await handleDesignDepositCompleted(session);
       } else {
         await handleCheckoutCompleted(session);
       }
@@ -302,6 +304,44 @@ async function refreshInvoiceStatus(
       .from("orders")
       .update({ deposit_paid: true })
       .eq("id", orderId);
+  }
+}
+
+async function handleDesignDepositCompleted(session: Stripe.Checkout.Session) {
+  const admin = createAdminClient();
+  const orderId  = session.metadata?.order_id;
+  const tenantId = session.metadata?.tenant_id;
+
+  if (!orderId) {
+    console.error("[stripe webhook] design_deposit session missing order_id metadata:", session.id);
+    return;
+  }
+
+  const paymentIntentId = typeof session.payment_intent === "string"
+    ? session.payment_intent
+    : session.payment_intent?.id ?? null;
+
+  // Mark the order as design-fee paid
+  await admin
+    .from("orders")
+    .update({ design_fee_paid: true })
+    .eq("id", orderId);
+
+  // Update our session record
+  await admin
+    .from("design_deposit_sessions")
+    .update({
+      status:                    "paid",
+      stripe_payment_intent_id:  paymentIntentId,
+    })
+    .eq("stripe_checkout_session_id", session.id);
+
+  // Auto-transfer net to tenant's Connect account if configured
+  if (tenantId) {
+    const grossCents = session.amount_total ?? 15000;
+    await createConnectTransfer(tenantId, grossCents, paymentIntentId, admin).catch(
+      (err) => console.error("[stripe webhook] design deposit connect transfer failed:", err),
+    );
   }
 }
 
