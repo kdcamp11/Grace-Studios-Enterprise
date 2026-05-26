@@ -1,23 +1,39 @@
 /**
  * GET /api/portal/order-detail?order_id=<uuid>
- * Returns full order detail for the client tracker page — bypasses RLS via admin client.
+ * Returns full order detail for the client tracker page.
+ *
+ * Auth: Bearer token first, cookie fallback (same dual-auth as approve-order).
+ * Ownership: user_id → email fallback → back-fill (same as portal/orders).
+ * Resilient: production_file_url and approved concept are surfaced as files
+ *   even if migration 016 hasn't been run yet.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createServerClient } from "@/lib/supabase/server";
 
 export async function GET(req: NextRequest) {
   const order_id = req.nextUrl.searchParams.get("order_id");
   if (!order_id) return NextResponse.json({ error: "order_id required" }, { status: 400 });
 
-  // Auth check
-  const supabase = createServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
   const admin = createAdminClient();
 
-  // Check role
+  // ── 1. Auth: Bearer token first, cookie fallback ─────────────────────────
+  let user: { id: string; email?: string | null } | null = null;
+
+  const authHeader = req.headers.get("Authorization") ?? "";
+  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
+  if (token) {
+    const { data } = await admin.auth.getUser(token);
+    if (data.user) user = data.user;
+  }
+  if (!user) {
+    const serverClient = createServerClient();
+    const { data: { user: cookieUser } } = await serverClient.auth.getUser();
+    user = cookieUser ?? null;
+  }
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  // ── 2. Role check ─────────────────────────────────────────────────────────
   const { data: profile } = await admin
     .from("profiles")
     .select("role")
@@ -26,71 +42,93 @@ export async function GET(req: NextRequest) {
 
   const isAdminRole = profile?.role === "admin" || profile?.role === "super_admin";
 
-  // Fetch order
+  // ── 3. Fetch order (without production_file_url in case migration not run) ─
   const { data: order } = await admin
     .from("orders")
-    .select("id, order_number, stage, created_at, estimated_delivery, tracking_number, client_id, production_file_url, tenant_id")
+    .select("id, order_number, stage, created_at, estimated_delivery, tracking_number, client_id, tenant_id")
     .eq("id", order_id)
     .single();
 
   if (!order) return NextResponse.json({ error: "Order not found" }, { status: 404 });
 
-  // Verify ownership for non-admins
+  // ── 4. Ownership check for non-admins (user_id → email fallback) ──────────
   if (!isAdminRole) {
-    const { data: clientByUserId } = await admin
+    let clientId: string | null = null;
+
+    const { data: c1 } = await admin
       .from("clients")
       .select("id")
-      .eq("id", order.client_id)
       .eq("user_id", user.id)
       .single();
+    if (c1) clientId = c1.id;
 
-    if (!clientByUserId && user.email) {
-      const { data: clientByEmail } = await admin
+    if (!clientId && user.email) {
+      const { data: c2 } = await admin
         .from("clients")
         .select("id")
-        .eq("id", order.client_id)
         .eq("email", user.email.toLowerCase())
         .single();
-
-      if (!clientByEmail) {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      if (c2) {
+        clientId = c2.id;
+        // Back-fill user_id
+        await admin.from("clients").update({ user_id: user.id }).eq("id", c2.id).is("user_id", null);
       }
-    } else if (!clientByUserId) {
+    }
+
+    if (!clientId || clientId !== order.client_id) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
   }
 
-  // Fetch related data
-  const [{ data: concepts }, { data: media }, { data: files }] = await Promise.all([
-    admin.from("concepts").select("id").eq("order_id", order_id).limit(1),
-    admin
-      .from("first_piece_media")
-      .select("id, media_url, media_type, caption, client_approved, client_note")
-      .eq("order_id", order_id)
-      .eq("client_visible", true)
-      .order("created_at", { ascending: true }),
-    admin
-      .from("order_files")
-      .select("id, file_url, file_name, file_size, file_type, label")
-      .eq("order_id", order_id)
-      .eq("client_visible", true)
-      .order("created_at", { ascending: true }),
-  ]);
+  // ── 5. Fetch related data in parallel ─────────────────────────────────────
+  const [{ data: concepts }, { data: media }, { data: files }, { data: approvedConcept }] =
+    await Promise.all([
+      admin.from("concepts").select("id").eq("order_id", order_id).limit(1),
+      admin
+        .from("first_piece_media")
+        .select("id, media_url, media_type, caption, client_approved, client_note")
+        .eq("order_id", order_id)
+        .eq("client_visible", true)
+        .order("created_at", { ascending: true }),
+      admin
+        .from("order_files")
+        .select("id, file_url, file_name, file_size, file_type, label")
+        .eq("order_id", order_id)
+        .eq("client_visible", true)
+        .order("created_at", { ascending: true }),
+      // Fetch approved concept so we can always show the design as a viewable file
+      admin
+        .from("concepts")
+        .select("image_url, concept_number")
+        .eq("order_id", order_id)
+        .eq("selected", true)
+        .single(),
+    ]);
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { client_id: _client_id, tenant_id: _tenant_id, ...orderFields } = order;
+  // ── 6. Try to get production_file_url separately (safe if column missing) ─
+  let productionFileUrl: string | null = null;
+  try {
+    const { data: orderExtra } = await admin
+      .from("orders")
+      .select("production_file_url")
+      .eq("id", order_id)
+      .single();
+    productionFileUrl = (orderExtra as { production_file_url?: string | null })?.production_file_url ?? null;
+  } catch {
+    // Column doesn't exist yet (migration 016 not run) — skip silently
+  }
 
-  // If no order_files rows exist yet but a production_file_url was saved on the
-  // order (e.g. approved before the order_files insert was added), surface it
-  // as a synthetic entry so the client always sees the download.
+  // ── 7. Build files list — always include the approved design image ─────────
+  const orderLabel = order.order_number ?? order_id.slice(0, 8).toUpperCase();
   let resolvedFiles = files ?? [];
+
+  // If the production SVG exists and isn't already in order_files, add it
   const hasProductionSpec = resolvedFiles.some((f) => f.label === "Production Spec");
-  if (!hasProductionSpec && order.production_file_url) {
-    const orderLabel = order.order_number ?? order_id.slice(0, 8).toUpperCase();
+  if (!hasProductionSpec && productionFileUrl) {
     resolvedFiles = [
       {
         id:        "production-spec-synthetic",
-        file_url:  order.production_file_url,
+        file_url:  productionFileUrl,
         file_name: `production-spec-${orderLabel}.svg`,
         file_size: null,
         file_type: "image/svg+xml",
@@ -100,12 +138,32 @@ export async function GET(req: NextRequest) {
     ];
   }
 
+  // Always show the approved concept image if design is approved (stage = files_sent or beyond)
+  const approvedStages = ["files_sent", "first_piece_in_progress", "first_piece_review", "bulk_production", "qc_verified", "shipped", "delivered", "complete"];
+  const hasConceptFile = resolvedFiles.some((f) => f.label === "Approved Design");
+  if (!hasConceptFile && approvedConcept?.image_url && approvedStages.includes(order.stage)) {
+    resolvedFiles = [
+      {
+        id:        "approved-concept-synthetic",
+        file_url:  approvedConcept.image_url,
+        file_name: `approved-design-${orderLabel}.jpg`,
+        file_size: null,
+        file_type: "image/jpeg",
+        label:     "Approved Design",
+      },
+      ...resolvedFiles,
+    ];
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { client_id: _cid, tenant_id: _tid, ...orderFields } = order;
+
   return NextResponse.json({
     order: {
       ...orderFields,
       has_concepts: (concepts?.length ?? 0) > 0,
-      media: media ?? [],
-      files: resolvedFiles,
+      media:        media ?? [],
+      files:        resolvedFiles,
     },
   });
 }

@@ -77,7 +77,12 @@ export default function TrackerPage() {
       if (profile.role === "supplier") { router.replace("/supplier"); return; }
       if (profile.role === "admin" || profile.role === "super_admin") setIsAdminView(true);
 
-      const res = await fetch(`/api/portal/order-detail?order_id=${order_id}`);
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`/api/portal/order-detail?order_id=${order_id}`, {
+        headers: session?.access_token
+          ? { Authorization: `Bearer ${session.access_token}` }
+          : {},
+      });
       if (!res.ok) { setLoading(false); return; }
 
       const { order: o } = await res.json() as { order: OrderData };
