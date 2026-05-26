@@ -37,7 +37,7 @@ export default function ChoosePage() {
               How Would You Like to Design?
             </h1>
             <p className="mt-2.5 text-sm text-brand-muted font-barlow leading-relaxed max-w-lg">
-              All paths lead to the same Grace Studios design quality. Choose what works best for your team.
+              Every path leads to the same standard of execution. Choose how you want to get there.
             </p>
           </div>
 
@@ -56,25 +56,25 @@ export default function ChoosePage() {
                   Full Service
                 </span>
                 <span className="text-[8px] font-display uppercase tracking-widest text-brand-muted/60">
-                  Consultation
+                  Fully Managed
                 </span>
               </div>
 
               <div>
                 <h2 className="font-display font-bold uppercase tracking-wide text-brand-text text-lg leading-snug">
-                  Custom.{"\n"}Collaborative.{"\n"}Built to Brief.
+                  Designed.{"\n"}Managed.{"\n"}Delivered.
                 </h2>
                 <p className="mt-2 text-[11px] font-barlow text-brand-muted leading-relaxed">
-                  Work directly with the Grace Studios team from the first conversation. We build around your program, your identity, and your timeline.
+                  Grace Studios works alongside your program as a creative and production partner — from the first conversation through final delivery. Strategy, design, and supplier management included.
                 </p>
               </div>
 
               <ul className="space-y-2 flex-1">
                 {[
-                  "Design consultation included",
-                  "Concepts built from your brief",
-                  "Designer-built production files",
-                  "Two client approvals",
+                  "Creative strategy and brand consultation",
+                  "Custom concept development from your brief",
+                  "Supplier coordination and production management",
+                  "End-to-end oversight — brief to final shipment",
                 ].map((item) => (
                   <li key={item} className="flex items-center gap-2.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-brand-primary flex-shrink-0" />
@@ -103,10 +103,10 @@ export default function ChoosePage() {
 
               <div>
                 <h2 className="font-display font-bold uppercase tracking-wide text-brand-text text-lg leading-snug">
-                  Your Direction.{"\n"}Our Execution.
+                  Design Freely.{"\n"}Activate When Ready.
                 </h2>
                 <p className="mt-2 text-[11px] font-barlow text-brand-muted leading-relaxed">
-                  Build your brief and Grace Studios handles the rest. Choose how you want to describe your vision.
+                  Design your uniforms and build your vision at no cost. Activate your project for $100 when you&apos;re ready for production — applied toward your final order.
                 </p>
               </div>
 
@@ -130,7 +130,7 @@ export default function ChoosePage() {
                     </svg>
                   </div>
                   <p className="text-[9px] font-barlow text-brand-muted leading-snug">
-                    Answer a few questions — Grace Studios builds your concept from our design philosophy.
+                    Describe your program, colors, and direction. Grace Studios builds the concept around your identity.
                   </p>
                 </Link>
 
@@ -148,7 +148,7 @@ export default function ChoosePage() {
                     </svg>
                   </div>
                   <p className="text-[9px] font-barlow text-brand-muted leading-snug">
-                    Color every zone in real-time 3D. Your choices pre-fill your brief automatically.
+                    Color every zone in real-time 3D. Your selections drive the production brief.
                   </p>
                 </Link>
               </div>
@@ -172,19 +172,19 @@ export default function ChoosePage() {
 
               <div>
                 <h2 className="font-display font-bold uppercase tracking-wide text-brand-text text-lg leading-snug">
-                  Have Production{"\n"}Files? We&apos;ll Take{"\n"}It from Here.
+                  Your Files.{"\n"}Our Production{"\n"}Network.
                 </h2>
                 <p className="mt-2 text-[11px] font-barlow text-brand-muted leading-relaxed">
-                  Upload your Adobe Illustrator or vector artwork. Grace Studios handles sublimation output, supplier coordination, and delivery. Your files remain your IP.
+                  For brands and programs with production-ready artwork. Grace Studios connects you to a vetted supplier network and manages production, fulfillment, and delivery. Your files remain your intellectual property throughout.
                 </p>
               </div>
 
               <ul className="space-y-2 flex-1">
                 {[
-                  "Adobe Illustrator, EPS, PDF or SVG",
-                  "Your artwork, your IP — always",
-                  "Grace Studios handles production & fulfillment",
-                  "Full order tracking included",
+                  "Adobe Illustrator, EPS, PDF or SVG accepted",
+                  "Your artwork remains your intellectual property",
+                  "Vetted supplier network and production management",
+                  "End-to-end fulfillment and delivery tracking",
                 ].map((item) => (
                   <li key={item} className="flex items-center gap-2.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-brand-muted/60 flex-shrink-0" />
@@ -194,7 +194,7 @@ export default function ChoosePage() {
               </ul>
 
               <p className="text-[9px] font-barlow text-brand-muted/50 italic border-t border-brand-border pt-3 leading-snug">
-                Have a sketch or rough concept? Use the Consultation path.
+                Have a sketch or concept? Consultation is the right starting point.
               </p>
 
               <span className="text-[10px] font-display font-bold uppercase tracking-widest text-brand-muted group-hover:text-brand-primary transition-colors">

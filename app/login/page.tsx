@@ -139,42 +139,42 @@ const PATH_CARDS = [
   {
     href: "/signup?path=consultation",
     badge: "Full Service",
-    sub: "Consultation",
-    headline: "Custom. Collaborative.\nBuilt to Brief.",
+    sub: "Fully Managed",
+    headline: "Strategy. Design.\nManaged to Delivery.",
     bullets: [
-      "Design consultation included",
-      "Concepts built from your brief",
-      "Designer-built production files",
-      "Two client approvals",
+      "Creative strategy and brand consultation",
+      "Custom concept development from your brief",
+      "Supplier coordination and production management",
+      "End-to-end oversight — brief to final shipment",
     ],
-    cta: "Work Directly with Grace Studios →",
+    cta: "Work with Grace Studios →",
   },
   {
     href: "/signup?path=self-service",
     badge: "Self Service",
     sub: "Two Paths",
-    headline: "Your Direction.\nOur Execution.",
+    headline: "Design Freely.\nActivate When Ready.",
     bullets: [
-      "Design Brief — describe your vision in minutes",
+      "Design Brief — submit your vision, we build the concept",
       "Jersey Builder — color every zone in real-time 3D",
-      "Concept built to Grace Studios standard",
-      "Two client approval checkpoints",
+      "Grace Studios handles production on activation",
+      "Free to build. $100 to activate.",
     ],
-    cta: "Start Self Service →",
+    cta: "Get Started →",
   },
   {
     href: "/signup?path=upload",
     badge: "Production Files",
     sub: "Your Artwork",
-    headline: "Have Production Files?\nWe'll Take It from Here.",
+    headline: "Your Files.\nOur Production\nNetwork.",
     bullets: [
-      "Adobe Illustrator, EPS, PDF or SVG",
-      "Your artwork, your IP — always",
-      "Grace Studios handles production & fulfillment",
-      "Full order tracking included",
+      "Adobe Illustrator, EPS, PDF or SVG accepted",
+      "Your artwork remains your intellectual property",
+      "Vetted supplier network and production management",
+      "End-to-end fulfillment and delivery tracking",
     ],
     cta: "Upload Production Files →",
-    note: "Have a sketch or concept? Use the Consultation path.",
+    note: "Have a sketch or concept? Consultation is the right starting point.",
   },
 ];
 
@@ -538,9 +538,9 @@ export default function LoginPage() {
                 <div className="absolute top-0 left-0 right-0 h-[2px] bg-brand-primary opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-t-2xl" />
                 <div className="flex items-center justify-between">
                   <span className="text-[9px] font-display font-bold uppercase tracking-[0.2em] px-2.5 py-1 rounded border text-brand-primary bg-brand-primary/10 border-brand-primary/30">Full Service</span>
-                  <span className="text-[9px] font-display uppercase tracking-widest text-brand-muted/60">Consultation</span>
+                  <span className="text-[9px] font-display uppercase tracking-widest text-brand-muted/60">Fully Managed</span>
                 </div>
-                <p className="font-display font-bold uppercase tracking-wide text-brand-text leading-snug whitespace-pre-line" style={{ fontSize: "clamp(1rem, 1.4vw, 1.1rem)" }}>{"Custom. Collaborative.\nBuilt to Brief."}</p>
+                <p className="font-display font-bold uppercase tracking-wide text-brand-text leading-snug whitespace-pre-line" style={{ fontSize: "clamp(1rem, 1.4vw, 1.1rem)" }}>{"Strategy. Design.\nManaged to Delivery."}</p>
                 <ul className="space-y-2 flex-1">
                   {PATH_CARDS[0].bullets.map((item) => (
                     <li key={item} className="flex items-center gap-2.5">
@@ -564,9 +564,9 @@ export default function LoginPage() {
                   <span className="text-[9px] font-display font-bold uppercase tracking-[0.2em] px-2.5 py-1 rounded border text-brand-primary bg-brand-primary/10 border-brand-primary/30">Self Service</span>
                   <span className="text-[9px] font-display uppercase tracking-widest text-brand-muted/60">Two Paths</span>
                 </div>
-                <p className="font-display font-bold uppercase tracking-wide text-brand-text leading-snug whitespace-pre-line" style={{ fontSize: "clamp(1rem, 1.4vw, 1.1rem)" }}>{"Your Direction.\nOur Execution."}</p>
+                <p className="font-display font-bold uppercase tracking-wide text-brand-text leading-snug whitespace-pre-line" style={{ fontSize: "clamp(1rem, 1.4vw, 1.1rem)" }}>{"Design Freely.\nActivate When Ready."}</p>
                 <p className="text-xs font-barlow text-brand-muted leading-relaxed">
-                  Build your brief and Grace Studios handles the rest. Choose your path below.
+                  Design and build your uniforms at no cost. Activate your project for $100 when you&apos;re ready — applied toward your final order.
                 </p>
                 {/* Sub-path links — fully tappable on mobile */}
                 <div className="flex flex-col gap-2 border-t border-brand-border pt-4 flex-1">
@@ -577,7 +577,7 @@ export default function LoginPage() {
                   >
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="w-1.5 h-1.5 rounded-full bg-brand-primary flex-shrink-0" />
-                      <span className="text-[10px] font-barlow text-brand-muted truncate"><span className="text-brand-text font-medium">Design Brief</span> — describe your vision in minutes</span>
+                      <span className="text-[10px] font-barlow text-brand-muted truncate"><span className="text-brand-text font-medium">Design Brief</span> — submit your vision, we build the concept</span>
                     </div>
                     <svg className="w-3 h-3 text-brand-muted/50 group-hover/sp:text-brand-primary flex-shrink-0 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
@@ -589,7 +589,7 @@ export default function LoginPage() {
                   >
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="w-1.5 h-1.5 rounded-full bg-brand-primary flex-shrink-0" />
-                      <span className="text-[10px] font-barlow text-brand-muted truncate"><span className="text-brand-text font-medium">Jersey Builder</span> — color every zone in real-time 3D</span>
+                      <span className="text-[10px] font-barlow text-brand-muted truncate"><span className="text-brand-text font-medium">Jersey Builder</span> — color every zone, selections drive the brief</span>
                     </div>
                     <svg className="w-3 h-3 text-brand-muted/50 group-hover/sp:text-brand-primary flex-shrink-0 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
@@ -607,7 +607,7 @@ export default function LoginPage() {
                   <span className="text-[9px] font-display font-bold uppercase tracking-[0.2em] px-2.5 py-1 rounded border text-brand-muted bg-brand-muted/10 border-brand-muted/30">Production Files</span>
                   <span className="text-[9px] font-display uppercase tracking-widest text-brand-muted/60">Your Artwork</span>
                 </div>
-                <p className="font-display font-bold uppercase tracking-wide text-brand-text leading-snug whitespace-pre-line" style={{ fontSize: "clamp(1rem, 1.4vw, 1.1rem)" }}>{"Have Production Files?\nWe’ll Take It from Here."}</p>
+                <p className="font-display font-bold uppercase tracking-wide text-brand-text leading-snug whitespace-pre-line" style={{ fontSize: "clamp(1rem, 1.4vw, 1.1rem)" }}>{"Your Files.\nOur Production Network."}</p>
                 <ul className="space-y-2 flex-1">
                   {PATH_CARDS[2].bullets.map((item) => (
                     <li key={item} className="flex items-center gap-2.5">
@@ -617,7 +617,7 @@ export default function LoginPage() {
                   ))}
                 </ul>
                 <p className="text-[9px] font-barlow text-brand-muted/50 italic border-t border-brand-border pt-3 leading-snug">
-                  Have a sketch or concept? Use the Consultation path.
+                  Have a sketch or concept? Consultation is the right starting point.
                 </p>
               </div>
               <Link href="/signup?path=upload"
