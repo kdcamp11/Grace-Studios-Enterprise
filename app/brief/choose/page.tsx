@@ -65,16 +65,16 @@ export default function ChoosePage() {
                   Designed.{"\n"}Managed.{"\n"}Delivered.
                 </h2>
                 <p className="mt-2 text-[11px] font-barlow text-brand-muted leading-relaxed">
-                  Grace Studios works alongside your program as a creative and production partner — from the first conversation through final delivery. Strategy, design, and supplier management included.
+                  Full creative and production partnership — strategy, concept, suppliers, and delivery. Handled.
                 </p>
               </div>
 
               <ul className="space-y-2 flex-1">
                 {[
-                  "Creative strategy and brand consultation",
-                  "Custom concept development from your brief",
+                  "Creative consultation and strategic direction",
+                  "Concepts developed around your program and identity",
                   "Supplier coordination and production management",
-                  "End-to-end oversight — brief to final shipment",
+                  "Starting at $300 — Essentials to Elite",
                 ].map((item) => (
                   <li key={item} className="flex items-center gap-2.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-brand-primary flex-shrink-0" />
@@ -106,7 +106,7 @@ export default function ChoosePage() {
                   Design Freely.{"\n"}Activate When Ready.
                 </h2>
                 <p className="mt-2 text-[11px] font-barlow text-brand-muted leading-relaxed">
-                  Design your uniforms and build your vision at no cost. Activate your project for $100 when you&apos;re ready for production — applied toward your final order.
+                  Free to build. $100 activation — applied toward your final order.
                 </p>
               </div>
 
@@ -130,7 +130,7 @@ export default function ChoosePage() {
                     </svg>
                   </div>
                   <p className="text-[9px] font-barlow text-brand-muted leading-snug">
-                    Describe your program, colors, and direction. Grace Studios builds the concept around your identity.
+                    Submit your vision, colors, and direction. We build the concept.
                   </p>
                 </Link>
 
@@ -175,16 +175,16 @@ export default function ChoosePage() {
                   Your Files.{"\n"}Our Production{"\n"}Network.
                 </h2>
                 <p className="mt-2 text-[11px] font-barlow text-brand-muted leading-relaxed">
-                  For brands and programs with production-ready artwork. Grace Studios connects you to a vetted supplier network and manages production, fulfillment, and delivery. Your files remain your intellectual property throughout.
+                  Production-ready artwork, managed to delivery. Your files. Your IP. Always.
                 </p>
               </div>
 
               <ul className="space-y-2 flex-1">
                 {[
-                  "Adobe Illustrator, EPS, PDF or SVG accepted",
-                  "Your artwork remains your intellectual property",
-                  "Vetted supplier network and production management",
-                  "End-to-end fulfillment and delivery tracking",
+                  "Adobe Illustrator, EPS, PDF or SVG",
+                  "Your artwork. Your IP. Always.",
+                  "Vetted suppliers, managed production",
+                  "Fulfillment, QC, and delivery tracking",
                 ].map((item) => (
                   <li key={item} className="flex items-center gap-2.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-brand-muted/60 flex-shrink-0" />

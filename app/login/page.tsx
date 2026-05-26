@@ -142,10 +142,10 @@ const PATH_CARDS = [
     sub: "Fully Managed",
     headline: "Strategy. Design.\nManaged to Delivery.",
     bullets: [
-      "Creative strategy and brand consultation",
-      "Custom concept development from your brief",
+      "Creative consultation and strategic direction",
+      "Concepts developed around your program and identity",
       "Supplier coordination and production management",
-      "End-to-end oversight — brief to final shipment",
+      "Starting at $300 — Essentials to Elite",
     ],
     cta: "Work with Grace Studios →",
   },
@@ -168,10 +168,10 @@ const PATH_CARDS = [
     sub: "Your Artwork",
     headline: "Your Files.\nOur Production\nNetwork.",
     bullets: [
-      "Adobe Illustrator, EPS, PDF or SVG accepted",
-      "Your artwork remains your intellectual property",
-      "Vetted supplier network and production management",
-      "End-to-end fulfillment and delivery tracking",
+      "Adobe Illustrator, EPS, PDF or SVG",
+      "Your artwork. Your IP. Always.",
+      "Vetted suppliers, managed production",
+      "Fulfillment, QC, and delivery tracking",
     ],
     cta: "Upload Production Files →",
     note: "Have a sketch or concept? Consultation is the right starting point.",
@@ -540,7 +540,7 @@ export default function LoginPage() {
                   <span className="text-[9px] font-display font-bold uppercase tracking-[0.2em] px-2.5 py-1 rounded border text-brand-primary bg-brand-primary/10 border-brand-primary/30">Full Service</span>
                   <span className="text-[9px] font-display uppercase tracking-widest text-brand-muted/60">Fully Managed</span>
                 </div>
-                <p className="font-display font-bold uppercase tracking-wide text-brand-text leading-snug whitespace-pre-line" style={{ fontSize: "clamp(1rem, 1.4vw, 1.1rem)" }}>{"Strategy. Design.\nManaged to Delivery."}</p>
+                <p className="font-display font-bold uppercase tracking-wide text-brand-text leading-snug whitespace-pre-line" style={{ fontSize: "clamp(1rem, 1.4vw, 1.1rem)" }}>{"Creative Direction.\nManaged to Delivery."}</p>
                 <ul className="space-y-2 flex-1">
                   {PATH_CARDS[0].bullets.map((item) => (
                     <li key={item} className="flex items-center gap-2.5">
@@ -566,7 +566,7 @@ export default function LoginPage() {
                 </div>
                 <p className="font-display font-bold uppercase tracking-wide text-brand-text leading-snug whitespace-pre-line" style={{ fontSize: "clamp(1rem, 1.4vw, 1.1rem)" }}>{"Design Freely.\nActivate When Ready."}</p>
                 <p className="text-xs font-barlow text-brand-muted leading-relaxed">
-                  Design and build your uniforms at no cost. Activate your project for $100 when you&apos;re ready — applied toward your final order.
+                  Free to build. $100 activation — applied toward your final order.
                 </p>
                 {/* Sub-path links — fully tappable on mobile */}
                 <div className="flex flex-col gap-2 border-t border-brand-border pt-4 flex-1">
