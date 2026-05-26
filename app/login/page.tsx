@@ -566,25 +566,37 @@ export default function LoginPage() {
                 </div>
                 <p className="font-display font-bold uppercase tracking-wide text-brand-text leading-snug whitespace-pre-line" style={{ fontSize: "clamp(1rem, 1.4vw, 1.1rem)" }}>{"Your Direction.\nOur Execution."}</p>
                 <p className="text-xs font-barlow text-brand-muted leading-relaxed">
-                  Build your brief and Grace Studios handles the rest. Choose how you want to describe your vision.
+                  Build your brief and Grace Studios handles the rest. Choose your path below.
                 </p>
-                {/* Sub-path pills */}
+                {/* Sub-path links — fully tappable on mobile */}
                 <div className="flex flex-col gap-2 border-t border-brand-border pt-4 flex-1">
                   <p className="text-[8px] font-display font-bold uppercase tracking-[0.28em] text-brand-muted mb-1">Choose your path</p>
-                  <div className="flex items-center gap-2 p-3 rounded-lg border border-brand-border bg-brand-surface">
-                    <span className="w-1.5 h-1.5 rounded-full bg-brand-primary flex-shrink-0" />
-                    <span className="text-[10px] font-barlow text-brand-muted"><span className="text-brand-text font-medium">Design Brief</span> — describe your vision in minutes</span>
-                  </div>
-                  <div className="flex items-center gap-2 p-3 rounded-lg border border-brand-border bg-brand-surface">
-                    <span className="w-1.5 h-1.5 rounded-full bg-brand-primary flex-shrink-0" />
-                    <span className="text-[10px] font-barlow text-brand-muted"><span className="text-brand-text font-medium">Jersey Builder</span> — color every zone in real-time 3D</span>
-                  </div>
+                  <Link
+                    href="/signup?path=ai"
+                    className="group/sp flex items-center justify-between gap-2 p-3 rounded-lg border border-brand-border bg-brand-surface hover:border-brand-primary hover:bg-brand-primary/5 transition-all duration-200"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="w-1.5 h-1.5 rounded-full bg-brand-primary flex-shrink-0" />
+                      <span className="text-[10px] font-barlow text-brand-muted truncate"><span className="text-brand-text font-medium">Design Brief</span> — describe your vision in minutes</span>
+                    </div>
+                    <svg className="w-3 h-3 text-brand-muted/50 group-hover/sp:text-brand-primary flex-shrink-0 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                    </svg>
+                  </Link>
+                  <Link
+                    href="/signup?path=builder"
+                    className="group/sp flex items-center justify-between gap-2 p-3 rounded-lg border border-brand-border bg-brand-surface hover:border-brand-primary hover:bg-brand-primary/5 transition-all duration-200"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="w-1.5 h-1.5 rounded-full bg-brand-primary flex-shrink-0" />
+                      <span className="text-[10px] font-barlow text-brand-muted truncate"><span className="text-brand-text font-medium">Jersey Builder</span> — color every zone in real-time 3D</span>
+                    </div>
+                    <svg className="w-3 h-3 text-brand-muted/50 group-hover/sp:text-brand-primary flex-shrink-0 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                    </svg>
+                  </Link>
                 </div>
               </div>
-              <Link href="/signup?path=self-service"
-                className="flex items-center justify-center py-4 rounded-xl border-2 border-brand-primary text-brand-primary font-display font-bold text-sm uppercase tracking-widest hover:bg-brand-primary hover:text-white transition-colors">
-                Self Service →
-              </Link>
             </div>
 
             {/* Production Files column */}
