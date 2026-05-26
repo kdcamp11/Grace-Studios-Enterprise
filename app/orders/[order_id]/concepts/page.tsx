@@ -690,6 +690,18 @@ export default function ConceptsPage() {
     if (res.status === 409) {
       const body = await res.json();
       if (body.status === "already_completed") { await loadBoard(); return; }
+      // already_running — just start polling
+    } else if (!res.ok) {
+      // Show a real error rather than an infinite spinner
+      let errMsg = "Concept generation failed — please try again.";
+      try {
+        const body = await res.json() as { error?: string };
+        if (body.error) errMsg = body.error;
+      } catch { /* ignore */ }
+      if (res.status === 429) errMsg = "Too many requests — please wait a few minutes and try again.";
+      setGen({ status: "failed", progress: 0, total: 4, error: errMsg });
+      generationFiredRef.current = false; // allow retry
+      return;
     }
 
     if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);

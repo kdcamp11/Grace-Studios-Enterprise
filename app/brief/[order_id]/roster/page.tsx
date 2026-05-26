@@ -95,7 +95,8 @@ export default function RosterPage() {
         throw new Error(error);
       }
       clearBriefState();
-      router.push(`/portal?submitted=${order_id}`);
+      // Go directly to concepts page so the user sees the live generation progress bar
+      router.push(`/orders/${order_id}/concepts`);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Something went wrong.";
       setError(msg);
