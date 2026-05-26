@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { createClient, sessionReady } from "@/lib/supabase/client";
 import { getProfile } from "@/lib/profile";
 import OrgLogo from "@/components/OrgLogo";
 import { useTenant } from "@/lib/tenant/context";
@@ -178,6 +178,11 @@ export default function ApprovePage() {
 
   useEffect(() => {
     async function load() {
+      // Wait for localStorage→cookie session migration before any server-gated fetch.
+      // Without this, the server-side createServerClient may read empty cookies and
+      // return 401 even when the client-side session is valid.
+      await sessionReady();
+
       const profile = await getProfile();
       if (profile) {
         if (profile.role === "supplier") { router.replace("/supplier"); return; }
@@ -186,7 +191,17 @@ export default function ApprovePage() {
 
       // Use server-side API (service-role key) to bypass RLS issues
       const res = await fetch(`/api/orders/${order_id}/approve-summary`);
-      if (!res.ok) { setLoading(false); return; }
+      if (!res.ok) {
+        // Surface the real error rather than a silent blank screen
+        try {
+          const body = await res.json() as { error?: string };
+          setError(body.error ?? `Request failed (${res.status})`);
+        } catch {
+          setError(`Request failed (${res.status})`);
+        }
+        setLoading(false);
+        return;
+      }
 
       const { order, client, brief, concept } = await res.json() as {
         order:   { orderNumber: string | null; stage: string; packageTier: string | null; accountLead: string | null; notes: string | null; depositPaid: boolean; balancePaid: boolean };
@@ -286,8 +301,13 @@ export default function ApprovePage() {
 
   if (!summary) {
     return (
-      <div className="min-h-screen bg-brand-bg flex items-center justify-center">
+      <div className="min-h-screen bg-brand-bg flex items-center justify-center flex-col gap-3">
         <p className="text-brand-muted font-barlow">Order not found.</p>
+        {error && (
+          <p className="text-xs text-red-400 font-mono bg-red-950/30 border border-red-800 rounded-lg px-4 py-2 max-w-sm text-center">
+            {error}
+          </p>
+        )}
       </div>
     );
   }
