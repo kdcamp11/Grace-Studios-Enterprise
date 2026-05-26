@@ -219,9 +219,9 @@ export default function UploadProductionFilePage() {
             <ol className="space-y-3">
               {[
                 "Upload your production file (you're here)",
-                "Pay $150 production deposit — credited to your order",
-                "Grace Studios prepares sublimation-ready output",
-                "You approve the final file before production begins",
+                "Activate your project — $100 applied to your final order total",
+                "Grace Studios designer prepares production-ready output",
+                "You approve the final artwork before production begins",
                 "Supplier produces and ships to your team",
               ].map((step, i) => (
                 <li key={i} className="flex items-start gap-3">

@@ -5,8 +5,8 @@ import { assertClientOrder, isErrorResponse } from "@/lib/api/assert-client-orde
 import { getRequestTenant } from "@/lib/tenant/get-request-tenant";
 import { rateLimit } from "@/lib/rate-limit";
 
-// Design deposit amount in cents ($150.00)
-const DESIGN_DEPOSIT_CENTS = 15000;
+// Project activation amount in cents ($100.00)
+const DESIGN_DEPOSIT_CENTS = 10000;
 
 /**
  * POST /api/orders/[order_id]/design-deposit
@@ -69,12 +69,8 @@ export async function POST(
   }
 
   const isClientProvided = order.concept_source === "client_provided";
-  const productName = isClientProvided
-    ? `${tenant.name} — Design Execution Deposit`
-    : `${tenant.name} — Design Concept Deposit`;
-  const description = isClientProvided
-    ? "Designer execution of your uploaded concept — credited toward your order total"
-    : "AI concept generation + designer review — credited toward your order total";
+  const productName = `${tenant.name} — Project Activation`;
+  const description = "Applied toward your final order total";
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   const successUrl = isClientProvided

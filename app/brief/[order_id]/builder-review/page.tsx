@@ -180,9 +180,9 @@ export default function BuilderReviewPage() {
           <ol className="space-y-3">
             {[
               "Submit your builder design (you're here)",
-              "Pay $150 design execution deposit — credited to your order",
+              "Activate your project — $100 applied to your final order total",
               "A Grace Studios designer executes your color layout",
-              "You approve the final design before production begins",
+              "You approve the final artwork before production begins",
               "Supplier produces and ships to your team",
             ].map((step, i) => (
               <li key={i} className="flex items-start gap-3">
