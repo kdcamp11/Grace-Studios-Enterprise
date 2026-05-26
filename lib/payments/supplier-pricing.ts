@@ -2,13 +2,13 @@
  * Supplier Pricing Utilities
  *
  * Grace Studios marks up all supplier base costs by a configurable
- * percentage (default 3%) before presenting prices to clients.
+ * percentage (default 10%) before presenting prices to clients.
  *
  * Usage:
  *   const clientPrice = applyMarkup(supplierBasePrice, tenant.supplier_markup_percent);
  */
 
-export const SUPPLIER_MARKUP_DEFAULT = 3.0; // 3%
+export const SUPPLIER_MARKUP_DEFAULT = 10.0; // 10%
 
 /**
  * Apply a percentage markup to a supplier base price.
