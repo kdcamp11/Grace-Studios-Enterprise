@@ -218,7 +218,7 @@ export default function CheckoutPage() {
               </>
             ) : (
               <>
-                <IncludedItem text="All 4 AI concept renders unlocked" />
+                <IncludedItem text="All 4 concept views unlocked" />
                 <IncludedItem text="Design approval + designer assignment" />
                 <IncludedItem text="Production-ready Illustrator file" />
                 <IncludedItem text="Full order tracking" />

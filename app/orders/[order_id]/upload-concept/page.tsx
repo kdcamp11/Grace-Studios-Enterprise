@@ -4,15 +4,15 @@ import { useState, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import OrgLogo from "@/components/OrgLogo";
 
-const ACCEPTED = ".jpg,.jpeg,.png,.webp,.gif,.pdf";
-const MAX_MB   = 20;
+const ACCEPTED = ".ai,.eps,.pdf,.svg";
+const ACCEPTED_LABEL = "Adobe Illustrator (.ai), EPS, PDF, or SVG";
+const MAX_MB = 50;
 
-export default function UploadConceptPage() {
+export default function UploadProductionFilePage() {
   const { order_id } = useParams<{ order_id: string }>();
   const router        = useRouter();
 
   const [file, setFile]           = useState<File | null>(null);
-  const [preview, setPreview]     = useState<string | null>(null);
   const [notes, setNotes]         = useState("");
   const [uploading, setUploading] = useState(false);
   const [error, setError]         = useState<string | null>(null);
@@ -27,15 +27,6 @@ export default function UploadConceptPage() {
     }
     setFile(f);
     setError(null);
-
-    // Generate a preview for images
-    if (f.type.startsWith("image/")) {
-      const reader = new FileReader();
-      reader.onload = (e) => setPreview(e.target?.result as string);
-      reader.readAsDataURL(f);
-    } else {
-      setPreview(null); // PDF — no inline preview
-    }
   }, []);
 
   function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -49,6 +40,8 @@ export default function UploadConceptPage() {
     const f = e.dataTransfer.files?.[0];
     if (f) handleFile(f);
   }
+
+  const fileExt = file?.name.split(".").pop()?.toUpperCase() ?? "";
 
   async function handleUpload() {
     if (!file) return;
@@ -71,7 +64,7 @@ export default function UploadConceptPage() {
         throw new Error(data.error ?? "Upload failed. Please try again.");
       }
 
-      // Upload successful — go to checkout for design execution deposit
+      // Success — go to checkout for design execution deposit
       router.push(`/orders/${order_id}/checkout`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
@@ -98,14 +91,49 @@ export default function UploadConceptPage() {
           {/* Heading */}
           <div>
             <p className="text-[10px] font-display uppercase tracking-[0.3em] text-brand-primary mb-1">
-              Client Concept Upload
+              Production File Upload
             </p>
             <h1 className="font-display text-3xl font-bold uppercase tracking-wide text-brand-text leading-tight">
-              Upload Your Design
+              Upload Your Artwork
             </h1>
             <p className="mt-2 text-sm text-brand-muted font-barlow leading-relaxed">
-              Upload your artwork, sketch, or mockup. A Grace Studios designer will
-              execute it into a production-ready Illustrator file.
+              Upload your production-ready file. Grace Studios will handle sublimation output,
+              supplier coordination, and delivery — everything stays under your brand.
+            </p>
+          </div>
+
+          {/* IP notice */}
+          <div className="flex items-start gap-3 rounded-xl border border-brand-primary/20 bg-brand-primary/5 px-4 py-3.5">
+            <svg className="w-4 h-4 text-brand-primary flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+            </svg>
+            <div>
+              <p className="text-[10px] font-display font-bold uppercase tracking-wider text-brand-primary">Your IP, Protected</p>
+              <p className="text-[10px] font-barlow text-brand-muted mt-0.5 leading-relaxed">
+                All files you upload are and remain your intellectual property. Grace Studios will only
+                use your artwork to fulfill your order and will never share, resell, or repurpose it.
+              </p>
+            </div>
+          </div>
+
+          {/* Accepted file types callout */}
+          <div className="rounded-xl border border-brand-border bg-brand-surface px-4 py-3">
+            <p className="text-[9px] font-display font-bold uppercase tracking-[0.28em] text-brand-muted mb-2">
+              Accepted file types
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {["Adobe Illustrator (.ai)", "EPS", "PDF", "SVG"].map((type) => (
+                <span key={type} className="text-[9px] font-display font-bold uppercase tracking-wider px-2 py-1 rounded border border-brand-border text-brand-muted bg-brand-bg">
+                  {type}
+                </span>
+              ))}
+            </div>
+            <p className="text-[9px] font-barlow text-brand-muted/60 mt-2 leading-relaxed">
+              Have a sketch or rough concept instead?{" "}
+              <a href="/contact" className="underline text-brand-primary hover:text-brand-secondary transition-colors">
+                Use our Consultation path
+              </a>{" "}
+              — our team will work with you from scratch.
             </p>
           </div>
 
@@ -134,16 +162,10 @@ export default function UploadConceptPage() {
               className="hidden"
             />
 
-            {/* Preview or icon */}
-            {preview ? (
-              <div className="relative w-32 h-32 rounded-xl overflow-hidden border border-brand-border shadow-md">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={preview} alt="Concept preview" className="w-full h-full object-contain" />
-              </div>
-            ) : file ? (
-              /* PDF indicator */
-              <div className="w-16 h-16 rounded-2xl bg-red-900/20 border border-red-700/30 flex items-center justify-center">
-                <span className="text-xs font-display font-bold uppercase tracking-widest text-red-400">PDF</span>
+            {/* File indicator or upload icon */}
+            {file ? (
+              <div className="w-16 h-16 rounded-2xl bg-brand-primary/10 border border-brand-primary/30 flex items-center justify-center">
+                <span className="text-xs font-display font-bold uppercase tracking-widest text-brand-primary">{fileExt}</span>
               </div>
             ) : (
               <div className="w-14 h-14 rounded-2xl bg-brand-primary/10 border border-brand-primary/30 flex items-center justify-center">
@@ -168,22 +190,22 @@ export default function UploadConceptPage() {
                   Drop your file here or <span className="text-brand-primary underline">browse</span>
                 </p>
                 <p className="text-[10px] text-brand-muted font-barlow mt-1">
-                  JPEG, PNG, WebP, GIF or PDF — up to {MAX_MB}MB
+                  {ACCEPTED_LABEL} — up to {MAX_MB}MB
                 </p>
               </div>
             )}
           </div>
 
-          {/* Notes */}
+          {/* Production notes */}
           <div>
             <label className="block text-xs font-display uppercase tracking-wider text-brand-muted mb-2">
-              Designer notes <span className="normal-case tracking-normal text-brand-muted/60">(optional)</span>
+              Production notes <span className="normal-case tracking-normal text-brand-muted/60">(optional)</span>
             </label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={3}
-              placeholder="Describe any changes you'd like, color requirements, sizing notes, etc."
+              placeholder="Color references, sizing specs, placement instructions, pantone codes…"
               className="w-full bg-brand-surface border border-brand-border rounded-xl px-4 py-3 text-brand-text font-barlow text-sm
                 placeholder-brand-muted/50 focus:outline-none focus:border-brand-primary transition-colors resize-none"
             />
@@ -196,10 +218,11 @@ export default function UploadConceptPage() {
             </p>
             <ol className="space-y-3">
               {[
-                "Upload your concept (you're here)",
-                "Pay $150 design execution deposit",
-                "Designer executes your concept into a production-ready file",
+                "Upload your production file (you're here)",
+                "Pay $150 production deposit — credited to your order",
+                "Grace Studios prepares sublimation-ready output",
                 "You approve the final file before production begins",
+                "Supplier produces and ships to your team",
               ].map((step, i) => (
                 <li key={i} className="flex items-start gap-3">
                   <span className={`
@@ -234,7 +257,7 @@ export default function UploadConceptPage() {
               transition-all duration-200 shadow-[0_4px_24px_rgba(212,175,55,0.2)]
               hover:shadow-[0_4px_32px_rgba(212,175,55,0.35)]"
           >
-            {uploading ? "Uploading…" : file ? "Upload Concept → Proceed to Payment" : "Select a File to Continue"}
+            {uploading ? "Uploading…" : file ? "Upload File → Proceed to Payment" : "Select a File to Continue"}
           </button>
 
         </div>

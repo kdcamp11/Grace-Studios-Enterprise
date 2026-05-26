@@ -152,28 +152,29 @@ const PATH_CARDS = [
   {
     href: "/signup?path=self-service",
     badge: "Self Service",
-    sub: "Design Library",
-    headline: "Grace Studios Design\nLanguage. Your Identity.",
+    sub: "Design Brief",
+    headline: "Describe Your Vision.\nWe Handle the Rest.",
     bullets: [
-      "Curated Grace Studios silhouettes",
-      "Design concepts ready in minutes",
-      "Your colors and logo — our framework",
-      "Faster turnaround, same quality",
+      "Guided questions — under 3 minutes",
+      "Concept built to Grace Studios standard",
+      "Designer mockup follows",
+      "Two client approval checkpoints",
     ],
-    cta: "Start with the Design Library →",
+    cta: "Start with a Design Brief →",
   },
   {
     href: "/signup?path=upload",
-    badge: "Bring Your Own",
-    sub: "Client Upload",
-    headline: "Have a Design?\nWe'll Execute It.",
+    badge: "Production Files",
+    sub: "Your Artwork",
+    headline: "Have Production Files?\nWe'll Take It from Here.",
     bullets: [
-      "Upload your artwork or sketch",
-      "Designer executes to production spec",
-      "Production-ready Illustrator file",
+      "Adobe Illustrator, EPS, PDF or SVG",
+      "Your artwork, your IP — always",
+      "Grace Studios handles production & fulfillment",
       "Full order tracking included",
     ],
-    cta: "Upload Your Concept →",
+    cta: "Upload Production Files →",
+    note: "Have a sketch or concept? Use the Consultation path.",
   },
 ];
 
@@ -561,9 +562,9 @@ export default function LoginPage() {
                 <div className="absolute top-0 left-0 right-0 h-[2px] bg-brand-primary opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-t-2xl" />
                 <div className="flex items-center justify-between">
                   <span className="text-[9px] font-display font-bold uppercase tracking-[0.2em] px-2.5 py-1 rounded border text-brand-primary bg-brand-primary/10 border-brand-primary/30">Self Service</span>
-                  <span className="text-[9px] font-display uppercase tracking-widest text-brand-muted/60">Design Library</span>
+                  <span className="text-[9px] font-display uppercase tracking-widest text-brand-muted/60">Design Brief</span>
                 </div>
-                <p className="font-display font-bold uppercase tracking-wide text-brand-text leading-snug whitespace-pre-line" style={{ fontSize: "clamp(1rem, 1.4vw, 1.1rem)" }}>{"Grace Studios Design\nLanguage. Your Identity."}</p>
+                <p className="font-display font-bold uppercase tracking-wide text-brand-text leading-snug whitespace-pre-line" style={{ fontSize: "clamp(1rem, 1.4vw, 1.1rem)" }}>{"Describe Your Vision.\nWe Handle the Rest."}</p>
                 <ul className="space-y-2 flex-1">
                   {PATH_CARDS[1].bullets.map((item) => (
                     <li key={item} className="flex items-center gap-2.5">
@@ -575,19 +576,19 @@ export default function LoginPage() {
               </div>
               <Link href="/signup?path=self-service"
                 className="flex items-center justify-center py-4 rounded-xl border-2 border-brand-primary text-brand-primary font-display font-bold text-sm uppercase tracking-widest hover:bg-brand-primary hover:text-white transition-colors">
-                Self Service →
+                Design Brief →
               </Link>
             </div>
 
-            {/* Bring Your Own Concept column */}
+            {/* Production Files column */}
             <div className="flex flex-col gap-3">
               <div className="group relative flex flex-col gap-4 p-6 sm:p-7 rounded-2xl border border-brand-border bg-brand-bg hover:bg-brand-surface transition-colors duration-300 shadow-sm flex-1">
                 <div className="absolute top-0 left-0 right-0 h-[2px] bg-brand-muted/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-t-2xl" />
                 <div className="flex items-center justify-between">
-                  <span className="text-[9px] font-display font-bold uppercase tracking-[0.2em] px-2.5 py-1 rounded border text-brand-muted bg-brand-muted/10 border-brand-muted/30">Bring Your Own</span>
-                  <span className="text-[9px] font-display uppercase tracking-widest text-brand-muted/60">Client Upload</span>
+                  <span className="text-[9px] font-display font-bold uppercase tracking-[0.2em] px-2.5 py-1 rounded border text-brand-muted bg-brand-muted/10 border-brand-muted/30">Production Files</span>
+                  <span className="text-[9px] font-display uppercase tracking-widest text-brand-muted/60">Your Artwork</span>
                 </div>
-                <p className="font-display font-bold uppercase tracking-wide text-brand-text leading-snug whitespace-pre-line" style={{ fontSize: "clamp(1rem, 1.4vw, 1.1rem)" }}>{"Have a Design?\nWe’ll Execute It."}</p>
+                <p className="font-display font-bold uppercase tracking-wide text-brand-text leading-snug whitespace-pre-line" style={{ fontSize: "clamp(1rem, 1.4vw, 1.1rem)" }}>{"Have Production Files?\nWe’ll Take It from Here."}</p>
                 <ul className="space-y-2 flex-1">
                   {PATH_CARDS[2].bullets.map((item) => (
                     <li key={item} className="flex items-center gap-2.5">
@@ -596,10 +597,13 @@ export default function LoginPage() {
                     </li>
                   ))}
                 </ul>
+                <p className="text-[9px] font-barlow text-brand-muted/50 italic border-t border-brand-border pt-3 leading-snug">
+                  Have a sketch or concept? Use the Consultation path.
+                </p>
               </div>
               <Link href="/signup?path=upload"
                 className="flex items-center justify-center py-4 rounded-xl border border-brand-border text-brand-muted font-display font-bold text-sm uppercase tracking-widest hover:border-brand-primary hover:text-brand-primary transition-colors">
-                Upload Your Concept →
+                Upload Production Files →
               </Link>
             </div>
 

@@ -17,16 +17,16 @@ const PATHS = [
   {
     id: "ai",
     badge: "Self Service",
-    sub: "AI-Powered Brief",
+    sub: "Design Brief",
     headline: "Describe Your Vision.\nWe Handle the Rest.",
-    body: "Answer a few quick questions about your style, colors, and inspirations. Our AI turns your answers into a design brief — reviewed and executed by a Grace Studios designer.",
+    body: "Answer a few quick questions about your style, colors, and inspirations. Grace Studios builds your concept around our design philosophy — reviewed and executed by your designer.",
     bullets: [
       "Guided questions — under 3 minutes",
-      "AI concept generated immediately",
+      "Concept built to Grace Studios standard",
       "Designer mockup follows",
       "Two client approval checkpoints",
     ],
-    cta: "Continue with AI Brief →",
+    cta: "Start with a Design Brief →",
     accentColor: "group-hover:bg-brand-primary",
     href: "/brief/new?path=ai",
   },
@@ -48,19 +48,20 @@ const PATHS = [
   },
   {
     id: "upload",
-    badge: "Bring Your Own",
-    sub: "Client Concept Upload",
-    headline: "Have a Design?\nWe'll Execute It.",
-    body: "Already have artwork, a sketch, or a mockup? Upload it and a Grace Studios designer will turn it into a production-ready file — exact to your specifications.",
+    badge: "Production Files",
+    sub: "Your Artwork",
+    headline: "Have Production Files?\nWe'll Take It from Here.",
+    body: "Upload your Adobe Illustrator or vector artwork and Grace Studios handles the rest — sublimation-ready output, supplier coordination, and full order tracking. Your files remain your IP.",
     bullets: [
-      "Upload any image or PDF",
-      "Designer executes to production spec",
-      "Illustrator file delivered",
+      "Adobe Illustrator, EPS, PDF or SVG",
+      "Your artwork, your IP — always",
+      "Grace Studios handles production & fulfillment",
       "Full order tracking included",
     ],
-    cta: "Upload My Concept →",
+    cta: "Upload Production Files →",
     accentColor: "group-hover:bg-brand-muted",
     href: "/brief/new?path=upload",
+    note: "Have a sketch or concept instead? Use our Consultation path.",
   },
 ] as const;
 
@@ -88,7 +89,7 @@ export default function ChoosePage() {
       </header>
 
       <main className="flex-1 flex flex-col items-center px-4 sm:px-6 py-10 sm:py-14">
-        <div className="w-full max-w-2xl animate-fade-up">
+        <div className="w-full max-w-3xl animate-fade-up">
           {/* No progress bar — this is before the brief officially starts */}
 
           <div className="mb-8">
@@ -96,7 +97,7 @@ export default function ChoosePage() {
               How Would You Like to Design?
             </h1>
             <p className="mt-2.5 text-sm text-brand-muted font-barlow leading-relaxed max-w-lg">
-              Both paths lead to the same Grace Studios design quality. Choose what works best for your team.
+              All paths lead to the same Grace Studios design quality. Choose what works best for your team.
             </p>
           </div>
 
@@ -141,6 +142,13 @@ export default function ChoosePage() {
                     </li>
                   ))}
                 </ul>
+
+                {/* Consultation nudge for production files path */}
+                {"note" in path && path.note && (
+                  <p className="text-[9px] font-barlow text-brand-muted/50 italic leading-snug border-t border-brand-border pt-3">
+                    {path.note}
+                  </p>
+                )}
 
                 {/* CTA */}
                 <span className="text-[10px] font-display font-bold uppercase tracking-widest text-brand-muted group-hover:text-brand-primary transition-colors">

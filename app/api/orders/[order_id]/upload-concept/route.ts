@@ -3,15 +3,24 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { assertClientOrder, isErrorResponse } from "@/lib/api/assert-client-order";
 import { rateLimit } from "@/lib/rate-limit";
 
+// Production-ready file formats only.
+// Sketches and rough concepts should go through the Consultation path.
 const ALLOWED_MIME_TYPES = [
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "image/gif",
   "application/pdf",
+  "image/svg+xml",
+  "application/postscript",       // EPS / AI (classic MIME)
+  "application/illustrator",      // AI files in some browsers
+  "application/x-illustrator",    // AI files variant
+  "application/eps",
+  "application/x-eps",
+  "image/x-eps",
+  "application/octet-stream",     // Many .ai files upload as binary — checked by extension below
 ];
 
-const MAX_FILE_SIZE_MB = 20;
+// Extension-based fallback for files that upload as octet-stream
+const ALLOWED_EXTENSIONS = [".ai", ".eps", ".pdf", ".svg"];
+
+const MAX_FILE_SIZE_MB = 50;
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 
 /**
@@ -52,9 +61,13 @@ export async function POST(
     return NextResponse.json({ error: "No file provided" }, { status: 400 });
   }
 
-  if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+  const fileExt = `.${file.name.split(".").pop()?.toLowerCase()}`;
+  const mimeAllowed = ALLOWED_MIME_TYPES.includes(file.type);
+  const extAllowed  = ALLOWED_EXTENSIONS.includes(fileExt);
+
+  if (!mimeAllowed && !extAllowed) {
     return NextResponse.json(
-      { error: `File type not allowed. Accepted: JPEG, PNG, WebP, GIF, PDF` },
+      { error: "File type not allowed. Upload a production-ready file: Adobe Illustrator (.ai), EPS, PDF, or SVG. For sketches or rough concepts, please use the Consultation path." },
       { status: 400 },
     );
   }
