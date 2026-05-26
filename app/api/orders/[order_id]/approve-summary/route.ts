@@ -2,13 +2,14 @@
  * GET /api/orders/[order_id]/approve-summary
  *
  * Returns all data needed to render the approve page.
- * Uses service-role key (bypasses RLS) but validates ownership via
- * assertClientOrder — the caller must be authenticated and their email
- * must match the order's client email.
+ * Uses service-role key (bypasses RLS). Access is granted to:
+ *   - Admins / super_admins (any order)
+ *   - Clients who own the order (email or user_id match via assertClientOrder)
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createServerClient } from "@/lib/supabase/server";
 import { assertClientOrder, isErrorResponse } from "@/lib/api/assert-client-order";
 
 export async function GET(
@@ -17,11 +18,38 @@ export async function GET(
 ) {
   const { order_id } = params;
 
-  // Verify ownership
-  const ctx = await assertClientOrder(order_id);
-  if (isErrorResponse(ctx)) return ctx;
+  const serverClient = createServerClient();
+  const { data: { user } } = await serverClient.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const admin = createAdminClient();
+
+  // Check if caller is an admin — admins can view any order's approve page
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  const isAdmin = profile?.role === "admin" || profile?.role === "super_admin";
+
+  let clientId: string;
+
+  if (isAdmin) {
+    // Admins bypass ownership check — just verify the order exists
+    const { data: orderCheck } = await admin
+      .from("orders")
+      .select("client_id")
+      .eq("id", order_id)
+      .single();
+    if (!orderCheck) return NextResponse.json({ error: "Order not found" }, { status: 404 });
+    clientId = orderCheck.client_id;
+  } else {
+    // Clients must own the order
+    const ctx = await assertClientOrder(order_id);
+    if (isErrorResponse(ctx)) return ctx;
+    clientId = ctx.clientId;
+  }
 
   const [{ data: order }, { data: client }, { data: brief }, { data: concept }] =
     await Promise.all([
@@ -33,7 +61,7 @@ export async function GET(
       admin
         .from("clients")
         .select("name, contact_name, email, sport, city")
-        .eq("id", ctx.clientId)
+        .eq("id", clientId)
         .single(),
       admin
         .from("briefs")
