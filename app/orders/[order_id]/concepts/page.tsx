@@ -564,9 +564,14 @@ export default function ConceptsPage() {
 
   const [boardData, setBoardData]     = useState<BoardData | null>(null);
   const [gen, setGen]                 = useState<GenerationProgress>({ status: "not_started", progress: 0, total: 4, error: null });
-  const [approving, setApproving]     = useState(false);
-  const [confirmStep, setConfirmStep] = useState(false); // true = show confirm banner
+  const [approving, setApproving]       = useState(false);
+  const [confirmStep, setConfirmStep]   = useState(false);
   const [approveError, setApproveError] = useState<string | null>(null);
+  const [declineStep, setDeclineStep]   = useState(false);
+  const [declineNote, setDeclineNote]   = useState("");
+  const [declining, setDeclining]       = useState(false);
+  const [declineError, setDeclineError] = useState<string | null>(null);
+  const [regenerating, setRegenerating] = useState(false);
   const [isAdminView, setIsAdminView] = useState(false);
   const [feePaid, setFeePaid]         = useState<boolean | null>(null); // null = loading
 
@@ -766,15 +771,56 @@ export default function ConceptsPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [order_id]);
 
+  // ── Regenerate ────────────────────────────────────────────────────────────
+  async function handleRegenerate() {
+    if (regenerating || approving || declining) return;
+    setRegenerating(true);
+    setBoardData(null);
+    setGen({ status: "not_started", progress: 0, total: 4, error: null });
+    generationFiredRef.current = false;
+    if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+    await triggerGeneration();
+    setRegenerating(false);
+  }
+
+  // ── Decline ───────────────────────────────────────────────────────────────
+  async function handleConfirmDecline() {
+    setDeclining(true);
+    setDeclineError(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch("/api/decline-concept", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
+        body: JSON.stringify({ order_id, note: declineNote || undefined }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(body.error ?? `Decline failed (${res.status})`);
+      }
+      // Reset UI to regeneration state
+      setDeclineStep(false);
+      setDeclineNote("");
+      setBoardData(null);
+      setGen({ status: "not_started", progress: 0, total: 4, error: null });
+      generationFiredRef.current = false;
+    } catch (err: unknown) {
+      setDeclineError(err instanceof Error ? err.message : "Something went wrong.");
+    } finally {
+      setDeclining(false);
+    }
+  }
+
   // ── Approve ───────────────────────────────────────────────────────────────
-  // Step 1: first click shows inline confirm banner
   function handleApprove() {
     if (!boardData) return;
     setConfirmStep(true);
     setApproveError(null);
   }
 
-  // Step 2: confirmed — mark concept selected + call approve-order directly
   async function handleConfirmApprove() {
     setApproving(true);
     setApproveError(null);
@@ -1005,15 +1051,22 @@ export default function ConceptsPage() {
                    :               <LegacyBoard      data={boardData!} studioName={tenant.name} />
                   }
 
-                  {/* ── Approve section ───────────────────────────────── */}
+                  {/* ── Action section ────────────────────────────────── */}
+
+                  {/* Error messages */}
                   {approveError && (
-                    <p className="text-xs text-red-400 font-barlow bg-red-950/30 border border-red-800 rounded-lg px-4 py-3">
+                    <p className="text-xs text-red-400 font-barlow bg-red-950/30 border border-red-800 rounded-xl px-4 py-3">
                       {approveError}
                     </p>
                   )}
+                  {declineError && (
+                    <p className="text-xs text-red-400 font-barlow bg-red-950/30 border border-red-800 rounded-xl px-4 py-3">
+                      {declineError}
+                    </p>
+                  )}
 
-                  {confirmStep ? (
-                    /* Step 2 — confirm banner */
+                  {/* Approve confirmation */}
+                  {confirmStep && (
                     <div className="rounded-xl border border-brand-primary/40 bg-brand-surface px-5 py-4 flex flex-col gap-3">
                       <p className="text-sm font-barlow text-brand-text font-medium">
                         Ready to approve this design and move into production?
@@ -1026,7 +1079,7 @@ export default function ConceptsPage() {
                           type="button"
                           onClick={() => { setConfirmStep(false); setApproveError(null); }}
                           disabled={approving}
-                          className="px-5 py-2.5 rounded-lg font-display font-bold text-xs uppercase tracking-widest border border-brand-border text-brand-muted hover:text-brand-text hover:border-brand-muted transition-colors disabled:opacity-40"
+                          className="px-8 py-3.5 rounded-xl font-display font-bold text-sm uppercase tracking-[0.15em] transition-all duration-200 border border-brand-border text-brand-muted hover:text-brand-text hover:border-brand-muted disabled:opacity-40"
                         >
                           Cancel
                         </button>
@@ -1034,35 +1087,85 @@ export default function ConceptsPage() {
                           type="button"
                           onClick={handleConfirmApprove}
                           disabled={approving}
-                          className="flex-1 py-2.5 rounded-lg font-display font-bold text-sm uppercase tracking-[0.15em] transition-all duration-200
-                            bg-brand-primary text-white hover:bg-brand-secondary
-                            disabled:opacity-40 disabled:cursor-not-allowed"
+                          className="flex-1 py-3.5 rounded-xl font-display font-bold text-sm uppercase tracking-[0.15em] transition-all duration-200 bg-brand-primary text-white hover:bg-brand-secondary disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                           {approving ? "Approving…" : "Yes, Approve →"}
                         </button>
                       </div>
                     </div>
-                  ) : (
-                    /* Step 1 — initial action row */
-                    <div className="flex items-center justify-between pt-1">
-                      <div className="flex flex-col gap-1">
+                  )}
+
+                  {/* Decline confirmation */}
+                  {declineStep && (
+                    <div className="rounded-xl border border-red-800/40 bg-red-950/10 px-5 py-4 flex flex-col gap-3">
+                      <p className="text-sm font-barlow text-brand-text font-medium">
+                        Request revisions on this design?
+                      </p>
+                      <p className="text-xs font-barlow text-brand-muted leading-relaxed">
+                        Your studio will be notified and can revise or regenerate the concept.
+                      </p>
+                      <textarea
+                        value={declineNote}
+                        onChange={(e) => setDeclineNote(e.target.value)}
+                        rows={2}
+                        placeholder="Describe what you'd like changed (optional)…"
+                        className="w-full bg-brand-bg border border-brand-border rounded-lg px-3 py-2.5 text-brand-text font-barlow text-sm placeholder-brand-muted/50 focus:outline-none focus:border-red-600 transition-colors resize-none"
+                      />
+                      <div className="flex gap-3 pt-1">
                         <button
                           type="button"
-                          disabled
-                          className="text-xs font-display uppercase tracking-wider text-brand-muted/40 cursor-not-allowed"
+                          onClick={() => { setDeclineStep(false); setDeclineNote(""); setDeclineError(null); }}
+                          disabled={declining}
+                          className="px-8 py-3.5 rounded-xl font-display font-bold text-sm uppercase tracking-[0.15em] transition-all duration-200 border border-brand-border text-brand-muted hover:text-brand-text hover:border-brand-muted disabled:opacity-40"
                         >
-                          ↺ Regenerate
+                          Cancel
                         </button>
-                        <span className="text-[9px] text-brand-muted/40 font-barlow max-w-[220px] leading-tight">
-                          Regeneration coming soon. Current concept is locked for review.
-                        </span>
+                        <button
+                          type="button"
+                          onClick={handleConfirmDecline}
+                          disabled={declining}
+                          className="flex-1 py-3.5 rounded-xl font-display font-bold text-sm uppercase tracking-[0.15em] transition-all duration-200 bg-red-700 text-white hover:bg-red-600 disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          {declining ? "Sending…" : "Yes, Request Revisions →"}
+                        </button>
                       </div>
+                    </div>
+                  )}
+
+                  {/* Step 1 — main action row (hidden while a confirm step is open) */}
+                  {!confirmStep && !declineStep && (
+                    <div className="flex items-center gap-3 pt-1 flex-wrap">
+                      {/* Regenerate */}
+                      <button
+                        type="button"
+                        onClick={handleRegenerate}
+                        disabled={regenerating || approving || declining}
+                        className="px-8 py-3.5 rounded-xl font-display font-bold text-sm uppercase tracking-[0.15em] transition-all duration-200
+                          border border-brand-border text-brand-muted hover:text-brand-text hover:border-brand-primary
+                          disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        {regenerating ? "Regenerating…" : "↺ Regenerate"}
+                      </button>
+
+                      {/* Decline */}
+                      <button
+                        type="button"
+                        onClick={() => { setDeclineStep(true); setDeclineError(null); }}
+                        disabled={approving || declining || regenerating}
+                        className="px-8 py-3.5 rounded-xl font-display font-bold text-sm uppercase tracking-[0.15em] transition-all duration-200
+                          border border-red-800/50 text-red-400 hover:bg-red-900/20 hover:border-red-600
+                          disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        Decline This Design
+                      </button>
+
+                      {/* Approve */}
                       <button
                         type="button"
                         onClick={handleApprove}
-                        disabled={approving}
-                        className="px-8 py-3.5 rounded-xl font-display font-bold text-sm uppercase tracking-[0.15em] transition-all duration-200
-                          bg-brand-text text-brand-bg hover:bg-brand-primary hover:text-white
+                        disabled={approving || declining || regenerating}
+                        className="flex-1 py-3.5 rounded-xl font-display font-bold text-sm uppercase tracking-[0.15em] transition-all duration-200
+                          bg-brand-primary text-white hover:bg-brand-secondary
                           disabled:opacity-40 disabled:cursor-not-allowed"
                       >
                         Approve This Design →
