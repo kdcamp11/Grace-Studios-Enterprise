@@ -137,6 +137,33 @@ export async function POST(
     // Non-fatal — file is uploaded, URL is returned
   }
 
+  // ── 7. Upsert into order_files so the client can see it on the tracker ──────
+  // Delete any existing production spec entry first (handles regeneration)
+  await supabase
+    .from("order_files")
+    .delete()
+    .eq("order_id", order_id)
+    .eq("label", "Production Spec");
+
+  const svgBytes = Buffer.from(svgContent, "utf-8").length;
+  const { error: fileInsertError } = await supabase
+    .from("order_files")
+    .insert({
+      tenant_id:      order.tenant_id,
+      order_id,
+      file_url:       fileUrl,
+      file_name:      `production-spec-${fileInput.orderNumber}.svg`,
+      file_size:      svgBytes,
+      file_type:      "image/svg+xml",
+      label:          "Production Spec",
+      client_visible: true,
+    });
+
+  if (fileInsertError) {
+    console.error("[generate-production-file] order_files insert error:", fileInsertError);
+    // Non-fatal
+  }
+
   return NextResponse.json({
     success:     true,
     file_url:    fileUrl,
