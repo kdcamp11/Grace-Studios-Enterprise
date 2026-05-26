@@ -15,7 +15,7 @@ const WHAT_TO_EXPECT = [
   {
     num: "02",
     title: "Design Concept Review",
-    body: "Our team prepares a design concept built around your brief — backed by the Grace Studios design library and our production expertise.",
+    body: "Our team prepares a design concept built around your brief, backed by the Grace Studios design library and our production expertise.",
   },
   {
     num: "03",
@@ -25,12 +25,12 @@ const WHAT_TO_EXPECT = [
   {
     num: "04",
     title: "Production & Delivery",
-    body: "Designer-built files go to your matched supplier. First-piece review, then full production — every step tracked.",
+    body: "Designer-built files go to your matched supplier. First-piece review, then full production, every step tracked.",
   },
 ];
 
 const GOOD_FIT = [
-  "Full identity systems — jersey, shorts, warmups, accessories",
+  "Full identity systems: jersey, shorts, warmups, accessories",
   "Complex custom colorways or exclusive design systems",
   "Programs ordering 50+ units with specific timeline requirements",
   "Teams that want direct input on every design decision",

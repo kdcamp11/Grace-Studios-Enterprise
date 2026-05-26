@@ -65,7 +65,7 @@ export default function ChoosePage() {
                   Designed.{"\n"}Managed.{"\n"}Delivered.
                 </h2>
                 <p className="mt-2 text-[11px] font-barlow text-brand-muted leading-relaxed">
-                  Full creative and production partnership — strategy, concept, suppliers, and delivery. Handled.
+                  Full creative and production partnership. Strategy, concept, manufacturing, and delivery. Handled.
                 </p>
               </div>
 
@@ -73,8 +73,8 @@ export default function ChoosePage() {
                 {[
                   "Creative consultation and strategic direction",
                   "Concepts developed around your program and identity",
-                  "Supplier coordination and production management",
-                  "Starting at $300 — Essentials to Elite",
+                  "Production and manufacturing coordination",
+                  "Starting at $300+",
                 ].map((item) => (
                   <li key={item} className="flex items-center gap-2.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-brand-primary flex-shrink-0" />
@@ -106,7 +106,7 @@ export default function ChoosePage() {
                   Design Freely.{"\n"}Activate When Ready.
                 </h2>
                 <p className="mt-2 text-[11px] font-barlow text-brand-muted leading-relaxed">
-                  Free to build. $100 activation — applied toward your final order.
+                  Free to build. $100 activation applied toward your final order.
                 </p>
               </div>
 
@@ -183,7 +183,7 @@ export default function ChoosePage() {
                 {[
                   "Adobe Illustrator, EPS, PDF or SVG",
                   "Your artwork. Your IP. Always.",
-                  "Vetted suppliers, managed production",
+                  "Managed production and fulfillment",
                   "Fulfillment, QC, and delivery tracking",
                 ].map((item) => (
                   <li key={item} className="flex items-center gap-2.5">

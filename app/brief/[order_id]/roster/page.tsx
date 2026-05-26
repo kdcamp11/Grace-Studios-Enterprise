@@ -119,7 +119,7 @@ export default function RosterPage() {
     <BriefLayout
       currentStep={6}
       title="Player Roster"
-      subtitle="Optional — add player names, numbers, sizes, and cuts. Tab across columns, Enter to add rows."
+      subtitle="Optional: add player names, numbers, sizes, and cuts. Tab across columns, Enter to add rows."
     >
       <div className="space-y-5">
         <div className="overflow-x-auto rounded-xl border border-brand-border">

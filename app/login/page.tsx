@@ -68,7 +68,7 @@ const STEPS = [
     who: "Design",
     whoClass: "text-brand-primary bg-brand-primary/10 border-brand-primary/30",
     title: "Concept Ready in Minutes",
-    detail: "Your concept — built on Grace Studios design philosophy — is ready for review in minutes. You choose the direction.",
+    detail: "Your concept, built on Grace Studios design philosophy, is ready for review in minutes. You choose the direction.",
     isApproval: true,
     approvalLabel: "You approve the direction",
   },
@@ -145,7 +145,7 @@ const PATH_CARDS = [
       "Creative consultation and strategic direction",
       "Concepts developed around your program and identity",
       "Supplier coordination and production management",
-      "Starting at $300 — Essentials to Elite",
+      "Starting at $300+",
     ],
     cta: "Work with Grace Studios →",
   },
@@ -155,8 +155,8 @@ const PATH_CARDS = [
     sub: "Two Paths",
     headline: "Design Freely.\nActivate When Ready.",
     bullets: [
-      "Design Brief — submit your vision, we build the concept",
-      "Jersey Builder — color every zone in real-time 3D",
+      "Design Brief: submit your vision, we build the concept",
+      "Jersey Builder: color every zone in real-time 3D",
       "Grace Studios handles production on activation",
       "Free to build. $100 to activate.",
     ],
@@ -170,7 +170,7 @@ const PATH_CARDS = [
     bullets: [
       "Adobe Illustrator, EPS, PDF or SVG",
       "Your artwork. Your IP. Always.",
-      "Vetted suppliers, managed production",
+      "Managed production and fulfillment",
       "Fulfillment, QC, and delivery tracking",
     ],
     cta: "Upload Production Files →",
@@ -289,7 +289,7 @@ function ConsultationForm() {
         />
       </div>
       {status === "error" && (
-        <p className="text-sm font-barlow text-red-600">Something went wrong — please try again.</p>
+        <p className="text-sm font-barlow text-red-600">Something went wrong. Please try again.</p>
       )}
       <button
         type="submit"
@@ -315,7 +315,7 @@ const SUPPLIER_STEPS = [
   {
     num: "01",
     title: "Get Assigned",
-    detail: "Accept orders that match your production catalog — sport, garment type, and capacity.",
+    detail: "Accept orders that match your production catalog: sport, garment type, and capacity.",
   },
   {
     num: "02",
@@ -356,7 +356,7 @@ const SUPPLIER_FEATURES = [
       </svg>
     ),
     title: "Portfolio Showcase",
-    body: "Upload your best work. Programs browse supplier portfolios when choosing who to work with — your quality speaks for you.",
+    body: "Upload your best work. Programs browse production portfolios when choosing who to work with. Your quality speaks for you.",
   },
   {
     icon: (
@@ -365,7 +365,7 @@ const SUPPLIER_FEATURES = [
       </svg>
     ),
     title: "Production Catalog",
-    body: "Define exactly which sports and garment types you produce. Orders route to suppliers who match — no mismatched briefs.",
+    body: "Define exactly which sports and garment types you produce. Orders route to your profile when specs align.",
   },
   {
     icon: (
@@ -525,7 +525,7 @@ export default function LoginPage() {
 
           <p className="text-xs text-brand-muted font-barlow max-w-[500px] leading-relaxed mb-12">
             Grace Studios helps elite programs achieve their ultimate brand identity through custom apparel
-            and team gear — designed around your program, produced with precision, and tracked from first
+            and team gear, designed around your program, produced with precision, and tracked from first
             concept to final delivery.
           </p>
 
@@ -566,7 +566,7 @@ export default function LoginPage() {
                 </div>
                 <p className="font-display font-bold uppercase tracking-wide text-brand-text leading-snug whitespace-pre-line" style={{ fontSize: "clamp(1rem, 1.4vw, 1.1rem)" }}>{"Design Freely.\nActivate When Ready."}</p>
                 <p className="text-xs font-barlow text-brand-muted leading-relaxed">
-                  Free to build. $100 activation — applied toward your final order.
+                  Free to build. $100 activation applied toward your final order.
                 </p>
                 {/* Sub-path links — fully tappable on mobile */}
                 <div className="flex flex-col gap-2 border-t border-brand-border pt-4 flex-1">
@@ -577,7 +577,7 @@ export default function LoginPage() {
                   >
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="w-1.5 h-1.5 rounded-full bg-brand-primary flex-shrink-0" />
-                      <span className="text-[10px] font-barlow text-brand-muted truncate"><span className="text-brand-text font-medium">Design Brief</span> — submit your vision, we build the concept</span>
+                      <span className="text-[10px] font-barlow text-brand-muted truncate"><span className="text-brand-text font-medium">Design Brief</span>: submit your vision, we build the concept</span>
                     </div>
                     <svg className="w-3 h-3 text-brand-muted/50 group-hover/sp:text-brand-primary flex-shrink-0 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
@@ -589,7 +589,7 @@ export default function LoginPage() {
                   >
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="w-1.5 h-1.5 rounded-full bg-brand-primary flex-shrink-0" />
-                      <span className="text-[10px] font-barlow text-brand-muted truncate"><span className="text-brand-text font-medium">Jersey Builder</span> — color every zone, selections drive the brief</span>
+                      <span className="text-[10px] font-barlow text-brand-muted truncate"><span className="text-brand-text font-medium">Jersey Builder</span>: color every zone, selections drive the brief</span>
                     </div>
                     <svg className="w-3 h-3 text-brand-muted/50 group-hover/sp:text-brand-primary flex-shrink-0 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
@@ -811,7 +811,7 @@ export default function LoginPage() {
                 Every Order.<br />Tracked End-to-End.
               </h2>
               <p className="text-xs font-barlow text-brand-muted leading-relaxed max-w-[300px]">
-                From brief submission to delivery — every stage visible to your program in real time.
+                From brief submission to delivery. Every stage visible to your program in real time.
               </p>
             </div>
 
@@ -918,7 +918,7 @@ export default function LoginPage() {
               </h1>
 
               <p className="text-xs text-brand-muted font-barlow max-w-[380px] leading-relaxed mb-7">
-                Every file you receive has been approved twice — by the client and by a designer.
+                Every file you receive has been approved twice: by the client and by a designer.
                 First-piece review is built into every order. Run production with confidence.
               </p>
 
@@ -958,7 +958,7 @@ export default function LoginPage() {
                 ].map((o) => (
                   <div key={o.id} className="px-5 py-4 border-b border-brand-border flex items-start justify-between gap-4">
                     <div className="min-w-0 flex-1">
-                      <p className="text-[11px] font-display font-bold text-brand-text tracking-wide">{o.sport} — {o.garment}</p>
+                      <p className="text-[11px] font-display font-bold text-brand-text tracking-wide">{o.sport}, {o.garment}</p>
                       <p className="text-[9px] font-barlow text-brand-muted mt-0.5">{o.id}</p>
                     </div>
                     <span className={`flex-shrink-0 px-2 py-0.5 rounded border text-[8px] font-display font-bold uppercase tracking-widest ${o.badge}`}>

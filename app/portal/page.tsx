@@ -11,9 +11,9 @@ import type { User } from "@supabase/supabase-js";
 import type { OrderStage } from "@/types/database";
 
 const STAGE_LABELS: Record<OrderStage, string> = {
-  onboarding:              "Brief Submitted — Awaiting Concepts",
-  design_confirmed:        "Designer Mockup Ready — Review Required",
-  files_sent:              "Files Approved — In Production",
+  onboarding:              "Brief Submitted: Awaiting Concepts",
+  design_confirmed:        "Designer Mockup Ready: Review Required",
+  files_sent:              "Files Approved: In Production",
   first_piece_in_progress: "First Piece In Progress",
   first_piece_review:      "⚡ First Piece Ready for Review",
   bulk_production:         "Bulk Production",
@@ -145,7 +145,7 @@ function PortalContent() {
               <div className="flex-1 min-w-0">
                 <p className="font-display font-bold uppercase tracking-wide text-brand-text">Brief Received</p>
                 <p className="text-sm text-brand-muted font-barlow mt-1 leading-relaxed">
-                  Your design concept is being prepared now — backed by Grace Studios design philosophy. Check back in a few minutes.
+                  Your design concept is being prepared now, backed by Grace Studios design philosophy. Check back in a few minutes.
                 </p>
                 <a
                   href={`/orders/${submitted}/concepts`}
@@ -172,7 +172,7 @@ function PortalContent() {
                   No orders yet
                 </p>
                 <p className="text-sm text-brand-muted font-barlow">
-                  Submit your first brief and receive a design concept — backed by Grace Studios design philosophy — within minutes.
+                  Submit your first brief and receive a design concept, backed by Grace Studios design philosophy, within minutes.
                 </p>
               </div>
               <a

@@ -111,7 +111,7 @@ export default function ProductionChoicePage() {
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({ order_id, choice: selected }),
       });
-      if (!res.ok) throw new Error("Something went wrong — please try again.");
+      if (!res.ok) throw new Error("Something went wrong. Please try again.");
       router.push(`/orders/${order_id}/tracker?production=${selected}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
@@ -159,7 +159,7 @@ export default function ProductionChoicePage() {
           <div className="rounded-2xl border border-brand-border bg-brand-surface overflow-hidden">
             <div className="px-5 py-3 border-b border-brand-border">
               <p className="text-[9px] font-display uppercase tracking-[0.28em] text-brand-muted">
-                Production Timeline — What to Expect
+                Production Timeline: What to Expect
               </p>
             </div>
             <div className="divide-y divide-brand-border">
@@ -277,7 +277,7 @@ export default function ProductionChoicePage() {
                     </span>
                   </div>
                   <p className="text-xs text-brand-muted font-barlow leading-relaxed ml-6">
-                    We manufacture everything to spec — from first piece sample to full bulk run, QC checked and delivered.
+                    We manufacture everything to spec, from first piece sample to full bulk run, QC checked and delivered.
                   </p>
                   <ul className="mt-3 ml-6 space-y-1">
                     {[
@@ -306,7 +306,7 @@ export default function ProductionChoicePage() {
                   <div className="px-4 py-3 flex items-center justify-between">
                     <div>
                       <p className="text-xs font-display font-bold uppercase tracking-wider text-brand-text">
-                        Deposit — Pay Now
+                        Deposit: Pay Now
                       </p>
                       <p className="text-[10px] text-brand-muted font-barlow mt-0.5">
                         Required to start production · 50% of order total
@@ -317,7 +317,7 @@ export default function ProductionChoicePage() {
                   <div className="px-4 py-3 flex items-center justify-between opacity-60">
                     <div>
                       <p className="text-xs font-display font-bold uppercase tracking-wider text-brand-text">
-                        Balance — On Delivery
+                        Balance: On Delivery
                       </p>
                       <p className="text-[10px] text-brand-muted font-barlow mt-0.5">
                         Due when your order ships · 50% of order total

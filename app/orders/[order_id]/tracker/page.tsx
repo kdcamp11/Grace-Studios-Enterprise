@@ -36,7 +36,7 @@ interface StageCard {
 const STAGE_CARDS: Partial<Record<OrderStage, StageCard>> = {
   onboarding: {
     title:       "Brief Submitted",
-    description: "Your brief has been received. Head to your concept board — your studio is preparing your designs.",
+    description: "Your brief has been received. Head to your concept board. Your studio is preparing your designs.",
     cta:         "View Concept Board →",
     ctaHref:     (id) => `/orders/${id}/concepts`,
   },
@@ -56,7 +56,7 @@ const STAGE_CARDS: Partial<Record<OrderStage, StageCard>> = {
     description: "Your studio is crafting your first sample piece. You'll be notified as soon as it's ready to review.",
   },
   first_piece_review: {
-    title:       "Action Required — Review Your Sample",
+    title:       "Action Required: Review Your Sample",
     description: "Your first piece is ready. Review the photos or video below and approve or request changes.",
     urgent:      true,
   },
@@ -226,7 +226,7 @@ export default function TrackerPage() {
 
       {isAdminView && (
         <div className="bg-amber-50 border-b border-amber-200 px-6 py-2 flex items-center justify-between">
-          <span className="text-xs font-display font-bold uppercase tracking-widest text-amber-700">Admin View — Client Portal</span>
+          <span className="text-xs font-display font-bold uppercase tracking-widest text-amber-700">Admin View: Client Portal</span>
           <a href={`/admin/orders/${order_id}`} className="text-xs font-display font-bold uppercase tracking-wider text-amber-600 hover:text-amber-800 transition-colors">Open in Admin →</a>
         </div>
       )}

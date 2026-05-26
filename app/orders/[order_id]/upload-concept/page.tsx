@@ -98,7 +98,7 @@ export default function UploadProductionFilePage() {
             </h1>
             <p className="mt-2 text-sm text-brand-muted font-barlow leading-relaxed">
               Upload your production-ready file. Grace Studios will handle sublimation output,
-              supplier coordination, and delivery — everything stays under your brand.
+              supplier coordination, and delivery. Everything stays under your brand.
             </p>
           </div>
 
@@ -133,7 +133,7 @@ export default function UploadProductionFilePage() {
               <a href="/contact" className="underline text-brand-primary hover:text-brand-secondary transition-colors">
                 Use our Consultation path
               </a>{" "}
-              — our team will work with you from scratch.
+              Our team will work with you from scratch.
             </p>
           </div>
 
@@ -181,7 +181,7 @@ export default function UploadProductionFilePage() {
                   {file.name}
                 </p>
                 <p className="text-[10px] text-brand-muted font-barlow mt-0.5">
-                  {(file.size / (1024 * 1024)).toFixed(1)} MB — click to replace
+                  {(file.size / (1024 * 1024)).toFixed(1)} MB, click to replace
                 </p>
               </div>
             ) : (
@@ -190,7 +190,7 @@ export default function UploadProductionFilePage() {
                   Drop your file here or <span className="text-brand-primary underline">browse</span>
                 </p>
                 <p className="text-[10px] text-brand-muted font-barlow mt-1">
-                  {ACCEPTED_LABEL} — up to {MAX_MB}MB
+                  {ACCEPTED_LABEL}, up to {MAX_MB}MB
                 </p>
               </div>
             )}
@@ -219,7 +219,7 @@ export default function UploadProductionFilePage() {
             <ol className="space-y-3">
               {[
                 "Upload your production file (you're here)",
-                "Activate your project — $100 applied to your final order total",
+                "Activate your project: $100 applied to your final order total",
                 "Grace Studios designer prepares production-ready output",
                 "You approve the final artwork before production begins",
                 "Supplier produces and ships to your team",

@@ -262,7 +262,7 @@ export default function PortalSettingsPage() {
                         {logoUploading ? "Uploading…" : logoUrl ? "Logo uploaded" : "Upload logo"}
                       </p>
                       <p className="text-xs font-barlow text-brand-muted mt-0.5">
-                        {logoUrl ? "Click to replace" : "PNG, JPG, SVG — shown in your client profile"}
+                        {logoUrl ? "Click to replace" : "PNG, JPG, SVG, shown in your client profile"}
                       </p>
                     </div>
                   </div>
