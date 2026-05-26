@@ -194,23 +194,18 @@ export default function ApprovePage() {
         if (profile.role === "admin") setIsAdminView(true);
       }
 
-      if (!token) {
-        setError("Not authenticated — please sign in again.");
-        setLoading(false);
-        return;
-      }
+      // Fetch approve-summary — send Bearer token if available (server also accepts cookies)
+      const headers: Record<string, string> = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
 
-      // Pass JWT in Authorization header — server verifies with admin.auth.getUser(token)
-      const res = await fetch(`/api/orders/${order_id}/approve-summary`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await fetch(`/api/orders/${order_id}/approve-summary`, { headers });
       if (!res.ok) {
+        let errMsg = `Request failed (HTTP ${res.status})`;
         try {
           const body = await res.json() as { error?: string };
-          setError(body.error ?? `Request failed (${res.status})`);
-        } catch {
-          setError(`Request failed (${res.status})`);
-        }
+          if (body.error) errMsg = `${body.error} (HTTP ${res.status})`;
+        } catch { /* ignore */ }
+        setError(errMsg);
         setLoading(false);
         return;
       }
@@ -277,7 +272,12 @@ export default function ApprovePage() {
 
       setLoading(false);
     }
-    load();
+    load().catch((err: unknown) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("[approve/page] load() threw:", msg);
+      setError(`Unexpected error: ${msg}`);
+      setLoading(false);
+    });
   }, [order_id, router]);
 
   async function signOut() {

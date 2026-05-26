@@ -2,10 +2,11 @@
  * GET /api/orders/[order_id]/approve-summary
  *
  * Returns all data needed to render the approve page.
- * Uses service-role key (bypasses RLS). Auth is validated via the
- * Authorization: Bearer <token> header (not cookies) so this works
- * even when the server-side cookie session is unavailable (which can
- * happen silently on Vercel edge / Next.js App Router).
+ * Uses service-role key (bypasses RLS).
+ *
+ * Auth — dual-method so this works regardless of which client JS version is running:
+ *   1. Authorization: Bearer <token>  (new client sends this explicitly)
+ *   2. Cookie-based session           (fallback for older client JS or direct navigation)
  *
  * Access rules:
  *   - Admins / super_admins: any order
@@ -14,6 +15,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createServerClient } from "@/lib/supabase/server";
 
 export async function GET(
   req: NextRequest,
@@ -21,19 +23,37 @@ export async function GET(
 ) {
   const { order_id } = params;
 
-  // --- Auth: verify via Bearer token (browser client always has this in memory) ---
-  const authHeader = req.headers.get("Authorization") ?? "";
-  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
-  if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
   const admin = createAdminClient();
 
-  // Verify the token and get the user — admin.auth.getUser() validates server-side
-  const { data: { user }, error: authError } = await admin.auth.getUser(token);
-  if (authError || !user) {
-    console.error("[approve-summary] token verification failed:", authError?.message);
+  // --- Auth: try Bearer token first, fall back to cookie session ---
+  let user: { id: string; email?: string } | null = null;
+
+  const authHeader = req.headers.get("Authorization") ?? "";
+  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
+
+  if (token) {
+    // New client sends JWT in Authorization header — verify with service-role key
+    const { data, error } = await admin.auth.getUser(token);
+    if (!error && data.user) {
+      user = data.user;
+    } else {
+      console.error("[approve-summary] Bearer token verification failed:", error?.message);
+    }
+  }
+
+  if (!user) {
+    // Fall back to cookie-based session (works when client sends cookies normally)
+    const serverClient = createServerClient();
+    const { data: { user: cookieUser } } = await serverClient.auth.getUser();
+    user = cookieUser ?? null;
+  }
+
+  if (!user) {
+    console.error("[approve-summary] No valid auth — order_id:", order_id);
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  console.log("[approve-summary] Authenticated user:", user.email, "order_id:", order_id);
 
   // --- Role check: admins bypass ownership ---
   const { data: profile } = await admin
@@ -46,6 +66,8 @@ export async function GET(
 
   let clientId: string;
 
+  console.log("[approve-summary] user role:", profile?.role ?? "none", "isAdmin:", isAdmin);
+
   if (isAdmin) {
     // Admins can view any order
     const { data: orderCheck } = await admin
@@ -53,7 +75,10 @@ export async function GET(
       .select("client_id")
       .eq("id", order_id)
       .single();
-    if (!orderCheck) return NextResponse.json({ error: "Order not found" }, { status: 404 });
+    if (!orderCheck) {
+      console.error("[approve-summary] admin path — order not found:", order_id);
+      return NextResponse.json({ error: "Order not found" }, { status: 404 });
+    }
     clientId = orderCheck.client_id;
   } else {
     // Clients: must own the order (email match OR user_id match)
