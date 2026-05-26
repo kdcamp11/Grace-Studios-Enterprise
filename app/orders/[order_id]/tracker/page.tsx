@@ -37,6 +37,7 @@ interface OrderFile {
   file_size: number | null;
   file_type: string | null;
   label: string | null;
+  client_note?: string | null;
 }
 
 interface OrderData {

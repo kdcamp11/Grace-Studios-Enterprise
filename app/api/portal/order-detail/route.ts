@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
   // Fetch order
   const { data: order } = await admin
     .from("orders")
-    .select("id, order_number, stage, created_at, estimated_delivery, tracking_number, client_id")
+    .select("id, order_number, stage, created_at, estimated_delivery, tracking_number, client_id, production_file_url, tenant_id")
     .eq("id", order_id)
     .single();
 
@@ -78,14 +78,34 @@ export async function GET(req: NextRequest) {
   ]);
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { client_id: _client_id, ...orderFields } = order;
+  const { client_id: _client_id, tenant_id: _tenant_id, ...orderFields } = order;
+
+  // If no order_files rows exist yet but a production_file_url was saved on the
+  // order (e.g. approved before the order_files insert was added), surface it
+  // as a synthetic entry so the client always sees the download.
+  let resolvedFiles = files ?? [];
+  const hasProductionSpec = resolvedFiles.some((f) => f.label === "Production Spec");
+  if (!hasProductionSpec && order.production_file_url) {
+    const orderLabel = order.order_number ?? order_id.slice(0, 8).toUpperCase();
+    resolvedFiles = [
+      {
+        id:        "production-spec-synthetic",
+        file_url:  order.production_file_url,
+        file_name: `production-spec-${orderLabel}.svg`,
+        file_size: null,
+        file_type: "image/svg+xml",
+        label:     "Production Spec",
+      },
+      ...resolvedFiles,
+    ];
+  }
 
   return NextResponse.json({
     order: {
       ...orderFields,
       has_concepts: (concepts?.length ?? 0) > 0,
       media: media ?? [],
-      files: files ?? [],
+      files: resolvedFiles,
     },
   });
 }
