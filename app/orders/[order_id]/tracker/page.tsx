@@ -11,8 +11,8 @@ import type { OrderStage } from "@/types/database";
 const PIPELINE: { stage: OrderStage; label: string; description: string }[] = [
   { stage: "onboarding",              label: "Brief Submitted",    description: "Your design brief has been received." },
   { stage: "design_confirmed",        label: "Concepts Generating",description: "AI is generating your design concepts." },
-  { stage: "files_sent",              label: "Design Approved",    description: "Your concept is approved and files are being prepared." },
-  { stage: "first_piece_in_progress", label: "First Piece",        description: "Your first sample piece is in production." },
+  { stage: "files_sent",              label: "Design Approved",    description: "Your concept is approved and production files are ready." },
+  { stage: "first_piece_in_progress", label: "First Piece",        description: "Your first sample piece is now in production. Your studio will be in touch soon." },
   { stage: "first_piece_review",      label: "First Piece Review", description: "Your sample is ready — review and approve below." },
   { stage: "bulk_production",         label: "Bulk Production",    description: "Full order is in production." },
   { stage: "qc_verified",             label: "Quality Check",      description: "All items have passed quality inspection." },

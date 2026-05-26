@@ -226,10 +226,33 @@ export async function POST(req: NextRequest) {
     console.error("[approve-order] Production file generation error:", genErr);
   }
 
+  // 6. Advance stage: files_sent → first_piece_in_progress
+  // Files are prepared automatically — move order into production immediately
+  // so the client sees progress and the account lead knows to begin the first piece.
+  const { error: advanceError } = await supabase
+    .from("orders")
+    .update({ stage: "first_piece_in_progress" })
+    .eq("id", order_id);
+
+  if (advanceError) {
+    console.error("[approve-order] Stage advance failed:", advanceError.message);
+    // Non-fatal — order is still approved at files_sent
+  } else {
+    await supabase.from("stage_log").insert({
+      order_id,
+      tenant_id:  order.tenant_id,
+      from_stage: "files_sent",
+      to_stage:   "first_piece_in_progress",
+      changed_by: "system",
+      note:       "Production files prepared — order advanced to first piece.",
+      email_sent: false,
+    });
+  }
+
   return NextResponse.json({
     status: "approved",
     order_id,
-    emails_sent:        emailsSucceeded,
+    emails_sent:         emailsSucceeded,
     production_file_url: productionFileUrl,
   });
 }
