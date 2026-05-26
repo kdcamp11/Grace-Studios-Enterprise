@@ -68,9 +68,18 @@ export default function TeamInfoPage() {
     setLoading(true);
     setError("");
     try {
+      // Get the in-memory access token so the server can reliably link this
+      // order to the user's account even if cookie-based auth doesn't read correctly.
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
       const res = await fetch("/api/brief/start", {
         method:  "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body:    JSON.stringify(payload),
       });
       const data = await res.json();

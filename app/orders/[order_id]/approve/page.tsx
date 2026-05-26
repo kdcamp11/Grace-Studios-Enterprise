@@ -178,10 +178,15 @@ export default function ApprovePage() {
 
   useEffect(() => {
     async function load() {
-      // Wait for localStorage→cookie session migration before any server-gated fetch.
-      // Without this, the server-side createServerClient may read empty cookies and
-      // return 401 even when the client-side session is valid.
+      // Wait for localStorage→cookie session migration so cookies are synced.
       await sessionReady();
+
+      // Get the in-memory access token from the browser client.
+      // We send this as a Bearer token in the Authorization header so the
+      // server doesn't need to read cookies — cookie-based auth can silently
+      // return null in some Next.js / Vercel edge cases and cause 401s.
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token ?? null;
 
       const profile = await getProfile();
       if (profile) {
@@ -189,10 +194,17 @@ export default function ApprovePage() {
         if (profile.role === "admin") setIsAdminView(true);
       }
 
-      // Use server-side API (service-role key) to bypass RLS issues
-      const res = await fetch(`/api/orders/${order_id}/approve-summary`);
+      if (!token) {
+        setError("Not authenticated — please sign in again.");
+        setLoading(false);
+        return;
+      }
+
+      // Pass JWT in Authorization header — server verifies with admin.auth.getUser(token)
+      const res = await fetch(`/api/orders/${order_id}/approve-summary`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (!res.ok) {
-        // Surface the real error rather than a silent blank screen
         try {
           const body = await res.json() as { error?: string };
           setError(body.error ?? `Request failed (${res.status})`);

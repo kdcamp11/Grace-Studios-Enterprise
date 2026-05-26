@@ -2,29 +2,40 @@
  * GET /api/orders/[order_id]/approve-summary
  *
  * Returns all data needed to render the approve page.
- * Uses service-role key (bypasses RLS). Access is granted to:
- *   - Admins / super_admins (any order)
- *   - Clients who own the order (email or user_id match via assertClientOrder)
+ * Uses service-role key (bypasses RLS). Auth is validated via the
+ * Authorization: Bearer <token> header (not cookies) so this works
+ * even when the server-side cookie session is unavailable (which can
+ * happen silently on Vercel edge / Next.js App Router).
+ *
+ * Access rules:
+ *   - Admins / super_admins: any order
+ *   - Clients: order's client must match by email OR user_id
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createServerClient } from "@/lib/supabase/server";
-import { assertClientOrder, isErrorResponse } from "@/lib/api/assert-client-order";
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: { order_id: string } },
 ) {
   const { order_id } = params;
 
-  const serverClient = createServerClient();
-  const { data: { user } } = await serverClient.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  // --- Auth: verify via Bearer token (browser client always has this in memory) ---
+  const authHeader = req.headers.get("Authorization") ?? "";
+  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
+  if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const admin = createAdminClient();
 
-  // Check if caller is an admin — admins can view any order's approve page
+  // Verify the token and get the user — admin.auth.getUser() validates server-side
+  const { data: { user }, error: authError } = await admin.auth.getUser(token);
+  if (authError || !user) {
+    console.error("[approve-summary] token verification failed:", authError?.message);
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // --- Role check: admins bypass ownership ---
   const { data: profile } = await admin
     .from("profiles")
     .select("role")
@@ -36,7 +47,7 @@ export async function GET(
   let clientId: string;
 
   if (isAdmin) {
-    // Admins bypass ownership check — just verify the order exists
+    // Admins can view any order
     const { data: orderCheck } = await admin
       .from("orders")
       .select("client_id")
@@ -45,10 +56,32 @@ export async function GET(
     if (!orderCheck) return NextResponse.json({ error: "Order not found" }, { status: 404 });
     clientId = orderCheck.client_id;
   } else {
-    // Clients must own the order
-    const ctx = await assertClientOrder(order_id);
-    if (isErrorResponse(ctx)) return ctx;
-    clientId = ctx.clientId;
+    // Clients: must own the order (email match OR user_id match)
+    const { data: order } = await admin
+      .from("orders")
+      .select("id, client_id, clients(email, user_id)")
+      .eq("id", order_id)
+      .single();
+
+    if (!order) return NextResponse.json({ error: "Order not found" }, { status: 404 });
+
+    const clientRaw = Array.isArray(order.clients)
+      ? order.clients[0]
+      : (order.clients as { email: string; user_id: string | null } | null);
+
+    const clientEmail  = (clientRaw?.email  ?? "").toLowerCase();
+    const clientUserId = clientRaw?.user_id ?? null;
+    const userEmail    = (user.email ?? "").toLowerCase();
+
+    const emailMatch  = clientEmail  !== "" && clientEmail  === userEmail;
+    const userIdMatch = clientUserId !== null && clientUserId === user.id;
+
+    if (!emailMatch && !userIdMatch) {
+      console.error("[approve-summary] ownership check failed — user:", user.email, "clientEmail:", clientEmail, "clientUserId:", clientUserId, "userId:", user.id);
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    clientId = order.client_id;
   }
 
   const [{ data: order }, { data: client }, { data: brief }, { data: concept }] =

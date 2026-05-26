@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createServerClient } from "@/lib/supabase/server";
 import { getRequestTenant } from "@/lib/tenant/get-request-tenant";
 
 /**
@@ -8,6 +7,10 @@ import { getRequestTenant } from "@/lib/tenant/get-request-tenant";
  * Creates (or upserts) a client row and a new order, both scoped to the
  * current tenant. Sets user_id on the client when the caller is authenticated,
  * so returning users skip the team-info form on future orders.
+ *
+ * Auth: reads from Authorization: Bearer <token> header (sent by the browser
+ * client which always has the session in memory) rather than cookies, which
+ * can silently return null in some Next.js / Vercel edge cases.
  */
 export async function POST(req: NextRequest) {
   try {
@@ -28,11 +31,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Tenant not found for this domain" }, { status: 400 });
     }
 
-    // Get the authenticated user (optional — brief/new requires auth, but be defensive)
-    const serverClient = createServerClient();
-    const { data: { user } } = await serverClient.auth.getUser();
-
     const admin = createAdminClient();
+
+    // Resolve the authenticated user from the Bearer token sent by the browser client.
+    // We prefer this over cookie-based auth (createServerClient) because cookie reading
+    // can silently return null in some Next.js / Vercel deployments, which would prevent
+    // user_id from being stored on the client row — breaking ownership checks later.
+    const authHeader = req.headers.get("Authorization") ?? "";
+    const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
+    let user: { id: string; email?: string } | null = null;
+    if (token) {
+      const { data } = await admin.auth.getUser(token);
+      user = data.user ?? null;
+    }
 
     // Upsert client — unique on (tenant_id, email)
     const { data: client, error: clientError } = await admin
