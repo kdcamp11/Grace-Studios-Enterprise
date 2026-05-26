@@ -2,20 +2,18 @@
  * GET /api/orders/[order_id]/approve-summary
  *
  * Returns all data needed to render the approve page.
- * Uses service-role key (bypasses RLS).
+ * Uses the same auth + client-lookup pattern as /api/portal/orders
+ * (which is known to work) — cookie session → find client by user_id
+ * then email fallback → back-fill user_id → verify order belongs to client.
  *
- * Auth — dual-method so this works regardless of which client JS version is running:
- *   1. Authorization: Bearer <token>  (new client sends this explicitly)
- *   2. Cookie-based session           (fallback for older client JS or direct navigation)
- *
- * Access rules:
- *   - Admins / super_admins: any order
- *   - Clients: order's client must match by email OR user_id
+ * Admins / super_admins bypass the ownership check entirely.
+ * Bearer token auth also accepted as a primary method when sent.
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createServerClient } from "@/lib/supabase/server";
+import { getRequestTenant } from "@/lib/tenant/get-request-tenant";
 
 export async function GET(
   req: NextRequest,
@@ -25,37 +23,32 @@ export async function GET(
 
   const admin = createAdminClient();
 
-  // --- Auth: try Bearer token first, fall back to cookie session ---
-  let user: { id: string; email?: string } | null = null;
+  // ── Step 1: Resolve the authenticated user ──────────────────────────────
+  // Try Bearer token first (new client sends this), then fall back to cookies
+  // (same path that portal/orders uses successfully).
+  let user: { id: string; email?: string | null } | null = null;
 
   const authHeader = req.headers.get("Authorization") ?? "";
   const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
-
   if (token) {
-    // New client sends JWT in Authorization header — verify with service-role key
-    const { data, error } = await admin.auth.getUser(token);
-    if (!error && data.user) {
-      user = data.user;
-    } else {
-      console.error("[approve-summary] Bearer token verification failed:", error?.message);
-    }
+    const { data } = await admin.auth.getUser(token);
+    if (data.user) user = data.user;
   }
 
   if (!user) {
-    // Fall back to cookie-based session (works when client sends cookies normally)
     const serverClient = createServerClient();
     const { data: { user: cookieUser } } = await serverClient.auth.getUser();
     user = cookieUser ?? null;
   }
 
   if (!user) {
-    console.error("[approve-summary] No valid auth — order_id:", order_id);
+    console.error("[approve-summary] No authenticated user — order_id:", order_id);
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  console.log("[approve-summary] Authenticated user:", user.email, "order_id:", order_id);
+  console.log("[approve-summary] user:", user.email, "order_id:", order_id);
 
-  // --- Role check: admins bypass ownership ---
+  // ── Step 2: Admin bypass ────────────────────────────────────────────────
   const { data: profile } = await admin
     .from("profiles")
     .select("role")
@@ -63,52 +56,82 @@ export async function GET(
     .single();
 
   const isAdmin = profile?.role === "admin" || profile?.role === "super_admin";
+  console.log("[approve-summary] role:", profile?.role ?? "none", "isAdmin:", isAdmin);
 
+  // ── Step 3: For non-admins, verify order ownership the same way        ──
+  // portal/orders does it: find client by user_id → fallback to email →   ──
+  // back-fill user_id. Then confirm the order belongs to that client.      ──
   let clientId: string;
 
-  console.log("[approve-summary] user role:", profile?.role ?? "none", "isAdmin:", isAdmin);
-
   if (isAdmin) {
-    // Admins can view any order
     const { data: orderCheck } = await admin
       .from("orders")
       .select("client_id")
       .eq("id", order_id)
       .single();
+
     if (!orderCheck) {
-      console.error("[approve-summary] admin path — order not found:", order_id);
+      console.error("[approve-summary] order not found (admin path):", order_id);
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
     clientId = orderCheck.client_id;
+
   } else {
-    // Clients: must own the order (email match OR user_id match)
-    const { data: order } = await admin
-      .from("orders")
-      .select("id, client_id, clients(email, user_id)")
-      .eq("id", order_id)
-      .single();
+    // Mirror portal/orders: find client by user_id then email, back-fill, then check order
+    const tenant = await getRequestTenant();
 
-    if (!order) return NextResponse.json({ error: "Order not found" }, { status: 404 });
+    let foundClientId: string | null = null;
 
-    const clientRaw = Array.isArray(order.clients)
-      ? order.clients[0]
-      : (order.clients as { email: string; user_id: string | null } | null);
+    // Try user_id first
+    if (!foundClientId) {
+      const { data: c } = await admin
+        .from("clients")
+        .select("id")
+        .eq("user_id", user.id)
+        .single();
+      if (c) foundClientId = c.id;
+    }
 
-    const clientEmail  = (clientRaw?.email  ?? "").toLowerCase();
-    const clientUserId = clientRaw?.user_id ?? null;
-    const userEmail    = (user.email ?? "").toLowerCase();
+    // Fall back to email
+    if (!foundClientId && user.email) {
+      const { data: c } = await admin
+        .from("clients")
+        .select("id")
+        .eq("email", user.email.toLowerCase())
+        .single();
+      if (c) {
+        foundClientId = c.id;
+        // Back-fill user_id exactly as portal/orders does
+        await admin
+          .from("clients")
+          .update({ user_id: user.id })
+          .eq("id", c.id)
+          .is("user_id", null);
+      }
+    }
 
-    const emailMatch  = clientEmail  !== "" && clientEmail  === userEmail;
-    const userIdMatch = clientUserId !== null && clientUserId === user.id;
-
-    if (!emailMatch && !userIdMatch) {
-      console.error("[approve-summary] ownership check failed — user:", user.email, "clientEmail:", clientEmail, "clientUserId:", clientUserId, "userId:", user.id);
+    if (!foundClientId) {
+      console.error("[approve-summary] no client found for user:", user.email, user.id);
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    clientId = order.client_id;
+    // Verify this order actually belongs to that client
+    const { data: orderCheck } = await admin
+      .from("orders")
+      .select("id, client_id")
+      .eq("id", order_id)
+      .eq("client_id", foundClientId)
+      .single();
+
+    if (!orderCheck) {
+      console.error("[approve-summary] order", order_id, "does not belong to client", foundClientId);
+      return NextResponse.json({ error: "Order not found" }, { status: 404 });
+    }
+
+    clientId = foundClientId;
   }
 
+  // ── Step 4: Fetch all approve-page data ─────────────────────────────────
   const [{ data: order }, { data: client }, { data: brief }, { data: concept }] =
     await Promise.all([
       admin
@@ -145,8 +168,11 @@ export async function GET(
     ]);
 
   if (!order) {
+    console.error("[approve-summary] order data not found after auth passed:", order_id);
     return NextResponse.json({ error: "Order not found" }, { status: 404 });
   }
+
+  console.log("[approve-summary] returning data for order:", order_id, "stage:", order.stage);
 
   return NextResponse.json({
     order: {
