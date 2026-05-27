@@ -147,13 +147,15 @@ export default function ConsultationPage() {
   useEffect(() => {
     async function load() {
       await sessionReady();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { router.replace("/login"); return; }
+      // Redirect suppliers — all other authenticated users can access this page
       const profile = await getProfile();
-      if (!profile) { router.replace("/login"); return; }
-      if (profile.role === "supplier") { router.replace("/supplier"); return; }
+      if (profile?.role === "supplier") { router.replace("/supplier"); return; }
       setLoading(false);
     }
     load();
-  }, [router]);
+  }, [router, supabase]);
 
   async function signOut() {
     await supabase.auth.signOut();
