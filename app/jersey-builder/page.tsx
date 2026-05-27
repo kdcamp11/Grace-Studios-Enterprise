@@ -480,6 +480,8 @@ function JerseyBuilderInner() {
                 <JerseyScene
                   colors={colors}
                   artworks={sceneArtworks}
+                  activeView={activeView}
+                  separateGlbs={true}
                   onSurfaceClick={handleSurfaceClick}
                   isPlacing={isPlacing}
                   onJerseyTopReady={handleJerseyTopReady}
@@ -512,9 +514,9 @@ function JerseyBuilderInner() {
             </div>
           )}
 
-          {/* Hint — only shown when artwork is placed and not currently placing */}
+          {/* Hint — sits above the JERSEY/SHORTS tab row when artwork is placed */}
           {sceneArtworks.length > 0 && !isPlacing && (
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 bg-brand-bg/80 backdrop-blur px-3 py-1.5 rounded-full border border-brand-border pointer-events-none">
+            <div className="absolute bottom-14 left-1/2 -translate-x-1/2 z-10 bg-brand-bg/80 backdrop-blur px-3 py-1.5 rounded-full border border-brand-border pointer-events-none">
               <p className="text-[10px] font-barlow text-brand-muted whitespace-nowrap">
                 Drag to rotate · Scroll to zoom · Artwork is locked to garment
               </p>
