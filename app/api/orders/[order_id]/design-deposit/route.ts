@@ -29,94 +29,99 @@ export async function POST(
 
   const { orderId, tenantId } = ctx;
 
-  const tenant = await getRequestTenant();
-  if (!tenant) return NextResponse.json({ error: "Tenant not found" }, { status: 400 });
+  try {
+    const tenant = await getRequestTenant();
+    if (!tenant) return NextResponse.json({ error: "Tenant not found" }, { status: 400 });
 
-  const admin = createAdminClient();
+    const admin = createAdminClient();
 
-  // Check if already paid
-  const { data: order } = await admin
-    .from("orders")
-    .select("design_fee_paid, concept_source, order_number")
-    .eq("id", orderId)
-    .single();
+    // Check if already paid
+    const { data: order } = await admin
+      .from("orders")
+      .select("design_fee_paid, concept_source, order_number")
+      .eq("id", orderId)
+      .single();
 
-  if (!order) return NextResponse.json({ error: "Order not found" }, { status: 404 });
-  if (order.design_fee_paid) {
-    return NextResponse.json({ error: "Design deposit already paid" }, { status: 400 });
-  }
-
-  // Check for an existing pending session to avoid duplicates
-  const { data: existingSession } = await admin
-    .from("design_deposit_sessions")
-    .select("stripe_checkout_session_id")
-    .eq("order_id", orderId)
-    .eq("status", "pending")
-    .single();
-
-  if (existingSession?.stripe_checkout_session_id) {
-    // Retrieve the session to check if it's still valid
-    try {
-      const session = await stripe.checkout.sessions.retrieve(
-        existingSession.stripe_checkout_session_id,
-      );
-      if (session.status === "open") {
-        return NextResponse.json({ url: session.url });
-      }
-    } catch {
-      // Session expired — fall through to create a new one
+    if (!order) return NextResponse.json({ error: "Order not found" }, { status: 404 });
+    if (order.design_fee_paid) {
+      return NextResponse.json({ error: "Design deposit already paid" }, { status: 400 });
     }
-  }
 
-  const isClientProvided = order.concept_source === "client_provided";
-  const productName = `${tenant.name} — Project Activation`;
-  const description = "Applied toward your final order total";
+    // Check for an existing pending session to avoid duplicates
+    const { data: existingSession } = await admin
+      .from("design_deposit_sessions")
+      .select("stripe_checkout_session_id")
+      .eq("order_id", orderId)
+      .eq("status", "pending")
+      .single();
 
-  const appUrl = new URL(req.url).origin;
-  const successUrl = isClientProvided
-    ? `${appUrl}/orders/${orderId}/tracker?deposit=success`
-    : `${appUrl}/orders/${orderId}/concepts?unlocked=1`;
-  const cancelUrl = `${appUrl}/orders/${orderId}/checkout`;
+    if (existingSession?.stripe_checkout_session_id) {
+      // Retrieve the session to check if it's still valid
+      try {
+        const session = await stripe.checkout.sessions.retrieve(
+          existingSession.stripe_checkout_session_id,
+        );
+        if (session.status === "open") {
+          return NextResponse.json({ url: session.url });
+        }
+      } catch {
+        // Session expired — fall through to create a new one
+      }
+    }
 
-  const session = await stripe.checkout.sessions.create({
-    mode:                 "payment",
-    payment_method_types: ["card"],
-    line_items: [
-      {
-        price_data: {
-          currency:     "usd",
-          unit_amount:  DESIGN_DEPOSIT_CENTS,
-          product_data: {
-            name:        productName,
-            description,
+    const isClientProvided = order.concept_source === "client_provided";
+    const productName = `${tenant.name} — Project Activation`;
+    const description = "Applied toward your final order total";
+
+    const appUrl = new URL(req.url).origin;
+    const successUrl = isClientProvided
+      ? `${appUrl}/orders/${orderId}/tracker?deposit=success`
+      : `${appUrl}/orders/${orderId}/concepts?unlocked=1`;
+    const cancelUrl = `${appUrl}/orders/${orderId}/checkout`;
+
+    const session = await stripe.checkout.sessions.create({
+      mode:                 "payment",
+      payment_method_types: ["card"],
+      line_items: [
+        {
+          price_data: {
+            currency:     "usd",
+            unit_amount:  DESIGN_DEPOSIT_CENTS,
+            product_data: {
+              name:        productName,
+              description,
+            },
           },
+          quantity: 1,
         },
-        quantity: 1,
+      ],
+      metadata: {
+        payment_type:   "design_deposit",
+        order_id:       orderId,
+        tenant_id:      tenantId,
+        concept_source: order.concept_source ?? "ai",
       },
-    ],
-    metadata: {
-      payment_type:   "design_deposit",
-      order_id:       orderId,
-      tenant_id:      tenantId,
-      concept_source: order.concept_source ?? "ai",
-    },
-    customer_email: ctx.email,
-    success_url:    successUrl,
-    cancel_url:     cancelUrl,
-    billing_address_collection: "required",
-  });
+      customer_email: ctx.email,
+      success_url:    successUrl,
+      cancel_url:     cancelUrl,
+      billing_address_collection: "required",
+    });
 
-  // Record the session in our DB for webhook matching + status tracking
-  await admin.from("design_deposit_sessions").upsert(
-    {
-      tenant_id:                  tenantId,
-      order_id:                   orderId,
-      amount_cents:               DESIGN_DEPOSIT_CENTS,
-      status:                     "pending",
-      stripe_checkout_session_id: session.id,
-    },
-    { onConflict: "stripe_checkout_session_id" },
-  );
+    // Record the session in our DB for webhook matching + status tracking
+    await admin.from("design_deposit_sessions").upsert(
+      {
+        tenant_id:                  tenantId,
+        order_id:                   orderId,
+        amount_cents:               DESIGN_DEPOSIT_CENTS,
+        status:                     "pending",
+        stripe_checkout_session_id: session.id,
+      },
+      { onConflict: "stripe_checkout_session_id" },
+    );
 
-  return NextResponse.json({ url: session.url });
+    return NextResponse.json({ url: session.url });
+  } catch (err) {
+    console.error("[design-deposit] unhandled error:", err);
+    return NextResponse.json({ error: "Unable to start checkout. Please try again." }, { status: 500 });
+  }
 }

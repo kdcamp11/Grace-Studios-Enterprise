@@ -113,7 +113,7 @@ export default function ReviewPage() {
     );
   }
 
-  const canSubmit = !!brief?.gsLogoPlacement && !!brief?.orderId && ipAgreed && termsAgreed && privacyAgreed;
+  const canSubmit = !!brief?.orderId && ipAgreed && termsAgreed && privacyAgreed;
 
   return (
     <BriefLayout
