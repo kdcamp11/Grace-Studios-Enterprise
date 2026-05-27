@@ -19,7 +19,7 @@ import {
   useState,
 } from "react";
 import { Canvas } from "@react-three/fiber";
-import { OrbitControls, useThree } from "@react-three/drei";
+import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
