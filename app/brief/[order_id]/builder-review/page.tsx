@@ -54,7 +54,7 @@ export default function BuilderReviewPage() {
   }, [router]);
 
   async function handleSubmit() {
-    if (!brief?.orderId) return;
+    if (!order_id) return;
     setLoading(true);
     setError("");
 
@@ -63,10 +63,10 @@ export default function BuilderReviewPage() {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          order_id:          brief.orderId,
+          order_id:          order_id,
           concept_source:    "client_provided",   // routes post-payment to tracker
-          zone_colors:       brief.zoneColors ?? null,
-          logos_to_include:  brief.logosToInclude || null,
+          zone_colors:       brief?.zoneColors ?? null,
+          logos_to_include:  brief?.logosToInclude || null,
           vision_prompt:     notes.trim() || null,
           logo_placement:    "chest",             // default; designer confirms on execution
         }),
@@ -81,7 +81,7 @@ export default function BuilderReviewPage() {
       fetch("/api/notify", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ event: "brief_submitted", order_id: brief.orderId }),
+        body:    JSON.stringify({ event: "brief_submitted", order_id }),
       }).catch(() => {});
 
       clearBriefState();
@@ -107,7 +107,7 @@ export default function BuilderReviewPage() {
   const logoNames   = brief.logosToInclude
     ? brief.logosToInclude.split(",").map((s) => s.trim()).filter(Boolean)
     : [];
-  const canSubmit   = !!brief.orderId && termsAgreed && privacyAgreed;
+  const canSubmit   = termsAgreed && privacyAgreed;
 
   return (
     <BriefLayout
