@@ -164,6 +164,7 @@ export default function JerseyScene({
         object={scene}
         scale={0.9}
         position={[0, -0.6, 0]}
+        rotation={[0, Math.PI, 0]}
         onClick={handleClick}
         onPointerOver={isPlacing ? () => { document.body.style.cursor = "crosshair"; } : undefined}
         onPointerOut={isPlacing  ? () => { document.body.style.cursor = "auto"; }      : undefined}
