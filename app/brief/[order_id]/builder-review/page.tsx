@@ -42,7 +42,6 @@ export default function BuilderReviewPage() {
   const [notes, setNotes]             = useState("");
   const [loading, setLoading]         = useState(false);
   const [error, setError]             = useState("");
-  const [ipAgreed, setIpAgreed]       = useState(false);
   const [termsAgreed, setTermsAgreed] = useState(false);
   const [privacyAgreed, setPrivacyAgreed] = useState(false);
 
@@ -108,7 +107,7 @@ export default function BuilderReviewPage() {
   const logoNames   = brief.logosToInclude
     ? brief.logosToInclude.split(",").map((s) => s.trim()).filter(Boolean)
     : [];
-  const canSubmit   = !!brief.orderId && ipAgreed && termsAgreed && privacyAgreed;
+  const canSubmit   = !!brief.orderId && termsAgreed && privacyAgreed;
 
   return (
     <BriefLayout
@@ -202,17 +201,6 @@ export default function BuilderReviewPage() {
 
         {/* ── Agreements ─────────────────────────────────────────────────────── */}
         <div className="space-y-3">
-          <AgreementCheckbox
-            checked={ipAgreed}
-            onChange={setIpAgreed}
-            title="Intellectual Property Agreement"
-          >
-            I understand that all design concepts and artwork produced by {tenant.name} based on my brief
-            remain the exclusive intellectual property of {tenant.name} until full payment is received.
-            By submitting, I grant {tenant.name} a license to create designs on my behalf. Any logos
-            or artwork I provide are my own IP and I have the right to use them.
-          </AgreementCheckbox>
-
           <AgreementCheckbox
             checked={termsAgreed}
             onChange={setTermsAgreed}

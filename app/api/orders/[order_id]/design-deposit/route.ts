@@ -72,7 +72,7 @@ export async function POST(
   const productName = `${tenant.name} — Project Activation`;
   const description = "Applied toward your final order total";
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const appUrl = new URL(request.url).origin;
   const successUrl = isClientProvided
     ? `${appUrl}/orders/${orderId}/tracker?deposit=success`
     : `${appUrl}/orders/${orderId}/concepts?unlocked=1`;
