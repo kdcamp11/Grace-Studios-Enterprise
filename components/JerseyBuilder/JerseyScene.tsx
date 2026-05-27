@@ -4,9 +4,9 @@
  * JerseyScene — React Three Fiber scene
  *
  *  MODE A — Separate GLBs (recommended)
- *    Put /public/JerseyTop.glb  and /public/Shorts.glb in the public folder.
- *    JerseyTopScene loads JerseyTop.glb for the Jersey tab.
- *    ShortsScene    loads Shorts.glb    for the Shorts tab.
+ *    Put /public/Jersey Top Only.glb  and /public/Jersey Bottoms Only.glb in the public folder.
+ *    JerseyTopScene loads "Jersey Top Only.glb" for the Jersey tab.
+ *    ShortsScene    loads "Jersey Bottoms Only.glb" for the Shorts tab.
  *    No visibility toggling needed — each file contains only its own pieces.
  *
  *  MODE B — Combined GLB fallback
@@ -61,7 +61,7 @@ interface Props {
   colors: ZoneColors;
   artworks: ArtworkItem[];
   activeView: "jersey" | "shorts";
-  /** Set true once you have added /public/JerseyTop.glb and /public/Shorts.glb */
+  /** Set true once you have added "Jersey Top Only.glb" and "Jersey Bottoms Only.glb" to /public */
   separateGlbs?: boolean;
   onSurfaceClick?: (hit: SurfaceHit) => void;
   isPlacing?: boolean;
@@ -345,7 +345,7 @@ export default function JerseyScene({
         {activeView === "jersey" && (
           <Suspense fallback={null}>
             <SplitScene
-              glbPath="/JerseyTop.glb"
+              glbPath="/Jersey Top Only.glb"
               colors={colors}
               artworks={artworks}
               onSurfaceClick={onSurfaceClick}
@@ -358,7 +358,7 @@ export default function JerseyScene({
         {activeView === "shorts" && (
           <Suspense fallback={null}>
             <SplitScene
-              glbPath="/Shorts.glb"
+              glbPath="/Jersey Bottoms Only.glb"
               colors={colors}
               artworks={artworks}
               onSurfaceClick={onSurfaceClick}
