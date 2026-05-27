@@ -747,14 +747,13 @@ export default function LoginPage() {
           STATS BAR
       ══════════════════════════════════════════════════════════════════ */}
       {/* ══════════════════════════════════════════════════════════════════
-          JERSEY STRIP — visual proof of work
+          JERSEY STRIP — visual proof of work (commented out)
       ══════════════════════════════════════════════════════════════════ */}
-      <div className="border-b border-brand-border px-3 sm:px-4 lg:px-6 pt-12 sm:pt-16 pb-8 sm:pb-10">
+      {/* <div className="border-b border-brand-border px-3 sm:px-4 lg:px-6 pt-12 sm:pt-16 pb-8 sm:pb-10">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
           {JERSEYS.map((j) => (
             <div key={j.name} className="group flex flex-col items-center gap-3">
               <div className="jersey-img-card bg-white rounded-xl w-full flex items-center justify-center">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={j.src}
                   alt={j.name}
@@ -765,7 +764,7 @@ export default function LoginPage() {
             </div>
           ))}
         </div>
-      </div>
+      </div> */}
 
       {/* ══════════════════════════════════════════════════════════════════
           STATS BAR — below jerseys
