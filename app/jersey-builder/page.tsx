@@ -35,17 +35,17 @@ import JerseyScene, {
 
 // ── Zone definitions split by tab ─────────────────────────────────────────────
 
+// Zones per tab — keyed to the materials that actually exist in the separate GLBs.
+// JerseyTop.glb has 2 mats: body (jerseyTop) + collar/trim (collar).
+// Shorts.glb has 2 mats:    body (jerseyShorts) + stitching trim (shortSidePanels).
 const JERSEY_ZONES = [
-  { key: "jerseyTop"        , label: "Jersey Body"              },
-  { key: "collar"           , label: "Collar"                   },
-  { key: "jerseySidePanels" , label: "Side Panels"              },
-  { key: "jerseyLowerPanels", label: "Lower Panels"             },
-  { key: "sleevePanels"     , label: "Sleeve Panels"            },
+  { key: "jerseyTop", label: "Jersey Body" },
+  { key: "collar",    label: "Collar & Trim" },
 ] as const;
 
 const SHORTS_ZONES = [
-  { key: "jerseyShorts"    , label: "Shorts Body"               },
-  { key: "shortSidePanels" , label: "Side Panels"               },
+  { key: "jerseyShorts",    label: "Shorts Body"  },
+  { key: "shortSidePanels", label: "Trim & Detail" },
 ] as const;
 
 const ZONES = [...JERSEY_ZONES, ...SHORTS_ZONES] as const;
@@ -497,6 +497,7 @@ function JerseyBuilderInner() {
                   colors={colors}
                   artworks={sceneArtworks}
                   activeView={activeView}
+                  separateGlbs={true}
                   onSurfaceClick={handleSurfaceClick}
                   isPlacing={isPlacing}
                   onJerseyTopReady={handleJerseyTopReady}
