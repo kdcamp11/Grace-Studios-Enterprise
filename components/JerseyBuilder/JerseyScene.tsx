@@ -3,14 +3,16 @@
 /**
  * JerseyScene — React Three Fiber scene that:
  *  1. Loads /public/Jersey.glb via useGLTF
- *  2. Applies per-zone colors by material name (not index-split)
- *  3. Renders logos, team names, numbers, and custom text as THREE.js
- *     Decal geometry projected onto the jersey mesh surface — they stay
- *     locked to the garment when rotating / zooming.
- *  4. Emits onClick hits so the page can trigger "click to place" flow.
+ *  2. Computes the model's bounding box on load and centres it at the origin
+ *     so the camera always frames the full jersey regardless of how the GLB
+ *     was exported.
+ *  3. Applies per-zone colours by material name (MAT_TO_ZONE dict).
+ *  4. Renders logos, team names, numbers, and custom text as THREE.js
+ *     Decal geometry projected onto the jersey surface.
+ *  5. Emits onClick hits so the page can trigger "click to place" flow.
  *
  * GLB material ↔ zone map (verified from public/Jersey.glb):
- *   jersey_top          → main jersey body (primary placement surface)
+ *   jersey_top          → main jersey body
  *   jersey_shorts       → shorts body
  *   short_side_panels   → shorts side panels
  *   jersey_side_panels  → jersey side panels
@@ -36,23 +38,17 @@ export interface ZoneColors {
   shortSidePanels: string;
 }
 
-/** A piece of artwork (logo, text, number) placed on the jersey surface. */
 export interface ArtworkItem {
   id: string;
   texture: THREE.Texture | null;
-  /** World-space position of the decal centre */
   position: [number, number, number];
-  /** World-space Euler rotation that aligns +Z with the surface normal */
   rotation: [number, number, number];
-  /** World-space scale (width ≈ height ≈ depth) */
   size: number;
-  /** The specific mesh the decal projects onto */
   mesh: THREE.Mesh | null;
 }
 
 export interface SurfaceHit {
   point: THREE.Vector3;
-  /** Surface normal in WORLD space */
   normal: THREE.Vector3;
   mesh: THREE.Mesh;
   materialName: string;
@@ -61,22 +57,20 @@ export interface SurfaceHit {
 interface Props {
   colors: ZoneColors;
   artworks: ArtworkItem[];
-  /** Called when the model is clicked and `isPlacing` is true */
   onSurfaceClick?: (hit: SurfaceHit) => void;
-  /** Cursor changes to crosshair; clicks trigger onSurfaceClick */
   isPlacing?: boolean;
 }
 
-// ── Material name → zone key map ──────────────────────────────────────────────
+// ── Material name → zone key ──────────────────────────────────────────────────
 
 const MAT_TO_ZONE: Record<string, keyof ZoneColors> = {
-  jersey_top:         "jerseyTop",
-  collar:             "collar",
-  jersey_shorts:      "jerseyShorts",
-  jersey_side_panels: "jerseySidePanels",
-  jersey_lower_panels:"jerseyLowerPanels",
-  sleeve_panels:      "sleevePanels",
-  short_side_panels:  "shortSidePanels",
+  jersey_top:          "jerseyTop",
+  collar:              "collar",
+  jersey_shorts:       "jerseyShorts",
+  jersey_side_panels:  "jerseySidePanels",
+  jersey_lower_panels: "jerseyLowerPanels",
+  sleeve_panels:       "sleevePanels",
+  short_side_panels:   "shortSidePanels",
 };
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -89,12 +83,22 @@ export default function JerseyScene({
 }: Props) {
   const { scene } = useGLTF("/Jersey.glb");
 
+  // ── Centre the model at origin ────────────────────────────────────────────
+  // The GLB nodes are spread across world space (jersey top y≈14, shorts y≈3.5,
+  // jersey top x≈-7.8 vs shorts x≈0).  Compute the actual bounding box of the
+  // whole scene and apply an offset so the centroid sits at [0,0,0].
+  const centerOffset = useMemo(() => {
+    const box = new THREE.Box3().setFromObject(scene);
+    const center = new THREE.Vector3();
+    box.getCenter(center);
+    return [-center.x, -center.y, -center.z] as [number, number, number];
+  }, [scene]);
+
   // Per-zone material refs (cloned instances we own)
-  const matByZone = useRef<Partial<Record<keyof ZoneColors, THREE.MeshStandardMaterial>>>({});
-  // Mesh refs keyed by material name — used as the `mesh` prop on <Decal>
+  const matByZone    = useRef<Partial<Record<keyof ZoneColors, THREE.MeshStandardMaterial>>>({});
   const meshRefByMat = useRef<Record<string, React.MutableRefObject<THREE.Mesh>>>({});
 
-  // ── Clone materials and map by name once on load ──────────────────────────
+  // ── Clone materials once on load ──────────────────────────────────────────
   useEffect(() => {
     const newMats: typeof matByZone.current = {};
     const newMeshRefs: typeof meshRefByMat.current = {};
@@ -103,31 +107,26 @@ export default function JerseyScene({
       const node = child as THREE.Mesh;
       if (!node.isMesh) return;
 
-      const rawMats = Array.isArray(node.material)
-        ? node.material
-        : [node.material];
+      const rawMats = Array.isArray(node.material) ? node.material : [node.material];
 
       const cloned = rawMats.map((m) => {
         const mat = (m as THREE.MeshStandardMaterial).clone();
-
         const zoneKey = MAT_TO_ZONE[mat.name];
         if (zoneKey) {
           newMats[zoneKey] = mat;
-          // Store a stable ref object pointing to this mesh
           newMeshRefs[mat.name] = { current: node } as React.MutableRefObject<THREE.Mesh>;
         }
-
         return mat;
       });
 
       node.material = Array.isArray(node.material) ? cloned : cloned[0];
     });
 
-    matByZone.current   = newMats;
+    matByZone.current    = newMats;
     meshRefByMat.current = newMeshRefs;
   }, [scene]);
 
-  // ── Apply zone colors whenever they change ────────────────────────────────
+  // ── Apply zone colours ────────────────────────────────────────────────────
   useEffect(() => {
     (Object.entries(colors) as [keyof ZoneColors, string][]).forEach(([zone, hex]) => {
       const mat = matByZone.current[zone];
@@ -137,7 +136,7 @@ export default function JerseyScene({
     });
   }, [colors]);
 
-  // ── Click handler for "place artwork" mode ────────────────────────────────
+  // ── Surface-click for artwork placement ──────────────────────────────────
   const handleClick = (e: ThreeEvent<MouseEvent>) => {
     if (!isPlacing || !onSurfaceClick) return;
     e.stopPropagation();
@@ -145,7 +144,6 @@ export default function JerseyScene({
     const mesh   = e.object as THREE.Mesh;
     const point  = e.point.clone();
     const normal = e.face?.normal.clone() ?? new THREE.Vector3(0, 0, 1);
-    // Transform object-space normal → world space
     normal.transformDirection(mesh.matrixWorld).normalize();
 
     const mat = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;
@@ -159,21 +157,18 @@ export default function JerseyScene({
 
   return (
     <group>
-      {/* Jersey GLB — cursor changes when placing artwork */}
+      {/* The offset centres the whole model at the world origin */}
       <primitive
         object={scene}
-        scale={0.9}
-        position={[0, -0.6, 0]}
+        position={centerOffset}
         onClick={handleClick}
         onPointerOver={isPlacing ? () => { document.body.style.cursor = "crosshair"; } : undefined}
         onPointerOut={isPlacing  ? () => { document.body.style.cursor = "auto"; }      : undefined}
       />
 
-      {/* Decals — one per placed artwork item */}
       {artworks.map((art) => {
         if (!art.mesh || !art.texture) return null;
         const meshRef = { current: art.mesh } as React.MutableRefObject<THREE.Mesh>;
-
         return (
           <Decal
             key={art.id}
