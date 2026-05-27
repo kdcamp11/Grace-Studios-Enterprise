@@ -113,7 +113,7 @@ export default function ReviewPage() {
     );
   }
 
-  const canSubmit = !!order_id && ipAgreed && termsAgreed && privacyAgreed;
+  const canSubmit = ipAgreed && termsAgreed && privacyAgreed;
 
   return (
     <BriefLayout
