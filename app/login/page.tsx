@@ -514,125 +514,134 @@ export default function LoginPage() {
       ══════════════════════════════════════════════════════════════════ */}
       {view === "client" && (<>
       <section className="border-b border-brand-border overflow-hidden">
-        <div className="max-w-5xl mx-auto px-5 sm:px-8 lg:px-10 py-16 lg:py-24 flex flex-col items-center text-center">
+        <div className="max-w-6xl mx-auto px-5 sm:px-8 lg:px-10 py-14 lg:py-20">
+          <div className="flex flex-col lg:flex-row gap-10 lg:gap-16 items-start">
 
-          {/* Eyebrow */}
-          <div className="flex items-center gap-2.5 mb-7">
-            <div className="w-[3px] h-5 bg-brand-primary flex-shrink-0" />
-            <span className="text-[10px] font-display font-bold uppercase tracking-[0.3em] text-brand-primary">
-              Apparel · Brand Identity · Team Gear
-            </span>
+            {/* ── Left: brand positioning ── */}
+            <div className="lg:w-[340px] xl:w-[400px] flex-shrink-0 flex flex-col gap-6 lg:sticky lg:top-10">
+
+              <div className="flex items-center gap-2.5">
+                <div className="w-[3px] h-5 bg-brand-primary flex-shrink-0" />
+                <span className="text-[10px] font-display font-bold uppercase tracking-[0.3em] text-brand-primary">
+                  Apparel · Brand Identity · Team Gear
+                </span>
+              </div>
+
+              <h1
+                className="font-display font-bold uppercase text-brand-text leading-none tracking-tight"
+                style={{ fontSize: "clamp(1.5rem, 3.2vw, 3.5rem)" }}
+              >
+                The Identity Your Program{" "}
+                <span className="text-brand-primary">Was Built For.</span>
+              </h1>
+
+              <p className="text-xs text-brand-muted font-barlow leading-relaxed">
+                Grace Studios helps elite programs achieve their ultimate brand identity through custom apparel
+                and team gear, designed around your program, produced with precision, and tracked from first
+                concept to final delivery.
+              </p>
+
+            </div>
+
+            {/* ── Right: path cards ── */}
+            <div className="flex-1 flex flex-col gap-5">
+
+              {/* Consultation */}
+              <div className="flex flex-col gap-3">
+                <div className="group relative flex flex-col gap-4 p-6 rounded-2xl border border-brand-border bg-brand-bg hover:bg-brand-surface transition-colors duration-300 shadow-sm">
+                  <div className="absolute top-0 left-0 right-0 h-[2px] bg-brand-primary opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-t-2xl" />
+                  <div className="flex items-center justify-between">
+                    <span className="text-[9px] font-display font-bold uppercase tracking-[0.2em] px-2.5 py-1 rounded border text-brand-primary bg-brand-primary/10 border-brand-primary/30">Full Service</span>
+                    <span className="text-[9px] font-display uppercase tracking-widest text-brand-muted/60">Fully Managed</span>
+                  </div>
+                  <p className="font-display font-bold uppercase tracking-wide text-brand-text leading-snug" style={{ fontSize: "clamp(1rem, 1.4vw, 1.1rem)" }}>Creative Direction. Managed to Delivery.</p>
+                  <ul className="grid grid-cols-2 gap-x-4 gap-y-2">
+                    {PATH_CARDS[0].bullets.map((item) => (
+                      <li key={item} className="flex items-center gap-2">
+                        <span className="w-1 h-1 rounded-full bg-brand-primary flex-shrink-0" />
+                        <span className="text-xs font-barlow text-brand-muted leading-none">{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <Link href="/signup?path=consultation"
+                  className="flex items-center justify-center py-3.5 rounded-xl bg-brand-primary text-white font-display font-bold text-sm uppercase tracking-widest hover:bg-brand-secondary transition-colors shadow-sm">
+                  Consultation →
+                </Link>
+              </div>
+
+              {/* Self Service — two sub-paths */}
+              <div className="flex flex-col gap-3">
+                <div className="relative flex flex-col gap-4 p-6 rounded-2xl border border-brand-border bg-brand-bg shadow-sm">
+                  <div className="absolute top-0 left-0 right-0 h-[2px] bg-brand-primary/60 rounded-t-2xl" />
+                  <div className="flex items-center justify-between">
+                    <span className="text-[9px] font-display font-bold uppercase tracking-[0.2em] px-2.5 py-1 rounded border text-brand-primary bg-brand-primary/10 border-brand-primary/30">Self Service</span>
+                    <span className="text-[9px] font-display uppercase tracking-widest text-brand-muted/60">Two Paths</span>
+                  </div>
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <p className="font-display font-bold uppercase tracking-wide text-brand-text leading-snug" style={{ fontSize: "clamp(1rem, 1.4vw, 1.1rem)" }}>Design Freely. Activate When Ready.</p>
+                    <p className="text-xs font-barlow text-brand-muted sm:text-right sm:max-w-[200px] leading-relaxed flex-shrink-0">
+                      Free to build. $100 activation applied toward your final order.
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 border-t border-brand-border pt-4">
+                    <Link
+                      href="/signup?path=ai"
+                      className="group/sp flex items-center justify-between gap-2 p-3 rounded-lg border border-brand-border bg-brand-surface hover:border-brand-primary hover:bg-brand-primary/5 transition-all duration-200"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="w-1.5 h-1.5 rounded-full bg-brand-primary flex-shrink-0" />
+                        <span className="text-[10px] font-barlow text-brand-muted"><span className="text-brand-text font-medium">Design Brief</span>: submit your vision, we build the concept</span>
+                      </div>
+                      <svg className="w-3 h-3 text-brand-muted/50 group-hover/sp:text-brand-primary flex-shrink-0 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                      </svg>
+                    </Link>
+                    <Link
+                      href="/signup?path=builder"
+                      className="group/sp flex items-center justify-between gap-2 p-3 rounded-lg border border-brand-border bg-brand-surface hover:border-brand-primary hover:bg-brand-primary/5 transition-all duration-200"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="w-1.5 h-1.5 rounded-full bg-brand-primary flex-shrink-0" />
+                        <span className="text-[10px] font-barlow text-brand-muted"><span className="text-brand-text font-medium">Jersey Builder</span>: color every zone, selections drive the brief</span>
+                      </div>
+                      <svg className="w-3 h-3 text-brand-muted/50 group-hover/sp:text-brand-primary flex-shrink-0 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                      </svg>
+                    </Link>
+                  </div>
+                </div>
+              </div>
+
+              {/* Production Files */}
+              <div className="flex flex-col gap-3">
+                <div className="group relative flex flex-col gap-4 p-6 rounded-2xl border border-brand-border bg-brand-bg hover:bg-brand-surface transition-colors duration-300 shadow-sm">
+                  <div className="absolute top-0 left-0 right-0 h-[2px] bg-brand-muted/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-t-2xl" />
+                  <div className="flex items-center justify-between">
+                    <span className="text-[9px] font-display font-bold uppercase tracking-[0.2em] px-2.5 py-1 rounded border text-brand-muted bg-brand-muted/10 border-brand-muted/30">Production Files</span>
+                    <span className="text-[9px] font-display uppercase tracking-widest text-brand-muted/60">Your Artwork</span>
+                  </div>
+                  <p className="font-display font-bold uppercase tracking-wide text-brand-text leading-snug" style={{ fontSize: "clamp(1rem, 1.4vw, 1.1rem)" }}>Your Files. Our Production Network.</p>
+                  <ul className="grid grid-cols-2 gap-x-4 gap-y-2">
+                    {PATH_CARDS[2].bullets.map((item) => (
+                      <li key={item} className="flex items-center gap-2">
+                        <span className="w-1 h-1 rounded-full bg-brand-muted/60 flex-shrink-0" />
+                        <span className="text-xs font-barlow text-brand-muted leading-none">{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="text-[9px] font-barlow text-brand-muted/50 italic border-t border-brand-border pt-3 leading-snug">
+                    Have a sketch or concept? Consultation is the right starting point.
+                  </p>
+                </div>
+                <Link href="/signup?path=upload"
+                  className="flex items-center justify-center py-3.5 rounded-xl border border-brand-border text-brand-muted font-display font-bold text-sm uppercase tracking-widest hover:border-brand-primary hover:text-brand-primary transition-colors">
+                  Upload Production Files →
+                </Link>
+              </div>
+
+            </div>
           </div>
-
-          {/* Headline */}
-          <h1 className="font-display font-bold uppercase text-brand-text leading-none tracking-tight mb-6 whitespace-nowrap" style={{ fontSize: "clamp(1.1rem, 2.6vw, 3rem)" }}>
-            The Identity Your Program <span className="text-brand-primary">Was Built For.</span>
-          </h1>
-
-          <p className="text-xs text-brand-muted font-barlow max-w-[500px] leading-relaxed mb-12">
-            Grace Studios helps elite programs achieve their ultimate brand identity through custom apparel
-            and team gear, designed around your program, produced with precision, and tracked from first
-            concept to final delivery.
-          </p>
-
-          {/* Path cards */}
-          <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 text-left">
-
-            {/* Consultation */}
-            <div className="flex flex-col gap-3">
-              <div className="group relative flex flex-col gap-4 p-6 sm:p-7 rounded-2xl border border-brand-border bg-brand-bg hover:bg-brand-surface transition-colors duration-300 shadow-sm flex-1">
-                <div className="absolute top-0 left-0 right-0 h-[2px] bg-brand-primary opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-t-2xl" />
-                <div className="flex items-center justify-between">
-                  <span className="text-[9px] font-display font-bold uppercase tracking-[0.2em] px-2.5 py-1 rounded border text-brand-primary bg-brand-primary/10 border-brand-primary/30">Full Service</span>
-                  <span className="text-[9px] font-display uppercase tracking-widest text-brand-muted/60">Fully Managed</span>
-                </div>
-                <p className="font-display font-bold uppercase tracking-wide text-brand-text leading-snug whitespace-pre-line" style={{ fontSize: "clamp(1rem, 1.4vw, 1.1rem)" }}>{"Creative Direction.\nManaged to Delivery."}</p>
-                <ul className="space-y-2 flex-1">
-                  {PATH_CARDS[0].bullets.map((item) => (
-                    <li key={item} className="flex items-center gap-2.5">
-                      <span className="w-1 h-1 rounded-full bg-brand-primary flex-shrink-0" />
-                      <span className="text-xs font-barlow text-brand-muted leading-none">{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <Link href="/signup?path=consultation"
-                className="flex items-center justify-center py-4 rounded-xl bg-brand-primary text-white font-display font-bold text-sm uppercase tracking-widest hover:bg-brand-secondary transition-colors shadow-sm">
-                Consultation →
-              </Link>
-            </div>
-
-            {/* Self Service — two sub-paths */}
-            <div className="flex flex-col gap-3">
-              <div className="relative flex flex-col gap-4 p-6 sm:p-7 rounded-2xl border border-brand-border bg-brand-bg shadow-sm flex-1">
-                <div className="absolute top-0 left-0 right-0 h-[2px] bg-brand-primary/60 rounded-t-2xl" />
-                <div className="flex items-center justify-between">
-                  <span className="text-[9px] font-display font-bold uppercase tracking-[0.2em] px-2.5 py-1 rounded border text-brand-primary bg-brand-primary/10 border-brand-primary/30">Self Service</span>
-                  <span className="text-[9px] font-display uppercase tracking-widest text-brand-muted/60">Two Paths</span>
-                </div>
-                <p className="font-display font-bold uppercase tracking-wide text-brand-text leading-snug whitespace-pre-line" style={{ fontSize: "clamp(1rem, 1.4vw, 1.1rem)" }}>{"Design Freely.\nActivate When Ready."}</p>
-                <p className="text-xs font-barlow text-brand-muted leading-relaxed">
-                  Free to build. $100 activation applied toward your final order.
-                </p>
-                <div className="flex flex-col gap-2 border-t border-brand-border pt-4 flex-1">
-                  <p className="text-[8px] font-display font-bold uppercase tracking-[0.28em] text-brand-muted mb-1">Choose your path</p>
-                  <Link
-                    href="/signup?path=ai"
-                    className="group/sp flex items-center justify-between gap-2 p-3 rounded-lg border border-brand-border bg-brand-surface hover:border-brand-primary hover:bg-brand-primary/5 transition-all duration-200"
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="w-1.5 h-1.5 rounded-full bg-brand-primary flex-shrink-0" />
-                      <span className="text-[10px] font-barlow text-brand-muted truncate"><span className="text-brand-text font-medium">Design Brief</span>: submit your vision, we build the concept</span>
-                    </div>
-                    <svg className="w-3 h-3 text-brand-muted/50 group-hover/sp:text-brand-primary flex-shrink-0 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-                    </svg>
-                  </Link>
-                  <Link
-                    href="/signup?path=builder"
-                    className="group/sp flex items-center justify-between gap-2 p-3 rounded-lg border border-brand-border bg-brand-surface hover:border-brand-primary hover:bg-brand-primary/5 transition-all duration-200"
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="w-1.5 h-1.5 rounded-full bg-brand-primary flex-shrink-0" />
-                      <span className="text-[10px] font-barlow text-brand-muted truncate"><span className="text-brand-text font-medium">Jersey Builder</span>: color every zone, selections drive the brief</span>
-                    </div>
-                    <svg className="w-3 h-3 text-brand-muted/50 group-hover/sp:text-brand-primary flex-shrink-0 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-                    </svg>
-                  </Link>
-                </div>
-              </div>
-            </div>
-
-            {/* Production Files */}
-            <div className="flex flex-col gap-3">
-              <div className="group relative flex flex-col gap-4 p-6 sm:p-7 rounded-2xl border border-brand-border bg-brand-bg hover:bg-brand-surface transition-colors duration-300 shadow-sm flex-1">
-                <div className="absolute top-0 left-0 right-0 h-[2px] bg-brand-muted/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-t-2xl" />
-                <div className="flex items-center justify-between">
-                  <span className="text-[9px] font-display font-bold uppercase tracking-[0.2em] px-2.5 py-1 rounded border text-brand-muted bg-brand-muted/10 border-brand-muted/30">Production Files</span>
-                  <span className="text-[9px] font-display uppercase tracking-widest text-brand-muted/60">Your Artwork</span>
-                </div>
-                <p className="font-display font-bold uppercase tracking-wide text-brand-text leading-snug whitespace-pre-line" style={{ fontSize: "clamp(1rem, 1.4vw, 1.1rem)" }}>{"Your Files.\nOur Production Network."}</p>
-                <ul className="space-y-2 flex-1">
-                  {PATH_CARDS[2].bullets.map((item) => (
-                    <li key={item} className="flex items-center gap-2.5">
-                      <span className="w-1 h-1 rounded-full bg-brand-muted/60 flex-shrink-0" />
-                      <span className="text-xs font-barlow text-brand-muted leading-none">{item}</span>
-                    </li>
-                  ))}
-                </ul>
-                <p className="text-[9px] font-barlow text-brand-muted/50 italic border-t border-brand-border pt-3 leading-snug">
-                  Have a sketch or concept? Consultation is the right starting point.
-                </p>
-              </div>
-              <Link href="/signup?path=upload"
-                className="flex items-center justify-center py-4 rounded-xl border border-brand-border text-brand-muted font-display font-bold text-sm uppercase tracking-widest hover:border-brand-primary hover:text-brand-primary transition-colors">
-                Upload Production Files →
-              </Link>
-            </div>
-
-          </div>
-
         </div>
       </section>
 
