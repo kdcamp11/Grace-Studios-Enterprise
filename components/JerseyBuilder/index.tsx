@@ -208,7 +208,7 @@ export default function JerseyBuilder() {
               }
             >
               <Canvas
-                camera={{ position: [0, 0, 6.5], fov: 55 }}
+                camera={{ position: [0, -0.3, -5.5], fov: 52 }}
                 style={{ width: "100%", height: "100%" }}
                 gl={{ preserveDrawingBuffer: true }}
               >
@@ -236,8 +236,8 @@ export default function JerseyBuilder() {
                 <OrbitControls
                   enabled={orbitEnabled}
                   enablePan={false}
-                  minDistance={2.5}
-                  maxDistance={10}
+                  minDistance={2}
+                  maxDistance={9}
                   target={[0, -0.3, 0]}
                 />
               </Canvas>
