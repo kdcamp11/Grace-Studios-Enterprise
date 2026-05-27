@@ -51,7 +51,8 @@ export default function BuilderReviewPage() {
       if (!user) router.replace("/login");
     });
     setBrief(loadBriefState());
-  }, [router]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function handleSubmit() {
     if (!order_id) return;
