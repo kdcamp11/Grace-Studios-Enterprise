@@ -279,7 +279,7 @@ function JerseyBuilderInner() {
   const anyActive = !!draggingId || !!resizingId;
 
   return (
-    <div className="h-screen bg-brand-bg flex flex-col overflow-hidden">
+    <div className="min-h-screen lg:h-screen bg-brand-bg flex flex-col lg:overflow-hidden">
 
       {/* Header */}
       <header className="flex-shrink-0 border-b border-brand-border px-6 sm:px-10 py-4 flex items-center justify-between">
@@ -411,7 +411,7 @@ function JerseyBuilderInner() {
         </div>
 
         {/* ── Controls Panel ── */}
-        <div className="flex-shrink-0 w-full lg:w-[320px] border-t lg:border-t-0 lg:border-l border-brand-border bg-brand-bg flex flex-col max-h-[45vh] lg:max-h-none overflow-hidden">
+        <div className="flex-shrink-0 w-full lg:w-[320px] border-t lg:border-t-0 lg:border-l border-brand-border bg-brand-bg flex flex-col lg:max-h-none lg:overflow-hidden">
           <div className="flex-1 overflow-y-auto px-6 py-7 space-y-6">
 
             <p className="text-[10px] font-barlow text-brand-muted leading-relaxed">
