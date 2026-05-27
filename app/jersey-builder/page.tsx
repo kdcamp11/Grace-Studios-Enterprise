@@ -279,10 +279,10 @@ function JerseyBuilderInner() {
   const anyActive = !!draggingId || !!resizingId;
 
   return (
-    <div className="min-h-screen bg-brand-bg flex flex-col">
+    <div className="h-screen bg-brand-bg flex flex-col overflow-hidden">
 
       {/* Header */}
-      <header className="border-b border-brand-border px-6 sm:px-10 py-4 flex items-center justify-between">
+      <header className="flex-shrink-0 border-b border-brand-border px-6 sm:px-10 py-4 flex items-center justify-between">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/grace-enterprise-logo.jpeg" alt="Grace Enterprise" style={{ width: 160 }} className="h-auto object-contain" />
         <div className="flex items-center gap-5">
@@ -291,12 +291,13 @@ function JerseyBuilderInner() {
         </div>
       </header>
 
-      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+      <div className="flex-1 flex flex-col lg:flex-row min-h-0">
 
         {/* ── 3D Viewport ── */}
         <div
           ref={containerRef}
-          className="relative flex-1 min-h-[420px] bg-[#f0f0f0]"
+          className="relative flex-1 min-h-0 bg-[#f0f0f0]"
+          style={{ minHeight: "clamp(280px, 50vh, 999px)" }}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
           onPointerLeave={handlePointerUp}
@@ -310,10 +311,10 @@ function JerseyBuilderInner() {
               camera-controls
               shadow-intensity="0.8"
               exposure="1.1"
-              camera-orbit="0deg 70deg auto"
-              min-camera-orbit="auto 0deg 80%"
-              max-camera-orbit="auto 160deg 200%"
-              style={{ width: "100%", height: "100%", minHeight: "420px", backgroundColor: "#f0f0f0", "--poster-color": "#f0f0f0" } as React.CSSProperties}
+              camera-orbit="0deg 75deg 180%"
+              min-camera-orbit="auto 0deg 100%"
+              max-camera-orbit="auto 160deg 300%"
+              style={{ width: "100%", height: "100%", backgroundColor: "#f0f0f0", "--poster-color": "#f0f0f0" } as React.CSSProperties}
             />
           )}
 
@@ -410,7 +411,7 @@ function JerseyBuilderInner() {
         </div>
 
         {/* ── Controls Panel ── */}
-        <div className="w-full lg:w-[320px] border-t lg:border-t-0 lg:border-l border-brand-border bg-brand-bg flex flex-col">
+        <div className="flex-shrink-0 w-full lg:w-[320px] border-t lg:border-t-0 lg:border-l border-brand-border bg-brand-bg flex flex-col max-h-[45vh] lg:max-h-none overflow-hidden">
           <div className="flex-1 overflow-y-auto px-6 py-7 space-y-6">
 
             <p className="text-[10px] font-barlow text-brand-muted leading-relaxed">
