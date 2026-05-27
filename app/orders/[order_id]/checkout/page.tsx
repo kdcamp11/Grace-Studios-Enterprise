@@ -16,8 +16,8 @@ interface OrderInfo {
   concept_source:  "ai" | "client_provided";
 }
 
-// Design deposit — $150.00 (matches DESIGN_DEPOSIT_CENTS in the API)
-const DESIGN_FEE_DISPLAY = "$150";
+// Project activation — $100.00 (matches DESIGN_DEPOSIT_CENTS in the API)
+const ACTIVATION_FEE_DISPLAY = "$100";
 
 export default function CheckoutPage() {
   const { order_id } = useParams<{ order_id: string }>();
@@ -67,7 +67,13 @@ export default function CheckoutPage() {
         headers: { "Content-Type": "application/json" },
       });
 
-      const data = await res.json() as { url?: string; error?: string };
+      // Guard against empty body (e.g. a server crash returning 500 with no JSON)
+      const text = await res.text();
+      if (!text) {
+        throw new Error("Server did not respond. Please try again in a moment.");
+      }
+
+      const data = JSON.parse(text) as { url?: string; error?: string };
 
       if (!res.ok || !data.url) {
         throw new Error(data.error ?? "Unable to start checkout. Please try again.");
@@ -103,7 +109,7 @@ export default function CheckoutPage() {
         <OrgLogo href="/portal" />
         <button
           type="button"
-          onClick={() => router.back()}
+          onClick={() => router.push(isClientProvided ? `/orders/${order_id}/tracker` : `/orders/${order_id}/concepts`)}
           className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors"
         >
           ← Back
@@ -114,17 +120,18 @@ export default function CheckoutPage() {
         <div className="w-full max-w-md space-y-6">
 
           {/* Heading */}
-          <div className="text-center space-y-2">
+          <div className="text-center space-y-3">
             <p className="text-[10px] font-display uppercase tracking-[0.3em] text-brand-primary">
-              {isClientProvided ? "Design Execution Deposit" : "Design Deposit"}
+              Project Activation
             </p>
-            <h1 className="font-display text-3xl font-bold uppercase tracking-wide text-brand-text">
-              {isClientProvided ? "Start Production" : "Unlock Your Concept"}
+            <h1 className="font-display text-3xl font-bold uppercase tracking-wide text-brand-text leading-tight">
+              Design Freely.{" "}
+              <span className="text-brand-primary">Activate When You&apos;re Ready.</span>
             </h1>
-            <p className="text-sm text-brand-muted font-barlow leading-relaxed">
-              {isClientProvided
-                ? "Pay the design execution deposit to send your concept to a Grace Studios designer for production-ready execution."
-                : "Your designs are ready. Pay the design deposit to view all 4 renders and approve your concept for production."}
+            <p className="text-sm text-brand-muted font-barlow leading-relaxed max-w-sm mx-auto">
+              Build your uniforms, explore styles, and create concepts at no cost. When
+              you&apos;re ready to move into production, activate your project and our team
+              takes it from concept to execution.
             </p>
           </div>
 
@@ -146,22 +153,22 @@ export default function CheckoutPage() {
             </div>
           )}
 
-          {/* Upload confirmation (client-provided path) */}
-          {isClientProvided && (
-            <div className="flex items-center gap-3 rounded-2xl border border-green-800/40 bg-green-950/10 px-5 py-4">
-              <div className="w-8 h-8 rounded-full bg-green-900/30 border border-green-700/40 flex items-center justify-center flex-shrink-0">
-                <svg className="w-4 h-4 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-xs font-display font-bold uppercase tracking-wider text-green-400">Concept Uploaded</p>
-                <p className="text-[10px] text-brand-muted font-barlow mt-0.5">
-                  Your design file has been received. Pay below to send it to a designer.
-                </p>
-              </div>
+          {/* Brief ready confirmation */}
+          <div className="flex items-center gap-3 rounded-2xl border border-brand-primary/20 bg-brand-primary/5 px-5 py-4">
+            <div className="w-8 h-8 rounded-full bg-brand-primary/15 border border-brand-primary/30 flex items-center justify-center flex-shrink-0">
+              <svg className="w-4 h-4 text-brand-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
             </div>
-          )}
+            <div>
+              <p className="text-xs font-display font-bold uppercase tracking-wider text-brand-primary">Brief Received</p>
+              <p className="text-[10px] text-brand-muted font-barlow mt-0.5">
+                {isClientProvided
+                  ? "Your design direction is locked in. Activate to put a Grace Studios designer on it."
+                  : "Your concepts are ready. Activate to release the full set and move into production."}
+              </p>
+            </div>
+          </div>
 
           {/* Order summary card */}
           <div className="rounded-2xl border border-brand-border bg-brand-surface divide-y divide-brand-border">
@@ -192,41 +199,41 @@ export default function CheckoutPage() {
             <div className="px-6 py-5 flex items-center justify-between bg-brand-surface rounded-b-2xl">
               <div>
                 <span className="text-sm font-display font-bold uppercase tracking-wider text-brand-text">
-                  {isClientProvided ? "Execution Deposit" : "Design Deposit"}
+                  Project Activation
                 </span>
                 <p className="text-[9px] text-brand-muted font-barlow mt-0.5">
-                  Credited toward your total order
+                  Applied toward your final order total
                 </p>
               </div>
               <span className="text-2xl font-display font-bold text-brand-primary tracking-wide">
-                {DESIGN_FEE_DISPLAY}
+                {ACTIVATION_FEE_DISPLAY}
               </span>
             </div>
           </div>
 
-          {/* What's included */}
+          {/* What activation unlocks */}
           <div className="rounded-2xl border border-brand-border bg-brand-surface px-5 py-4 space-y-2">
             <p className="text-[9px] font-display font-bold uppercase tracking-[0.28em] text-brand-muted mb-3">
-              What&apos;s included
+              What activation unlocks
             </p>
             {isClientProvided ? (
               <>
-                <IncludedItem text="Designer execution of your uploaded concept" />
-                <IncludedItem text="Production-ready Illustrator file" />
-                <IncludedItem text="Two revision rounds" />
-                <IncludedItem text="Full order tracking" />
+                <IncludedItem text="Grace Studios designer assigned to your project" />
+                <IncludedItem text="Production-ready artwork prepared from your direction" />
+                <IncludedItem text="Two revision rounds included" />
+                <IncludedItem text="Full production tracking from brief to delivery" />
               </>
             ) : (
               <>
-                <IncludedItem text="All 4 AI concept renders unlocked" />
-                <IncludedItem text="Design approval + designer assignment" />
-                <IncludedItem text="Production-ready Illustrator file" />
-                <IncludedItem text="Full order tracking" />
+                <IncludedItem text="Full concept set released for your review" />
+                <IncludedItem text="Designer assigned and brief approved" />
+                <IncludedItem text="Production-ready artwork prepared" />
+                <IncludedItem text="Full production tracking from brief to delivery" />
               </>
             )}
           </div>
 
-          {/* Pay button */}
+          {/* Activate button */}
           <div className="space-y-3">
             <button
               type="button"
@@ -238,9 +245,7 @@ export default function CheckoutPage() {
                 transition-all duration-200 shadow-[0_4px_24px_rgba(212,175,55,0.25)]
                 hover:shadow-[0_4px_32px_rgba(212,175,55,0.4)]"
             >
-              {paying
-                ? "Redirecting to checkout…"
-                : `Pay ${DESIGN_FEE_DISPLAY} — ${isClientProvided ? "Start Production" : "Unlock Designs"}`}
+              {paying ? "Redirecting…" : `Activate Project: ${ACTIVATION_FEE_DISPLAY}`}
             </button>
 
             {error && (
@@ -248,8 +253,8 @@ export default function CheckoutPage() {
             )}
 
             <p className="text-[10px] text-brand-muted font-barlow text-center leading-relaxed">
-              Secure payment via Stripe. {DESIGN_FEE_DISPLAY} deposit is credited toward
-              your total order — no additional charge at this stage.
+              Secure checkout via Stripe.{" "}
+              {ACTIVATION_FEE_DISPLAY} is applied toward your final order total.
             </p>
           </div>
 

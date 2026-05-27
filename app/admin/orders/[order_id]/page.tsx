@@ -569,12 +569,12 @@ export default function AdminOrderPage() {
   const currentStageIndex = PIPELINE.indexOf(order.stage);
 
   const STAGE_NEXT: Partial<Record<OrderStage, string>> = {
-    onboarding:              "Concepts are generating — check back soon or trigger manually.",
+    onboarding:              "Concepts are generating. Check back soon or trigger manually.",
     design_confirmed:        "Client is reviewing concepts and will select one.",
     files_sent:              "Assign a production partner and upload production files below.",
     first_piece_in_progress: "Waiting for supplier to submit first piece photos.",
     first_piece_review:      "Scroll down to review supplier uploads before sending to client.",
-    bulk_production:         "Bulk production underway — supplier will mark complete when done.",
+    bulk_production:         "Bulk production underway. Supplier will mark complete when done.",
     qc_verified:             "Add a tracking number below, then advance to Shipped.",
     shipped:                 "Move to Delivered once the client confirms receipt.",
     delivered:               "Mark as Complete to close out this order.",
@@ -710,7 +710,7 @@ export default function AdminOrderPage() {
                   </div>
                 </div>
 
-                <p className="text-[10px] font-display uppercase tracking-wider text-brand-muted pt-1">Bank Transfer Details <span className="normal-case opacity-60">(optional — shown to client for ACH/wire)</span></p>
+                <p className="text-[10px] font-display uppercase tracking-wider text-brand-muted pt-1">Bank Transfer Details <span className="normal-case opacity-60">(optional, shown to client for ACH/wire)</span></p>
 
                 <div className="grid grid-cols-2 gap-3">
                   {[

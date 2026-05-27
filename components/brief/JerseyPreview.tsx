@@ -1440,7 +1440,7 @@ export default function JerseyPreview({
           disabled:opacity-50 disabled:cursor-not-allowed`}>
         {capturing        ? "Saving…"
           : captureState === "saved" ? "✓ Builder concept saved"
-          : captureState === "error" ? "Save failed — try again"
+          : captureState === "error" ? "Save failed. Try again"
           : "Generate Builder Concept →"}
       </button>
 
@@ -1452,7 +1452,7 @@ export default function JerseyPreview({
         <div>
           <p className="text-[9px] font-display uppercase tracking-[0.2em] text-brand-muted mb-1.5">Directional Preview Only</p>
           <p className="text-[11px] text-brand-muted font-barlow leading-relaxed">
-            This builder is a directional guide — not final production artwork. Colors, typography, proportions, and material finish will be refined by our design team. Saving a builder concept adds it alongside AI-generated concepts in your review without replacing either.
+            This builder is a directional guide, not final production artwork. Colors, typography, proportions, and material finish will be refined by our design team. Saving a builder concept adds it alongside AI-generated concepts in your review without replacing either.
           </p>
         </div>
       </div>

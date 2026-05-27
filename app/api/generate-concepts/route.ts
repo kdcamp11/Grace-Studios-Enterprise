@@ -665,32 +665,32 @@ const GARMENT_CONSTRUCTION: Record<RenderViewKey, string> = {
 // Jacket-only system spec — only injected into jacket (frontJersey/backJersey) prompts
 const GRACE_TRACKSUIT_SYSTEM_JACKET = `
 ⚠️ CONSTRUCTION OVERRIDE — READ FIRST BEFORE ALL OTHER INSTRUCTIONS ⚠️
-THIS IS A WINDBREAKER JACKET. Nike Storm-FIT Windrunner / Patagonia Torrentshell / Arc'teryx Squamish construction.
-SLEEVE CUFFS: The sleeve fabric simply ends. It folds over once (1cm) and is topstitched flat. The wrist opening is a plain open tube of nylon — wide, loose, open. Identical to the sleeve hem on a Nike Windrunner or Patagonia rain jacket. There is NO ribbing. NO elastic band. NO knit cuff. NO gathered wrist. The sleeve just ends cleanly.
+THIS IS A WINDBREAKER JACKET. Premium nylon windbreaker construction — smooth shell, clean open hems, structured collar.
+SLEEVE CUFFS: The sleeve fabric simply ends. It folds over once (1cm) and is topstitched flat. The wrist opening is a plain open tube of nylon — wide, loose, open. Identical to the sleeve hem on a premium nylon windbreaker jacket. There is NO ribbing. NO elastic band. NO knit cuff. NO gathered wrist. The sleeve just ends cleanly.
 JACKET BOTTOM: Straight flat nylon hem with hidden drawcord channel. Like a windbreaker hem. Not banded. Not ribbed.
 COLLAR: Flat woven nylon stand collar. Same fabric as body. Not ribbed. Not knit.
 
 GRACE ATHLETICS — LUXURY NYLON WINDBREAKER JACKET RENDER RULES
 
-GARMENT TYPE: Premium athletic windbreaker jacket — zip-front nylon shell. Nike Storm-FIT Windrunner aesthetic.
+GARMENT TYPE: Premium athletic windbreaker jacket — zip-front nylon shell. Grace Athletics nylon windbreaker standard.
 
 MATERIAL: smooth woven nylon shell — subtle sheen, soft light reflections, natural crinkle in folds. Windbreaker quality.
 
 SILHOUETTE: Relaxed, slightly oversized. Hip length or below. Straight drop from shoulders. No waist cinching. Fashion elongated proportions.
 
-RENDER QUALITY: 3D semi-photorealistic. Soft studio lighting. Realistic nylon drape and folds. Premium campaign quality — Nike ACG / Stone Island nylon shell aesthetic.
+RENDER QUALITY: 3D semi-photorealistic. Soft studio lighting. Realistic nylon drape and folds. Premium campaign quality — Grace Athletics nylon shell standard.
 `.trim();
 
 // Pants-only system spec — only injected into pants (frontShorts/backShorts) prompts
 const GRACE_TRACKSUIT_SYSTEM_PANTS = `
 ⚠️ CONSTRUCTION OVERRIDE — READ FIRST BEFORE ALL OTHER INSTRUCTIONS ⚠️
-THESE ARE WIDE-LEG NYLON TROUSERS. Nike ACG cargo pant / Fear of God wide-leg nylon pant construction.
+THESE ARE WIDE-LEG NYLON TROUSERS. Premium wide-leg nylon windbreaker trouser construction — straight wide legs, clean open hems.
 ANKLE HEM: The pant leg simply ends. It folds over once (1cm) and is topstitched flat. The ankle opening is the full width of the lower leg — wide, open, flat. The pants stack on the floor. Identical to wide-leg windbreaker trousers. There is NO ribbing. NO elastic ankle. NO gathered cuff. NO tapered leg. The leg is the same width from hip to ankle.
 LEG SHAPE: Wide and straight from hip to floor. Palazzo trouser proportions. Not tapered. Not slim. Not fitted.
 
 GRACE ATHLETICS — LUXURY NYLON WIDE-LEG TROUSERS RENDER RULES
 
-GARMENT TYPE: Premium athletic wide-leg nylon trousers — windbreaker shell fabric. Fear of God Athletics / Nike ACG wide-leg nylon pant aesthetic.
+GARMENT TYPE: Premium athletic wide-leg nylon trousers — windbreaker shell fabric. Grace Athletics wide-leg nylon pant standard.
 
 MATERIAL: smooth woven nylon shell — subtle sheen, soft light reflections, natural drape. Windbreaker quality.
 
@@ -785,8 +785,8 @@ function buildGarmentPrompt(
   // Use "nylon zip jacket" and "wide-leg nylon trousers" instead.
   const garmentSubject = isTracksuit
     ? isJersey
-      ? `${isFront ? "Front" : "Back"} view of a premium nylon windbreaker jacket for ${teamName}. Nike Storm-FIT Windrunner construction — smooth nylon shell, clean open sleeve hems, flat windbreaker bottom hem. ${construction} graphic print.`
-      : `${isFront ? "Front" : "Back"} view of premium wide-leg nylon windbreaker trousers for ${teamName}. Nike ACG wide-leg construction — straight wide legs from hip to floor, clean open ankle hems, nylon shell fabric. ${construction} graphic print.`
+      ? `${isFront ? "Front" : "Back"} view of a premium nylon windbreaker jacket for ${teamName}. Grace Athletics windbreaker construction — smooth nylon shell, clean open sleeve hems, flat windbreaker bottom hem. ${construction} graphic print.`
+      : `${isFront ? "Front" : "Back"} view of premium wide-leg nylon windbreaker trousers for ${teamName}. Grace Athletics wide-leg construction — straight wide legs from hip to floor, clean open ankle hems, nylon shell fabric. ${construction} graphic print.`
     : isJersey
       ? `Premium ${construction} basketball game jersey, ${isFront ? "front" : "back"} view, for ${teamName} athletic program.`
       : `Premium ${construction} basketball game shorts, ${isFront ? "front" : "back"} view, for ${teamName} athletic program.`;
@@ -867,7 +867,7 @@ function buildGarmentPrompt(
         logoZone,
 
         // ── Wordmark: AI renders this ──
-        `TEAM WORDMARK (primary visual element): Render "${wordmarkName}" as the dominant chest wordmark, sublimated into the fabric. Style: bold athletic jersey wordmark, slightly arched baseline following chest contour, ${numStyleHint}-inspired letterforms, approximately 60–65% of chest width. Must feel constructed INTO the jersey — following fabric drape, not floating on top. Outline/stroke in ${outlineColor} with white fill, layered for depth. Inspired by Nike Elite / NCAA tournament / EYBL jersey wordmarks.`,
+        `TEAM WORDMARK (primary visual element): Render "${wordmarkName}" as the dominant chest wordmark, sublimated into the fabric. Style: bold athletic jersey wordmark, slightly arched baseline following chest contour, ${numStyleHint}-inspired letterforms, approximately 60–65% of chest width. Must feel constructed INTO the jersey — following fabric drape, not floating on top. Outline/stroke in ${outlineColor} with white fill, layered for depth. Inspired by elite collegiate and professional tournament jersey wordmarks.`,
 
         // ── Number: AI renders this ──
         `PLAYER NUMBER (secondary element): Render "00" centered below the team wordmark, sublimated into fabric. Style: ${numStyleHint} numerals, varsity proportions, layered ${outlineColor} outline with white fill. Proportionally balanced beneath the wordmark.`,
@@ -985,8 +985,8 @@ function buildGarmentPrompt(
 
     // ── Rendering quality ──
     isTracksuit
-      ? `Rendering: high-end semi-photorealistic 3D apparel render. Nylon/woven technical shell fabric with subtle sheen and realistic folds. Soft studio lighting from upper-left with soft fill. Realistic seam stitching and natural drape. Premium sportswear campaign quality — Nike/Adidas technical training collection aesthetic.`
-      : `Rendering: photorealistic semi-3D athletic garment. Performance mesh fabric with visible micro-weave texture. Dimensional studio lighting from upper-left with soft fill from right. Realistic seam stitching, natural fabric drape and weight. Production-accurate Nike/Adidas/FIBA-level manufacturing quality.`,
+      ? `Rendering: high-end semi-photorealistic 3D apparel render. Nylon/woven technical shell fabric with subtle sheen and realistic folds. Soft studio lighting from upper-left with soft fill. Realistic seam stitching and natural drape. Premium Grace Athletics sportswear campaign quality.`
+      : `Rendering: photorealistic semi-3D athletic garment. Performance mesh fabric with visible micro-weave texture. Dimensional studio lighting from upper-left with soft fill from right. Realistic seam stitching, natural fabric drape and weight. Production-accurate Grace Athletics manufacturing quality.`,
 
     // ── Jersey branding (jerseys only — typography integrated into fabric by AI) ──
     jerseyBranding,

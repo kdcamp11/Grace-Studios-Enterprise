@@ -67,7 +67,7 @@ function GeneratingState({ gen }: { gen: GenerationProgress }) {
         )}
         {gen.status === "generating" && completed === 0 && (
           <p className="text-xs text-brand-muted font-barlow">
-            Generating garment renders — takes 2–3 minutes
+            Generating garment renders, takes 2–3 minutes
           </p>
         )}
       </div>
@@ -80,7 +80,7 @@ function GeneratingState({ gen }: { gen: GenerationProgress }) {
       </div>
 
       <p className="text-[10px] text-brand-muted font-barlow">
-        You can leave and come back — your board saves automatically.
+        You can leave and come back. Your board saves automatically.
       </p>
     </div>
   );
@@ -282,7 +282,7 @@ function RendersBoard({ data, studioName }: { data: BoardData; studioName?: stri
               <p className="text-[7px] font-bold uppercase tracking-[0.28em] text-gray-400 mb-2">Features</p>
               {features.map((f, i) => (
                 <p key={i} className="text-[8px] text-gray-600 leading-snug mb-1.5">
-                  <span className="text-gray-400 mr-1">—</span>
+                  <span className="text-gray-400 mr-1">•</span>
                   {f.replace(/^[•\-–]\s*/, "")}
                 </p>
               ))}
@@ -372,7 +372,7 @@ function RendersBoard({ data, studioName }: { data: BoardData; studioName?: stri
           Colors, proportions, and details are subject to refinement. Logos are composited separately.
         </p>
         <span className="text-[7px] font-mono text-gray-300 tracking-widest flex-shrink-0 ml-4">
-          GRACE ATHLETICS — CONCEPT DRAFT
+          GRACE ATHLETICS: CONCEPT DRAFT
         </span>
       </div>
     </div>
@@ -700,12 +700,12 @@ export default function ConceptsPage() {
       // already_running — just start polling
     } else if (!res.ok) {
       // Show a real error rather than an infinite spinner
-      let errMsg = "Concept generation failed — please try again.";
+      let errMsg = "Concept generation failed. Please try again.";
       try {
         const body = await res.json() as { error?: string };
         if (body.error) errMsg = body.error;
       } catch { /* ignore */ }
-      if (res.status === 429) errMsg = "Too many requests — please wait a few minutes and try again.";
+      if (res.status === 429) errMsg = "Too many requests. Please wait a few minutes and try again.";
       setGen({ status: "failed", progress: 0, total: 4, error: errMsg });
       generationFiredRef.current = false; // allow retry
       return;
@@ -892,7 +892,7 @@ export default function ConceptsPage() {
         <div className="bg-amber-50 border-b border-amber-200 px-6 py-2 flex items-center gap-2">
           <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
           <span className="text-xs font-display font-bold uppercase tracking-widest text-amber-700">
-            Admin View — Client Portal
+            Admin View: Client Portal
           </span>
         </div>
       )}
@@ -920,7 +920,7 @@ export default function ConceptsPage() {
             </h1>
             <p className="mt-1.5 text-sm text-brand-muted font-barlow">
               {isGenerating
-                ? "Our AI is building your spec board from your design brief — takes 60–90 seconds."
+                ? "Our AI is building your spec board from your design brief. This takes 60–90 seconds."
                 : hasBoard
                 ? "Review your concept board. Approve to move into production."
                 : isFailed
@@ -988,7 +988,7 @@ export default function ConceptsPage() {
                   {/* Front jersey — visible preview */}
                   <div className="rounded-xl overflow-hidden border border-gray-200 shadow-lg bg-gray-50">
                     <div className="border-b border-gray-100 bg-white px-4 py-2 flex items-center justify-between">
-                      <span className="text-[8px] font-bold uppercase tracking-[0.28em] text-gray-400">Preview — Front View</span>
+                      <span className="text-[8px] font-bold uppercase tracking-[0.28em] text-gray-400">Preview: Front View</span>
                       <span className="text-[8px] font-mono text-gray-300">{boardData.orderNumber}</span>
                     </div>
                     <RenderImage

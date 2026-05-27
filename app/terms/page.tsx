@@ -7,7 +7,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const tenant = await getRequestTenant();
   const name = tenant?.name ?? "Grace Athletics";
   return {
-    title: `Terms of Service — ${name}`,
+    title: `Terms of Service | ${name}`,
     description: `Terms and conditions governing use of the ${name} platform and custom apparel services.`,
   };
 }
@@ -311,7 +311,7 @@ function P({ children, className = "" }: { children: React.ReactNode; className?
 function Li({ label, children }: { label?: string; children: React.ReactNode }) {
   return (
     <li className="flex gap-3 text-sm font-barlow text-brand-muted leading-relaxed">
-      <span className="text-brand-primary mt-0.5 flex-shrink-0">—</span>
+      <span className="text-brand-primary mt-0.5 flex-shrink-0">·</span>
       <span>
         {label && <strong className="text-brand-text">{label}: </strong>}
         {children}

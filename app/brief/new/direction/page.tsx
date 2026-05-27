@@ -76,7 +76,7 @@ export default function BriefDirectionPage() {
             <div
               role="button"
               tabIndex={0}
-              aria-label="Upload your logo — click to browse or drag a file here"
+              aria-label="Upload your logo. Click to browse or drag a file here"
               onClick={() => fileInputRef.current?.click()}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
@@ -144,7 +144,7 @@ export default function BriefDirectionPage() {
                       Drop your logo here
                     </p>
                     <p style={{ fontFamily: "var(--font-barlow),sans-serif", fontSize: 12, color: "rgba(255,255,255,0.25)", marginTop: 4 }}>
-                      PNG, AI, EPS, or SVG — click to browse.
+                      PNG, AI, EPS, or SVG. Click to browse.
                     </p>
                   </div>
                 </>
@@ -164,7 +164,7 @@ export default function BriefDirectionPage() {
             <textarea
               id="colorDirection"
               rows={3}
-              placeholder="e.g. dark navy and gold, or our school colors are blue and white — we want to keep those."
+              placeholder="e.g. dark navy and gold, or our school colors are blue and white. We want to keep those."
               value={colorDirection}
               onChange={(e) => setColorDirection(e.target.value)}
               className="font-body bg-background border border-border rounded-lg px-4 py-3 text-foreground placeholder:text-white/25 focus:outline-none focus:border-gold transition-colors text-sm resize-none"

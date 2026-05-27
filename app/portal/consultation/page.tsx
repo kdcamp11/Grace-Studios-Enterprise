@@ -15,7 +15,7 @@ const WHAT_TO_EXPECT = [
   {
     num: "02",
     title: "Design Concept Review",
-    body: "Our team prepares a design concept built around your brief — backed by the Grace Studios design library and our production expertise.",
+    body: "Our team prepares a design concept built around your brief, backed by the Grace Studios design library and our production expertise.",
   },
   {
     num: "03",
@@ -25,12 +25,12 @@ const WHAT_TO_EXPECT = [
   {
     num: "04",
     title: "Production & Delivery",
-    body: "Designer-built files go to your matched supplier. First-piece review, then full production — every step tracked.",
+    body: "Designer-built files go to your matched supplier. First-piece review, then full production, every step tracked.",
   },
 ];
 
 const GOOD_FIT = [
-  "Full identity systems — jersey, shorts, warmups, accessories",
+  "Full identity systems: jersey, shorts, warmups, accessories",
   "Complex custom colorways or exclusive design systems",
   "Programs ordering 50+ units with specific timeline requirements",
   "Teams that want direct input on every design decision",
@@ -76,7 +76,7 @@ function ConsultationForm() {
         <div>
           <p className="font-display font-bold uppercase tracking-wide text-brand-text">Request Received</p>
           <p className="text-sm font-barlow text-brand-muted mt-1 leading-relaxed">
-            Our team will reach out within 1–2 business days to schedule your design consultation.
+            Our team will reach out within 1–2 business days to schedule your creative direction session.
           </p>
         </div>
         <a href="/portal" className="mt-2 text-xs font-display font-bold uppercase tracking-widest text-brand-primary hover:text-brand-secondary transition-colors">
@@ -124,14 +124,14 @@ function ConsultationForm() {
         />
       </div>
       {status === "error" && (
-        <p className="text-sm font-barlow text-red-600">Something went wrong — please try again.</p>
+        <p className="text-sm font-barlow text-red-600">Something went wrong. Please try again.</p>
       )}
       <button
         type="submit"
         disabled={status === "sending"}
         className="w-full py-3.5 rounded-lg bg-brand-primary text-white font-display font-bold text-xs uppercase tracking-widest hover:bg-brand-secondary disabled:opacity-40 transition-colors"
       >
-        {status === "sending" ? "Sending…" : "Request Consultation →"}
+        {status === "sending" ? "Sending…" : "Request Creative Direction →"}
       </button>
     </form>
   );
@@ -147,13 +147,15 @@ export default function ConsultationPage() {
   useEffect(() => {
     async function load() {
       await sessionReady();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { router.replace("/login"); return; }
+      // Redirect suppliers — all other authenticated users can access this page
       const profile = await getProfile();
-      if (!profile) { router.replace("/login"); return; }
-      if (profile.role === "supplier") { router.replace("/supplier"); return; }
+      if (profile?.role === "supplier") { router.replace("/supplier"); return; }
       setLoading(false);
     }
     load();
-  }, [router]);
+  }, [router, supabase]);
 
   async function signOut() {
     await supabase.auth.signOut();
@@ -195,7 +197,7 @@ export default function ConsultationPage() {
             Work Directly<br />with Grace Studios.
           </h1>
           <p className="text-sm font-barlow text-brand-muted max-w-[480px] leading-relaxed mb-14">
-            Our full-service consultation path is for programs that want a custom design built around their identity —
+            Our full-service creative direction path is for programs that want a custom design built around their identity,
             not selected from a library. You brief us, we design, you approve at every step.
           </p>
 
@@ -242,7 +244,7 @@ export default function ConsultationPage() {
                   <p className="text-xs font-display font-bold uppercase tracking-wide text-brand-text mb-1">Prefer to move faster?</p>
                   <p className="text-xs font-barlow text-brand-muted leading-relaxed mb-3">
                     Our Design Library path lets you choose from curated Grace Studios silhouettes and receive
-                    a design concept within minutes — no consultation required.
+                    a design concept within minutes, no creative direction session required.
                   </p>
                   <a href="/brief/choose" className="text-[10px] font-display font-bold uppercase tracking-widest text-brand-primary hover:text-brand-secondary transition-colors">
                     Start with the Design Library →
@@ -256,7 +258,7 @@ export default function ConsultationPage() {
             <div>
               <div className="flex items-center gap-2.5 mb-5">
                 <div className="w-[3px] h-4 bg-brand-primary flex-shrink-0" />
-                <span className="text-[10px] font-display font-bold uppercase tracking-[0.3em] text-brand-primary">Request a Consultation</span>
+                <span className="text-[10px] font-display font-bold uppercase tracking-[0.3em] text-brand-primary">Request Creative Direction</span>
               </div>
               <ConsultationForm />
             </div>

@@ -9,7 +9,6 @@ import type { ClientProfile } from "@/app/api/brief/client-profile/route";
 
 const SPORTS = [
   "Basketball",
-  "Tracksuits",
 ];
 
 function TeamInfoPage() {
@@ -106,7 +105,7 @@ function TeamInfoPage() {
       } else if (designPath === "builder") {
         router.push(`/jersey-builder?orderId=${data.orderId}&sport=${encodeURIComponent(payload.sport)}`);
       } else if (designPath === "upload") {
-        // Client-provided concept — go to upload page
+        // Client-provided concept — skip AI generation, go to upload page
         router.push(`/orders/${data.orderId}/upload-concept`);
       } else {
         // Legacy fallback — direct links to /brief/new without a path param

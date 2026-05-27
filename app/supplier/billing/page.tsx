@@ -157,7 +157,7 @@ export default function SupplierBillingPage() {
               </p>
               <p className="text-xs font-barlow text-brand-muted mt-1 leading-relaxed">
                 Clients submit briefs, review concepts, and approve production files at no cost.
-                Your studio license covers the platform infrastructure — they just use the service.
+                Your studio license covers the platform infrastructure. They just use the service.
               </p>
             </div>
           </div>
@@ -231,7 +231,7 @@ export default function SupplierBillingPage() {
                   {SUPPLIER_PLANS.find((p) => p.id === selected)?.label} Plan Selected
                 </p>
                 <p className="text-xs font-barlow text-brand-muted mt-0.5">
-                  {SUPPLIER_PLANS.find((p) => p.id === selected)?.price}/mo — billed monthly, cancel anytime
+                  {SUPPLIER_PLANS.find((p) => p.id === selected)?.price}/mo, billed monthly, cancel anytime
                 </p>
               </div>
               <button
@@ -249,7 +249,7 @@ export default function SupplierBillingPage() {
           <div className="border-t border-brand-border pt-8 flex items-center justify-between gap-4 flex-wrap">
             <div>
               <p className="text-sm font-display font-bold uppercase tracking-wide text-brand-text">Need a custom arrangement?</p>
-              <p className="text-xs font-barlow text-brand-muted mt-1">Large factory groups, multi-region setup, or custom SLAs — reach out directly.</p>
+              <p className="text-xs font-barlow text-brand-muted mt-1">Large factory groups, multi-region setup, or custom SLAs: reach out directly.</p>
             </div>
             <a
               href="/contact"

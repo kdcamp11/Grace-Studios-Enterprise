@@ -244,7 +244,7 @@ export default function AdminSettingsPage() {
           <div className="flex items-center justify-end gap-4 pb-8">
             {saved && (
               <p className="text-sm font-barlow text-emerald-500">
-                Settings saved — reloading…
+                Settings saved. Reloading…
               </p>
             )}
             <button

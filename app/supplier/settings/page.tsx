@@ -230,7 +230,7 @@ export default function SupplierSettingsPage() {
                       {logoUploading ? "Uploading…" : logoUrl ? "Logo uploaded" : "Upload logo"}
                     </p>
                     <p className="text-xs font-barlow text-brand-muted mt-0.5">
-                      {logoUrl ? "Click to replace" : "PNG, JPG, SVG — shown in your supplier profile"}
+                      {logoUrl ? "Click to replace" : "PNG, JPG, SVG, shown in your supplier profile"}
                     </p>
                   </div>
                 </div>

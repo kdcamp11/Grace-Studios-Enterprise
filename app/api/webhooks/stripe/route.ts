@@ -308,12 +308,12 @@ async function refreshInvoiceStatus(
 }
 
 async function handleDesignDepositCompleted(session: Stripe.Checkout.Session) {
-  const admin = createAdminClient();
+  const admin    = createAdminClient();
   const orderId  = session.metadata?.order_id;
   const tenantId = session.metadata?.tenant_id;
 
   if (!orderId) {
-    console.error("[stripe webhook] design_deposit session missing order_id metadata:", session.id);
+    console.error("[stripe webhook] design_deposit session missing order_id:", session.id);
     return;
   }
 
@@ -327,13 +327,10 @@ async function handleDesignDepositCompleted(session: Stripe.Checkout.Session) {
     .update({ design_fee_paid: true })
     .eq("id", orderId);
 
-  // Update our session record
+  // Update our deposit session record
   await admin
     .from("design_deposit_sessions")
-    .update({
-      status:                    "paid",
-      stripe_payment_intent_id:  paymentIntentId,
-    })
+    .update({ status: "paid", stripe_payment_intent_id: paymentIntentId })
     .eq("stripe_checkout_session_id", session.id);
 
   // Auto-transfer net to tenant's Connect account if configured

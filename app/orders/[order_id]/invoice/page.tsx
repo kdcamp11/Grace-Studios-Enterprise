@@ -40,7 +40,7 @@ const STATUS_LABEL: Record<string, { label: string; color: string }> = {
   draft:                 { label: "Draft",               color: "text-brand-muted bg-brand-surface border-brand-border" },
   sent:                  { label: "Awaiting Payment",    color: "text-amber-400 bg-amber-400/10 border-amber-400/30" },
   pending_payment:       { label: "Awaiting Payment",    color: "text-amber-400 bg-amber-400/10 border-amber-400/30" },
-  pending_verification:  { label: "Transfer Received — Pending Verification", color: "text-blue-400 bg-blue-400/10 border-blue-400/30" },
+  pending_verification:  { label: "Transfer Received: Pending Verification", color: "text-blue-400 bg-blue-400/10 border-blue-400/30" },
   partially_paid:        { label: "Deposit Paid",        color: "text-brand-primary bg-brand-primary/10 border-brand-primary/30" },
   paid:                  { label: "Paid in Full",        color: "text-green-400 bg-green-400/10 border-green-400/30" },
   failed:                { label: "Payment Failed",      color: "text-red-400 bg-red-900/20 border-red-400/30" },
@@ -293,7 +293,7 @@ function InvoicePageContent() {
                 {invoice.payment_threshold_band === "small" && "Secure card payment via Stripe."}
                 {invoice.payment_threshold_band === "hybrid" && "Both card and bank transfer are available. Choose the option that works best for your organization."}
                 {invoice.payment_threshold_band === "large" && "For larger custom program orders, bank transfer is recommended for streamlined business payments. Card payment is also available."}
-                {invoice.payment_threshold_band === "enterprise" && "For enterprise production invoices, bank transfer is standard. Card payments are available upon request — contact your account lead."}
+                {invoice.payment_threshold_band === "enterprise" && "For enterprise production invoices, bank transfer is standard. Card payments are available upon request. Contact your account lead."}
               </p>
             </div>
 
@@ -306,7 +306,7 @@ function InvoicePageContent() {
                   className={`px-3 py-1.5 rounded-full text-xs font-barlow font-medium transition-all
                     ${!payDeposit ? "bg-brand-primary text-white" : "bg-brand-bg border border-brand-border text-brand-muted hover:border-brand-primary"}`}
                 >
-                  Pay Full — {formatCurrency(invoice.total_amount, invoice.currency)}
+                  Pay Full: {formatCurrency(invoice.total_amount, invoice.currency)}
                 </button>
                 <button
                   type="button"
@@ -314,7 +314,7 @@ function InvoicePageContent() {
                   className={`px-3 py-1.5 rounded-full text-xs font-barlow font-medium transition-all
                     ${payDeposit ? "bg-brand-primary text-white" : "bg-brand-bg border border-brand-border text-brand-muted hover:border-brand-primary"}`}
                 >
-                  Deposit Only — {formatCurrency(invoice.deposit_amount, invoice.currency)}
+                  Deposit Only: {formatCurrency(invoice.deposit_amount, invoice.currency)}
                 </button>
               </div>
             )}

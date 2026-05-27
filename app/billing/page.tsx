@@ -23,7 +23,7 @@ function UsageBar({ used, included }: { used: number; included: number | null })
     return (
       <div className="space-y-1.5">
         <div className="h-2 rounded-full bg-brand-primary w-full" />
-        <span className="text-[10px] font-barlow text-brand-muted">Unlimited runs — no cap</span>
+        <span className="text-[10px] font-barlow text-brand-muted">Unlimited runs, no cap</span>
       </div>
     );
   }
@@ -66,7 +66,7 @@ function BillingContent() {
   const successMsg = searchParams.get("success") === "1"
     ? `Plan activated! You're now on ${CLIENT_PLANS[searchParams.get("plan") as ClientAiPlan ?? "starter"]?.label ?? "your new plan"}.`
     : searchParams.get("canceled") === "1"
-    ? "Checkout canceled — no changes were made."
+    ? "Checkout canceled. No changes were made."
     : null;
 
   useEffect(() => {
@@ -143,7 +143,7 @@ function BillingContent() {
           <a href="/portal"          className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">My Orders</a>
           <a href="/brief/choose"       className="text-xs font-display font-bold uppercase tracking-wider text-brand-primary hover:text-brand-secondary transition-colors">+ New Order</a>
           <a href="/portfolio"       className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Portfolio</a>
-          <a href="/contact"         className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Consultation</a>
+          <a href="/contact"         className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Creative Direction</a>
           <a href="/portal/settings" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Settings</a>
           <button type="button" onClick={signOut} className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Sign Out</button>
         </div>

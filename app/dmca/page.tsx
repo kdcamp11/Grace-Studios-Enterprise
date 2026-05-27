@@ -7,7 +7,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const tenant = await getRequestTenant();
   const name = tenant?.name ?? "Grace Athletics";
   return {
-    title: `DMCA Policy — ${name}`,
+    title: `DMCA Policy | ${name}`,
     description: `${name} Digital Millennium Copyright Act policy and takedown notice procedures.`,
   };
 }
@@ -76,7 +76,7 @@ export default async function DmcaPage() {
 
             <div className="mt-5 bg-brand-surface border border-brand-border rounded-xl p-5 space-y-2">
               <p className="text-xs font-display uppercase tracking-widest text-brand-primary">Send Takedown Notices To</p>
-              <p className="text-sm font-barlow text-brand-text">{name} — DMCA Agent</p>
+              <p className="text-sm font-barlow text-brand-text">{name}, DMCA Agent</p>
               <p className="text-sm font-barlow text-brand-muted">
                 Email:{" "}
                 <a href={`mailto:${email}`} className="text-brand-primary hover:underline">

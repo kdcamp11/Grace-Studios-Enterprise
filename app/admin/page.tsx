@@ -292,7 +292,7 @@ export default function AdminPage() {
           {revenueByMonth.length > 0 && revenueByMonth.some((m) => m.amount > 0) && (
             <div className="rounded-xl border border-brand-border bg-brand-surface p-5 space-y-3">
               <div className="flex items-center justify-between">
-                <p className="text-[10px] font-display uppercase tracking-widest text-brand-muted">Revenue — Last 6 Months</p>
+                <p className="text-[10px] font-display uppercase tracking-widest text-brand-muted">Revenue, Last 6 Months</p>
                 {kpis && (
                   <p className="text-xs font-barlow text-brand-muted">
                     Total collected: <span className="font-bold text-brand-text">{fmt$(kpis.totalRevenue)}</span>

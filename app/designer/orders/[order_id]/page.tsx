@@ -161,7 +161,7 @@ export default function DesignerOrderPage() {
                 <p className="text-sm font-barlow text-brand-text">
                   {concepts.length === 0
                     ? "No concepts generated yet"
-                    : `${concepts.length} concept${concepts.length !== 1 ? "s" : ""} generated${selected ? " — 1 selected by client" : ""}`}
+                    : `${concepts.length} concept${concepts.length !== 1 ? "s" : ""} generated${selected ? ", 1 selected by client" : ""}`}
                 </p>
               </div>
               {order.stage === "onboarding" && (
@@ -178,7 +178,7 @@ export default function DesignerOrderPage() {
             {generating && (
               <div className="flex items-center gap-3 text-sm font-barlow text-brand-muted">
                 <div className="w-4 h-4 border-2 border-brand-primary border-t-transparent rounded-full animate-spin flex-shrink-0" />
-                Generating AI concepts — this takes ~30 seconds…
+                Generating AI concepts. This takes ~30 seconds…
               </div>
             )}
 

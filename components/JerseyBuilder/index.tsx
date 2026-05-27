@@ -208,57 +208,40 @@ export default function JerseyBuilder() {
               }
             >
               <Canvas
-                camera={{ position: [0, 0.5, 3.5], fov: 42 }}
+                camera={{ position: [0, 0, 18], fov: 50 }}
                 style={{ width: "100%", height: "100%" }}
                 gl={{ preserveDrawingBuffer: true }}
               >
-                <ambientLight intensity={0.8} />
-                <directionalLight position={[4, 6, 4]} intensity={1.4} />
-                <directionalLight position={[-4, 3, -2]} intensity={0.6} />
-                <directionalLight position={[0, -2, 4]} intensity={0.3} />
-                <pointLight position={[0, 4, 2]} intensity={0.5} />
+                <ambientLight intensity={0.9} />
+                <directionalLight position={[4, 6, 4]}  intensity={1.4} />
+                <directionalLight position={[-4, 3, 4]} intensity={0.8} />
+                <directionalLight position={[0, -2, 4]} intensity={0.4} />
+                <pointLight position={[0, 4, 3]} intensity={0.6} />
 
                 <Suspense fallback={null}>
-                  <JerseyScene jerseyColor={jerseyColor} highlightColor={highlightColor} />
+                  <JerseyScene
+                    colors={{
+                      jerseyTop:         jerseyColor,
+                      collar:            highlightColor,
+                      jerseyShorts:      jerseyColor,
+                      jerseySidePanels:  highlightColor,
+                      jerseyLowerPanels: highlightColor,
+                      sleevePanels:      highlightColor,
+                      shortSidePanels:   highlightColor,
+                    }}
+                    artworks={[]}
+                  />
                 </Suspense>
 
                 <OrbitControls
                   enabled={orbitEnabled}
                   enablePan={false}
-                  minDistance={1.8}
-                  maxDistance={7}
+                  minDistance={5}
+                  maxDistance={40}
                   target={[0, 0, 0]}
                 />
               </Canvas>
             </CanvasErrorBoundary>
-          )}
-
-          {/* Logo overlay — draggable */}
-          {tintedLogoUrl && (
-            <img
-              src={tintedLogoUrl}
-              alt="logo placement"
-              onPointerDown={handlePointerDown}
-              draggable={false}
-              style={{
-                position: "absolute",
-                left: `${logoPos.x}%`,
-                top: `${logoPos.y}%`,
-                transform: "translate(-50%, -50%)",
-                width: `${logoSize}%`,
-                cursor: dragging ? "grabbing" : "grab",
-                userSelect: "none",
-                touchAction: "none",
-                filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.35))",
-              }}
-            />
-          )}
-
-          {/* Drag hint */}
-          {tintedLogoUrl && !dragging && (
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-brand-bg/80 backdrop-blur px-3 py-1.5 rounded-full border border-brand-border">
-              <p className="text-[10px] font-barlow text-brand-muted whitespace-nowrap">Drag logo to reposition · Scroll to zoom · Click-drag to rotate</p>
-            </div>
           )}
 
           {/* Page label */}
@@ -314,7 +297,7 @@ export default function JerseyBuilder() {
                 onClick={() => fileInputRef.current?.click()}
                 className="w-full py-3 rounded-lg border border-dashed border-brand-border text-xs font-barlow text-brand-muted hover:border-brand-primary hover:text-brand-primary transition-colors"
               >
-                {logoFile ? `↺  Replace — ${logoFile.name}` : "Upload Logo (PNG, SVG, JPG)"}
+                {logoFile ? `↺  Replace: ${logoFile.name}` : "Upload Logo (PNG, SVG, JPG)"}
               </button>
               <p className="text-[9px] font-barlow text-brand-muted/60 mt-1.5">
                 PNG with transparent background works best for color tinting.

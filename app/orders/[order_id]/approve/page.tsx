@@ -341,7 +341,7 @@ export default function ApprovePage() {
       {isAdminView && (
         <div className="bg-amber-50 border-b border-amber-200 px-6 py-2 flex items-center gap-2">
           <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-          <span className="text-xs font-display font-bold uppercase tracking-widest text-amber-700">Admin View — Client Portal</span>
+          <span className="text-xs font-display font-bold uppercase tracking-widest text-amber-700">Admin View: Client Portal</span>
         </div>
       )}
       <header className="border-b border-brand-border px-6 py-4 flex items-center justify-between">
@@ -383,7 +383,7 @@ export default function ApprovePage() {
               <div className="px-4 py-3 bg-brand-surface border-t border-brand-border flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-brand-primary" />
                 <span className="text-[10px] font-display uppercase tracking-[0.22em] text-brand-primary">
-                  Selected — Concept {summary.conceptNumber}
+                  Selected: Concept {summary.conceptNumber}
                 </span>
               </div>
             </div>

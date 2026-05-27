@@ -38,40 +38,40 @@ export default function ReviewPage() {
   }, []);
 
   async function handleSubmit() {
-    if (!brief?.orderId || !brief?.gsLogoPlacement) return; // gsLogoPlacement maps to logo_placement DB column
+    if (!order_id) return;
     setLoading(true);
     setError("");
 
     try {
-      const logoUrls = brief.logoUrls ?? [];
-      const refUrls = brief.referenceImageUrls ?? [];
+      const logoUrls = brief?.logoUrls ?? [];
+      const refUrls = brief?.referenceImageUrls ?? [];
 
       const submitRes = await fetch("/api/brief/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          order_id: brief.orderId,
+          order_id,
           logo_url: logoUrls[0] || null,
           logo_urls: logoUrls.length ? logoUrls : null,
           reference_image_url: refUrls[0] || null,
           reference_image_urls: refUrls.length ? refUrls : null,
           hex_confirmed: false,
           brand_match: false,
-          design_system: brief.designSystem || null,
-          negative_references: brief.negativeReferences || null,
-          jersey_cut: brief.jerseycut || null,
-          sublimated: brief.sublimated ?? null,
-          number_style: brief.numberStyle || null,
-          player_names: brief.playerNames ?? false,
-          logo_placement: brief.gsLogoPlacement,
-          logos_to_include: brief.logosToInclude || null,
-          sponsor_text: brief.sponsorText || null,
-          vision_prompt: brief.visionPrompt || null,
-          primary_colors: brief.primaryColor || null,
-          secondary_colors: brief.secondaryColor || null,
-          accent_color: brief.accentColor || null,
-          player_roster: brief.playerRoster?.length ? brief.playerRoster : null,
-          zone_colors: brief.zoneColors ?? null,
+          design_system: brief?.designSystem || null,
+          negative_references: brief?.negativeReferences || null,
+          jersey_cut: brief?.jerseycut || null,
+          sublimated: brief?.sublimated ?? null,
+          number_style: brief?.numberStyle || null,
+          player_names: brief?.playerNames ?? false,
+          logo_placement: brief?.gsLogoPlacement || null,
+          logos_to_include: brief?.logosToInclude || null,
+          sponsor_text: brief?.sponsorText || null,
+          vision_prompt: brief?.visionPrompt || null,
+          primary_colors: brief?.primaryColor || null,
+          secondary_colors: brief?.secondaryColor || null,
+          accent_color: brief?.accentColor || null,
+          player_roster: brief?.playerRoster?.length ? brief.playerRoster : null,
+          zone_colors: brief?.zoneColors ?? null,
         }),
       });
 
@@ -83,14 +83,14 @@ export default function ReviewPage() {
       fetch("/api/generate-concepts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ order_id: brief.orderId }),
+        body: JSON.stringify({ order_id }),
       }).catch(() => {});
 
       // Notify admin that a new brief was submitted
       fetch("/api/notify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ event: "brief_submitted", order_id: brief.orderId }),
+        body: JSON.stringify({ event: "brief_submitted", order_id }),
       }).catch(() => {});
 
       // Route to roster step — it finalises player data then routes to portal
@@ -113,7 +113,7 @@ export default function ReviewPage() {
     );
   }
 
-  const canSubmit = !!brief?.gsLogoPlacement && !!brief?.orderId && ipAgreed && termsAgreed && privacyAgreed;
+  const canSubmit = ipAgreed && termsAgreed && privacyAgreed;
 
   return (
     <BriefLayout

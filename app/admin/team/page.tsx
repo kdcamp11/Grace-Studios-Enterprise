@@ -101,7 +101,7 @@ export default function AdminTeamPage() {
       });
       setInviteSuccess(
         body.already_existed
-          ? `${email} already had an account — role updated to ${ROLE_LABELS[inviteRole]}.`
+          ? `${email} already had an account. Role updated to ${ROLE_LABELS[inviteRole]}.`
           : `Invite sent to ${email} as ${ROLE_LABELS[inviteRole]}.`,
       );
       setInviteEmail("");

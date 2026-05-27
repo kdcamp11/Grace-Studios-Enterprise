@@ -56,7 +56,7 @@ interface OrderDetail {
 const STAGE_LABELS: Record<OrderStage, string> = {
   onboarding:              "Brief Submitted",
   design_confirmed:        "Design Confirmed",
-  files_sent:              "Files Sent — Ready for Production",
+  files_sent:              "Files Sent: Ready for Production",
   first_piece_in_progress: "First Piece In Progress",
   first_piece_review:      "First Piece Under Review",
   bulk_production:         "Bulk Production",
@@ -284,7 +284,7 @@ export default function SupplierOrderPage() {
       {isAdminView && (
         <div className="bg-amber-50 border-b border-amber-200 px-6 py-2 flex items-center gap-2">
           <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-          <span className="text-xs font-display font-bold uppercase tracking-widest text-amber-700">Admin View — Supplier Portal</span>
+          <span className="text-xs font-display font-bold uppercase tracking-widest text-amber-700">Admin View: Supplier Portal</span>
           <button
             type="button"
             onClick={() => router.push("/admin")}
@@ -334,7 +334,7 @@ export default function SupplierOrderPage() {
             </div>
             <div>
               <p className="font-display font-bold uppercase tracking-wide text-[#C41E1E] text-sm">
-                Changes Requested — {rejectedMedia.length} item{rejectedMedia.length !== 1 ? "s" : ""}
+                Changes Requested: {rejectedMedia.length} item{rejectedMedia.length !== 1 ? "s" : ""}
               </p>
               <p className="text-xs font-barlow text-brand-muted mt-1 leading-relaxed">
                 {tenant.name} has requested changes on {rejectedMedia.length === 1 ? "an upload" : "some uploads"} below.
@@ -472,7 +472,7 @@ export default function SupplierOrderPage() {
           <div className="bg-brand-surface border border-brand-border rounded-xl p-6">
             <div className="flex items-center justify-between mb-4">
               <p className="text-xs font-display uppercase tracking-widest text-brand-primary">
-                Player Roster — {roster.length} Players
+                Player Roster: {roster.length} Players
               </p>
             </div>
             <div className="overflow-x-auto">
@@ -568,7 +568,7 @@ export default function SupplierOrderPage() {
                   type="text"
                   value={caption}
                   onChange={(e) => setCaption(e.target.value)}
-                  placeholder="e.g. Front view — size L sample"
+                  placeholder="e.g. Front view, size L sample"
                   className="w-full bg-brand-bg border border-brand-border rounded-lg px-4 py-3 text-brand-text font-barlow text-sm placeholder-brand-muted/60 focus:outline-none focus:border-brand-primary transition-colors"
                 />
               </div>

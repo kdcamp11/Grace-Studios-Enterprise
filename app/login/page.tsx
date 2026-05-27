@@ -68,7 +68,7 @@ const STEPS = [
     who: "Design",
     whoClass: "text-brand-primary bg-brand-primary/10 border-brand-primary/30",
     title: "Concept Ready in Minutes",
-    detail: "Your concept — built on Grace Studios design philosophy — is ready for review in minutes. You choose the direction.",
+    detail: "Your concept, built on Grace Studios design philosophy, is ready for review in minutes. You choose the direction.",
     isApproval: true,
     approvalLabel: "You approve the direction",
   },
@@ -133,47 +133,54 @@ const JERSEYS = [
   { name: "Culture",  src: "/jerseys/culture.jpg"  },
 ];
 
+const PARTNER_METRICS = [
+  { value: "Full Program",   sub: "Home, away, alternate, tracksuits" },
+  { value: "Adidas 3SSB",    sub: "Competing on the Adidas circuit"   },
+  { value: "Active Partner", sub: "Still partnered today"             },
+];
+
 // ── Path cards ───────────────────────────────────────────────────────────────
 
 const PATH_CARDS = [
   {
     href: "/signup?path=consultation",
-    badge: "Customization",
-    sub: "Full Service",
-    headline: "Custom. Collaborative.\nBuilt to Brief.",
+    badge: "Full Service",
+    sub: "Fully Managed",
+    headline: "Strategy. Design.\nManaged to Delivery.",
     bullets: [
-      "Design consultation included",
-      "Concepts built from your brief",
-      "Designer-built production files",
-      "Two client approvals",
+      "Creative direction and strategic partnership",
+      "Concepts developed around your program and identity",
+      "Supplier coordination and production management",
+      "Starting at $300+",
     ],
-    cta: "Work Directly with Grace Studios →",
+    cta: "Work with Grace Studios →",
   },
   {
     href: "/signup?path=self-service",
     badge: "Self Service",
-    sub: "Design Library",
-    headline: "Grace Studios Design\nLanguage. Your Identity.",
+    sub: "Two Paths",
+    headline: "Design Freely.\nActivate When Ready.",
     bullets: [
-      "Curated Grace Studios silhouettes",
-      "Design concepts ready in minutes",
-      "Your colors and logo — our framework",
-      "Faster turnaround, same quality",
+      "Design Brief: submit your vision, we build the concept",
+      "Jersey Builder: color every zone in real-time 3D",
+      "Grace Studios handles production on activation",
+      "Free to build. $100 to activate.",
     ],
-    cta: "Start with the Design Library →",
+    cta: "Get Started →",
   },
   {
     href: "/signup?path=upload",
-    badge: "Bring Your Own",
-    sub: "Client Upload",
-    headline: "Have a Design?\nWe'll Execute It.",
+    badge: "Production Files",
+    sub: "Your Artwork",
+    headline: "Your Files.\nOur Production\nNetwork.",
     bullets: [
-      "Upload your artwork or sketch",
-      "Designer executes to production spec",
-      "Production-ready Illustrator file",
-      "Full order tracking included",
+      "Adobe Illustrator, EPS, PDF or SVG",
+      "Your artwork. Your IP. Always.",
+      "Managed production and fulfillment",
+      "Fulfillment, QC, and delivery tracking",
     ],
-    cta: "Upload Your Concept →",
+    cta: "Upload Production Files →",
+    note: "Have a sketch or concept? Creative Direction is the right starting point.",
   },
 ];
 
@@ -236,7 +243,7 @@ function ConsultationForm() {
         </div>
         <div>
           <p className="font-display font-bold uppercase tracking-wide text-brand-text">Message Received</p>
-          <p className="text-sm font-barlow text-brand-muted mt-1">We&apos;ll be in touch within 1–2 business days to schedule your consultation.</p>
+          <p className="text-sm font-barlow text-brand-muted mt-1">We&apos;ll be in touch within 1–2 business days to schedule your creative direction session.</p>
         </div>
       </div>
     );
@@ -288,14 +295,14 @@ function ConsultationForm() {
         />
       </div>
       {status === "error" && (
-        <p className="text-sm font-barlow text-red-600">Something went wrong — please try again.</p>
+        <p className="text-sm font-barlow text-red-600">Something went wrong. Please try again.</p>
       )}
       <button
         type="submit"
         disabled={status === "sending"}
         className="w-full py-3.5 rounded-lg bg-brand-primary text-white font-display font-bold text-xs uppercase tracking-widest hover:bg-brand-secondary disabled:opacity-40 transition-colors"
       >
-        {status === "sending" ? "Sending…" : "Request Consultation →"}
+        {status === "sending" ? "Sending…" : "Request Creative Direction →"}
       </button>
     </form>
   );
@@ -314,7 +321,7 @@ const SUPPLIER_STEPS = [
   {
     num: "01",
     title: "Get Assigned",
-    detail: "Accept orders that match your production catalog — sport, garment type, and capacity.",
+    detail: "Accept orders that match your production catalog: sport, garment type, and capacity.",
   },
   {
     num: "02",
@@ -355,7 +362,7 @@ const SUPPLIER_FEATURES = [
       </svg>
     ),
     title: "Portfolio Showcase",
-    body: "Upload your best work. Programs browse supplier portfolios when choosing who to work with — your quality speaks for you.",
+    body: "Upload your best work. Programs browse production portfolios when choosing who to work with. Your quality speaks for you.",
   },
   {
     icon: (
@@ -364,7 +371,7 @@ const SUPPLIER_FEATURES = [
       </svg>
     ),
     title: "Production Catalog",
-    body: "Define exactly which sports and garment types you produce. Orders route to suppliers who match — no mismatched briefs.",
+    body: "Define exactly which sports and garment types you produce. Orders route to your profile when specs align.",
   },
   {
     icon: (
@@ -507,119 +514,246 @@ export default function LoginPage() {
       ══════════════════════════════════════════════════════════════════ */}
       {view === "client" && (<>
       <section className="border-b border-brand-border overflow-hidden">
-        <div className="max-w-5xl mx-auto px-5 sm:px-8 lg:px-10 py-16 lg:py-24 flex flex-col items-center text-center">
+        <div className="max-w-[90rem] mx-auto px-5 sm:px-8 lg:px-12 py-12 lg:py-20">
+          <div className="flex flex-col lg:flex-row gap-10 lg:gap-12 items-center">
 
-          {/* Eyebrow */}
-          <div className="flex items-center gap-2.5 mb-7">
-            <div className="w-[3px] h-5 bg-brand-primary flex-shrink-0" />
-            <span className="text-[10px] font-display font-bold uppercase tracking-[0.3em] text-brand-primary">
-              Apparel · Brand Identity · Team Gear
-            </span>
+            {/* ── Left: brand positioning — wider, more dominant ── */}
+            <div className="lg:w-[320px] xl:w-[420px] flex-shrink-0 flex flex-col gap-7 lg:self-center">
+
+              <div className="flex items-center gap-2.5">
+                <div className="w-[3px] h-5 bg-brand-primary flex-shrink-0" />
+                <span className="text-[10px] font-display font-bold uppercase tracking-[0.3em] text-brand-primary">
+                  Apparel · Brand Identity · Team Gear
+                </span>
+              </div>
+
+              <h1
+                className="font-display font-bold uppercase text-brand-text leading-none tracking-tight"
+                style={{ fontSize: "clamp(2rem, 3.2vw, 3.8rem)" }}
+              >
+                The Identity Your Program{" "}
+                <span className="text-brand-primary">Was Built For.</span>
+              </h1>
+
+              <p className="text-sm text-brand-muted font-barlow leading-relaxed">
+                Grace Studios helps elite programs achieve their ultimate brand identity through custom apparel
+                and team gear, designed around your program, produced with precision, and tracked from first
+                concept to final delivery.
+              </p>
+
+            </div>
+
+            {/* ── Right: three cards side by side — slightly secondary ── */}
+            <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-3 items-stretch">
+
+              {/* Creative Direction */}
+              <div className="flex flex-col gap-3">
+                <div className="group relative flex flex-col gap-3 p-4 rounded-2xl border border-brand-border/70 bg-brand-bg hover:bg-brand-surface transition-colors duration-300 shadow-sm flex-1">
+                  <div className="absolute top-0 left-0 right-0 h-[2px] bg-brand-primary opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-t-2xl" />
+                  <div className="flex items-center justify-between">
+                    <span className="text-[9px] font-display font-bold uppercase tracking-[0.2em] px-2.5 py-1 rounded border text-brand-primary bg-brand-primary/10 border-brand-primary/30">Full Service</span>
+                    <span className="text-[9px] font-display uppercase tracking-widest text-brand-muted/60">Fully Managed</span>
+                  </div>
+                  <p className="font-display font-bold uppercase tracking-wide text-brand-text leading-snug" style={{ fontSize: "clamp(0.85rem, 1.1vw, 0.95rem)" }}>Creative Direction. Managed to Delivery.</p>
+                  <ul className="space-y-1.5 flex-1">
+                    {PATH_CARDS[0].bullets.map((item) => (
+                      <li key={item} className="flex items-start gap-2">
+                        <span className="w-1 h-1 rounded-full bg-brand-primary flex-shrink-0 mt-1.5" />
+                        <span className="text-xs font-barlow text-brand-muted leading-snug">{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <Link href="/signup?path=consultation"
+                  className="flex items-center justify-center py-2.5 rounded-xl bg-brand-primary text-white font-display font-bold text-sm uppercase tracking-widest hover:bg-brand-secondary transition-colors shadow-sm">
+                  Creative Direction →
+                </Link>
+              </div>
+
+              {/* Self Service — two sub-paths */}
+              <div className="flex flex-col gap-3">
+                <div className="relative flex flex-col gap-3 p-4 rounded-2xl border border-brand-border/70 bg-brand-bg shadow-sm flex-1">
+                  <div className="absolute top-0 left-0 right-0 h-[2px] bg-brand-primary/60 rounded-t-2xl" />
+                  <div className="flex items-center justify-between">
+                    <span className="text-[9px] font-display font-bold uppercase tracking-[0.2em] px-2.5 py-1 rounded border text-brand-primary bg-brand-primary/10 border-brand-primary/30">Self Service</span>
+                    <span className="text-[9px] font-display uppercase tracking-widest text-brand-muted/60">Two Paths</span>
+                  </div>
+                  <p className="font-display font-bold uppercase tracking-wide text-brand-text leading-snug" style={{ fontSize: "clamp(0.85rem, 1.1vw, 0.95rem)" }}>Design Freely. Activate When Ready.</p>
+                  <p className="text-xs font-barlow text-brand-muted leading-relaxed">
+                    Free to build. $100 activation applied toward your final order.
+                  </p>
+                  <div className="flex flex-col gap-2 border-t border-brand-border pt-3 flex-1">
+                    <p className="text-[8px] font-display font-bold uppercase tracking-[0.28em] text-brand-muted mb-1">Choose your path</p>
+                    <Link
+                      href="/signup?path=ai"
+                      className="group/sp flex items-center justify-between gap-2 p-2.5 rounded-lg border border-brand-border bg-brand-surface hover:border-brand-primary hover:bg-brand-primary/5 transition-all duration-200"
+                    >
+                      <div className="flex items-start gap-2 min-w-0">
+                        <span className="w-1.5 h-1.5 rounded-full bg-brand-primary flex-shrink-0 mt-0.5" />
+                        <span className="text-[10px] font-barlow text-brand-muted leading-snug"><span className="text-brand-text font-medium">Design Brief</span>: submit your vision, we build the concept</span>
+                      </div>
+                      <svg className="w-3 h-3 text-brand-muted/50 group-hover/sp:text-brand-primary flex-shrink-0 transition-colors mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                      </svg>
+                    </Link>
+                    <Link
+                      href="/signup?path=builder"
+                      className="group/sp flex items-center justify-between gap-2 p-2.5 rounded-lg border border-brand-border bg-brand-surface hover:border-brand-primary hover:bg-brand-primary/5 transition-all duration-200"
+                    >
+                      <div className="flex items-start gap-2 min-w-0">
+                        <span className="w-1.5 h-1.5 rounded-full bg-brand-primary flex-shrink-0 mt-0.5" />
+                        <span className="text-[10px] font-barlow text-brand-muted leading-snug"><span className="text-brand-text font-medium">Jersey Builder</span>: color every zone, selections drive the brief</span>
+                      </div>
+                      <svg className="w-3 h-3 text-brand-muted/50 group-hover/sp:text-brand-primary flex-shrink-0 transition-colors mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                      </svg>
+                    </Link>
+                  </div>
+                </div>
+              </div>
+
+              {/* Production Files */}
+              <div className="flex flex-col gap-3">
+                <div className="group relative flex flex-col gap-3 p-4 rounded-2xl border border-brand-border/70 bg-brand-bg hover:bg-brand-surface transition-colors duration-300 shadow-sm flex-1">
+                  <div className="absolute top-0 left-0 right-0 h-[2px] bg-brand-muted/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-t-2xl" />
+                  <div className="flex items-center justify-between">
+                    <span className="text-[9px] font-display font-bold uppercase tracking-[0.2em] px-2.5 py-1 rounded border text-brand-muted bg-brand-muted/10 border-brand-muted/30">Production Files</span>
+                    <span className="text-[9px] font-display uppercase tracking-widest text-brand-muted/60">Your Artwork</span>
+                  </div>
+                  <p className="font-display font-bold uppercase tracking-wide text-brand-text leading-snug" style={{ fontSize: "clamp(0.85rem, 1.1vw, 0.95rem)" }}>Your Files. Our Production Network.</p>
+                  <ul className="space-y-1.5 flex-1">
+                    {PATH_CARDS[2].bullets.map((item) => (
+                      <li key={item} className="flex items-start gap-2">
+                        <span className="w-1 h-1 rounded-full bg-brand-muted/60 flex-shrink-0 mt-1.5" />
+                        <span className="text-xs font-barlow text-brand-muted leading-snug">{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="text-[9px] font-barlow text-brand-muted/50 italic border-t border-brand-border pt-3 leading-snug">
+                    Have a sketch or concept? Creative Direction is the right starting point.
+                  </p>
+                </div>
+                <Link href="/signup?path=upload"
+                  className="flex items-center justify-center py-2.5 rounded-xl border border-brand-border/70 text-brand-muted font-display font-bold text-sm uppercase tracking-widest hover:border-brand-primary hover:text-brand-primary transition-colors">
+                  Upload Production Files →
+                </Link>
+              </div>
+
+            </div>
           </div>
-
-          {/* Headline */}
-          <h1 className="font-display font-bold uppercase text-brand-text leading-none tracking-tight mb-6 whitespace-nowrap" style={{ fontSize: "clamp(1.1rem, 2.6vw, 3rem)" }}>
-            The Identity Your Program <span className="text-brand-primary">Was Built For.</span>
-          </h1>
-
-          <p className="text-xs text-brand-muted font-barlow max-w-[500px] leading-relaxed mb-12">
-            Grace Studios helps elite programs achieve their ultimate brand identity through custom apparel
-            and team gear — designed around your program, produced with precision, and tracked from first
-            concept to final delivery.
-          </p>
-
-          {/* Path cards — each card paired with its own CTA button */}
-          <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 text-left">
-
-            {/* Customization column */}
-            <div className="flex flex-col gap-3">
-              <div className="group relative flex flex-col gap-4 p-6 sm:p-7 rounded-2xl border border-brand-border bg-brand-bg hover:bg-brand-surface transition-colors duration-300 shadow-sm flex-1">
-                <div className="absolute top-0 left-0 right-0 h-[2px] bg-brand-primary opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-t-2xl" />
-                <div className="flex items-center justify-between">
-                  <span className="text-[9px] font-display font-bold uppercase tracking-[0.2em] px-2.5 py-1 rounded border text-brand-primary bg-brand-primary/10 border-brand-primary/30">Customization</span>
-                  <span className="text-[9px] font-display uppercase tracking-widest text-brand-muted/60">Full Service</span>
-                </div>
-                <p className="font-display font-bold uppercase tracking-wide text-brand-text leading-snug whitespace-pre-line" style={{ fontSize: "clamp(1rem, 1.4vw, 1.1rem)" }}>{"Custom. Collaborative.\nBuilt to Brief."}</p>
-                <ul className="space-y-2 flex-1">
-                  {PATH_CARDS[0].bullets.map((item) => (
-                    <li key={item} className="flex items-center gap-2.5">
-                      <span className="w-1 h-1 rounded-full bg-brand-primary flex-shrink-0" />
-                      <span className="text-xs font-barlow text-brand-muted leading-none">{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <Link href="/signup?path=consultation"
-                className="flex items-center justify-center py-4 rounded-xl bg-brand-primary text-white font-display font-bold text-sm uppercase tracking-widest hover:bg-brand-secondary transition-colors shadow-sm">
-                Customization →
-              </Link>
-            </div>
-
-            {/* Self Service column */}
-            <div className="flex flex-col gap-3">
-              <div className="group relative flex flex-col gap-4 p-6 sm:p-7 rounded-2xl border border-brand-border bg-brand-bg hover:bg-brand-surface transition-colors duration-300 shadow-sm flex-1">
-                <div className="absolute top-0 left-0 right-0 h-[2px] bg-brand-primary opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-t-2xl" />
-                <div className="flex items-center justify-between">
-                  <span className="text-[9px] font-display font-bold uppercase tracking-[0.2em] px-2.5 py-1 rounded border text-brand-primary bg-brand-primary/10 border-brand-primary/30">Self Service</span>
-                  <span className="text-[9px] font-display uppercase tracking-widest text-brand-muted/60">Design Library</span>
-                </div>
-                <p className="font-display font-bold uppercase tracking-wide text-brand-text leading-snug whitespace-pre-line" style={{ fontSize: "clamp(1rem, 1.4vw, 1.1rem)" }}>{"Grace Studios Design\nLanguage. Your Identity."}</p>
-                <ul className="space-y-2 flex-1">
-                  {PATH_CARDS[1].bullets.map((item) => (
-                    <li key={item} className="flex items-center gap-2.5">
-                      <span className="w-1 h-1 rounded-full bg-brand-primary flex-shrink-0" />
-                      <span className="text-xs font-barlow text-brand-muted leading-none">{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <Link href="/signup?path=self-service"
-                className="flex items-center justify-center py-4 rounded-xl border-2 border-brand-primary text-brand-primary font-display font-bold text-sm uppercase tracking-widest hover:bg-brand-primary hover:text-white transition-colors">
-                Self Service →
-              </Link>
-            </div>
-
-            {/* Bring Your Own Concept column */}
-            <div className="flex flex-col gap-3">
-              <div className="group relative flex flex-col gap-4 p-6 sm:p-7 rounded-2xl border border-brand-border bg-brand-bg hover:bg-brand-surface transition-colors duration-300 shadow-sm flex-1">
-                <div className="absolute top-0 left-0 right-0 h-[2px] bg-brand-muted/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-t-2xl" />
-                <div className="flex items-center justify-between">
-                  <span className="text-[9px] font-display font-bold uppercase tracking-[0.2em] px-2.5 py-1 rounded border text-brand-muted bg-brand-muted/10 border-brand-muted/30">Bring Your Own</span>
-                  <span className="text-[9px] font-display uppercase tracking-widest text-brand-muted/60">Client Upload</span>
-                </div>
-                <p className="font-display font-bold uppercase tracking-wide text-brand-text leading-snug whitespace-pre-line" style={{ fontSize: "clamp(1rem, 1.4vw, 1.1rem)" }}>{"Have a Design?\nWe’ll Execute It."}</p>
-                <ul className="space-y-2 flex-1">
-                  {PATH_CARDS[2].bullets.map((item) => (
-                    <li key={item} className="flex items-center gap-2.5">
-                      <span className="w-1 h-1 rounded-full bg-brand-muted/60 flex-shrink-0" />
-                      <span className="text-xs font-barlow text-brand-muted leading-none">{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <Link href="/signup?path=upload"
-                className="flex items-center justify-center py-4 rounded-xl border border-brand-border text-brand-muted font-display font-bold text-sm uppercase tracking-widest hover:border-brand-primary hover:text-brand-primary transition-colors">
-                Upload Your Concept →
-              </Link>
-            </div>
-
-          </div>
-
         </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════════════════════
+          PARTNER SUCCESS — editorial case study
+      ══════════════════════════════════════════════════════════════════ */}
+      <section className="border-b border-brand-border">
+
+        {/* 3-column metrics strip */}
+        <div className="border-b border-brand-border">
+          <div className="max-w-5xl mx-auto px-5 sm:px-8 lg:px-10 grid grid-cols-3">
+            {PARTNER_METRICS.map((m, i) => (
+              <div
+                key={m.value}
+                className={`py-5 sm:py-6 flex flex-col gap-1.5
+                  ${i > 0 ? "border-l border-brand-border pl-5 sm:pl-8" : ""}
+                  ${i < 2 ? "pr-5 sm:pr-8" : ""}`}
+              >
+                <span className="font-display font-bold text-brand-text text-base sm:text-lg tracking-tight leading-none">{m.value}</span>
+                <span className="text-[9px] sm:text-[10px] font-display uppercase tracking-[0.18em] text-brand-muted leading-snug mt-0.5">{m.sub}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Case study block */}
+        <div className="max-w-5xl mx-auto px-5 sm:px-8 lg:px-10 py-10 sm:py-12 lg:py-14">
+          <div className="grid lg:grid-cols-2 gap-10 lg:gap-14 items-start">
+
+            {/* Left — editorial text */}
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-[3px] h-5 bg-brand-primary flex-shrink-0" />
+                <span className="text-[10px] font-display font-bold uppercase tracking-[0.3em] text-brand-primary">Partner Work</span>
+              </div>
+
+              <h2
+                className="font-display font-bold uppercase tracking-tight text-brand-text leading-none"
+                style={{ fontSize: "clamp(1.3rem, 2.4vw, 2.1rem)" }}
+              >
+                From No Uniforms to<br />the Adidas 3SSB Circuit.
+              </h2>
+
+              <div className="space-y-2.5">
+                <p className="text-sm font-barlow text-brand-muted leading-relaxed">
+                  An AAU program came to us with no uniforms, no identity, and two teams to build from the ground up.
+                </p>
+                <p className="text-sm font-barlow text-brand-muted leading-relaxed">
+                  We developed the full system: home, away, alternate uniforms, and tracksuits.
+                </p>
+                <p className="text-sm font-barlow text-brand-muted leading-relaxed">
+                  They now compete on the Adidas 3SSB circuit and remain an active Grace Studios partner today.
+                </p>
+              </div>
+
+              <Link
+                href="/portfolio"
+                className="mt-2 self-start inline-flex items-center gap-2.5 px-5 py-3 rounded-xl border border-brand-border text-brand-muted font-display font-bold text-xs uppercase tracking-widest hover:border-brand-primary hover:text-brand-primary transition-colors duration-200"
+              >
+                View Program →
+              </Link>
+            </div>
+
+            {/* Right — partner video */}
+            <div className="relative">
+              {/* Ambient glow */}
+              <div className="absolute -inset-4 rounded-3xl bg-brand-primary/5 blur-2xl pointer-events-none" />
+
+              <div className="relative rounded-2xl overflow-hidden border border-brand-border bg-brand-surface shadow-lg">
+
+                {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+                <video
+                  src="/partner/aau-program.mp4"
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                  className="w-full object-cover object-center"
+                  style={{ aspectRatio: "9/16", maxHeight: 560 }}
+                />
+
+                {/* Gradient overlay — editorial depth */}
+                <div className="absolute bottom-0 left-0 right-0 h-1/4 bg-gradient-to-t from-brand-bg/50 to-transparent pointer-events-none" />
+
+                {/* Partner badge */}
+                <div className="absolute top-4 left-4">
+                  <span className="text-[8px] font-display font-bold uppercase tracking-[0.2em] px-2.5 py-1 rounded border text-brand-primary bg-brand-bg/80 border-brand-primary/30 backdrop-blur-sm">
+                    Adidas 3SSB
+                  </span>
+                </div>
+
+              </div>
+
+              {/* Corner accent dot */}
+              <div className="absolute -top-2 -right-2 w-4 h-4 rounded-full bg-brand-primary/40" />
+            </div>
+
+          </div>
+        </div>
+
       </section>
 
       {/* ══════════════════════════════════════════════════════════════════
           STATS BAR
       ══════════════════════════════════════════════════════════════════ */}
       {/* ══════════════════════════════════════════════════════════════════
-          JERSEY STRIP — visual proof of work
+          JERSEY STRIP — visual proof of work (commented out)
       ══════════════════════════════════════════════════════════════════ */}
-      <div className="border-b border-brand-border px-3 sm:px-4 lg:px-6 pt-12 sm:pt-16 pb-8 sm:pb-10">
+      {/* <div className="border-b border-brand-border px-3 sm:px-4 lg:px-6 pt-12 sm:pt-16 pb-8 sm:pb-10">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
           {JERSEYS.map((j) => (
             <div key={j.name} className="group flex flex-col items-center gap-3">
               <div className="jersey-img-card bg-white rounded-xl w-full flex items-center justify-center">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={j.src}
                   alt={j.name}
@@ -630,7 +764,7 @@ export default function LoginPage() {
             </div>
           ))}
         </div>
-      </div>
+      </div> */}
 
       {/* ══════════════════════════════════════════════════════════════════
           STATS BAR — below jerseys
@@ -788,7 +922,7 @@ export default function LoginPage() {
                 Every Order.<br />Tracked End-to-End.
               </h2>
               <p className="text-xs font-barlow text-brand-muted leading-relaxed max-w-[300px]">
-                From brief submission to delivery — every stage visible to your program in real time.
+                From brief submission to delivery. Every stage visible to your program in real time.
               </p>
             </div>
 
@@ -895,7 +1029,7 @@ export default function LoginPage() {
               </h1>
 
               <p className="text-xs text-brand-muted font-barlow max-w-[380px] leading-relaxed mb-7">
-                Every file you receive has been approved twice — by the client and by a designer.
+                Every file you receive has been approved twice: by the client and by a designer.
                 First-piece review is built into every order. Run production with confidence.
               </p>
 
@@ -935,7 +1069,7 @@ export default function LoginPage() {
                 ].map((o) => (
                   <div key={o.id} className="px-5 py-4 border-b border-brand-border flex items-start justify-between gap-4">
                     <div className="min-w-0 flex-1">
-                      <p className="text-[11px] font-display font-bold text-brand-text tracking-wide">{o.sport} — {o.garment}</p>
+                      <p className="text-[11px] font-display font-bold text-brand-text tracking-wide">{o.sport}, {o.garment}</p>
                       <p className="text-[9px] font-barlow text-brand-muted mt-0.5">{o.id}</p>
                     </div>
                     <span className={`flex-shrink-0 px-2 py-0.5 rounded border text-[8px] font-display font-bold uppercase tracking-widest ${o.badge}`}>

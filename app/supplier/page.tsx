@@ -12,8 +12,8 @@ const STAGE_LABELS: Record<OrderStage, string> = {
   onboarding:              "Brief Submitted",
   design_confirmed:        "Design Confirmed",
   files_sent:              "Files Sent",
-  first_piece_in_progress: "First Piece — In Progress",
-  first_piece_review:      "First Piece — Under Review",
+  first_piece_in_progress: "First Piece: In Progress",
+  first_piece_review:      "First Piece: Under Review",
   bulk_production:         "Bulk Production",
   qc_verified:             "QC Verified",
   shipped:                 "Shipped",
@@ -142,7 +142,7 @@ function SupplierPortalContent() {
       {isAdminView && (
         <div className="bg-amber-50 border-b border-amber-200 px-6 py-2 flex items-center gap-2">
           <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-          <span className="text-xs font-display font-bold uppercase tracking-widest text-amber-700">Admin View — Supplier Portal</span>
+          <span className="text-xs font-display font-bold uppercase tracking-widest text-amber-700">Admin View: Supplier Portal</span>
           <div className="ml-auto flex items-center gap-4">
             <a
               href="/admin/suppliers"
@@ -183,7 +183,7 @@ function SupplierPortalContent() {
           </h1>
           <p className="text-sm text-brand-muted font-barlow mt-1">
             {orders.length === 0
-              ? "No orders assigned yet — check back soon."
+              ? "No orders assigned yet. Check back soon."
               : `${active.length} active · ${completed.length} completed`}
           </p>
           {justUpdated && (

@@ -10,14 +10,6 @@ import { useTenant } from "@/lib/tenant/context";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-const LOGO_PLACEMENTS = [
-  { id: "chest",     label: "Chest",     description: "Front chest, visible when tucked in" },
-  { id: "back_neck", label: "Back Neck", description: "Upper back near neckline" },
-  { id: "sleeve",    label: "Sleeve",    description: "Left or right sleeve" },
-] as const;
-
-const NUMBER_STYLES = ["Block Bold", "Collegiate", "Old English", "Outline", "Varsity", "Custom"];
-
 // ── Upload zone ───────────────────────────────────────────────────────────────
 
 function UploadZone({
@@ -129,8 +121,6 @@ export default function ReferencePage() {
   const [refError,  setRefError]  = useState("");
 
   // Form state
-  const [gsLogoPlacement, setGsLogoPlacement] = useState<"chest" | "back_neck" | "sleeve" | "">("");
-  const [numberStyle,     setNumberStyle]     = useState("");
   const [logosToInclude,  setLogosToInclude]  = useState("");
   const [sponsorText,     setSponsorText]     = useState("");
   const [negativeReferences, setNegativeReferences] = useState("");
@@ -143,8 +133,6 @@ export default function ReferencePage() {
     setTeamName(state.teamName || "");
     setLogoUrls(state.logoUrls ?? []);
     setRefUrls(state.referenceImageUrls ?? []);
-    setGsLogoPlacement(state.gsLogoPlacement ?? "");
-    setNumberStyle(state.numberStyle ?? "");
     setLogosToInclude(state.logosToInclude ?? "");
     setSponsorText(state.sponsorText ?? "");
     setNegativeReferences(state.negativeReferences ?? "");
@@ -157,7 +145,7 @@ export default function ReferencePage() {
     setAccentColor(state.accentColor       || defaults.accent);
   }, []);
 
-  const canContinue = !!gsLogoPlacement;
+  const canContinue = true;
 
   // ── Upload helpers ─────────────────────────────────────────────────────────
 
@@ -242,8 +230,6 @@ export default function ReferencePage() {
   function handleContinue() {
     if (!canContinue) return;
     saveBriefState({
-      gsLogoPlacement: gsLogoPlacement as "chest" | "back_neck" | "sleeve",
-      numberStyle,
       logosToInclude,
       sponsorText,
       negativeReferences,
@@ -326,62 +312,6 @@ export default function ReferencePage() {
             uploading={refUploading}
             error={refError}
           />
-
-          {/* GS logo placement (required) */}
-          <div>
-            <label className="block text-[10px] font-display uppercase tracking-[0.2em] text-brand-muted mb-3">
-              {tenant.name} Logo Placement
-              <span className="ml-2 text-red-500 normal-case font-barlow font-normal">Required</span>
-            </label>
-            <div className="grid grid-cols-3 gap-3">
-              {LOGO_PLACEMENTS.map((p) => {
-                const isSelected = gsLogoPlacement === p.id;
-                return (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => {
-                      setGsLogoPlacement(p.id);
-                      saveBriefState({ gsLogoPlacement: p.id });
-                    }}
-                    className={`text-left p-4 rounded-xl border transition-all duration-200
-                      ${isSelected
-                        ? "border-brand-primary bg-brand-surface"
-                        : "border-brand-border bg-brand-surface hover:border-brand-muted"
-                      }`}
-                  >
-                    <p className={`font-display font-bold uppercase tracking-wide text-sm ${isSelected ? "text-brand-primary" : "text-brand-text"}`}>
-                      {p.label}
-                    </p>
-                    <p className="text-xs text-brand-muted font-barlow mt-1 leading-relaxed">{p.description}</p>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Number style */}
-          <div>
-            <label className="block text-[10px] font-display uppercase tracking-[0.2em] text-brand-muted mb-3">
-              Number Style <span className="normal-case font-barlow font-normal">(optional)</span>
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {NUMBER_STYLES.map((ns) => (
-                <button
-                  key={ns}
-                  type="button"
-                  onClick={() => setNumberStyle(ns === numberStyle ? "" : ns)}
-                  className={`px-4 py-2 rounded-full text-sm font-barlow transition-all duration-150
-                    ${numberStyle === ns
-                      ? "bg-brand-primary text-brand-bg font-medium"
-                      : "bg-brand-surface border border-brand-border text-brand-muted hover:border-brand-primary hover:text-brand-text"
-                    }`}
-                >
-                  {ns}
-                </button>
-              ))}
-            </div>
-          </div>
 
           {/* Text fields */}
           <div className="space-y-4">

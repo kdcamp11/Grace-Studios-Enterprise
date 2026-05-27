@@ -288,7 +288,7 @@ export default function SettingsPage() {
                 <p className="text-xs font-display font-bold uppercase tracking-wide text-brand-text">Free Access</p>
                 <p className="text-[11px] font-barlow text-brand-muted mt-0.5 leading-relaxed">
                   Submitting briefs, reviewing concepts, and tracking your order are all free.
-                  Grace Studios covers the platform — you just use the service.
+                  Grace Studios covers the platform. You just use the service.
                 </p>
               </div>
             </div>
