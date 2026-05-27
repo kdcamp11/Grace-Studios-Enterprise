@@ -67,7 +67,13 @@ export default function CheckoutPage() {
         headers: { "Content-Type": "application/json" },
       });
 
-      const data = await res.json() as { url?: string; error?: string };
+      // Guard against empty body (e.g. a server crash returning 500 with no JSON)
+      const text = await res.text();
+      if (!text) {
+        throw new Error("Server did not respond. Please try again in a moment.");
+      }
+
+      const data = JSON.parse(text) as { url?: string; error?: string };
 
       if (!res.ok || !data.url) {
         throw new Error(data.error ?? "Unable to start checkout. Please try again.");
