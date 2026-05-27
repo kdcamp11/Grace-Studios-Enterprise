@@ -546,7 +546,7 @@ export default function LoginPage() {
             {/* ── Right: three cards side by side — slightly secondary ── */}
             <div className="flex-1 grid grid-cols-3 gap-3 items-stretch">
 
-              {/* Consultation */}
+              {/* Creative Direction */}
               <div className="flex flex-col gap-3">
                 <div className="group relative flex flex-col gap-3 p-4 rounded-2xl border border-brand-border/70 bg-brand-bg hover:bg-brand-surface transition-colors duration-300 shadow-sm flex-1">
                   <div className="absolute top-0 left-0 right-0 h-[2px] bg-brand-primary opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-t-2xl" />
@@ -566,7 +566,7 @@ export default function LoginPage() {
                 </div>
                 <Link href="/signup?path=consultation"
                   className="flex items-center justify-center py-2.5 rounded-xl bg-brand-primary text-white font-display font-bold text-sm uppercase tracking-widest hover:bg-brand-secondary transition-colors shadow-sm">
-                  Consultation →
+                  Creative Direction →
                 </Link>
               </div>
 
@@ -630,7 +630,7 @@ export default function LoginPage() {
                     ))}
                   </ul>
                   <p className="text-[9px] font-barlow text-brand-muted/50 italic border-t border-brand-border pt-3 leading-snug">
-                    Have a sketch or concept? Consultation is the right starting point.
+                    Have a sketch or concept? Creative Direction is the right starting point.
                   </p>
                 </div>
                 <Link href="/signup?path=upload"
