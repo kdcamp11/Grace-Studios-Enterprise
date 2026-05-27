@@ -162,8 +162,8 @@ export default function JerseyScene({
       {/* Jersey GLB — cursor changes when placing artwork */}
       <primitive
         object={scene}
-        scale={1.2}
-        position={[0, -1.2, 0]}
+        scale={0.9}
+        position={[0, -0.6, 0]}
         onClick={handleClick}
         onPointerOver={isPlacing ? () => { document.body.style.cursor = "crosshair"; } : undefined}
         onPointerOut={isPlacing  ? () => { document.body.style.cursor = "auto"; }      : undefined}
