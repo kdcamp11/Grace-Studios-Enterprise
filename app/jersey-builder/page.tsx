@@ -71,7 +71,6 @@ interface ArtworkDraft {
   placed: boolean;
   position?: [number, number, number];
   rotation?: [number, number, number];
-  targetMesh?: THREE.Mesh;
   size: number;
   // resolved texture (kept outside React state to avoid issues — see textureMapRef)
 }
@@ -208,6 +207,52 @@ function JerseyBuilderInner() {
   const [textColor,   setTextColor]   = useState("#ffffff");
   const [outlineColor,setOutlineColor]= useState("#000000");
 
+  // ── Jersey-top mesh (exposed by JerseyScene after load) ─────────────────
+  const jerseyTopMeshRef = useRef<THREE.Mesh | null>(null);
+
+  const handleJerseyTopReady = useCallback((mesh: THREE.Mesh | null) => {
+    jerseyTopMeshRef.current = mesh;
+  }, []);
+
+  /** Raycast from directly in front of the jersey chest to find the surface
+   *  point for auto-placing artwork.  Falls back to a hardcoded chest position
+   *  if the mesh isn't ready or the ray misses. */
+  const autoPlacePosition = useCallback(
+    (yOffset = 0): { position: [number, number, number]; rotation: [number, number, number] } => {
+      const mesh = jerseyTopMeshRef.current;
+      if (mesh) {
+        try {
+          mesh.updateWorldMatrix(true, false);
+          const box = new THREE.Box3().setFromObject(mesh);
+          const center = new THREE.Vector3();
+          box.getCenter(center);
+
+          // Jersey top front now faces –Z (we rotated it in JerseyScene).
+          // Shoot a ray from z = –50 toward +Z to find the front surface.
+          const raycaster = new THREE.Raycaster();
+          raycaster.set(
+            new THREE.Vector3(center.x, center.y + yOffset, -50),
+            new THREE.Vector3(0, 0, 1),
+          );
+          const hits = raycaster.intersectObject(mesh, true);
+          if (hits.length > 0) {
+            const hit = hits[0];
+            const normal = hit.face!.normal.clone()
+              .transformDirection(mesh.matrixWorld)
+              .normalize();
+            return {
+              position: [hit.point.x, hit.point.y, hit.point.z],
+              rotation: normalToRotation(normal),
+            };
+          }
+        } catch { /* ignore — use fallback */ }
+      }
+      // Fallback: chest-area estimate for the centred model
+      return { position: [0, 1 + yOffset, -0.5], rotation: [0, 0, 0] };
+    },
+    [],
+  );
+
   // ── Logo upload ─────────────────────────────────────────────────────────
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -217,7 +262,6 @@ function JerseyBuilderInner() {
       e.target.value = "";
       for (const file of files) {
         const id = crypto.randomUUID();
-        // Read to data-URL so it survives across blob-URL revokes
         const dataUrl = await new Promise<string>((res) => {
           const reader = new FileReader();
           reader.onload = () => res(reader.result as string);
@@ -225,6 +269,7 @@ function JerseyBuilderInner() {
         });
         const texture = await buildLogoTexture(dataUrl);
         textureMapRef.current[id] = texture;
+        const { position, rotation } = autoPlacePosition(1.5); // upper chest
         setArtworkDrafts((prev) => [
           ...prev,
           {
@@ -235,43 +280,50 @@ function JerseyBuilderInner() {
             fileName: file.name,
             textColor: "#ffffff",
             outlineColor: "#000000",
-            placed: false,
-            size: 0.22,
+            placed: true,
+            position,
+            rotation,
+            size: 0.6,
           },
         ]);
-        // Auto-enter placing mode for the just-uploaded logo
-        setPlacingId(id);
       }
     },
-    [],
+    [autoPlacePosition],
   );
 
-  /** Add a text artwork (team name, number, or custom) to the pending list. */
+  /** Add a text artwork and auto-place it on the jersey front. */
   const addTextArtwork = useCallback(
     (type: ArtworkDraft["type"], text: string) => {
       if (!text.trim()) return;
-      const id      = crypto.randomUUID();
-      const isNum   = type === "number";
+      const id    = crypto.randomUUID();
+      const isNum = type === "number";
       const texture = buildTextTexture(text.trim(), textColor, outlineColor, isNum);
       textureMapRef.current[id] = texture;
-      const label = type === "teamName"   ? `Name: ${text}`
-                  : type === "number"     ? `# ${text}`
+
+      const label = type === "teamName" ? `Name: ${text}`
+                  : type === "number"   ? `# ${text}`
                   : `Text: ${text}`;
+
+      // Auto-place: team name at upper chest, number at centre, custom at lower
+      const yOffset = type === "teamName" ? 1.5 : type === "number" ? 0 : -1;
+      const { position, rotation } = autoPlacePosition(yOffset);
+
       setArtworkDrafts((prev) => [
         ...prev,
         {
           id, type, label, text: text.trim(),
           textColor, outlineColor,
-          placed: false,
-          size: isNum ? 0.18 : 0.28,
+          placed: true,
+          position,
+          rotation,
+          size: isNum ? 0.9 : 0.5,
         },
       ]);
-      setPlacingId(id);
     },
-    [textColor, outlineColor],
+    [textColor, outlineColor, autoPlacePosition],
   );
 
-  /** Called when user clicks on the jersey while isPlacing is true. */
+  /** Called when user clicks on the jersey while isPlacing is true (Move). */
   const handleSurfaceClick = useCallback(
     (hit: SurfaceHit) => {
       if (!placingId) return;
@@ -281,10 +333,9 @@ function JerseyBuilderInner() {
           a.id === placingId
             ? {
                 ...a,
-                placed:     true,
-                position:   [hit.point.x, hit.point.y, hit.point.z],
+                placed:   true,
+                position: [hit.point.x, hit.point.y, hit.point.z] as [number, number, number],
                 rotation,
-                targetMesh: hit.mesh,
               }
             : a,
         ),
@@ -309,16 +360,15 @@ function JerseyBuilderInner() {
   const sceneArtworks = useMemo<ArtworkItem[]>(
     () =>
       artworkDrafts
-        .filter((a) => a.placed && a.position && a.targetMesh)
+        .filter((a) => a.placed && a.position)
         .map((a) => ({
           id:       a.id,
+          type:     a.type,
           texture:  textureMapRef.current[a.id] ?? null,
           position: a.position!,
-          rotation: a.rotation!,
+          rotation: a.rotation ?? [0, 0, 0],
           size:     a.size,
-          mesh:     a.targetMesh!,
         })),
-    // Rebuild when artworkDrafts changes (placed status, size, etc.)
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [artworkDrafts],
   );
@@ -383,11 +433,11 @@ function JerseyBuilderInner() {
               style={{ width: "100%", height: "100%" }}
               gl={{ preserveDrawingBuffer: true, antialias: true }}
             >
-              <ambientLight intensity={0.8} />
-              <directionalLight position={[4, 6, 4]}  intensity={1.4} />
-              <directionalLight position={[-4, 3, -2]} intensity={0.6} />
-              <directionalLight position={[0, -2, 4]}  intensity={0.3} />
-              <pointLight position={[0, 4, 2]} intensity={0.5} />
+              <ambientLight intensity={0.9} />
+              <directionalLight position={[4, 6, -4]}  intensity={1.4} />
+              <directionalLight position={[-4, 3, -4]} intensity={0.8} />
+              <directionalLight position={[0, -2, -4]} intensity={0.4} />
+              <pointLight position={[0, 4, -3]} intensity={0.6} />
 
               <Suspense fallback={null}>
                 <JerseyScene
@@ -395,6 +445,7 @@ function JerseyBuilderInner() {
                   artworks={sceneArtworks}
                   onSurfaceClick={handleSurfaceClick}
                   isPlacing={isPlacing}
+                  onJerseyTopReady={handleJerseyTopReady}
                 />
               </Suspense>
 

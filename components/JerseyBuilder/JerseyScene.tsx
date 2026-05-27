@@ -3,13 +3,13 @@
 /**
  * JerseyScene — React Three Fiber scene that:
  *  1. Loads /public/Jersey.glb via useGLTF
- *  2. Computes the model's bounding box on load and centres it at the origin
- *     so the camera always frames the full jersey regardless of how the GLB
- *     was exported.
+ *  2. Rotates the jersey-top node group 180° on Y so it faces the same
+ *     direction as the shorts, then centres the whole model at origin.
  *  3. Applies per-zone colours by material name (MAT_TO_ZONE dict).
- *  4. Renders logos, team names, numbers, and custom text as THREE.js
- *     Decal geometry projected onto the jersey surface.
- *  5. Emits onClick hits so the page can trigger "click to place" flow.
+ *  4. Renders artwork (logos, text, numbers) as double-sided plane meshes
+ *     placed on the jersey surface — stays locked to the garment.
+ *  5. Exposes the jersey_top mesh via onJerseyTopReady so the page can
+ *     auto-place artwork without a manual click.
  *
  * GLB material ↔ zone map (verified from public/Jersey.glb):
  *   jersey_top          → main jersey body
@@ -22,7 +22,7 @@
  */
 
 import { useEffect, useRef, useMemo } from "react";
-import { useGLTF, Decal } from "@react-three/drei";
+import { useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 import type { ThreeEvent } from "@react-three/fiber";
 
@@ -40,11 +40,11 @@ export interface ZoneColors {
 
 export interface ArtworkItem {
   id: string;
+  type: "logo" | "teamName" | "number" | "customText";
   texture: THREE.Texture | null;
   position: [number, number, number];
   rotation: [number, number, number];
   size: number;
-  mesh: THREE.Mesh | null;
 }
 
 export interface SurfaceHit {
@@ -59,6 +59,9 @@ interface Props {
   artworks: ArtworkItem[];
   onSurfaceClick?: (hit: SurfaceHit) => void;
   isPlacing?: boolean;
+  /** Fired once after the GLB loads — passes the jersey_top mesh so the
+   *  parent page can auto-place artwork via raycasting. */
+  onJerseyTopReady?: (mesh: THREE.Mesh | null) => void;
 }
 
 // ── Material name → zone key ──────────────────────────────────────────────────
@@ -73,6 +76,16 @@ const MAT_TO_ZONE: Record<string, keyof ZoneColors> = {
   short_side_panels:   "shortSidePanels",
 };
 
+// Jersey-top nodes (from GLB inspection) whose front faces +Z — need
+// rotating 180° on Y so the front matches the shorts (which face –Z).
+const JERSEY_TOP_NODE_NAMES = new Set([
+  "Jersey Top Stitching",
+  "Jersey Tiop Side Panels",  // typo in the GLB export
+  "Collar",
+  "Jersey Top Lower Side Panels",
+  "Sleeve Panels",
+]);
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function JerseyScene({
@@ -80,14 +93,24 @@ export default function JerseyScene({
   artworks,
   onSurfaceClick,
   isPlacing = false,
+  onJerseyTopReady,
 }: Props) {
   const { scene } = useGLTF("/Jersey.glb");
 
-  // ── Centre the model at origin ────────────────────────────────────────────
-  // The GLB nodes are spread across world space (jersey top y≈14, shorts y≈3.5,
-  // jersey top x≈-7.8 vs shorts x≈0).  Compute the actual bounding box of the
-  // whole scene and apply an offset so the centroid sits at [0,0,0].
+  // ── Fix orientation + centre at origin ───────────────────────────────────
+  // The jersey-top nodes face +Z; the shorts face –Z.  Rotate jersey-top
+  // nodes to –Z first so both halves face the same way, then compute the
+  // centroid bounding box so everything sits at world origin.
   const centerOffset = useMemo(() => {
+    // Step 1: align jersey-top to face –Z (idempotent – sets absolute value)
+    scene.traverse((child) => {
+      if (JERSEY_TOP_NODE_NAMES.has(child.name)) {
+        child.rotation.y = Math.PI;
+      }
+    });
+
+    // Step 2: centre the whole assembled model at origin
+    scene.updateMatrixWorld(true);
     const box = new THREE.Box3().setFromObject(scene);
     const center = new THREE.Vector3();
     box.getCenter(center);
@@ -95,13 +118,12 @@ export default function JerseyScene({
   }, [scene]);
 
   // Per-zone material refs (cloned instances we own)
-  const matByZone    = useRef<Partial<Record<keyof ZoneColors, THREE.MeshStandardMaterial>>>({});
-  const meshRefByMat = useRef<Record<string, React.MutableRefObject<THREE.Mesh>>>({});
+  const matByZone = useRef<Partial<Record<keyof ZoneColors, THREE.MeshStandardMaterial>>>({});
 
-  // ── Clone materials once on load ──────────────────────────────────────────
+  // ── Clone materials and expose jersey_top mesh ────────────────────────────
   useEffect(() => {
     const newMats: typeof matByZone.current = {};
-    const newMeshRefs: typeof meshRefByMat.current = {};
+    let jerseyTopMesh: THREE.Mesh | null = null;
 
     scene.traverse((child) => {
       const node = child as THREE.Mesh;
@@ -112,19 +134,17 @@ export default function JerseyScene({
       const cloned = rawMats.map((m) => {
         const mat = (m as THREE.MeshStandardMaterial).clone();
         const zoneKey = MAT_TO_ZONE[mat.name];
-        if (zoneKey) {
-          newMats[zoneKey] = mat;
-          newMeshRefs[mat.name] = { current: node } as React.MutableRefObject<THREE.Mesh>;
-        }
+        if (zoneKey) newMats[zoneKey] = mat;
+        if (mat.name === "jersey_top") jerseyTopMesh = node;
         return mat;
       });
 
       node.material = Array.isArray(node.material) ? cloned : cloned[0];
     });
 
-    matByZone.current    = newMats;
-    meshRefByMat.current = newMeshRefs;
-  }, [scene]);
+    matByZone.current = newMats;
+    onJerseyTopReady?.(jerseyTopMesh);
+  }, [scene]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Apply zone colours ────────────────────────────────────────────────────
   useEffect(() => {
@@ -136,14 +156,14 @@ export default function JerseyScene({
     });
   }, [colors]);
 
-  // ── Surface-click for artwork placement ──────────────────────────────────
+  // ── Surface-click for manual repositioning ───────────────────────────────
   const handleClick = (e: ThreeEvent<MouseEvent>) => {
     if (!isPlacing || !onSurfaceClick) return;
     e.stopPropagation();
 
     const mesh   = e.object as THREE.Mesh;
     const point  = e.point.clone();
-    const normal = e.face?.normal.clone() ?? new THREE.Vector3(0, 0, 1);
+    const normal = e.face?.normal.clone() ?? new THREE.Vector3(0, 0, -1);
     normal.transformDirection(mesh.matrixWorld).normalize();
 
     const mat = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;
@@ -157,7 +177,7 @@ export default function JerseyScene({
 
   return (
     <group>
-      {/* The offset centres the whole model at the world origin */}
+      {/* Jersey GLB */}
       <primitive
         object={scene}
         position={centerOffset}
@@ -166,20 +186,23 @@ export default function JerseyScene({
         onPointerOut={isPlacing  ? () => { document.body.style.cursor = "auto"; }      : undefined}
       />
 
+      {/* Artwork — double-sided plane meshes, locked to world space alongside
+          the jersey (jersey never moves; only camera orbits) */}
       {artworks.map((art) => {
-        if (!art.mesh || !art.texture) return null;
-        const meshRef = { current: art.mesh } as React.MutableRefObject<THREE.Mesh>;
+        if (!art.texture) return null;
+        // Aspect ratio: numbers are taller than wide; logos are square; text is wide
+        const aspect = art.type === "number" ? 0.6 : art.type === "logo" ? 1.0 : 2.2;
         return (
-          <Decal
-            key={art.id}
-            mesh={meshRef}
-            position={art.position}
-            rotation={art.rotation}
-            scale={art.size}
-            map={art.texture}
-            polygonOffsetFactor={-10}
-            depthWrite={false}
-          />
+          <mesh key={art.id} position={art.position} rotation={art.rotation}>
+            <planeGeometry args={[art.size * aspect, art.size]} />
+            <meshBasicMaterial
+              map={art.texture}
+              transparent
+              alphaTest={0.05}
+              depthWrite={false}
+              side={THREE.DoubleSide}
+            />
+          </mesh>
         );
       })}
     </group>
