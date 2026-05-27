@@ -598,35 +598,23 @@ export default function LoginPage() {
               </Link>
             </div>
 
-            {/* Right — partner media (swap placeholder for real asset when ready) */}
+            {/* Right — partner video */}
             <div className="relative">
               {/* Ambient glow */}
               <div className="absolute -inset-4 rounded-3xl bg-brand-primary/5 blur-2xl pointer-events-none" />
 
               <div className="relative rounded-2xl overflow-hidden border border-brand-border bg-brand-surface shadow-lg">
 
-                {/* ─── Replace this block with <img> once media is ready ─────────────
-                    Suggested path: /partner/aau-hero.jpg  (portrait, 3:4 ratio)
-                    <img
-                      src="/partner/aau-hero.jpg"
-                      alt="Partner program competing on the Adidas 3SSB circuit"
-                      className="w-full object-cover object-top"
-                      style={{ aspectRatio: "3/4" }}
-                    />
-                ─────────────────────────────────────────────────────────────── */}
-
-                {/* Media placeholder */}
-                <div
-                  className="w-full flex flex-col items-center justify-center gap-4 bg-brand-surface"
-                  style={{ aspectRatio: "3/4", maxHeight: 520 }}
-                >
-                  <div className="w-14 h-14 rounded-2xl border border-brand-border flex items-center justify-center">
-                    <svg className="w-6 h-6 text-brand-muted/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
-                    </svg>
-                  </div>
-                  <p className="text-[10px] font-display uppercase tracking-[0.25em] text-brand-muted/40">Partner Media</p>
-                </div>
+                {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+                <video
+                  src="/partner/aau-program.mp4"
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                  className="w-full object-cover object-center"
+                  style={{ aspectRatio: "9/16", maxHeight: 560 }}
+                />
 
                 {/* Gradient overlay — editorial depth */}
                 <div className="absolute bottom-0 left-0 right-0 h-1/4 bg-gradient-to-t from-brand-bg/50 to-transparent pointer-events-none" />
