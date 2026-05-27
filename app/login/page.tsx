@@ -514,8 +514,8 @@ export default function LoginPage() {
       ══════════════════════════════════════════════════════════════════ */}
       {view === "client" && (<>
       <section className="border-b border-brand-border overflow-hidden">
-        <div className="max-w-[90rem] mx-auto px-5 sm:px-8 lg:px-12 py-16 lg:py-28">
-          <div className="flex flex-col lg:flex-row gap-12 lg:gap-16 items-center">
+        <div className="max-w-[90rem] mx-auto px-5 sm:px-8 lg:px-12 py-12 lg:py-20">
+          <div className="flex flex-col lg:flex-row gap-10 lg:gap-12 items-center">
 
             {/* ── Left: brand positioning — wider, more dominant ── */}
             <div className="lg:w-[320px] xl:w-[420px] flex-shrink-0 flex flex-col gap-7 lg:self-center">
@@ -544,18 +544,18 @@ export default function LoginPage() {
             </div>
 
             {/* ── Right: three cards side by side — slightly secondary ── */}
-            <div className="flex-1 grid grid-cols-3 gap-4 items-stretch">
+            <div className="flex-1 grid grid-cols-3 gap-3 items-stretch">
 
               {/* Consultation */}
               <div className="flex flex-col gap-3">
-                <div className="group relative flex flex-col gap-3.5 p-5 rounded-2xl border border-brand-border/70 bg-brand-bg hover:bg-brand-surface transition-colors duration-300 shadow-sm flex-1">
+                <div className="group relative flex flex-col gap-3 p-4 rounded-2xl border border-brand-border/70 bg-brand-bg hover:bg-brand-surface transition-colors duration-300 shadow-sm flex-1">
                   <div className="absolute top-0 left-0 right-0 h-[2px] bg-brand-primary opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-t-2xl" />
                   <div className="flex items-center justify-between">
                     <span className="text-[9px] font-display font-bold uppercase tracking-[0.2em] px-2.5 py-1 rounded border text-brand-primary bg-brand-primary/10 border-brand-primary/30">Full Service</span>
                     <span className="text-[9px] font-display uppercase tracking-widest text-brand-muted/60">Fully Managed</span>
                   </div>
                   <p className="font-display font-bold uppercase tracking-wide text-brand-text leading-snug" style={{ fontSize: "clamp(0.85rem, 1.1vw, 0.95rem)" }}>Creative Direction. Managed to Delivery.</p>
-                  <ul className="space-y-2 flex-1">
+                  <ul className="space-y-1.5 flex-1">
                     {PATH_CARDS[0].bullets.map((item) => (
                       <li key={item} className="flex items-start gap-2">
                         <span className="w-1 h-1 rounded-full bg-brand-primary flex-shrink-0 mt-1.5" />
@@ -565,14 +565,14 @@ export default function LoginPage() {
                   </ul>
                 </div>
                 <Link href="/signup?path=consultation"
-                  className="flex items-center justify-center py-3 rounded-xl bg-brand-primary text-white font-display font-bold text-sm uppercase tracking-widest hover:bg-brand-secondary transition-colors shadow-sm">
+                  className="flex items-center justify-center py-2.5 rounded-xl bg-brand-primary text-white font-display font-bold text-sm uppercase tracking-widest hover:bg-brand-secondary transition-colors shadow-sm">
                   Consultation →
                 </Link>
               </div>
 
               {/* Self Service — two sub-paths */}
               <div className="flex flex-col gap-3">
-                <div className="relative flex flex-col gap-3.5 p-5 rounded-2xl border border-brand-border/70 bg-brand-bg shadow-sm flex-1">
+                <div className="relative flex flex-col gap-3 p-4 rounded-2xl border border-brand-border/70 bg-brand-bg shadow-sm flex-1">
                   <div className="absolute top-0 left-0 right-0 h-[2px] bg-brand-primary/60 rounded-t-2xl" />
                   <div className="flex items-center justify-between">
                     <span className="text-[9px] font-display font-bold uppercase tracking-[0.2em] px-2.5 py-1 rounded border text-brand-primary bg-brand-primary/10 border-brand-primary/30">Self Service</span>
@@ -582,11 +582,11 @@ export default function LoginPage() {
                   <p className="text-xs font-barlow text-brand-muted leading-relaxed">
                     Free to build. $100 activation applied toward your final order.
                   </p>
-                  <div className="flex flex-col gap-2 border-t border-brand-border pt-3.5 flex-1">
+                  <div className="flex flex-col gap-2 border-t border-brand-border pt-3 flex-1">
                     <p className="text-[8px] font-display font-bold uppercase tracking-[0.28em] text-brand-muted mb-1">Choose your path</p>
                     <Link
                       href="/signup?path=ai"
-                      className="group/sp flex items-center justify-between gap-2 p-3 rounded-lg border border-brand-border bg-brand-surface hover:border-brand-primary hover:bg-brand-primary/5 transition-all duration-200"
+                      className="group/sp flex items-center justify-between gap-2 p-2.5 rounded-lg border border-brand-border bg-brand-surface hover:border-brand-primary hover:bg-brand-primary/5 transition-all duration-200"
                     >
                       <div className="flex items-start gap-2 min-w-0">
                         <span className="w-1.5 h-1.5 rounded-full bg-brand-primary flex-shrink-0 mt-0.5" />
@@ -598,7 +598,7 @@ export default function LoginPage() {
                     </Link>
                     <Link
                       href="/signup?path=builder"
-                      className="group/sp flex items-center justify-between gap-2 p-3 rounded-lg border border-brand-border bg-brand-surface hover:border-brand-primary hover:bg-brand-primary/5 transition-all duration-200"
+                      className="group/sp flex items-center justify-between gap-2 p-2.5 rounded-lg border border-brand-border bg-brand-surface hover:border-brand-primary hover:bg-brand-primary/5 transition-all duration-200"
                     >
                       <div className="flex items-start gap-2 min-w-0">
                         <span className="w-1.5 h-1.5 rounded-full bg-brand-primary flex-shrink-0 mt-0.5" />
@@ -614,14 +614,14 @@ export default function LoginPage() {
 
               {/* Production Files */}
               <div className="flex flex-col gap-3">
-                <div className="group relative flex flex-col gap-3.5 p-5 rounded-2xl border border-brand-border/70 bg-brand-bg hover:bg-brand-surface transition-colors duration-300 shadow-sm flex-1">
+                <div className="group relative flex flex-col gap-3 p-4 rounded-2xl border border-brand-border/70 bg-brand-bg hover:bg-brand-surface transition-colors duration-300 shadow-sm flex-1">
                   <div className="absolute top-0 left-0 right-0 h-[2px] bg-brand-muted/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-t-2xl" />
                   <div className="flex items-center justify-between">
                     <span className="text-[9px] font-display font-bold uppercase tracking-[0.2em] px-2.5 py-1 rounded border text-brand-muted bg-brand-muted/10 border-brand-muted/30">Production Files</span>
                     <span className="text-[9px] font-display uppercase tracking-widest text-brand-muted/60">Your Artwork</span>
                   </div>
                   <p className="font-display font-bold uppercase tracking-wide text-brand-text leading-snug" style={{ fontSize: "clamp(0.85rem, 1.1vw, 0.95rem)" }}>Your Files. Our Production Network.</p>
-                  <ul className="space-y-2 flex-1">
+                  <ul className="space-y-1.5 flex-1">
                     {PATH_CARDS[2].bullets.map((item) => (
                       <li key={item} className="flex items-start gap-2">
                         <span className="w-1 h-1 rounded-full bg-brand-muted/60 flex-shrink-0 mt-1.5" />
@@ -634,7 +634,7 @@ export default function LoginPage() {
                   </p>
                 </div>
                 <Link href="/signup?path=upload"
-                  className="flex items-center justify-center py-3 rounded-xl border border-brand-border/70 text-brand-muted font-display font-bold text-sm uppercase tracking-widest hover:border-brand-primary hover:text-brand-primary transition-colors">
+                  className="flex items-center justify-center py-2.5 rounded-xl border border-brand-border/70 text-brand-muted font-display font-bold text-sm uppercase tracking-widest hover:border-brand-primary hover:text-brand-primary transition-colors">
                   Upload Production Files →
                 </Link>
               </div>
@@ -655,7 +655,7 @@ export default function LoginPage() {
             {PARTNER_METRICS.map((m, i) => (
               <div
                 key={m.value}
-                className={`py-7 sm:py-8 flex flex-col gap-1.5
+                className={`py-5 sm:py-6 flex flex-col gap-1.5
                   ${i > 0 ? "border-l border-brand-border pl-5 sm:pl-8" : ""}
                   ${i < 2 ? "pr-5 sm:pr-8" : ""}`}
               >
@@ -667,11 +667,11 @@ export default function LoginPage() {
         </div>
 
         {/* Case study block */}
-        <div className="max-w-5xl mx-auto px-5 sm:px-8 lg:px-10 py-12 sm:py-16 lg:py-20">
-          <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
+        <div className="max-w-5xl mx-auto px-5 sm:px-8 lg:px-10 py-10 sm:py-12 lg:py-14">
+          <div className="grid lg:grid-cols-2 gap-10 lg:gap-14 items-start">
 
             {/* Left — editorial text */}
-            <div className="flex flex-col gap-5">
+            <div className="flex flex-col gap-4">
               <div className="flex items-center gap-2.5">
                 <div className="w-[3px] h-5 bg-brand-primary flex-shrink-0" />
                 <span className="text-[10px] font-display font-bold uppercase tracking-[0.3em] text-brand-primary">Partner Work</span>
@@ -684,7 +684,7 @@ export default function LoginPage() {
                 From No Uniforms to<br />the Adidas 3SSB Circuit.
               </h2>
 
-              <div className="space-y-3">
+              <div className="space-y-2.5">
                 <p className="text-sm font-barlow text-brand-muted leading-relaxed">
                   An AAU program came to us with no uniforms, no identity, and two teams to build from the ground up.
                 </p>
