@@ -3,16 +3,23 @@
 /**
  * JerseyScene — React Three Fiber scene
  *
- *  • Loads /public/Jersey.glb via useGLTF
- *  • Centres the whole model at world origin once on load
- *  • Applies per-zone colours by material name
- *  • activeView="jersey" → shows only jersey-top meshes (body, collar, panels, sleeves)
- *  • activeView="shorts" → shows only shorts meshes
- *  • Artwork rendered as double-sided plane meshes, locked to world space
- *  • Exposes jersey_top mesh + group Y-centres for camera-target switching
+ *  MODE A — Separate GLBs (recommended)
+ *    Put /public/JerseyTop.glb  and /public/Shorts.glb in the public folder.
+ *    JerseyTopScene loads JerseyTop.glb for the Jersey tab.
+ *    ShortsScene    loads Shorts.glb    for the Shorts tab.
+ *    No visibility toggling needed — each file contains only its own pieces.
+ *
+ *  MODE B — Combined GLB fallback
+ *    If the separate files aren't present the component falls back to
+ *    /public/Jersey.glb and uses node-name visibility toggling.
+ *
+ *  Switching between modes is handled by the `separateGlbs` prop.
+ *
+ *  Zone colours, artwork planes, surface-click, and camera-centre
+ *  callbacks all work in both modes.
  */
 
-import { useEffect, useRef, useMemo } from "react";
+import { useEffect, useRef, useMemo, Suspense } from "react";
 import { useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 import type { ThreeEvent } from "@react-three/fiber";
@@ -54,6 +61,8 @@ interface Props {
   colors: ZoneColors;
   artworks: ArtworkItem[];
   activeView: "jersey" | "shorts";
+  /** Set true once you have added /public/JerseyTop.glb and /public/Shorts.glb */
+  separateGlbs?: boolean;
   onSurfaceClick?: (hit: SurfaceHit) => void;
   isPlacing?: boolean;
   onJerseyTopReady?: (mesh: THREE.Mesh | null) => void;
@@ -72,10 +81,157 @@ const MAT_TO_ZONE: Record<string, keyof ZoneColors> = {
   short_side_panels:   "shortSidePanels",
 };
 
-// Node names for each group (from GLB inspection)
+// ── Shared helpers ────────────────────────────────────────────────────────────
+
+/** Clone all materials in a scene, apply MAT_TO_ZONE colour mapping, return refs. */
+function cloneAndMapMaterials(
+  scene: THREE.Object3D,
+  zoneColors: ZoneColors,
+): {
+  matByZone: Partial<Record<keyof ZoneColors, THREE.MeshStandardMaterial>>;
+  jerseyTopMesh: THREE.Mesh | null;
+} {
+  const matByZone: Partial<Record<keyof ZoneColors, THREE.MeshStandardMaterial>> = {};
+  let jerseyTopMesh: THREE.Mesh | null = null;
+
+  scene.traverse((child) => {
+    const node = child as THREE.Mesh;
+    if (!node.isMesh) return;
+    const rawMats = Array.isArray(node.material) ? node.material : [node.material];
+    const cloned = rawMats.map((m) => {
+      const mat = (m as THREE.MeshStandardMaterial).clone();
+      const zoneKey = MAT_TO_ZONE[mat.name];
+      if (zoneKey) {
+        matByZone[zoneKey] = mat;
+        mat.color.set(zoneColors[zoneKey]);
+        mat.needsUpdate = true;
+      }
+      if (mat.name === "jersey_top") jerseyTopMesh = node;
+      return mat;
+    });
+    node.material = Array.isArray(node.material) ? cloned : cloned[0];
+  });
+
+  return { matByZone, jerseyTopMesh };
+}
+
+/** Centre a scene's bounding box at world origin. */
+function useCenterOffset(scene: THREE.Object3D): [number, number, number] {
+  return useMemo(() => {
+    scene.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(scene);
+    const c = new THREE.Vector3();
+    box.getCenter(c);
+    return [-c.x, -c.y, -c.z];
+  }, [scene]);
+}
+
+// ── Artwork overlay ───────────────────────────────────────────────────────────
+
+function ArtworkPlanes({ artworks }: { artworks: ArtworkItem[] }) {
+  return (
+    <>
+      {artworks.map((art) => {
+        if (!art.texture) return null;
+        const aspect = art.type === "number" ? 0.6 : art.type === "logo" ? 1.0 : 2.2;
+        return (
+          <mesh key={art.id} position={art.position} rotation={art.rotation}>
+            <planeGeometry args={[art.size * aspect, art.size]} />
+            <meshBasicMaterial
+              map={art.texture}
+              transparent
+              alphaTest={0.05}
+              depthWrite={false}
+              side={THREE.DoubleSide}
+            />
+          </mesh>
+        );
+      })}
+    </>
+  );
+}
+
+// ── Mode A: Separate GLB sub-scenes ──────────────────────────────────────────
+
+interface SplitSceneProps {
+  glbPath: string;
+  colors: ZoneColors;
+  artworks: ArtworkItem[];
+  onSurfaceClick?: (hit: SurfaceHit) => void;
+  isPlacing: boolean;
+  onMeshReady?: (mesh: THREE.Mesh | null) => void;
+  onCenterY?: (y: number) => void;
+}
+
+function SplitScene({
+  glbPath, colors, artworks, onSurfaceClick, isPlacing, onMeshReady, onCenterY,
+}: SplitSceneProps) {
+  const { scene } = useGLTF(glbPath);
+  const centerOffset = useCenterOffset(scene);
+  const matByZoneRef = useRef<Partial<Record<keyof ZoneColors, THREE.MeshStandardMaterial>>>({});
+
+  // Clone materials on load
+  useEffect(() => {
+    const { matByZone, jerseyTopMesh } = cloneAndMapMaterials(scene, colors);
+    matByZoneRef.current = matByZone;
+    onMeshReady?.(jerseyTopMesh);
+  }, [scene]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Apply colours when they change
+  useEffect(() => {
+    (Object.entries(colors) as [keyof ZoneColors, string][]).forEach(([zone, hex]) => {
+      const mat = matByZoneRef.current[zone];
+      if (!mat) return;
+      mat.color.set(hex);
+      mat.needsUpdate = true;
+    });
+  }, [colors]);
+
+  // Expose Y centre for camera targeting
+  useEffect(() => {
+    if (!onCenterY) return;
+    scene.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(scene);
+    const c = new THREE.Vector3();
+    box.getCenter(c);
+    // scene.position is centerOffset at this point (R3F applies it before effects)
+    onCenterY(c.y);
+  }, [scene, centerOffset, onCenterY]);
+
+  const handleClick = (e: ThreeEvent<MouseEvent>) => {
+    if (!isPlacing || !onSurfaceClick) return;
+    e.stopPropagation();
+    const mesh  = e.object as THREE.Mesh;
+    const point = e.point.clone();
+    const normal = e.face?.normal.clone() ?? new THREE.Vector3(0, 0, 1);
+    normal.transformDirection(mesh.matrixWorld).normalize();
+    const mat = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;
+    onSurfaceClick({
+      point, normal, mesh,
+      materialName: (mat as THREE.MeshStandardMaterial)?.name ?? "",
+    });
+  };
+
+  return (
+    <group>
+      <primitive
+        object={scene}
+        position={centerOffset}
+        onClick={handleClick}
+        onPointerOver={isPlacing ? () => { document.body.style.cursor = "crosshair"; } : undefined}
+        onPointerOut={isPlacing  ? () => { document.body.style.cursor = "auto"; }      : undefined}
+      />
+      <ArtworkPlanes artworks={artworks} />
+    </group>
+  );
+}
+
+// ── Mode B: Combined GLB with visibility toggle ───────────────────────────────
+
+// Node names verified from public/Jersey.glb inspection
 const JERSEY_TOP_NODE_NAMES = new Set([
   "Jersey Top Stitching",
-  "Jersey Tiop Side Panels",
+  "Jersey Tiop Side Panels",   // note: typo is in the GLB itself
   "Collar",
   "Jersey Top Lower Side Panels",
   "Sleeve Panels",
@@ -86,52 +242,32 @@ const SHORTS_NODE_NAMES = new Set([
   "Shorts Side Panels",
 ]);
 
-// ── Component ─────────────────────────────────────────────────────────────────
-
-export default function JerseyScene({
-  colors,
-  artworks,
-  activeView,
-  onSurfaceClick,
-  isPlacing = false,
-  onJerseyTopReady,
-  onGroupCenters,
-}: Props) {
+function CombinedScene({
+  colors, artworks, activeView, onSurfaceClick, isPlacing,
+  onJerseyTopReady, onGroupCenters,
+}: Omit<Props, "separateGlbs">) {
   const { scene } = useGLTF("/Jersey.glb");
+  const centerOffset = useCenterOffset(scene);
+  const matByZone = useRef<Partial<Record<keyof ZoneColors, THREE.MeshStandardMaterial>>>({});
 
-  // ── Centre the whole model at world origin (runs once per scene) ──────────
-  const centerOffset = useMemo(() => {
-    scene.updateMatrixWorld(true);
-    const box = new THREE.Box3().setFromObject(scene);
-    const center = new THREE.Vector3();
-    box.getCenter(center);
-    return [-center.x, -center.y, -center.z] as [number, number, number];
-  }, [scene]);
-
-  // ── Expose group Y centres for tab camera switching ───────────────────────
+  // Expose group Y centres
   useEffect(() => {
     if (!onGroupCenters) return;
     scene.updateMatrixWorld(true);
-
     const jerseyBox = new THREE.Box3();
     const shortsBox  = new THREE.Box3();
-
     scene.traverse((child) => {
       if (JERSEY_TOP_NODE_NAMES.has(child.name)) jerseyBox.expandByObject(child);
       if (SHORTS_NODE_NAMES.has(child.name))     shortsBox.expandByObject(child);
     });
-
     const jc = new THREE.Vector3();
     const sc = new THREE.Vector3();
     jerseyBox.getCenter(jc);
     shortsBox.getCenter(sc);
-
-    // jc / sc are already in world space because R3F sets scene.position = centerOffset
-    // during its commit phase, before useEffect runs.  Don't add centerOffset again.
     onGroupCenters({ jerseyTopY: jc.y, shortsY: sc.y });
   }, [scene, centerOffset, onGroupCenters]);
 
-  // ── Visibility: show only the active group ───────────────────────────────
+  // Visibility toggle
   useEffect(() => {
     scene.traverse((child) => {
       const isJerseyTop = JERSEY_TOP_NODE_NAMES.has(child.name);
@@ -142,34 +278,13 @@ export default function JerseyScene({
     });
   }, [scene, activeView]);
 
-  // ── Per-zone material refs ────────────────────────────────────────────────
-  const matByZone = useRef<Partial<Record<keyof ZoneColors, THREE.MeshStandardMaterial>>>({});
-
-  // ── Clone materials + expose jersey_top mesh ──────────────────────────────
+  // Clone materials + wire colours
   useEffect(() => {
-    const newMats: typeof matByZone.current = {};
-    let jerseyTopMesh: THREE.Mesh | null = null;
-
-    scene.traverse((child) => {
-      const node = child as THREE.Mesh;
-      if (!node.isMesh) return;
-
-      const rawMats = Array.isArray(node.material) ? node.material : [node.material];
-      const cloned  = rawMats.map((m) => {
-        const mat = (m as THREE.MeshStandardMaterial).clone();
-        const zoneKey = MAT_TO_ZONE[mat.name];
-        if (zoneKey) newMats[zoneKey] = mat;
-        if (mat.name === "jersey_top") jerseyTopMesh = node;
-        return mat;
-      });
-      node.material = Array.isArray(node.material) ? cloned : cloned[0];
-    });
-
+    const { matByZone: newMats, jerseyTopMesh } = cloneAndMapMaterials(scene, colors);
     matByZone.current = newMats;
     onJerseyTopReady?.(jerseyTopMesh);
   }, [scene]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Apply zone colours ────────────────────────────────────────────────────
   useEffect(() => {
     (Object.entries(colors) as [keyof ZoneColors, string][]).forEach(([zone, hex]) => {
       const mat = matByZone.current[zone];
@@ -179,7 +294,6 @@ export default function JerseyScene({
     });
   }, [colors]);
 
-  // ── Surface-click (manual "Move" repositioning) ───────────────────────────
   const handleClick = (e: ThreeEvent<MouseEvent>) => {
     if (!isPlacing || !onSurfaceClick) return;
     e.stopPropagation();
@@ -201,25 +315,75 @@ export default function JerseyScene({
         onPointerOver={isPlacing ? () => { document.body.style.cursor = "crosshair"; } : undefined}
         onPointerOut={isPlacing  ? () => { document.body.style.cursor = "auto"; }      : undefined}
       />
-
-      {artworks.map((art) => {
-        if (!art.texture) return null;
-        const aspect = art.type === "number" ? 0.6 : art.type === "logo" ? 1.0 : 2.2;
-        return (
-          <mesh key={art.id} position={art.position} rotation={art.rotation}>
-            <planeGeometry args={[art.size * aspect, art.size]} />
-            <meshBasicMaterial
-              map={art.texture}
-              transparent
-              alphaTest={0.05}
-              depthWrite={false}
-              side={THREE.DoubleSide}
-            />
-          </mesh>
-        );
-      })}
+      <ArtworkPlanes artworks={artworks} />
     </group>
   );
 }
 
+// ── Public component ──────────────────────────────────────────────────────────
+
+export default function JerseyScene({
+  colors, artworks, activeView, separateGlbs = false,
+  onSurfaceClick, isPlacing = false,
+  onJerseyTopReady, onGroupCenters,
+}: Props) {
+
+  // Separate-GLB callbacks bridge into the unified onGroupCenters API
+  const handleJerseyTopY = (y: number) => {
+    // We only know jerseyTopY here; shortsY will come from the other sub-scene.
+    // We pass a stub value for shortsY so the camera still targets correctly
+    // when on the jersey tab. The inverse happens when on the shorts tab.
+    onGroupCenters?.({ jerseyTopY: y, shortsY: y - 5 });
+  };
+  const handleShortsY = (y: number) => {
+    onGroupCenters?.({ jerseyTopY: y + 5, shortsY: y });
+  };
+
+  if (separateGlbs) {
+    return (
+      <>
+        {activeView === "jersey" && (
+          <Suspense fallback={null}>
+            <SplitScene
+              glbPath="/JerseyTop.glb"
+              colors={colors}
+              artworks={artworks}
+              onSurfaceClick={onSurfaceClick}
+              isPlacing={isPlacing}
+              onMeshReady={onJerseyTopReady}
+              onCenterY={handleJerseyTopY}
+            />
+          </Suspense>
+        )}
+        {activeView === "shorts" && (
+          <Suspense fallback={null}>
+            <SplitScene
+              glbPath="/Shorts.glb"
+              colors={colors}
+              artworks={artworks}
+              onSurfaceClick={onSurfaceClick}
+              isPlacing={isPlacing}
+              onCenterY={handleShortsY}
+            />
+          </Suspense>
+        )}
+      </>
+    );
+  }
+
+  // Default: combined GLB with visibility toggle
+  return (
+    <CombinedScene
+      colors={colors}
+      artworks={artworks}
+      activeView={activeView}
+      onSurfaceClick={onSurfaceClick}
+      isPlacing={isPlacing}
+      onJerseyTopReady={onJerseyTopReady}
+      onGroupCenters={onGroupCenters}
+    />
+  );
+}
+
+// Preload the combined GLB; separate GLBs are preloaded on demand via Suspense
 useGLTF.preload("/Jersey.glb");
