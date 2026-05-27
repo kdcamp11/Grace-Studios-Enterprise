@@ -544,7 +544,7 @@ export default function LoginPage() {
             </div>
 
             {/* ── Right: three cards side by side — slightly secondary ── */}
-            <div className="flex-1 grid grid-cols-3 gap-3 items-stretch">
+            <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-3 items-stretch">
 
               {/* Creative Direction */}
               <div className="flex flex-col gap-3">
