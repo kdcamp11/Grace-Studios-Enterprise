@@ -44,7 +44,7 @@ function ConsultationForm() {
         <div>
           <p className="font-display font-bold uppercase tracking-wide text-brand-text text-lg">Message Received</p>
           <p className="text-sm font-barlow text-brand-muted mt-1 leading-relaxed">
-            We&apos;ll be in touch within 1–2 business days to schedule your consultation.
+            We&apos;ll be in touch within 1–2 business days to schedule your creative direction session.
           </p>
         </div>
         <a
@@ -114,7 +114,7 @@ function ConsultationForm() {
         disabled={status === "sending"}
         className="w-full py-4 rounded-lg bg-brand-primary text-white font-display font-bold text-sm uppercase tracking-widest hover:bg-brand-secondary disabled:opacity-40 transition-colors"
       >
-        {status === "sending" ? "Sending…" : "Request Consultation →"}
+        {status === "sending" ? "Sending…" : "Request Creative Direction →"}
       </button>
     </form>
   );
@@ -162,7 +162,7 @@ export default function ContactPage() {
           <div className="flex items-center gap-2.5 mb-4">
             <div className="w-[3px] h-5 bg-brand-primary flex-shrink-0" />
             <span className="text-[10px] font-display font-bold uppercase tracking-[0.3em] text-brand-primary">
-              Design Consultation
+              Creative Direction
             </span>
           </div>
 
@@ -181,7 +181,7 @@ export default function ContactPage() {
                 <p className="text-sm font-barlow text-brand-muted leading-relaxed max-w-[360px]">
                   Have a complex program, need a full custom identity system, or want to talk
                   through a large order before you start? Reach out and we&apos;ll set up a
-                  dedicated consultation session.
+                  dedicated creative direction session.
                 </p>
               </div>
 

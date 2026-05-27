@@ -76,7 +76,7 @@ function ConsultationForm() {
         <div>
           <p className="font-display font-bold uppercase tracking-wide text-brand-text">Request Received</p>
           <p className="text-sm font-barlow text-brand-muted mt-1 leading-relaxed">
-            Our team will reach out within 1–2 business days to schedule your design consultation.
+            Our team will reach out within 1–2 business days to schedule your creative direction session.
           </p>
         </div>
         <a href="/portal" className="mt-2 text-xs font-display font-bold uppercase tracking-widest text-brand-primary hover:text-brand-secondary transition-colors">
@@ -131,7 +131,7 @@ function ConsultationForm() {
         disabled={status === "sending"}
         className="w-full py-3.5 rounded-lg bg-brand-primary text-white font-display font-bold text-xs uppercase tracking-widest hover:bg-brand-secondary disabled:opacity-40 transition-colors"
       >
-        {status === "sending" ? "Sending…" : "Request Consultation →"}
+        {status === "sending" ? "Sending…" : "Request Creative Direction →"}
       </button>
     </form>
   );
@@ -197,7 +197,7 @@ export default function ConsultationPage() {
             Work Directly<br />with Grace Studios.
           </h1>
           <p className="text-sm font-barlow text-brand-muted max-w-[480px] leading-relaxed mb-14">
-            Our full-service consultation path is for programs that want a custom design built around their identity,
+            Our full-service creative direction path is for programs that want a custom design built around their identity,
             not selected from a library. You brief us, we design, you approve at every step.
           </p>
 
@@ -244,7 +244,7 @@ export default function ConsultationPage() {
                   <p className="text-xs font-display font-bold uppercase tracking-wide text-brand-text mb-1">Prefer to move faster?</p>
                   <p className="text-xs font-barlow text-brand-muted leading-relaxed mb-3">
                     Our Design Library path lets you choose from curated Grace Studios silhouettes and receive
-                    a design concept within minutes, no consultation required.
+                    a design concept within minutes, no creative direction session required.
                   </p>
                   <a href="/brief/choose" className="text-[10px] font-display font-bold uppercase tracking-widest text-brand-primary hover:text-brand-secondary transition-colors">
                     Start with the Design Library →
@@ -258,7 +258,7 @@ export default function ConsultationPage() {
             <div>
               <div className="flex items-center gap-2.5 mb-5">
                 <div className="w-[3px] h-4 bg-brand-primary flex-shrink-0" />
-                <span className="text-[10px] font-display font-bold uppercase tracking-[0.3em] text-brand-primary">Request a Consultation</span>
+                <span className="text-[10px] font-display font-bold uppercase tracking-[0.3em] text-brand-primary">Request Creative Direction</span>
               </div>
               <ConsultationForm />
             </div>

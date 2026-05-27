@@ -148,7 +148,7 @@ const PATH_CARDS = [
     sub: "Fully Managed",
     headline: "Strategy. Design.\nManaged to Delivery.",
     bullets: [
-      "Creative consultation and strategic direction",
+      "Creative direction and strategic partnership",
       "Concepts developed around your program and identity",
       "Supplier coordination and production management",
       "Starting at $300+",
@@ -180,7 +180,7 @@ const PATH_CARDS = [
       "Fulfillment, QC, and delivery tracking",
     ],
     cta: "Upload Production Files →",
-    note: "Have a sketch or concept? Consultation is the right starting point.",
+    note: "Have a sketch or concept? Creative Direction is the right starting point.",
   },
 ];
 
@@ -243,7 +243,7 @@ function ConsultationForm() {
         </div>
         <div>
           <p className="font-display font-bold uppercase tracking-wide text-brand-text">Message Received</p>
-          <p className="text-sm font-barlow text-brand-muted mt-1">We&apos;ll be in touch within 1–2 business days to schedule your consultation.</p>
+          <p className="text-sm font-barlow text-brand-muted mt-1">We&apos;ll be in touch within 1–2 business days to schedule your creative direction session.</p>
         </div>
       </div>
     );
@@ -302,7 +302,7 @@ function ConsultationForm() {
         disabled={status === "sending"}
         className="w-full py-3.5 rounded-lg bg-brand-primary text-white font-display font-bold text-xs uppercase tracking-widest hover:bg-brand-secondary disabled:opacity-40 transition-colors"
       >
-        {status === "sending" ? "Sending…" : "Request Consultation →"}
+        {status === "sending" ? "Sending…" : "Request Creative Direction →"}
       </button>
     </form>
   );

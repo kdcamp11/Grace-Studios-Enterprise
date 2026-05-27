@@ -24,7 +24,7 @@ export default function ChoosePage() {
         <div className="flex items-center gap-5">
           <a href="/portal" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Home</a>
           <button type="button" onClick={() => router.back()} className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">← Back</button>
-          <a href="/contact" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Consultation</a>
+          <a href="/contact" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Creative Direction</a>
           <button type="button" onClick={signOut} className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Sign Out</button>
         </div>
       </header>
@@ -194,7 +194,7 @@ export default function ChoosePage() {
               </ul>
 
               <p className="text-[9px] font-barlow text-brand-muted/50 italic border-t border-brand-border pt-3 leading-snug">
-                Have a sketch or concept? Consultation is the right starting point.
+                Have a sketch or concept? Creative Direction is the right starting point.
               </p>
 
               <span className="text-[10px] font-display font-bold uppercase tracking-widest text-brand-muted group-hover:text-brand-primary transition-colors">
