@@ -61,11 +61,11 @@ interface Props {
   colors: ZoneColors;
   artworks: ArtworkItem[];
   activeView: "jersey" | "shorts";
-  /** Set true once you have added "Jersey Top Only.glb" and "Jersey Bottoms Only.glb" to /public */
   separateGlbs?: boolean;
   onSurfaceClick?: (hit: SurfaceHit) => void;
   isPlacing?: boolean;
   onJerseyTopReady?: (mesh: THREE.Mesh | null) => void;
+  onShortsReady?: (mesh: THREE.Mesh | null) => void;
   onGroupCenters?: (centers: GroupCenters) => void;
 }
 
@@ -90,9 +90,11 @@ function cloneAndMapMaterials(
 ): {
   matByZone: Partial<Record<keyof ZoneColors, THREE.MeshStandardMaterial>>;
   jerseyTopMesh: THREE.Mesh | null;
+  shortsMesh: THREE.Mesh | null;
 } {
   const matByZone: Partial<Record<keyof ZoneColors, THREE.MeshStandardMaterial>> = {};
   let jerseyTopMesh: THREE.Mesh | null = null;
+  let shortsMesh: THREE.Mesh | null = null;
 
   scene.traverse((child) => {
     const node = child as THREE.Mesh;
@@ -106,13 +108,14 @@ function cloneAndMapMaterials(
         mat.color.set(zoneColors[zoneKey]);
         mat.needsUpdate = true;
       }
-      if (mat.name === "jersey_top") jerseyTopMesh = node;
+      if (mat.name === "jersey_top")    jerseyTopMesh = node;
+      if (mat.name === "jersey_shorts") shortsMesh    = node;
       return mat;
     });
     node.material = Array.isArray(node.material) ? cloned : cloned[0];
   });
 
-  return { matByZone, jerseyTopMesh };
+  return { matByZone, jerseyTopMesh, shortsMesh };
 }
 
 /** Centre a scene's bounding box at world origin. */
@@ -135,13 +138,16 @@ function ArtworkPlanes({ artworks }: { artworks: ArtworkItem[] }) {
         if (!art.texture) return null;
         const aspect = art.type === "number" ? 0.6 : art.type === "logo" ? 1.0 : 2.2;
         return (
-          <mesh key={art.id} position={art.position} rotation={art.rotation}>
+          <mesh key={art.id} position={art.position} rotation={art.rotation} renderOrder={1}>
             <planeGeometry args={[art.size * aspect, art.size]} />
             <meshBasicMaterial
               map={art.texture}
               transparent
               alphaTest={0.05}
               depthWrite={false}
+              polygonOffset
+              polygonOffsetFactor={-4}
+              polygonOffsetUnits={-4}
               side={THREE.DoubleSide}
             />
           </mesh>
@@ -244,7 +250,7 @@ const SHORTS_NODE_NAMES = new Set([
 
 function CombinedScene({
   colors, artworks, activeView, onSurfaceClick, isPlacing,
-  onJerseyTopReady, onGroupCenters,
+  onJerseyTopReady, onShortsReady, onGroupCenters,
 }: Omit<Props, "separateGlbs">) {
   const { scene } = useGLTF("/Jersey.glb");
   const centerOffset = useCenterOffset(scene);
@@ -280,9 +286,10 @@ function CombinedScene({
 
   // Clone materials + wire colours
   useEffect(() => {
-    const { matByZone: newMats, jerseyTopMesh } = cloneAndMapMaterials(scene, colors);
+    const { matByZone: newMats, jerseyTopMesh, shortsMesh } = cloneAndMapMaterials(scene, colors);
     matByZone.current = newMats;
     onJerseyTopReady?.(jerseyTopMesh);
+    onShortsReady?.(shortsMesh);
   }, [scene]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -325,7 +332,7 @@ function CombinedScene({
 export default function JerseyScene({
   colors, artworks, activeView, separateGlbs = false,
   onSurfaceClick, isPlacing = false,
-  onJerseyTopReady, onGroupCenters,
+  onJerseyTopReady, onShortsReady, onGroupCenters,
 }: Props) {
 
   // Separate-GLB callbacks bridge into the unified onGroupCenters API
@@ -380,6 +387,7 @@ export default function JerseyScene({
       onSurfaceClick={onSurfaceClick}
       isPlacing={isPlacing}
       onJerseyTopReady={onJerseyTopReady}
+      onShortsReady={onShortsReady}
       onGroupCenters={onGroupCenters}
     />
   );

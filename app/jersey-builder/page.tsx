@@ -33,17 +33,22 @@ import JerseyScene, {
   type GroupCenters,
 } from "@/components/JerseyBuilder/JerseyScene";
 
-// ── Zone definitions (matches GLB material names) ─────────────────────────────
+// ── Zone definitions split by tab ─────────────────────────────────────────────
 
-const ZONES = [
-  { key: "jerseyTop"        , label: "Jersey Top"               },
+const JERSEY_ZONES = [
+  { key: "jerseyTop"        , label: "Jersey Body"              },
   { key: "collar"           , label: "Collar"                   },
-  { key: "jerseyShorts"     , label: "Shorts"                   },
-  { key: "jerseySidePanels" , label: "Jersey Side Panels"       },
-  { key: "jerseyLowerPanels", label: "Jersey Lower Side Panels" },
+  { key: "jerseySidePanels" , label: "Side Panels"              },
+  { key: "jerseyLowerPanels", label: "Lower Panels"             },
   { key: "sleevePanels"     , label: "Sleeve Panels"            },
-  { key: "shortSidePanels"  , label: "Shorts Side Panels"       },
 ] as const;
+
+const SHORTS_ZONES = [
+  { key: "jerseyShorts"    , label: "Shorts Body"               },
+  { key: "shortSidePanels" , label: "Side Panels"               },
+] as const;
+
+const ZONES = [...JERSEY_ZONES, ...SHORTS_ZONES] as const;
 
 const DEFAULT_COLORS: ZoneColors = {
   jerseyTop:         "#1d3557",
@@ -61,6 +66,7 @@ interface ArtworkDraft {
   id: string;
   type: "logo" | "teamName" | "number" | "customText";
   label: string;          // UI display label
+  view: "jersey" | "shorts";   // which tab this artwork belongs to
   // logo source
   imageDataUrl?: string;
   fileName?: string;
@@ -226,19 +232,23 @@ function JerseyBuilderInner() {
     controls.update();
   }, [activeView, groupCenters]);
 
-  // ── Jersey-top mesh (exposed by JerseyScene after load) ─────────────────
+  // ── Mesh refs exposed by JerseyScene after load ─────────────────────────
   const jerseyTopMeshRef = useRef<THREE.Mesh | null>(null);
+  const shortsMeshRef    = useRef<THREE.Mesh | null>(null);
 
   const handleJerseyTopReady = useCallback((mesh: THREE.Mesh | null) => {
     jerseyTopMeshRef.current = mesh;
   }, []);
 
-  /** Raycast from directly in front of the jersey chest to find the surface
-   *  point for auto-placing artwork.  Falls back to a hardcoded chest position
-   *  if the mesh isn't ready or the ray misses. */
+  const handleShortsReady = useCallback((mesh: THREE.Mesh | null) => {
+    shortsMeshRef.current = mesh;
+  }, []);
+
+  /** Raycast from in front of the active garment to find the surface point
+   *  for auto-placing artwork.  Chooses jersey or shorts mesh by activeView. */
   const autoPlacePosition = useCallback(
     (yOffset = 0): { position: [number, number, number]; rotation: [number, number, number] } => {
-      const mesh = jerseyTopMeshRef.current;
+      const mesh = activeView === "jersey" ? jerseyTopMeshRef.current : shortsMeshRef.current;
       if (mesh) {
         try {
           mesh.updateWorldMatrix(true, false);
@@ -246,8 +256,6 @@ function JerseyBuilderInner() {
           const center = new THREE.Vector3();
           box.getCenter(center);
 
-          // Jersey front faces +Z (toward camera at z=+18).
-          // Shoot a ray from z=+50 going –Z to hit the front surface.
           const raycaster = new THREE.Raycaster();
           raycaster.set(
             new THREE.Vector3(center.x, center.y + yOffset, 50),
@@ -259,17 +267,23 @@ function JerseyBuilderInner() {
             const normal = hit.face!.normal.clone()
               .transformDirection(mesh.matrixWorld)
               .normalize();
+            // Nudge slightly along the normal so the plane sits on the surface
             return {
-              position: [hit.point.x, hit.point.y, hit.point.z],
+              position: [
+                hit.point.x + normal.x * 0.015,
+                hit.point.y + normal.y * 0.015,
+                hit.point.z + normal.z * 0.015,
+              ],
               rotation: normalToRotation(normal),
             };
           }
         } catch { /* ignore — use fallback */ }
       }
-      // Fallback: chest-area estimate for the centred model
-      return { position: [0, 1 + yOffset, -0.5], rotation: [0, 0, 0] };
+      // Fallback positions for centred combined model
+      const fallbackY = activeView === "jersey" ? 1 + yOffset : -3 + yOffset;
+      return { position: [0, fallbackY, 0.5], rotation: [0, 0, 0] };
     },
-    [],
+    [activeView],
   );
 
   // ── Logo upload ─────────────────────────────────────────────────────────
@@ -295,6 +309,7 @@ function JerseyBuilderInner() {
             id,
             type: "logo",
             label: file.name,
+            view: activeView,
             imageDataUrl: dataUrl,
             fileName: file.name,
             textColor: "#ffffff",
@@ -331,6 +346,7 @@ function JerseyBuilderInner() {
         ...prev,
         {
           id, type, label, text: text.trim(),
+          view: activeView,
           textColor, outlineColor,
           placed: true,
           position,
@@ -379,7 +395,7 @@ function JerseyBuilderInner() {
   const sceneArtworks = useMemo<ArtworkItem[]>(
     () =>
       artworkDrafts
-        .filter((a) => a.placed && a.position)
+        .filter((a) => a.placed && a.position && a.view === activeView)
         .map((a) => ({
           id:       a.id,
           type:     a.type,
@@ -389,7 +405,7 @@ function JerseyBuilderInner() {
           size:     a.size,
         })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [artworkDrafts],
+    [artworkDrafts, activeView],
   );
 
   if (!ready) {
@@ -481,10 +497,10 @@ function JerseyBuilderInner() {
                   colors={colors}
                   artworks={sceneArtworks}
                   activeView={activeView}
-                  separateGlbs={true}
                   onSurfaceClick={handleSurfaceClick}
                   isPlacing={isPlacing}
                   onJerseyTopReady={handleJerseyTopReady}
+                  onShortsReady={handleShortsReady}
                   onGroupCenters={handleGroupCenters}
                 />
               </Suspense>
@@ -528,14 +544,16 @@ function JerseyBuilderInner() {
         <div className="flex-shrink-0 w-full lg:w-[340px] border-t lg:border-t-0 lg:border-l border-brand-border bg-brand-bg flex flex-col lg:max-h-none lg:overflow-hidden">
           <div className="flex-1 overflow-y-auto px-6 py-7 space-y-7">
 
-            {/* ── Zone colours ── */}
+            {/* ── Zone colours (tab-specific) ── */}
             <section className="space-y-4">
-              <p className="text-[9px] font-display font-bold uppercase tracking-[0.2em] text-brand-muted/60">Jersey Colors</p>
-              {ZONES.map((zone) => (
+              <p className="text-[9px] font-display font-bold uppercase tracking-[0.2em] text-brand-muted/60">
+                {activeView === "jersey" ? "Jersey Colors" : "Shorts Colors"}
+              </p>
+              {(activeView === "jersey" ? JERSEY_ZONES : SHORTS_ZONES).map((zone) => (
                 <ColorControl
                   key={zone.key}
                   label={zone.label}
-                  value={colors[zone.key]}
+                  value={colors[zone.key as keyof ZoneColors]}
                   onChange={(v) => setColors((prev) => ({ ...prev, [zone.key]: v }))}
                 />
               ))}
@@ -670,13 +688,13 @@ function JerseyBuilderInner() {
               </p>
             </section>
 
-            {/* ── Placed / pending artwork list ── */}
-            {artworkDrafts.length > 0 && (
+            {/* ── Placed / pending artwork list (tab-specific) ── */}
+            {artworkDrafts.filter((a) => a.view === activeView).length > 0 && (
               <>
                 <div className="h-px bg-brand-border" />
                 <section className="space-y-3">
                   <p className="text-[9px] font-display font-bold uppercase tracking-[0.2em] text-brand-muted/60">Artwork</p>
-                  {artworkDrafts.map((art) => (
+                  {artworkDrafts.filter((a) => a.view === activeView).map((art) => (
                     <div
                       key={art.id}
                       className={`rounded-xl border px-3 py-3 space-y-2.5 transition-colors ${
@@ -735,7 +753,9 @@ function JerseyBuilderInner() {
                         disabled={placingId === art.id}
                         className="w-full py-1.5 rounded-lg border border-brand-primary/40 text-[9px] font-display font-bold uppercase tracking-widest text-brand-primary hover:bg-brand-primary/10 disabled:opacity-50 transition-colors"
                       >
-                        {art.placed ? "Move on Jersey" : "Click Jersey to Place →"}
+                        {art.placed
+                          ? `Move on ${activeView === "jersey" ? "Jersey" : "Shorts"}`
+                          : `Click ${activeView === "jersey" ? "Jersey" : "Shorts"} to Place →`}
                       </button>
                     </div>
                   ))}
