@@ -19,7 +19,7 @@ import {
   useState,
 } from "react";
 import { Canvas } from "@react-three/fiber";
-import { OrbitControls } from "@react-three/drei";
+import { OrbitControls, useThree } from "@react-three/drei";
 import * as THREE from "three";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -30,6 +30,7 @@ import JerseyScene, {
   type ZoneColors,
   type ArtworkItem,
   type SurfaceHit,
+  type GroupCenters,
 } from "@/components/JerseyBuilder/JerseyScene";
 
 // ── Zone definitions (matches GLB material names) ─────────────────────────────
@@ -207,6 +208,24 @@ function JerseyBuilderInner() {
   const [textColor,   setTextColor]   = useState("#ffffff");
   const [outlineColor,setOutlineColor]= useState("#000000");
 
+  // ── View toggle (JERSEY / SHORTS) ────────────────────────────────────────
+  const [activeView,   setActiveView]   = useState<"jersey" | "shorts">("jersey");
+  const [groupCenters, setGroupCenters] = useState<GroupCenters | null>(null);
+  const orbitRef = useRef<any>(null);
+
+  const handleGroupCenters = useCallback((centers: GroupCenters) => {
+    setGroupCenters(centers);
+  }, []);
+
+  // Move camera target when tab changes
+  useEffect(() => {
+    const controls = orbitRef.current;
+    if (!controls || !groupCenters) return;
+    const targetY = activeView === "jersey" ? groupCenters.jerseyTopY : groupCenters.shortsY;
+    controls.target.set(0, targetY, 0);
+    controls.update();
+  }, [activeView, groupCenters]);
+
   // ── Jersey-top mesh (exposed by JerseyScene after load) ─────────────────
   const jerseyTopMeshRef = useRef<THREE.Mesh | null>(null);
 
@@ -227,12 +246,12 @@ function JerseyBuilderInner() {
           const center = new THREE.Vector3();
           box.getCenter(center);
 
-          // Jersey top front now faces –Z (we rotated it in JerseyScene).
-          // Shoot a ray from z = –50 toward +Z to find the front surface.
+          // Jersey front faces +Z (toward camera at z=+18).
+          // Shoot a ray from z=+50 going –Z to hit the front surface.
           const raycaster = new THREE.Raycaster();
           raycaster.set(
-            new THREE.Vector3(center.x, center.y + yOffset, -50),
-            new THREE.Vector3(0, 0, 1),
+            new THREE.Vector3(center.x, center.y + yOffset, 50),
+            new THREE.Vector3(0, 0, -1),
           );
           const hits = raycaster.intersectObject(mesh, true);
           if (hits.length > 0) {
@@ -427,17 +446,35 @@ function JerseyBuilderInner() {
             </button>
           )}
 
+          {/* JERSEY / SHORTS view tabs */}
+          <div className="absolute bottom-4 left-1/2 z-10 -translate-x-1/2 flex gap-1 bg-brand-bg/80 backdrop-blur border border-brand-border rounded-full px-1 py-1">
+            {(["jersey", "shorts"] as const).map((v) => (
+              <button
+                key={v}
+                onClick={() => setActiveView(v)}
+                className={`px-4 py-1 rounded-full text-[10px] font-display font-bold uppercase tracking-widest transition-colors ${
+                  activeView === v
+                    ? "bg-brand-primary text-white"
+                    : "text-brand-muted hover:text-brand-text"
+                }`}
+              >
+                {v === "jersey" ? "Jersey" : "Shorts"}
+              </button>
+            ))}
+          </div>
+
           {hasModel && mounted ? (
             <Canvas
-              camera={{ position: [0, 0, -18], fov: 50 }}
+              camera={{ position: [0, 0, 18], fov: 50 }}
               style={{ width: "100%", height: "100%" }}
               gl={{ preserveDrawingBuffer: true, antialias: true }}
             >
+              {/* Lights aimed at the jersey front (+Z side) */}
               <ambientLight intensity={0.9} />
-              <directionalLight position={[4, 6, -4]}  intensity={1.4} />
-              <directionalLight position={[-4, 3, -4]} intensity={0.8} />
-              <directionalLight position={[0, -2, -4]} intensity={0.4} />
-              <pointLight position={[0, 4, -3]} intensity={0.6} />
+              <directionalLight position={[4, 6, 4]}   intensity={1.4} />
+              <directionalLight position={[-4, 3, 4]}  intensity={0.8} />
+              <directionalLight position={[0, -2, 4]}  intensity={0.4} />
+              <pointLight       position={[0, 4, 3]}   intensity={0.6} />
 
               <Suspense fallback={null}>
                 <JerseyScene
@@ -446,11 +483,12 @@ function JerseyBuilderInner() {
                   onSurfaceClick={handleSurfaceClick}
                   isPlacing={isPlacing}
                   onJerseyTopReady={handleJerseyTopReady}
+                  onGroupCenters={handleGroupCenters}
                 />
               </Suspense>
 
-              {/* Disable orbit while placing so click goes to surface handler */}
               <OrbitControls
+                ref={orbitRef}
                 enabled={!isPlacing}
                 enablePan={false}
                 minDistance={5}

@@ -208,15 +208,15 @@ export default function JerseyBuilder() {
               }
             >
               <Canvas
-                camera={{ position: [0, 0, -18], fov: 50 }}
+                camera={{ position: [0, 0, 18], fov: 50 }}
                 style={{ width: "100%", height: "100%" }}
                 gl={{ preserveDrawingBuffer: true }}
               >
                 <ambientLight intensity={0.9} />
-                <directionalLight position={[4, 6, -4]}  intensity={1.4} />
-                <directionalLight position={[-4, 3, -4]} intensity={0.8} />
-                <directionalLight position={[0, -2, -4]} intensity={0.4} />
-                <pointLight position={[0, 4, -3]} intensity={0.6} />
+                <directionalLight position={[4, 6, 4]}  intensity={1.4} />
+                <directionalLight position={[-4, 3, 4]} intensity={0.8} />
+                <directionalLight position={[0, -2, 4]} intensity={0.4} />
+                <pointLight position={[0, 4, 3]} intensity={0.6} />
 
                 <Suspense fallback={null}>
                   <JerseyScene
