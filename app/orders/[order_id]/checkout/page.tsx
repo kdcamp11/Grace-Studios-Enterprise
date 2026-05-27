@@ -103,7 +103,7 @@ export default function CheckoutPage() {
         <OrgLogo href="/portal" />
         <button
           type="button"
-          onClick={() => router.back()}
+          onClick={() => router.push(isClientProvided ? `/orders/${order_id}/tracker` : `/orders/${order_id}/concepts`)}
           className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors"
         >
           ← Back
