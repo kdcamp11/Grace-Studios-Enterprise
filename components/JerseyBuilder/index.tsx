@@ -219,7 +219,18 @@ export default function JerseyBuilder() {
                 <pointLight position={[0, 4, 2]} intensity={0.5} />
 
                 <Suspense fallback={null}>
-                  <JerseyScene jerseyColor={jerseyColor} highlightColor={highlightColor} />
+                  <JerseyScene
+                    colors={{
+                      jerseyTop:         jerseyColor,
+                      collar:            highlightColor,
+                      jerseyShorts:      jerseyColor,
+                      jerseySidePanels:  highlightColor,
+                      jerseyLowerPanels: highlightColor,
+                      sleevePanels:      highlightColor,
+                      shortSidePanels:   highlightColor,
+                    }}
+                    artworks={[]}
+                  />
                 </Suspense>
 
                 <OrbitControls
@@ -231,34 +242,6 @@ export default function JerseyBuilder() {
                 />
               </Canvas>
             </CanvasErrorBoundary>
-          )}
-
-          {/* Logo overlay — draggable */}
-          {tintedLogoUrl && (
-            <img
-              src={tintedLogoUrl}
-              alt="logo placement"
-              onPointerDown={handlePointerDown}
-              draggable={false}
-              style={{
-                position: "absolute",
-                left: `${logoPos.x}%`,
-                top: `${logoPos.y}%`,
-                transform: "translate(-50%, -50%)",
-                width: `${logoSize}%`,
-                cursor: dragging ? "grabbing" : "grab",
-                userSelect: "none",
-                touchAction: "none",
-                filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.35))",
-              }}
-            />
-          )}
-
-          {/* Drag hint */}
-          {tintedLogoUrl && !dragging && (
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-brand-bg/80 backdrop-blur px-3 py-1.5 rounded-full border border-brand-border">
-              <p className="text-[10px] font-barlow text-brand-muted whitespace-nowrap">Drag logo to reposition · Scroll to zoom · Click-drag to rotate</p>
-            </div>
           )}
 
           {/* Page label */}
