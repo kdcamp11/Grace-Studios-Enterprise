@@ -481,6 +481,7 @@ function JerseyBuilderInner() {
                   colors={colors}
                   artworks={sceneArtworks}
                   activeView={activeView}
+                  separateGlbs={true}
                   onSurfaceClick={handleSurfaceClick}
                   isPlacing={isPlacing}
                   onJerseyTopReady={handleJerseyTopReady}

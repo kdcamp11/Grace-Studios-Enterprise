@@ -345,7 +345,7 @@ export default function JerseyScene({
         {activeView === "jersey" && (
           <Suspense fallback={null}>
             <SplitScene
-              glbPath="/Jersey Top Only.glb"
+              glbPath="/JerseyTop.glb"
               colors={colors}
               artworks={artworks}
               onSurfaceClick={onSurfaceClick}
@@ -358,7 +358,7 @@ export default function JerseyScene({
         {activeView === "shorts" && (
           <Suspense fallback={null}>
             <SplitScene
-              glbPath="/Jersey Bottoms Only.glb"
+              glbPath="/Shorts.glb"
               colors={colors}
               artworks={artworks}
               onSurfaceClick={onSurfaceClick}

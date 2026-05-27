@@ -1,2 +1,2 @@
-public/Jersey.glb filter=lfs diff=lfs merge=lfs -text
-*.glb filter=lfs diff=lfs merge=lfs -text
+# GLB files stored as regular git blobs — no LFS so Vercel serves real binaries
+*.glb -filter -diff -merge -text
