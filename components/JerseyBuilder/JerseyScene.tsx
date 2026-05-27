@@ -72,7 +72,6 @@ interface Props {
 // ── Material name → zone key ──────────────────────────────────────────────────
 
 const MAT_TO_ZONE: Record<string, keyof ZoneColors> = {
-  // Combined Jersey.glb (exact names from GLB)
   jersey_top:          "jerseyTop",
   collar:              "collar",
   jersey_shorts:       "jerseyShorts",
@@ -80,12 +79,6 @@ const MAT_TO_ZONE: Record<string, keyof ZoneColors> = {
   jersey_lower_panels: "jerseyLowerPanels",
   sleeve_panels:       "sleevePanels",
   short_side_panels:   "shortSidePanels",
-  // JerseyTop.glb separate file
-  "rayon jersey_FRONT_2471.001": "jerseyTop",
-  "Material3000":                "collar",   // collar + stitching + sleeve trim share one mat
-  // Shorts.glb separate file
-  "rayon jersey_FRONT_2425": "jerseyShorts",
-  "Material2776":             "shortSidePanels",
 };
 
 // ── Shared helpers ────────────────────────────────────────────────────────────

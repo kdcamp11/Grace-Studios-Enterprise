@@ -35,12 +35,12 @@ import JerseyScene, {
 
 // ── Zone definitions split by tab ─────────────────────────────────────────────
 
-// Zones per tab — keyed to the materials that actually exist in the separate GLBs.
-// JerseyTop.glb has 2 mats: body (jerseyTop) + collar/trim (collar).
-// Shorts.glb has 2 mats:    body (jerseyShorts) + stitching trim (shortSidePanels).
 const JERSEY_ZONES = [
-  { key: "jerseyTop", label: "Jersey Body" },
-  { key: "collar",    label: "Collar & Trim" },
+  { key: "jerseyTop",          label: "Jersey Body"        },
+  { key: "collar",             label: "Collar & Trim"      },
+  { key: "jerseySidePanels",   label: "Side Panels"        },
+  { key: "jerseyLowerPanels",  label: "Lower Panels"       },
+  { key: "sleevePanels",       label: "Sleeve Panels"      },
 ] as const;
 
 const SHORTS_ZONES = [
