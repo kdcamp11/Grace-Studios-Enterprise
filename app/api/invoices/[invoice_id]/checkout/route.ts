@@ -59,7 +59,9 @@ export async function POST(
   const payDeposit = !!body.pay_deposit && invoice.deposit_amount > 0;
   const amount = payDeposit ? invoice.deposit_amount : invoice.total_amount;
 
-  const appUrl = new URL(req.url).origin;
+  const host  = req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? "localhost:3000";
+  const proto = req.headers.get("x-forwarded-proto") ?? "https";
+  const appUrl = `${proto}://${host}`;
   const successUrl = `${appUrl}/orders/${invoice.order_id}/invoice?payment=success&session_id={CHECKOUT_SESSION_ID}`;
   const cancelUrl  = `${appUrl}/orders/${invoice.order_id}/invoice?payment=canceled`;
 

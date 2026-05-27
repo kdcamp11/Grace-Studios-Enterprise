@@ -73,7 +73,9 @@ export async function POST(
     const productName = `${tenant.name} — Project Activation`;
     const description = "Applied toward your final order total";
 
-    const appUrl = new URL(req.url).origin;
+    const host  = req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? "localhost:3000";
+    const proto = req.headers.get("x-forwarded-proto") ?? "https";
+    const appUrl = `${proto}://${host}`;
     const successUrl = isClientProvided
       ? `${appUrl}/orders/${orderId}/tracker?deposit=success`
       : `${appUrl}/orders/${orderId}/concepts?unlocked=1`;
