@@ -28,18 +28,12 @@ interface Order {
   design_fee_paid?: boolean;
   team_name?: string | null;
   sport?: string | null;
-  zone_colors?: Record<string, string> | null;
   logos_to_include?: string | null;
   tracking_number?: string | null;
 }
 
 function isCreative(o: Order): boolean {
   return o.order_type === "creative" || stageType(o.stage) === "creative";
-}
-
-function swatchHexes(zoneColors: Record<string, string> | null | undefined): string[] {
-  if (!zoneColors) return [];
-  return Object.values(zoneColors).filter((v): v is string => typeof v === "string" && !!v);
 }
 
 function PortalContent() {
@@ -242,32 +236,6 @@ function PortalContent() {
   );
 }
 
-// ── Color-swatch preview (rendered from briefs.zone_colors — no canvas) ──────
-function SwatchPreview({ zoneColors }: { zoneColors: Record<string, string> | null | undefined }) {
-  const hexes = swatchHexes(zoneColors);
-  if (hexes.length === 0) {
-    return (
-      <div className="flex items-center gap-1.5">
-        {Array.from({ length: 7 }).map((_, i) => (
-          <div key={i} className="w-5 h-5 rounded-md bg-brand-border/60 border border-brand-border" />
-        ))}
-      </div>
-    );
-  }
-  return (
-    <div className="flex items-center gap-1.5">
-      {hexes.slice(0, 7).map((hex, i) => (
-        <div
-          key={i}
-          className="w-5 h-5 rounded-md border border-black/10 shadow-sm"
-          style={{ backgroundColor: hex }}
-          title={hex.toUpperCase()}
-        />
-      ))}
-    </div>
-  );
-}
-
 function CreativeCard({ order, index }: { order: Order; index: number }) {
   const orderLabel = order.order_number || order.id.slice(0, 8).toUpperCase();
   const norm       = normalizeStage(order.stage);
@@ -292,8 +260,6 @@ function CreativeCard({ order, index }: { order: Order; index: number }) {
           {order.design_fee_paid ? "Activated" : "Awaiting Activation"}
         </span>
       </div>
-
-      <SwatchPreview zoneColors={order.zone_colors} />
 
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <p className={`text-xs font-barlow ${STAGE_COLOR[order.stage] ?? "text-brand-muted"}`}>
