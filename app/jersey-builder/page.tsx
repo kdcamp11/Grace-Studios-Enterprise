@@ -447,12 +447,12 @@ function JerseyBuilderInner() {
               const invMat  = group.matrixWorld.clone().invert();
               const localN  = worldNormal.clone().applyMatrix4(invMat).normalize();
               return {
-                position: [localPt.x, localPt.y, localPt.z],
+                position: [0, localPt.y, localPt.z],  // X=0 keeps every artwork on the jersey centre line
                 rotation: normalToRotation(localN),
               };
             }
             return {
-              position: [worldPt.x, worldPt.y, worldPt.z],
+              position: [0, worldPt.y, worldPt.z],
               rotation: normalToRotation(worldNormal),
             };
           }
@@ -1000,6 +1000,31 @@ function JerseyBuilderInner() {
                       {art.placed && (
                         <div className="space-y-3">
 
+                          {/* Snap alignment — shown first so it's the primary quick action */}
+                          <div className="space-y-1.5">
+                            <p className="text-[9px] font-display uppercase tracking-[0.15em] text-brand-muted/70">Snap To</p>
+                            <div className="grid grid-cols-4 gap-1">
+                              {([
+                                { id: "center", label: "⊕ Ctr",  title: "Snap to horizontal centre" },
+                                { id: "upper",  label: "↑ Top",  title: "Snap to upper chest" },
+                                { id: "mid",    label: "· Mid",  title: "Snap to mid chest" },
+                                { id: "lower",  label: "↓ Bot",  title: "Snap to lower body" },
+                              ] as const).map((p) => (
+                                <button
+                                  key={p.id}
+                                  title={p.title}
+                                  onClick={() => snapArtwork(art.id, p.id)}
+                                  className="py-1.5 rounded-lg border border-brand-border bg-brand-surface text-[8px] font-display uppercase tracking-wider text-brand-muted hover:border-brand-primary hover:text-brand-primary transition-colors"
+                                >
+                                  {p.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Fine-tune sliders */}
+                          <div className="h-px bg-brand-border/50" />
+
                           {/* Left / Right */}
                           <div className="space-y-1">
                             <div className="flex items-center justify-between">
@@ -1088,22 +1113,6 @@ function JerseyBuilderInner() {
                               }
                               className="w-full h-1.5 rounded-full appearance-none bg-brand-border accent-[var(--brand-primary)] cursor-pointer"
                             />
-                          </div>
-
-                          {/* Snap alignment */}
-                          <div className="space-y-1.5">
-                            <p className="text-[9px] font-display uppercase tracking-[0.15em] text-brand-muted/70">Snap To</p>
-                            <div className="grid grid-cols-4 gap-1">
-                              {(["center", "upper", "mid", "lower"] as const).map((preset) => (
-                                <button
-                                  key={preset}
-                                  onClick={() => snapArtwork(art.id, preset)}
-                                  className="py-1.5 rounded-lg border border-brand-border bg-brand-surface text-[8px] font-display uppercase tracking-wider text-brand-muted hover:border-brand-primary hover:text-brand-primary transition-colors"
-                                >
-                                  {preset === "center" ? "⊕ Ctr" : preset === "upper" ? "↑ Top" : preset === "mid" ? "· Mid" : "↓ Bot"}
-                                </button>
-                              ))}
-                            </div>
                           </div>
 
                         </div>
