@@ -137,7 +137,11 @@ function ArtworkPlanes({ artworks }: { artworks: ArtworkItem[] }) {
     <>
       {artworks.map((art) => {
         if (!art.texture) return null;
-        const aspect = art.type === "number" ? 0.6 : art.type === "logo" ? 1.0 : 2.2;
+        // Use the texture's real pixel dimensions so text / logos are never clipped
+        const img = art.texture.image as (HTMLCanvasElement | HTMLImageElement) | null;
+        const aspect = img && img.width && img.height
+          ? img.width / img.height
+          : art.type === "number" ? 0.6 : art.type === "logo" ? 1.0 : 2.2;
         return (
           // Outer group aligns plane with surface normal; inner mesh applies twist
           <group key={art.id} position={art.position} rotation={art.rotation}>

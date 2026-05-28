@@ -80,39 +80,48 @@ interface ArtworkDraft {
 }
 
 // ── Per-step constants for controls ──────────────────────────────────────────
-const NUDGE      = 0.1;           // world units per position click
+const PAN_STEP   = 0.5;           // world units per pan click
+const NUDGE      = 0.15;          // world units per artwork nudge click
 const TWIST_STEP = Math.PI / 12;  // 15° per rotation click
-const ORBIT_STEP = Math.PI / 16;  // ~11° per camera click
 
 // ── Texture helpers ───────────────────────────────────────────────────────────
 
-/** Build a CanvasTexture for a text / number artwork. */
+/** Build a CanvasTexture whose canvas is sized to exactly fit the rendered text. */
 function buildTextTexture(
   text: string,
   fillColor: string,
   strokeColor: string,
   isNumber: boolean,
 ): THREE.CanvasTexture {
-  const W = isNumber ? 256 : 512;
   const H = 256;
+  const fontSize = Math.floor(H * 0.72);
+
+  // Measure text width on a scratch canvas before committing
+  const probe = document.createElement("canvas");
+  const pc = probe.getContext("2d")!;
+  pc.font = `900 ${fontSize}px Impact, "Arial Black", Arial, sans-serif`;
+  const measured = pc.measureText(text).width;
+
+  // Canvas width = measured width + side padding so no glyph is clipped
+  const pad = fontSize * 0.18;
+  const W = Math.ceil(
+    isNumber ? Math.max(measured + pad * 2, H * 0.7) : measured + pad * 2,
+  );
+
   const canvas = document.createElement("canvas");
   canvas.width  = W;
   canvas.height = H;
   const ctx = canvas.getContext("2d")!;
   ctx.clearRect(0, 0, W, H);
-
-  const fontSize = Math.floor(H * 0.72);
   ctx.font         = `900 ${fontSize}px Impact, "Arial Black", Arial, sans-serif`;
   ctx.textAlign    = "center";
   ctx.textBaseline = "middle";
   ctx.lineJoin     = "round";
 
-  // Outline pass
   ctx.lineWidth   = Math.max(8, fontSize * 0.12);
   ctx.strokeStyle = strokeColor;
   ctx.strokeText(text, W / 2, H / 2);
 
-  // Fill pass
   ctx.fillStyle = fillColor;
   ctx.fillText(text, W / 2, H / 2);
 
@@ -226,14 +235,14 @@ function JerseyBuilderInner() {
     setGroupCenters(centers);
   }, []);
 
-  const orbitCamera = useCallback((dTheta: number, dPhi: number) => {
+  /** Move the camera target + position together (pans the garment in the viewport). */
+  const panCamera = useCallback((dx: number, dy: number) => {
     const ctrl = orbitRef.current;
     if (!ctrl) return;
-    const offset = new THREE.Vector3().subVectors(ctrl.object.position, ctrl.target);
-    const sph = new THREE.Spherical().setFromVector3(offset);
-    sph.theta -= dTheta;
-    sph.phi = Math.max(0.05, Math.min(Math.PI - 0.05, sph.phi + dPhi));
-    ctrl.object.position.copy(ctrl.target).add(new THREE.Vector3().setFromSpherical(sph));
+    ctrl.target.x          += dx;
+    ctrl.target.y          += dy;
+    ctrl.object.position.x += dx;
+    ctrl.object.position.y += dy;
     ctrl.update();
   }, []);
 
@@ -523,23 +532,25 @@ function JerseyBuilderInner() {
 
           {/* ── Camera controls ── */}
           {!isPlacing && (() => {
-            const btn = "w-7 h-7 flex items-center justify-center rounded-lg bg-brand-bg/90 border border-brand-border text-brand-muted hover:text-brand-text hover:border-brand-primary text-sm transition-colors select-none";
+            const btn = "w-9 h-9 flex items-center justify-center rounded-lg bg-brand-bg/90 border border-brand-border text-brand-muted hover:text-brand-text hover:border-brand-primary text-base font-bold transition-colors select-none";
             return (
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 z-10 flex flex-col items-center gap-1 bg-brand-bg/80 backdrop-blur border border-brand-border rounded-xl p-2 shadow">
-                <p className="text-[7px] font-display uppercase tracking-widest text-brand-muted/60 mb-0.5">View</p>
-                <button className={btn} onClick={() => orbitCamera(0, -ORBIT_STEP)} title="Orbit up">↑</button>
-                <div className="flex gap-1">
-                  <button className={btn} onClick={() => orbitCamera(ORBIT_STEP, 0)} title="Orbit left">←</button>
-                  <button className={btn} onClick={() => orbitCamera(-ORBIT_STEP, 0)} title="Orbit right">→</button>
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 z-10 flex flex-col items-center gap-1.5 bg-brand-bg/90 backdrop-blur border border-brand-border rounded-xl p-2.5 shadow-lg">
+                <p className="text-[7px] font-display uppercase tracking-widest text-brand-muted/60">Position</p>
+                <button className={btn} style={{ touchAction: "manipulation" }} onClick={() => panCamera(0,  PAN_STEP)} title="Move up">↑</button>
+                <div className="flex gap-1.5">
+                  <button className={btn} style={{ touchAction: "manipulation" }} onClick={() => panCamera(-PAN_STEP, 0)} title="Move left">←</button>
+                  <button className={btn} style={{ touchAction: "manipulation" }} onClick={() => panCamera( PAN_STEP, 0)} title="Move right">→</button>
                 </div>
-                <button className={btn} onClick={() => orbitCamera(0, ORBIT_STEP)} title="Orbit down">↓</button>
-                <div className="w-full h-px bg-brand-border my-1" />
-                <div className="flex gap-1">
-                  <button className={btn} onClick={() => zoomCamera(0.85)} title="Zoom in">+</button>
-                  <button className={btn} onClick={() => zoomCamera(1.18)} title="Zoom out">−</button>
+                <button className={btn} style={{ touchAction: "manipulation" }} onClick={() => panCamera(0, -PAN_STEP)} title="Move down">↓</button>
+                <div className="w-full h-px bg-brand-border my-0.5" />
+                <p className="text-[7px] font-display uppercase tracking-widest text-brand-muted/60">Zoom</p>
+                <div className="flex gap-1.5">
+                  <button className={btn} style={{ touchAction: "manipulation" }} onClick={() => zoomCamera(0.85)} title="Zoom in">+</button>
+                  <button className={btn} style={{ touchAction: "manipulation" }} onClick={() => zoomCamera(1.18)} title="Zoom out">−</button>
                 </div>
                 <button
-                  className={`${btn} mt-0.5 ${autoRotate ? "!text-brand-primary !border-brand-primary bg-brand-primary/10" : ""}`}
+                  className={`${btn} w-full mt-0.5 ${autoRotate ? "!text-brand-primary !border-brand-primary bg-brand-primary/10" : ""}`}
+                  style={{ touchAction: "manipulation" }}
                   onClick={() => setAutoRotate((r) => !r)}
                   title="Toggle auto-rotate"
                 >
@@ -816,36 +827,36 @@ function JerseyBuilderInner() {
                       </div>
 
                       {art.placed && (() => {
-                        const cb = "w-7 h-7 flex items-center justify-center rounded bg-brand-surface border border-brand-border text-brand-muted hover:text-brand-text hover:border-brand-primary text-xs transition-colors select-none";
+                        const cb = "w-9 h-9 flex items-center justify-center rounded-lg bg-brand-surface border border-brand-border text-brand-muted hover:text-brand-text hover:border-brand-primary text-base font-bold transition-colors select-none";
                         return (
                           <>
                             {/* Position + Rotate row */}
                             <div className="flex items-start gap-3">
                               {/* D-pad */}
-                              <div className="flex flex-col items-center gap-0.5">
+                              <div className="flex flex-col items-center gap-1">
                                 <p className="text-[8px] font-display uppercase tracking-wider text-brand-muted/60 mb-0.5">Position</p>
-                                <button className={cb} onClick={() => nudgeArtwork(art.id, 0, NUDGE)}>↑</button>
-                                <div className="flex gap-0.5">
-                                  <button className={cb} onClick={() => nudgeArtwork(art.id, -NUDGE, 0)}>←</button>
-                                  <button className={cb} onClick={() => nudgeArtwork(art.id, NUDGE, 0)}>→</button>
+                                <button className={cb} style={{ touchAction: "manipulation" }} onClick={() => nudgeArtwork(art.id, 0, NUDGE)}>↑</button>
+                                <div className="flex gap-1">
+                                  <button className={cb} style={{ touchAction: "manipulation" }} onClick={() => nudgeArtwork(art.id, -NUDGE, 0)}>←</button>
+                                  <button className={cb} style={{ touchAction: "manipulation" }} onClick={() => nudgeArtwork(art.id, NUDGE, 0)}>→</button>
                                 </div>
-                                <button className={cb} onClick={() => nudgeArtwork(art.id, 0, -NUDGE)}>↓</button>
+                                <button className={cb} style={{ touchAction: "manipulation" }} onClick={() => nudgeArtwork(art.id, 0, -NUDGE)}>↓</button>
                               </div>
 
                               {/* Rotate + Scale */}
-                              <div className="flex flex-col gap-1.5 flex-1">
+                              <div className="flex flex-col gap-2 flex-1">
                                 <div>
                                   <p className="text-[8px] font-display uppercase tracking-wider text-brand-muted/60 mb-1">Rotate</p>
-                                  <div className="flex gap-0.5">
-                                    <button className={`${cb} flex-1`} onClick={() => twistArtwork(art.id, -TWIST_STEP)}>↺</button>
-                                    <button className={`${cb} flex-1`} onClick={() => twistArtwork(art.id,  TWIST_STEP)}>↻</button>
+                                  <div className="flex gap-1">
+                                    <button className={`${cb} flex-1`} style={{ touchAction: "manipulation" }} onClick={() => twistArtwork(art.id, -TWIST_STEP)}>↺</button>
+                                    <button className={`${cb} flex-1`} style={{ touchAction: "manipulation" }} onClick={() => twistArtwork(art.id,  TWIST_STEP)}>↻</button>
                                   </div>
                                 </div>
                                 <div>
                                   <p className="text-[8px] font-display uppercase tracking-wider text-brand-muted/60 mb-1">Scale</p>
-                                  <div className="flex gap-0.5">
-                                    <button className={`${cb} flex-1`} onClick={() => scaleArtwork(art.id, 0.85)}>−</button>
-                                    <button className={`${cb} flex-1`} onClick={() => scaleArtwork(art.id, 1.18)}>+</button>
+                                  <div className="flex gap-1">
+                                    <button className={`${cb} flex-1`} style={{ touchAction: "manipulation" }} onClick={() => scaleArtwork(art.id, 0.85)}>−</button>
+                                    <button className={`${cb} flex-1`} style={{ touchAction: "manipulation" }} onClick={() => scaleArtwork(art.id, 1.18)}>+</button>
                                   </div>
                                 </div>
                               </div>
