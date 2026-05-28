@@ -252,17 +252,18 @@ function JerseyBuilderInner() {
     const ctrl = orbitRef.current;
     if (!ctrl) return;
     const offset = new THREE.Vector3().subVectors(ctrl.object.position, ctrl.target);
-    const dist = Math.max(5, Math.min(40, offset.length() * factor));
+    const dist = Math.max(1.5, Math.min(14, offset.length() * factor));
     ctrl.object.position.copy(ctrl.target).add(offset.normalize().multiplyScalar(dist));
     ctrl.update();
   }, []);
 
-  // Move camera target when tab changes
+  // Reset camera to a clean front-facing view centred on the active garment
   useEffect(() => {
     const controls = orbitRef.current;
     if (!controls || !groupCenters) return;
     const targetY = activeView === "jersey" ? groupCenters.jerseyTopY : groupCenters.shortsY;
     controls.target.set(0, targetY, 0);
+    controls.object.position.set(0, targetY, 5.5); // same Z as initial camera
     controls.update();
   }, [activeView, groupCenters]);
 
@@ -507,7 +508,7 @@ function JerseyBuilderInner() {
       <div className="flex-1 flex flex-col lg:flex-row min-h-0">
 
         {/* ── 3-D Viewport ─────────────────────────────────────────────────── */}
-        <div className="relative flex-1 min-h-0 bg-[#f0f0f0]" style={{ minHeight: "clamp(280px, 50vh, 999px)" }}>
+        <div className="relative flex-1 min-h-0 bg-white" style={{ minHeight: "clamp(380px, 70vh, 999px)" }}>
 
           {/* Viewport label */}
           <div className="absolute top-4 left-5 z-10 flex items-center gap-2 pointer-events-none">
@@ -581,7 +582,7 @@ function JerseyBuilderInner() {
 
           {hasModel && mounted ? (
             <Canvas
-              camera={{ position: [0, 0, 18], fov: 50 }}
+              camera={{ position: [0, 0, 5.5], fov: 38 }}
               style={{ width: "100%", height: "100%" }}
               gl={{ preserveDrawingBuffer: true, antialias: true }}
             >
@@ -610,8 +611,8 @@ function JerseyBuilderInner() {
                 ref={orbitRef}
                 enabled={!isPlacing}
                 enablePan={false}
-                minDistance={5}
-                maxDistance={40}
+                minDistance={1.5}
+                maxDistance={14}
                 target={[0, 0, 0]}
                 autoRotate={autoRotate}
                 autoRotateSpeed={2}
