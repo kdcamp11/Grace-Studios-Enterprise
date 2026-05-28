@@ -252,7 +252,7 @@ function JerseyBuilderInner() {
     const ctrl = orbitRef.current;
     if (!ctrl) return;
     const offset = new THREE.Vector3().subVectors(ctrl.object.position, ctrl.target);
-    const dist = Math.max(1.5, Math.min(14, offset.length() * factor));
+    const dist = Math.max(3, Math.min(22, offset.length() * factor));
     ctrl.object.position.copy(ctrl.target).add(offset.normalize().multiplyScalar(dist));
     ctrl.update();
   }, []);
@@ -263,7 +263,7 @@ function JerseyBuilderInner() {
     if (!controls || !groupCenters) return;
     const targetY = activeView === "jersey" ? groupCenters.jerseyTopY : groupCenters.shortsY;
     controls.target.set(0, targetY, 0);
-    controls.object.position.set(0, targetY, 5.5); // same Z as initial camera
+    controls.object.position.set(0, targetY, 9); // same Z as initial camera
     controls.update();
   }, [activeView, groupCenters]);
 
@@ -582,7 +582,7 @@ function JerseyBuilderInner() {
 
           {hasModel && mounted ? (
             <Canvas
-              camera={{ position: [0, 0, 5.5], fov: 38 }}
+              camera={{ position: [0, 0, 9], fov: 38 }}
               style={{ width: "100%", height: "100%" }}
               gl={{ preserveDrawingBuffer: true, antialias: true }}
             >
@@ -611,8 +611,8 @@ function JerseyBuilderInner() {
                 ref={orbitRef}
                 enabled={!isPlacing}
                 enablePan={false}
-                minDistance={1.5}
-                maxDistance={14}
+                minDistance={3}
+                maxDistance={22}
                 target={[0, 0, 0]}
                 autoRotate={autoRotate}
                 autoRotateSpeed={2}
