@@ -18,7 +18,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { Canvas } from "@react-three/fiber";
+import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -80,10 +80,8 @@ interface ArtworkDraft {
 }
 
 // ── Per-step constants for controls ──────────────────────────────────────────
-const PAN_STEP   = 0.5;           // world units per pan click
 const NUDGE      = 0.3;           // world units per artwork nudge click
 const TWIST_STEP = Math.PI / 12;  // 15° per rotation click
-const ORBIT_STEP = Math.PI / 12;  // 15° per orbit click
 
 // ── Texture helpers ───────────────────────────────────────────────────────────
 
@@ -177,6 +175,27 @@ function ColorControl({
   );
 }
 
+// ── Scene rotation — runs inside R3F's useFrame so it's guaranteed to apply ──
+
+function SceneRotationController({
+  groupRef,
+  yRef,
+  xRef,
+}: {
+  groupRef: React.RefObject<THREE.Group>;
+  yRef: React.MutableRefObject<number>;
+  xRef: React.MutableRefObject<number>;
+}) {
+  useFrame(() => {
+    const g = groupRef.current;
+    if (!g) return;
+    // Smooth lerp towards target angles
+    g.rotation.y += (yRef.current - g.rotation.y) * 0.14;
+    g.rotation.x += (xRef.current - g.rotation.x) * 0.14;
+  });
+  return null;
+}
+
 // ── Main builder ──────────────────────────────────────────────────────────────
 
 function JerseyBuilderInner() {
@@ -229,7 +248,6 @@ function JerseyBuilderInner() {
   // ── View toggle (JERSEY / SHORTS) ────────────────────────────────────────
   const [activeView,   setActiveView]   = useState<"jersey" | "shorts">("jersey");
   const [groupCenters, setGroupCenters] = useState<GroupCenters | null>(null);
-  const [autoRotate,   setAutoRotate]   = useState(false);
   const orbitRef      = useRef<any>(null);
   const sceneGroupRef = useRef<THREE.Group>(null);
   const sceneYRotRef  = useRef(0);
@@ -239,50 +257,9 @@ function JerseyBuilderInner() {
     setGroupCenters(centers);
   }, []);
 
-  /** Slide the jersey in the viewport by shifting camera + target together.
-   *  Negate dx/dy so button intent matches the visual: pressing RIGHT → jersey goes right.
-   *  Do NOT call ctrl.update() — R3F's useFrame calls it every frame and calling it
-   *  here would flush any pending sphericalDelta, causing an unintended rotation. */
-  const panCamera = useCallback((dx: number, dy: number) => {
-    const ctrl = orbitRef.current;
-    if (!ctrl) return;
-    ctrl.target.x          -= dx;
-    ctrl.target.y          -= dy;
-    ctrl.object.position.x -= dx;
-    ctrl.object.position.y -= dy;
-  }, []);
-
-  const zoomCamera = useCallback((factor: number) => {
-    const ctrl = orbitRef.current;
-    if (!ctrl) return;
-    const offset = new THREE.Vector3().subVectors(ctrl.object.position, ctrl.target);
-    const dist = Math.max(5, Math.min(28, offset.length() * factor));
-    ctrl.object.position.copy(ctrl.target).add(offset.normalize().multiplyScalar(dist));
-    ctrl.update();
-  }, []);
-
-  const rotateSceneY = useCallback((delta: number) => {
-    sceneYRotRef.current += delta;
-    if (sceneGroupRef.current) sceneGroupRef.current.rotation.y = sceneYRotRef.current;
-  }, []);
-
-  const rotateSceneX = useCallback((delta: number) => {
-    sceneXTiltRef.current = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, sceneXTiltRef.current + delta));
-    if (sceneGroupRef.current) sceneGroupRef.current.rotation.x = sceneXTiltRef.current;
-  }, []);
 
   const flipScene = useCallback(() => {
-    const ctrl = orbitRef.current;
-    if (!ctrl) return;
-    // Move camera to opposite side by negating X and Z offsets from target
-    const tx = ctrl.target.x;
-    const ty = ctrl.target.y;
-    const tz = ctrl.target.z;
-    const dx = ctrl.object.position.x - tx;
-    const dz = ctrl.object.position.z - tz;
-    ctrl.object.position.x = tx - dx;
-    ctrl.object.position.z = tz - dz;
-    ctrl.object.lookAt(ctrl.target);
+    sceneYRotRef.current += Math.PI;
   }, []);
 
   // Reset camera and scene rotation when switching tabs
@@ -567,44 +544,6 @@ function JerseyBuilderInner() {
             </button>
           )}
 
-          {/* ── Camera controls ── */}
-          {!isPlacing && (() => {
-            const btn = "w-9 h-9 flex items-center justify-center rounded-lg bg-brand-bg/90 border border-brand-border text-brand-muted hover:text-brand-text hover:border-brand-primary text-base font-bold transition-colors select-none";
-            return (
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 z-10 flex flex-col items-center gap-1.5 bg-brand-bg/90 backdrop-blur border border-brand-border rounded-xl p-2.5 shadow-lg">
-                <p className="text-[7px] font-display uppercase tracking-widest text-brand-muted/60">Position</p>
-                <button className={btn} style={{ touchAction: "manipulation" }} onClick={() => panCamera(0,  PAN_STEP)} title="Move up">↑</button>
-                <div className="flex gap-1.5">
-                  <button className={btn} style={{ touchAction: "manipulation" }} onClick={() => panCamera(-PAN_STEP, 0)} title="Move left">←</button>
-                  <button className={btn} style={{ touchAction: "manipulation" }} onClick={() => panCamera( PAN_STEP, 0)} title="Move right">→</button>
-                </div>
-                <button className={btn} style={{ touchAction: "manipulation" }} onClick={() => panCamera(0, -PAN_STEP)} title="Move down">↓</button>
-                <div className="w-full h-px bg-brand-border my-0.5" />
-                <p className="text-[7px] font-display uppercase tracking-widest text-brand-muted/60">Rotate</p>
-                <button className={btn} style={{ touchAction: "manipulation" }} onClick={() => rotateSceneX(-ORBIT_STEP)} title="Tilt up">↑</button>
-                <div className="flex gap-1.5">
-                  <button className={btn} style={{ touchAction: "manipulation" }} onClick={() => rotateSceneY(-ORBIT_STEP)} title="Rotate left">←</button>
-                  <button className={btn} style={{ touchAction: "manipulation" }} onClick={() => rotateSceneY( ORBIT_STEP)} title="Rotate right">→</button>
-                </div>
-                <button className={btn} style={{ touchAction: "manipulation" }} onClick={() => rotateSceneX( ORBIT_STEP)} title="Tilt down">↓</button>
-                <div className="w-full h-px bg-brand-border my-0.5" />
-                <p className="text-[7px] font-display uppercase tracking-widest text-brand-muted/60">Zoom</p>
-                <div className="flex gap-1.5">
-                  <button className={btn} style={{ touchAction: "manipulation" }} onClick={() => zoomCamera(0.85)} title="Zoom in">+</button>
-                  <button className={btn} style={{ touchAction: "manipulation" }} onClick={() => zoomCamera(1.18)} title="Zoom out">−</button>
-                </div>
-                <button
-                  className={`${btn} w-full mt-0.5 ${autoRotate ? "!text-brand-primary !border-brand-primary bg-brand-primary/10" : ""}`}
-                  style={{ touchAction: "manipulation" }}
-                  onClick={() => setAutoRotate((r) => !r)}
-                  title="Toggle auto-rotate"
-                >
-                  ↺
-                </button>
-              </div>
-            );
-          })()}
-
           {/* JERSEY / SHORTS view tabs + Front/Back flip */}
           <div className="absolute bottom-4 left-1/2 z-10 -translate-x-1/2 flex items-center gap-2">
             <div className="flex gap-1 bg-brand-bg/80 backdrop-blur border border-brand-border rounded-full px-1 py-1">
@@ -645,6 +584,8 @@ function JerseyBuilderInner() {
               <directionalLight position={[0, -2, 4]}  intensity={0.4} />
               <pointLight       position={[0, 4, 3]}   intensity={0.6} />
 
+              <SceneRotationController groupRef={sceneGroupRef} yRef={sceneYRotRef} xRef={sceneXTiltRef} />
+
               <group ref={sceneGroupRef}>
                 <Suspense fallback={null}>
                   <JerseyScene
@@ -667,8 +608,6 @@ function JerseyBuilderInner() {
                 enablePan={false}
                 minDistance={5}
                 maxDistance={28}
-                autoRotate={autoRotate}
-                autoRotateSpeed={2}
               />
             </Canvas>
           ) : hasModel ? (
