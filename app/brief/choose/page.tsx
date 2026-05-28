@@ -152,7 +152,7 @@ export default function ChoosePage() {
                   <span className="text-brand-muted group-hover:text-brand-primary transition-colors">→</span>
                 </Link>
                 <Link
-                  href="/jersey-builder"
+                  href="/brief/new?path=builder"
                   className="group flex items-center justify-between p-3.5 rounded-lg border border-brand-border hover:border-brand-primary/40 bg-brand-surface hover:bg-brand-bg transition-all"
                 >
                   <div>

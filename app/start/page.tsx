@@ -30,7 +30,7 @@ const PATHS = [
   },
   {
     id: "builder",
-    href: "/jersey-builder",
+    href: "/brief/new?path=builder",
     badge: "Visual Design",
     sub: "Jersey Builder",
     headline: "Build It Visually.\nSee It in 3D.",
