@@ -82,8 +82,6 @@ interface ArtworkDraft {
 }
 
 // ── Per-step constants for controls ──────────────────────────────────────────
-const NUDGE      = 0.3;           // world units per artwork nudge click
-const TWIST_STEP = Math.PI / 12;  // 15° per rotation click
 
 // ── Available text fonts ──────────────────────────────────────────────────────
 const FONTS = [
@@ -585,29 +583,27 @@ function JerseyBuilderInner() {
     setPlacingId((p) => (p === id ? null : p));
   }, []);
 
-  const nudgeArtwork = useCallback((id: string, dx: number, dy: number) => {
-    setArtworkDrafts((prev) =>
-      prev.map((a) =>
-        a.id === id && a.position
-          ? { ...a, position: [a.position[0] + dx, a.position[1] + dy, a.position[2]] as [number, number, number] }
-          : a,
-      ),
-    );
-  }, []);
-
-  const twistArtwork = useCallback((id: string, delta: number) => {
-    setArtworkDrafts((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, twist: a.twist + delta } : a)),
-    );
-  }, []);
-
-  const scaleArtwork = useCallback((id: string, factor: number) => {
-    setArtworkDrafts((prev) =>
-      prev.map((a) =>
-        a.id === id ? { ...a, size: Math.max(0.1, Math.min(3, a.size * factor)) } : a,
-      ),
-    );
-  }, []);
+  /** Snap artwork to a preset position on the active garment. */
+  const snapArtwork = useCallback(
+    (id: string, preset: "center" | "upper" | "mid" | "lower") => {
+      if (preset === "center") {
+        setArtworkDrafts((prev) =>
+          prev.map((a) =>
+            a.id === id && a.position
+              ? { ...a, position: [0, a.position[1], a.position[2]] as [number, number, number] }
+              : a,
+          ),
+        );
+        return;
+      }
+      const fraction = preset === "upper" ? 0.72 : preset === "mid" ? 0.55 : 0.38;
+      const { position, rotation } = autoPlacePosition(fraction);
+      setArtworkDrafts((prev) =>
+        prev.map((a) => (a.id === id ? { ...a, position, rotation } : a)),
+      );
+    },
+    [autoPlacePosition],
+  );
 
   /**
    * Build the ArtworkItem array that JerseyScene consumes.
@@ -1001,64 +997,117 @@ function JerseyBuilderInner() {
                         </button>
                       </div>
 
-                      {art.placed && (() => {
-                        const cb = "w-9 h-9 flex items-center justify-center rounded-lg bg-brand-surface border border-brand-border text-brand-muted hover:text-brand-text hover:border-brand-primary text-base font-bold transition-colors select-none";
-                        return (
-                          <>
-                            {/* Position + Rotate row */}
-                            <div className="flex items-start gap-3">
-                              {/* D-pad */}
-                              <div className="flex flex-col items-center gap-1">
-                                <p className="text-[8px] font-display uppercase tracking-wider text-brand-muted/60 mb-0.5">Position</p>
-                                <button className={cb} style={{ touchAction: "manipulation" }} onClick={() => nudgeArtwork(art.id, 0, NUDGE)}>↑</button>
-                                <div className="flex gap-1">
-                                  <button className={cb} style={{ touchAction: "manipulation" }} onClick={() => nudgeArtwork(art.id, -NUDGE, 0)}>←</button>
-                                  <button className={cb} style={{ touchAction: "manipulation" }} onClick={() => nudgeArtwork(art.id, NUDGE, 0)}>→</button>
-                                </div>
-                                <button className={cb} style={{ touchAction: "manipulation" }} onClick={() => nudgeArtwork(art.id, 0, -NUDGE)}>↓</button>
-                              </div>
+                      {art.placed && (
+                        <div className="space-y-3">
 
-                              {/* Rotate + Scale */}
-                              <div className="flex flex-col gap-2 flex-1">
-                                <div>
-                                  <p className="text-[8px] font-display uppercase tracking-wider text-brand-muted/60 mb-1">Rotate</p>
-                                  <div className="flex gap-1">
-                                    <button className={`${cb} flex-1`} style={{ touchAction: "manipulation" }} onClick={() => twistArtwork(art.id, -TWIST_STEP)}>↺</button>
-                                    <button className={`${cb} flex-1`} style={{ touchAction: "manipulation" }} onClick={() => twistArtwork(art.id,  TWIST_STEP)}>↻</button>
-                                  </div>
-                                </div>
-                                <div>
-                                  <p className="text-[8px] font-display uppercase tracking-wider text-brand-muted/60 mb-1">Scale</p>
-                                  <div className="flex gap-1">
-                                    <button className={`${cb} flex-1`} style={{ touchAction: "manipulation" }} onClick={() => scaleArtwork(art.id, 0.85)}>−</button>
-                                    <button className={`${cb} flex-1`} style={{ touchAction: "manipulation" }} onClick={() => scaleArtwork(art.id, 1.18)}>+</button>
-                                  </div>
-                                </div>
-                              </div>
+                          {/* Left / Right */}
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between">
+                              <label className="text-[9px] font-display uppercase tracking-[0.15em] text-brand-muted/70">Left / Right</label>
+                              <span className="text-[9px] font-barlow text-brand-muted/70">
+                                {((art.position?.[0] ?? 0) >= 0 ? "+" : "") + (art.position?.[0] ?? 0).toFixed(2)}
+                              </span>
                             </div>
+                            <input
+                              type="range" min={-200} max={200} step={5}
+                              value={Math.round((art.position?.[0] ?? 0) * 100)}
+                              onChange={(e) =>
+                                setArtworkDrafts((prev) =>
+                                  prev.map((a) =>
+                                    a.id === art.id && a.position
+                                      ? { ...a, position: [Number(e.target.value) / 100, a.position[1], a.position[2]] as [number, number, number] }
+                                      : a,
+                                  ),
+                                )
+                              }
+                              className="w-full h-1.5 rounded-full appearance-none bg-brand-border accent-[var(--brand-primary)] cursor-pointer"
+                            />
+                          </div>
 
-                            {/* Size fine-tune slider */}
-                            <div className="space-y-1">
-                              <div className="flex items-center justify-between">
-                                <label className="text-[9px] font-display uppercase tracking-[0.15em] text-brand-muted/70">Size</label>
-                                <span className="text-[9px] font-barlow text-brand-muted/70">{(art.size * 100).toFixed(0)}%</span>
-                              </div>
-                              <input
-                                type="range" min={10} max={300} step={5}
-                                value={Math.round(art.size * 100)}
-                                onChange={(e) =>
-                                  setArtworkDrafts((prev) =>
-                                    prev.map((a) =>
-                                      a.id === art.id ? { ...a, size: Number(e.target.value) / 100 } : a
-                                    )
-                                  )
-                                }
-                                className="w-full h-1.5 rounded-full appearance-none bg-brand-border accent-[var(--brand-primary)] cursor-pointer"
-                              />
+                          {/* Up / Down */}
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between">
+                              <label className="text-[9px] font-display uppercase tracking-[0.15em] text-brand-muted/70">Up / Down</label>
+                              <span className="text-[9px] font-barlow text-brand-muted/70">
+                                {((art.position?.[1] ?? 0) >= 0 ? "+" : "") + (art.position?.[1] ?? 0).toFixed(2)}
+                              </span>
                             </div>
-                          </>
-                        );
-                      })()}
+                            <input
+                              type="range" min={-200} max={200} step={5}
+                              value={Math.round((art.position?.[1] ?? 0) * 100)}
+                              onChange={(e) =>
+                                setArtworkDrafts((prev) =>
+                                  prev.map((a) =>
+                                    a.id === art.id && a.position
+                                      ? { ...a, position: [a.position[0], Number(e.target.value) / 100, a.position[2]] as [number, number, number] }
+                                      : a,
+                                  ),
+                                )
+                              }
+                              className="w-full h-1.5 rounded-full appearance-none bg-brand-border accent-[var(--brand-primary)] cursor-pointer"
+                            />
+                          </div>
+
+                          {/* Rotation */}
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between">
+                              <label className="text-[9px] font-display uppercase tracking-[0.15em] text-brand-muted/70">Rotate</label>
+                              <span className="text-[9px] font-barlow text-brand-muted/70">{Math.round((art.twist * 180) / Math.PI)}°</span>
+                            </div>
+                            <input
+                              type="range" min={-180} max={180} step={5}
+                              value={Math.round((art.twist * 180) / Math.PI)}
+                              onChange={(e) =>
+                                setArtworkDrafts((prev) =>
+                                  prev.map((a) =>
+                                    a.id === art.id
+                                      ? { ...a, twist: (Number(e.target.value) * Math.PI) / 180 }
+                                      : a,
+                                  ),
+                                )
+                              }
+                              className="w-full h-1.5 rounded-full appearance-none bg-brand-border accent-[var(--brand-primary)] cursor-pointer"
+                            />
+                          </div>
+
+                          {/* Scale */}
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between">
+                              <label className="text-[9px] font-display uppercase tracking-[0.15em] text-brand-muted/70">Scale</label>
+                              <span className="text-[9px] font-barlow text-brand-muted/70">{(art.size * 100).toFixed(0)}%</span>
+                            </div>
+                            <input
+                              type="range" min={10} max={300} step={5}
+                              value={Math.round(art.size * 100)}
+                              onChange={(e) =>
+                                setArtworkDrafts((prev) =>
+                                  prev.map((a) =>
+                                    a.id === art.id ? { ...a, size: Number(e.target.value) / 100 } : a,
+                                  ),
+                                )
+                              }
+                              className="w-full h-1.5 rounded-full appearance-none bg-brand-border accent-[var(--brand-primary)] cursor-pointer"
+                            />
+                          </div>
+
+                          {/* Snap alignment */}
+                          <div className="space-y-1.5">
+                            <p className="text-[9px] font-display uppercase tracking-[0.15em] text-brand-muted/70">Snap To</p>
+                            <div className="grid grid-cols-4 gap-1">
+                              {(["center", "upper", "mid", "lower"] as const).map((preset) => (
+                                <button
+                                  key={preset}
+                                  onClick={() => snapArtwork(art.id, preset)}
+                                  className="py-1.5 rounded-lg border border-brand-border bg-brand-surface text-[8px] font-display uppercase tracking-wider text-brand-muted hover:border-brand-primary hover:text-brand-primary transition-colors"
+                                >
+                                  {preset === "center" ? "⊕ Ctr" : preset === "upper" ? "↑ Top" : preset === "mid" ? "· Mid" : "↓ Bot"}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                        </div>
+                      )}
 
                       {/* Click-to-place button */}
                       <button
