@@ -256,9 +256,9 @@ function CameraFitter({
       const aspect  = size.width / size.height;
       const hFovRad = 2 * Math.atan(Math.tan(vFovRad / 2) * aspect);
 
-      // Camera distance so jersey fills 75 % of height and at most 85 % of width
-      const distV = (bsize.y / 2) / (0.75 * Math.tan(vFovRad / 2));
-      const distH = (bsize.x / 2) / (0.85 * Math.tan(hFovRad / 2));
+      // Camera distance so jersey fills 82 % of height and at most 90 % of width
+      const distV = (bsize.y / 2) / (0.82 * Math.tan(vFovRad / 2));
+      const distH = (bsize.x / 2) / (0.90 * Math.tan(hFovRad / 2));
       const dist  = Math.max(distV, distH, 4); // never closer than near-clip
 
       controls.target.copy(center);
@@ -285,7 +285,7 @@ function JerseyBuilderInner() {
   useEffect(() => { setMounted(true); }, []);
 
   // On mobile (portrait), bring the camera closer so the jersey fills the screen
-  const cameraZ = mounted && window.innerWidth < 768 ? 8 : 13;
+  const cameraZ = mounted && window.innerWidth < 768 ? 9 : 13;
 
   // ── Auth check ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -371,7 +371,7 @@ function JerseyBuilderInner() {
   // Recenter camera when the garment model reports its bounding box centre.
   // On mobile, CameraFitter handles camera placement after GLB load — skip here.
   useEffect(() => {
-    if (cameraZ === 8) return; // mobile: CameraFitter takes over
+    if (cameraZ === 9) return; // mobile: CameraFitter takes over
     const controls = orbitRef.current;
     if (!controls || !groupCenters) return;
     const targetY = activeView === "jersey" ? groupCenters.jerseyTopY : groupCenters.shortsY;
@@ -639,7 +639,7 @@ function JerseyBuilderInner() {
   }
 
   return (
-    <div className="min-h-screen lg:h-screen bg-brand-bg flex flex-col lg:overflow-hidden">
+    <div className="h-dvh lg:h-screen bg-brand-bg flex flex-col overflow-hidden">
 
       {/* Header */}
       <header className="flex-shrink-0 border-b border-brand-border px-6 sm:px-10 py-4 flex items-center justify-between">
@@ -659,7 +659,7 @@ function JerseyBuilderInner() {
       <div className="flex-1 flex flex-col lg:flex-row min-h-0">
 
         {/* ── 3-D Viewport ─────────────────────────────────────────────────── */}
-        <div className="relative flex-1 min-h-0 bg-white" style={{ minHeight: cameraZ === 8 ? "clamp(480px, 72svh, 999px)" : "clamp(380px, 70vh, 999px)" }}>
+        <div className="relative flex-1 min-h-0 bg-white">
 
           {/* Viewport label */}
           <div className="absolute top-4 left-5 z-10 flex items-center gap-2 pointer-events-none">
@@ -788,7 +788,7 @@ function JerseyBuilderInner() {
         </div>
 
         {/* ── Controls panel ───────────────────────────────────────────────── */}
-        <div className="flex-shrink-0 w-full lg:w-[340px] border-t lg:border-t-0 lg:border-l border-brand-border bg-brand-bg flex flex-col lg:max-h-none lg:overflow-hidden">
+        <div className="flex-shrink-0 w-full lg:w-[340px] border-t lg:border-t-0 lg:border-l border-brand-border bg-brand-bg flex flex-col max-h-[42dvh] overflow-hidden lg:max-h-none lg:overflow-hidden">
           <div className="flex-1 overflow-y-auto px-6 py-7 space-y-7">
 
             {/* ── Zone colours (tab-specific) ── */}
