@@ -253,7 +253,14 @@ function JerseyBuilderInner() {
   const sceneYRotRef  = useRef(0);
   const sceneXTiltRef = useRef(0);
 
+  const groupCentersRef = useRef<GroupCenters | null>(null);
   const handleGroupCenters = useCallback((centers: GroupCenters) => {
+    // Only update state when values actually change — prevents re-render loops
+    if (
+      groupCentersRef.current?.jerseyTopY === centers.jerseyTopY &&
+      groupCentersRef.current?.shortsY === centers.shortsY
+    ) return;
+    groupCentersRef.current = centers;
     setGroupCenters(centers);
   }, []);
 
@@ -262,7 +269,7 @@ function JerseyBuilderInner() {
     sceneYRotRef.current += Math.PI;
   }, []);
 
-  // Reset camera and scene rotation when switching tabs
+  // Recenter camera when the garment model reports its bounding box centre
   useEffect(() => {
     const controls = orbitRef.current;
     if (!controls || !groupCenters) return;
@@ -270,13 +277,13 @@ function JerseyBuilderInner() {
     controls.target.set(0, targetY, 0);
     controls.object.position.set(0, targetY, 13);
     controls.update();
+  }, [activeView, groupCenters]);
+
+  // Reset scene rotation ONLY when the user switches Jersey ↔ Shorts tabs
+  useEffect(() => {
     sceneYRotRef.current = 0;
     sceneXTiltRef.current = 0;
-    if (sceneGroupRef.current) {
-      sceneGroupRef.current.rotation.y = 0;
-      sceneGroupRef.current.rotation.x = 0;
-    }
-  }, [activeView, groupCenters]);
+  }, [activeView]);
 
   // ── Mesh refs exposed by JerseyScene after load ─────────────────────────
   const jerseyTopMeshRef = useRef<THREE.Mesh | null>(null);
