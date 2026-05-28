@@ -2,8 +2,18 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { assertRoleTenant, isErrorResponse } from "@/lib/api/assert-role-tenant";
 
-// Designer sees orders needing concept work or in review
-const DESIGNER_STAGES = ["onboarding", "design_confirmed"] as const;
+// Designer sees orders needing concept work or in review.
+// Include both legacy stage strings and their canonical creative equivalents
+// (see lib/order-stages.ts) so old and new rows are both picked up.
+// creative_in_review is included so orders stay visible after the client pays
+// the activation deposit (the Stripe webhook advances paid creative orders there).
+const DESIGNER_STAGES = [
+  "onboarding",
+  "design_confirmed",
+  "creative_started",
+  "creative_submitted",
+  "creative_in_review",
+] as const;
 
 export async function GET() {
   const ctx = await assertRoleTenant(["designer", "admin", "super_admin"]);

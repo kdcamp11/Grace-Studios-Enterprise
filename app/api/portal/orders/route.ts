@@ -47,10 +47,17 @@ export async function GET() {
 
   if (!client) return NextResponse.json({ orders: [] });
 
+  // Pull team name + sport from the client row for the design preview cards.
+  const { data: clientMeta } = await admin
+    .from("clients")
+    .select("name, sport")
+    .eq("id", client.id)
+    .single();
+
   // Fetch orders
   const { data: orderRows } = await admin
     .from("orders")
-    .select("id, order_number, stage, created_at")
+    .select("id, order_number, stage, created_at, order_type, design_fee_paid, tracking_number")
     .eq("client_id", client.id)
     .order("created_at", { ascending: false });
 
@@ -60,14 +67,18 @@ export async function GET() {
 
   const orderIds = orderRows.map((o) => o.id);
 
-  // Fetch concepts and first-piece-media in parallel
-  const [{ data: concepts }, { data: mediaRows }] = await Promise.all([
+  // Fetch concepts, first-piece-media, and briefs (for design preview) in parallel
+  const [{ data: concepts }, { data: mediaRows }, { data: briefRows }] = await Promise.all([
     admin.from("concepts").select("order_id").in("order_id", orderIds),
     admin
       .from("first_piece_media")
       .select("order_id, client_approved")
       .in("order_id", orderIds)
       .eq("client_visible", true),
+    admin
+      .from("briefs")
+      .select("order_id, zone_colors, logos_to_include")
+      .in("order_id", orderIds),
   ]);
 
   const conceptOrderIds = new Set((concepts ?? []).map((c) => c.order_id));
@@ -76,12 +87,22 @@ export async function GET() {
       .filter((m) => m.client_approved === null)
       .map((m) => m.order_id)
   );
+  const briefByOrder = new Map(
+    (briefRows ?? []).map((b) => [b.order_id as string, b])
+  );
 
-  const orders = orderRows.map((o) => ({
-    ...o,
-    has_concepts:       conceptOrderIds.has(o.id),
-    has_pending_review: pendingReviewIds.has(o.id),
-  }));
+  const orders = orderRows.map((o) => {
+    const brief = briefByOrder.get(o.id);
+    return {
+      ...o,
+      has_concepts:       conceptOrderIds.has(o.id),
+      has_pending_review: pendingReviewIds.has(o.id),
+      team_name:          clientMeta?.name ?? null,
+      sport:              clientMeta?.sport ?? null,
+      zone_colors:        (brief?.zone_colors as Record<string, string> | string[] | null) ?? null,
+      logos_to_include:   (brief?.logos_to_include as string | null) ?? null,
+    };
+  });
 
   return NextResponse.json({ orders, clientId: client.id });
 }

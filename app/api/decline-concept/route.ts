@@ -70,14 +70,14 @@ export async function POST(req: NextRequest) {
   const accentColor = tenant?.brand_primary ?? "#C9A84C";
   const teamName   = client?.name ?? "Client";
 
-  // ── Reset stage to design_confirmed so studio can revise + regenerate ────
-  await admin.from("orders").update({ stage: "design_confirmed" }).eq("id", order_id);
+  // ── Reset stage to creative_submitted so studio can revise + regenerate ──
+  await admin.from("orders").update({ stage: "creative_submitted" }).eq("id", order_id);
 
   await admin.from("stage_log").insert({
     order_id,
     tenant_id:  order.tenant_id,
     from_stage: order.stage,
-    to_stage:   "design_confirmed",
+    to_stage:   "creative_submitted",
     changed_by: "client",
     note:       note ? `Client declined concept: ${note}` : "Client declined concept and requested revisions.",
     email_sent: false,

@@ -7,6 +7,7 @@ import { getProfile } from "@/lib/profile";
 import AdminHeader from "@/components/AdminHeader";
 import type { OrderStage } from "@/lib/supabase/types";
 import type { WorkflowOrder } from "@/app/api/admin/workflow/route";
+import { isAwaitingConcepts, isInDesignReview } from "@/lib/order-stages";
 
 const STAGES: { key: OrderStage; label: string; color: string }[] = [
   { key: "onboarding",              label: "Brief",       color: "text-brand-text" },
@@ -124,8 +125,8 @@ function OrderCard({ order }: { order: WorkflowOrder }) {
           </span>
         )}
 
-        {/* No designer in design stages */}
-        {(order.stage === "onboarding" || order.stage === "design_confirmed") && !order.assigned_designer && (
+        {/* No designer in creative pre-review stages */}
+        {(isAwaitingConcepts(order.stage) || isInDesignReview(order.stage)) && !order.assigned_designer && (
           <span className="text-[9px] font-display uppercase tracking-wider px-1.5 py-0.5 rounded border bg-amber-400/10 text-amber-400 border-amber-400/30">
             No Designer
           </span>

@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { getProfile } from "@/lib/profile";
 import TenantLogo from "@/components/TenantLogo";
 import type { OrderStage } from "@/lib/supabase/types";
+import { isAwaitingConcepts, isInDesignReview, normalizeStage } from "@/lib/order-stages";
 
 interface BriefSummary {
   id: string;
@@ -76,8 +77,12 @@ export default function DesignerQueuePage() {
     });
   }, [router, supabase]);
 
-  const needsConcepts = orders.filter((o) => o.stage === "onboarding");
-  const inReview      = orders.filter((o) => o.stage === "design_confirmed");
+  const needsConcepts = orders.filter((o) => isAwaitingConcepts(o.stage));
+  // "In Review" also covers creative_in_review — orders the client has paid to
+  // activate, which the designer still needs to work through.
+  const inReview      = orders.filter(
+    (o) => isInDesignReview(o.stage) || normalizeStage(o.stage) === "creative_in_review",
+  );
   const displayed     = tab === "needs_concepts" ? needsConcepts : inReview;
 
   if (loading) {

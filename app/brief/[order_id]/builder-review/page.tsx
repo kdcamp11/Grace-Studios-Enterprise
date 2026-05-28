@@ -44,15 +44,70 @@ export default function BuilderReviewPage() {
   const [error, setError]             = useState("");
   const [termsAgreed, setTermsAgreed] = useState(false);
   const [privacyAgreed, setPrivacyAgreed] = useState(false);
+  // Read-only when the design is already submitted/paid (set from the server).
+  const [submitted, setSubmitted]     = useState(false);
+  const [ready, setReady]             = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) router.replace("/login");
-    });
-    setBrief(loadBriefState());
+    let active = true;
+
+    async function load() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { router.replace("/login"); return; }
+
+      // 1. Try localStorage first (normal first-time flow).
+      const local = loadBriefState();
+      const hasLocalForThisOrder =
+        !!local &&
+        local.orderId === order_id &&
+        (!!local.teamName || (local.zoneColors && Object.keys(local.zoneColors).length > 0));
+
+      // 2. Fetch the persisted design from the server. We always do this so we
+      //    can determine submitted/paid state and fall back when localStorage is
+      //    empty (post-submit, or a fresh device).
+      let serverBrief: BriefState | null = null;
+      try {
+        const res = await fetch(`/api/portal/design?order_id=${encodeURIComponent(order_id)}`);
+        if (res.ok) {
+          const d = await res.json() as {
+            teamName: string | null;
+            sport: string | null;
+            zoneColors: BriefState["zoneColors"];
+            logosToInclude: string | null;
+            visionPrompt: string | null;
+            hasBrief: boolean;
+            stage: string;
+            designFeePaid: boolean;
+          };
+          const isSubmitted =
+            d.hasBrief || d.designFeePaid || (d.stage !== "creative_started" && d.stage !== "onboarding");
+          if (active) setSubmitted(isSubmitted);
+          if (active && d.visionPrompt) setNotes(d.visionPrompt);
+          if (d.teamName || d.zoneColors) {
+            serverBrief = {
+              ...(local ?? ({} as BriefState)),
+              orderId:        order_id,
+              teamName:       d.teamName ?? local?.teamName ?? "",
+              sport:          d.sport ?? local?.sport ?? "",
+              zoneColors:     d.zoneColors ?? local?.zoneColors ?? null,
+              logosToInclude: d.logosToInclude ?? local?.logosToInclude ?? "",
+            } as BriefState;
+          }
+        }
+      } catch {
+        // Network failure — fall back to localStorage if present.
+      }
+
+      if (!active) return;
+      setBrief(hasLocalForThisOrder ? local : (serverBrief ?? local));
+      setReady(true);
+    }
+
+    load();
+    return () => { active = false; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [order_id]);
 
   async function handleSubmit() {
     if (!order_id) return;
@@ -94,7 +149,7 @@ export default function BuilderReviewPage() {
     }
   }
 
-  if (!brief) {
+  if (!ready || !brief) {
     return (
       <BriefLayout currentStep={3} steps={BUILDER_STEPS} title="Review & Submit">
         <div className="py-16 flex items-center justify-center">
@@ -158,20 +213,44 @@ export default function BuilderReviewPage() {
         )}
 
         {/* ── Production Notes ───────────────────────────────────────────────── */}
-        <div>
-          <label className="block text-xs font-display uppercase tracking-wider text-brand-muted mb-2">
-            Production Notes <span className="normal-case tracking-normal text-brand-muted/60">(optional)</span>
-          </label>
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            rows={3}
-            placeholder="Pantone codes, placement instructions, number style, sponsor text, anything specific for the designer…"
-            className="w-full bg-brand-surface border border-brand-border rounded-xl px-4 py-3 text-brand-text font-barlow text-sm
-              placeholder-brand-muted/50 focus:outline-none focus:border-brand-primary transition-colors resize-none"
-          />
-        </div>
+        {(!submitted || notes) && (
+          <div>
+            <label className="block text-xs font-display uppercase tracking-wider text-brand-muted mb-2">
+              Production Notes <span className="normal-case tracking-normal text-brand-muted/60">(optional)</span>
+            </label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              readOnly={submitted}
+              rows={3}
+              placeholder="Pantone codes, placement instructions, number style, sponsor text, anything specific for the designer…"
+              className="w-full bg-brand-surface border border-brand-border rounded-xl px-4 py-3 text-brand-text font-barlow text-sm
+                placeholder-brand-muted/50 focus:outline-none focus:border-brand-primary transition-colors resize-none
+                read-only:opacity-70 read-only:cursor-default"
+            />
+          </div>
+        )}
 
+        {submitted ? (
+          /* ── Read-only: design already submitted ──────────────────────────── */
+          <div className="space-y-4">
+            <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/5 px-5 py-4 flex items-center gap-3">
+              <span className="px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-400 font-display font-bold text-[10px] uppercase tracking-widest border border-emerald-500/30">
+                Submitted
+              </span>
+              <p className="text-sm font-barlow text-brand-muted">
+                This design has been submitted to Grace Studios. You can always view it here.
+              </p>
+            </div>
+            <a
+              href="/portal"
+              className="inline-block px-6 py-3 rounded-lg font-display font-bold text-sm uppercase tracking-widest border border-brand-border text-brand-muted hover:text-brand-text hover:border-brand-muted transition-colors"
+            >
+              ← Back to Orders
+            </a>
+          </div>
+        ) : (
+        <>
         {/* ── What Happens Next ──────────────────────────────────────────────── */}
         <div className="rounded-xl border border-brand-border bg-brand-surface px-5 py-4">
           <p className="text-[9px] font-display font-bold uppercase tracking-[0.28em] text-brand-muted mb-3">
@@ -257,6 +336,8 @@ export default function BuilderReviewPage() {
             {loading ? "Submitting…" : "Submit & Proceed to Payment →"}
           </button>
         </div>
+        </>
+        )}
 
       </div>
     </BriefLayout>

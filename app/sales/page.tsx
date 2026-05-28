@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { getProfile } from "@/lib/profile";
 import TenantLogo from "@/components/TenantLogo";
 import type { OrderStage } from "@/lib/supabase/types";
+import { stageLabel } from "@/lib/order-stages";
 
 // ── Types ─────────────────────────────────────────────────────
 
@@ -286,7 +287,7 @@ export default function SalesPortalPage() {
                     >
                       <div className="px-3 py-3 border-b border-brand-border flex items-center justify-between">
                         <p className="text-[10px] font-display uppercase tracking-wider text-brand-muted leading-tight">
-                          {STAGE_LABELS[stage] ?? stage}
+                          {STAGE_LABELS[stage] ?? stageLabel(stage)}
                         </p>
                         <span className={`text-[10px] font-display font-bold px-1.5 py-0.5 rounded-full min-w-[1.25rem] text-center ${
                           stageOrders.length > 0

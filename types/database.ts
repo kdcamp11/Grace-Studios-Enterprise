@@ -35,6 +35,8 @@ export interface Database {
           order_number: string;
           client_id: string;
           stage: OrderStage;
+          order_type?: 'creative' | 'production';
+          originating_creative_order_id?: string | null;
           package_tier: string | null;
           deposit_paid: boolean;
           balance_paid: boolean;
@@ -53,6 +55,8 @@ export interface Database {
           order_number?: string;
           client_id: string;
           stage?: OrderStage;
+          order_type?: 'creative' | 'production';
+          originating_creative_order_id?: string | null;
           package_tier?: string | null;
           deposit_paid?: boolean;
           balance_paid?: boolean;
@@ -249,9 +253,12 @@ export interface Database {
   };
 }
 
+// Canonical vocabulary lives in lib/order-stages.ts — keep this union in sync.
 export type OrderStage =
+  // legacy stages (still written/read by older code paths)
   | "onboarding"
   | "design_confirmed"
+  // production stages
   | "files_sent"
   | "first_piece_in_progress"
   | "first_piece_review"
@@ -259,7 +266,16 @@ export type OrderStage =
   | "qc_verified"
   | "shipped"
   | "delivered"
-  | "complete";
+  | "complete"
+  // new creative lifecycle stages
+  | "creative_started"
+  | "creative_submitted"
+  | "payment_pending"
+  | "paid"
+  | "creative_in_review"
+  | "revision_requested"
+  | "creative_approved"
+  | "ready_for_production";
 
 export interface RosterPlayer {
   name: string;

@@ -7,8 +7,10 @@ import { getProfile } from "@/lib/profile";
 import TenantLogo from "@/components/TenantLogo";
 import { useTenant } from "@/lib/tenant/context";
 import type { OrderStage } from "@/types/database";
+import { stageLabel } from "@/lib/order-stages";
 
-const STAGE_LABELS: Record<OrderStage, string> = {
+// Partial: suppliers only see production orders; creative stages fall back to stageLabel().
+const STAGE_LABELS: Partial<Record<OrderStage, string>> = {
   onboarding:              "Brief Submitted",
   design_confirmed:        "Design Confirmed",
   files_sent:              "Files Sent",
@@ -274,7 +276,7 @@ function OrderCard({ order, onClick }: { order: AssignedOrder; onClick: () => vo
         </div>
         <div className="flex-shrink-0 text-right space-y-1.5">
           <span className={`inline-block text-[10px] font-display uppercase tracking-wider px-2.5 py-1 rounded-full border ${stageColor(order.stage)}`}>
-            {STAGE_LABELS[order.stage]}
+            {STAGE_LABELS[order.stage] ?? stageLabel(order.stage)}
           </span>
           {order.estimated_delivery && (
             <p className="text-[10px] font-barlow text-brand-muted block">

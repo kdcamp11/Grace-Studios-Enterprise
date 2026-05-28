@@ -7,6 +7,7 @@ import { getProfile } from "@/lib/profile";
 import OrgLogo from "@/components/OrgLogo";
 import { useTenant } from "@/lib/tenant/context";
 import type { OrderStage } from "@/types/database";
+import { normalizeStage, stageLabel } from "@/lib/order-stages";
 
 // ─── Pipeline definition ──────────────────────────────────────────────────────
 
@@ -200,14 +201,18 @@ export default function TrackerPage() {
     );
   }
 
-  const currentIndex  = PIPELINE.findIndex((p) => p.stage === order.stage);
+  // Match by normalized stage so new creative stages (creative_started, etc.)
+  // resolve onto their legacy pipeline entries (onboarding/design_confirmed).
+  const currentIndex  = PIPELINE.findIndex(
+    (p) => normalizeStage(p.stage) === normalizeStage(order.stage)
+  );
   const pendingMedia  = order.media.filter((m) => m.client_approved === null);
   const reviewedMedia = order.media.filter((m) => m.client_approved !== null);
 
   // Override card if first piece media is pending
   const card: StageCard = pendingMedia.length > 0
     ? STAGE_CARDS.first_piece_review!
-    : (STAGE_CARDS[order.stage] ?? { title: PIPELINE[currentIndex]?.label ?? "", description: "" });
+    : (STAGE_CARDS[order.stage] ?? STAGE_CARDS[normalizeStage(order.stage)] ?? { title: PIPELINE[currentIndex]?.label ?? stageLabel(order.stage), description: "" });
 
   const cardBorder = card.urgent  ? "border-amber-400/50 bg-amber-400/5"
     : card.success ? "border-green-500/40 bg-green-500/5"

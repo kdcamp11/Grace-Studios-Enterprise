@@ -7,6 +7,7 @@ import { getProfile } from "@/lib/profile";
 import AdminHeader from "@/components/AdminHeader";
 import type { RosterPlayer } from "@/types/database";
 import type { OrderStage } from "@/types/database";
+import { stageLabel } from "@/lib/order-stages";
 import type { SupplierWithPortfolio } from "@/app/api/admin/suppliers/route";
 import { formatCurrency, getPaymentThresholdInfo } from "@/lib/payments/thresholds";
 
@@ -36,7 +37,9 @@ const PIPELINE: OrderStage[] = [
   "complete",
 ];
 
-const STAGE_LABELS: Record<OrderStage, string> = {
+// Partial: PIPELINE only renders these legacy/production stages; new creative
+// stages fall back to stageLabel() at the call site (see lib/order-stages.ts).
+const STAGE_LABELS: Partial<Record<OrderStage, string>> = {
   onboarding: "Brief Submitted",
   design_confirmed: "Concepts Generating",
   files_sent: "Design Approved",
@@ -649,7 +652,7 @@ export default function AdminOrderPage() {
                         <span className="w-1.5 h-1.5 rounded-full bg-brand-primary animate-pulse" />
                       )}
                     </span>
-                    {STAGE_LABELS[stage]}
+                    {STAGE_LABELS[stage] ?? stageLabel(stage)}
                   </button>
                 );
               })}
