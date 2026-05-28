@@ -43,6 +43,7 @@ export interface ArtworkItem {
   position: [number, number, number];
   rotation: [number, number, number];
   size: number;
+  scaleX?: number; // horizontal stretch multiplier (1.0 = natural aspect ratio)
   twist?: number; // extra rotation around surface normal (radians)
 }
 
@@ -148,7 +149,7 @@ function ArtworkPlanes({ artworks }: { artworks: ArtworkItem[] }) {
           // Outer group aligns plane with surface normal; inner mesh applies twist
           <group key={art.id} position={art.position} rotation={art.rotation}>
             <mesh rotation={[0, 0, art.twist ?? 0]}>
-              <planeGeometry args={[art.size * aspect, art.size]} />
+              <planeGeometry args={[art.size * aspect * (art.scaleX ?? 1), art.size]} />
               <meshStandardMaterial
                 map={art.texture}
                 transparent

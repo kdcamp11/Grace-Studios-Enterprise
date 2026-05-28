@@ -78,6 +78,7 @@ interface ArtworkDraft {
   position?: [number, number, number];
   rotation?: [number, number, number];
   size: number;
+  scaleX: number; // horizontal stretch multiplier (1.0 = natural aspect ratio)
   twist: number; // rotation around surface normal (radians)
 }
 
@@ -497,6 +498,7 @@ function JerseyBuilderInner() {
             position,
             rotation,
             size: 1.0,
+            scaleX: 1,
             twist: 0,
           },
         ]);
@@ -522,9 +524,8 @@ function JerseyBuilderInner() {
                   : type === "number"   ? `# ${text}`
                   : `Text: ${text}`;
 
-      // Fraction of garment height (0=bottom, 1=top): name near top, number mid, custom lower
-      const fraction = type === "teamName" ? 0.72 : type === "number" ? 0.55 : 0.38;
-      const { position, rotation } = autoPlacePosition(fraction);
+      // All text artworks land at the same centre-chest position so they stack on the same axis
+      const { position, rotation } = autoPlacePosition(0.55);
 
       setArtworkDrafts((prev) => [
         ...prev,
@@ -537,6 +538,7 @@ function JerseyBuilderInner() {
           position,
           rotation,
           size: isNum ? 1.5 : 0.9,
+          scaleX: 1,
           twist: 0,
         },
       ]);
@@ -605,6 +607,23 @@ function JerseyBuilderInner() {
     [autoPlacePosition],
   );
 
+  /** Rebuild a text artwork's texture with new fill / outline color. */
+  const updateArtworkColor = useCallback(
+    (id: string, field: "textColor" | "outlineColor", value: string) => {
+      setArtworkDrafts((prev) => {
+        const art = prev.find((a) => a.id === id);
+        if (!art || art.type === "logo" || !art.text) return prev;
+        const newTextColor    = field === "textColor"    ? value : art.textColor;
+        const newOutlineColor = field === "outlineColor" ? value : art.outlineColor;
+        const newTex = buildTextTexture(art.text, newTextColor, newOutlineColor, art.type === "number", art.fontFamily);
+        textureMapRef.current[id]?.dispose();
+        textureMapRef.current[id] = newTex;
+        return prev.map((a) => a.id === id ? { ...a, [field]: value } : a);
+      });
+    },
+    [],
+  );
+
   /**
    * Build the ArtworkItem array that JerseyScene consumes.
    * Only placed items are included.
@@ -620,6 +639,7 @@ function JerseyBuilderInner() {
           position: a.position!,
           rotation: a.rotation ?? [0, 0, 0],
           size:     a.size,
+          scaleX:   a.scaleX,
           twist:    a.twist,
         })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1095,10 +1115,30 @@ function JerseyBuilderInner() {
                             />
                           </div>
 
-                          {/* Scale */}
+                          {/* Width */}
                           <div className="space-y-1">
                             <div className="flex items-center justify-between">
-                              <label className="text-[9px] font-display uppercase tracking-[0.15em] text-brand-muted/70">Scale</label>
+                              <label className="text-[9px] font-display uppercase tracking-[0.15em] text-brand-muted/70">Width</label>
+                              <span className="text-[9px] font-barlow text-brand-muted/70">{((art.scaleX) * 100).toFixed(0)}%</span>
+                            </div>
+                            <input
+                              type="range" min={25} max={400} step={5}
+                              value={Math.round(art.scaleX * 100)}
+                              onChange={(e) =>
+                                setArtworkDrafts((prev) =>
+                                  prev.map((a) =>
+                                    a.id === art.id ? { ...a, scaleX: Number(e.target.value) / 100 } : a,
+                                  ),
+                                )
+                              }
+                              className="w-full h-1.5 rounded-full appearance-none bg-brand-border accent-[var(--brand-primary)] cursor-pointer"
+                            />
+                          </div>
+
+                          {/* Height */}
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between">
+                              <label className="text-[9px] font-display uppercase tracking-[0.15em] text-brand-muted/70">Height</label>
                               <span className="text-[9px] font-barlow text-brand-muted/70">{(art.size * 100).toFixed(0)}%</span>
                             </div>
                             <input
@@ -1114,6 +1154,39 @@ function JerseyBuilderInner() {
                               className="w-full h-1.5 rounded-full appearance-none bg-brand-border accent-[var(--brand-primary)] cursor-pointer"
                             />
                           </div>
+
+                          {/* Per-artwork color editing (text artworks only) */}
+                          {art.type !== "logo" && (
+                            <>
+                              <div className="h-px bg-brand-border/50" />
+                              <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                  <label className="block text-[9px] font-display uppercase tracking-widest text-brand-muted mb-1.5">Fill</label>
+                                  <div className="flex items-center gap-2">
+                                    <input
+                                      type="color"
+                                      value={art.textColor}
+                                      onChange={(e) => updateArtworkColor(art.id, "textColor", e.target.value)}
+                                      className="w-8 h-8 rounded cursor-pointer border border-brand-border bg-transparent"
+                                    />
+                                    <span className="text-[9px] font-barlow font-mono text-brand-muted">{art.textColor.toUpperCase()}</span>
+                                  </div>
+                                </div>
+                                <div>
+                                  <label className="block text-[9px] font-display uppercase tracking-widest text-brand-muted mb-1.5">Outline</label>
+                                  <div className="flex items-center gap-2">
+                                    <input
+                                      type="color"
+                                      value={art.outlineColor}
+                                      onChange={(e) => updateArtworkColor(art.id, "outlineColor", e.target.value)}
+                                      className="w-8 h-8 rounded cursor-pointer border border-brand-border bg-transparent"
+                                    />
+                                    <span className="text-[9px] font-barlow font-mono text-brand-muted">{art.outlineColor.toUpperCase()}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            </>
+                          )}
 
                         </div>
                       )}
