@@ -145,18 +145,16 @@ function ArtworkPlanes({ artworks }: { artworks: ArtworkItem[] }) {
         return (
           // Outer group aligns plane with surface normal; inner mesh applies twist
           <group key={art.id} position={art.position} rotation={art.rotation}>
-            <mesh rotation={[0, 0, art.twist ?? 0]} renderOrder={1}>
+            <mesh rotation={[0, 0, art.twist ?? 0]}>
               <planeGeometry args={[art.size * aspect, art.size]} />
               <meshStandardMaterial
                 map={art.texture}
                 transparent
                 alphaTest={0.05}
+                depthTest={false}
                 depthWrite={false}
                 roughness={1}
                 metalness={0}
-                polygonOffset
-                polygonOffsetFactor={-6}
-                polygonOffsetUnits={-6}
               />
             </mesh>
           </group>

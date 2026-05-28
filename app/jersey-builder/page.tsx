@@ -119,7 +119,7 @@ function buildTextTexture(
   ctx.textBaseline = "middle";
   ctx.lineJoin     = "round";
 
-  ctx.lineWidth   = Math.max(8, fontSize * 0.12);
+  ctx.lineWidth   = Math.max(4, fontSize * 0.04);
   ctx.strokeStyle = strokeColor;
   ctx.strokeText(text, W / 2, H / 2);
 
@@ -369,7 +369,7 @@ function JerseyBuilderInner() {
             placed: true,
             position,
             rotation,
-            size: 1.8,
+            size: 1.0,
             twist: 0,
           },
         ]);
@@ -404,7 +404,7 @@ function JerseyBuilderInner() {
           placed: true,
           position,
           rotation,
-          size: isNum ? 2.8 : 1.8,
+          size: isNum ? 1.5 : 0.9,
           twist: 0,
         },
       ]);
@@ -584,21 +584,31 @@ function JerseyBuilderInner() {
             );
           })()}
 
-          {/* JERSEY / SHORTS view tabs */}
-          <div className="absolute bottom-4 left-1/2 z-10 -translate-x-1/2 flex gap-1 bg-brand-bg/80 backdrop-blur border border-brand-border rounded-full px-1 py-1">
-            {(["jersey", "shorts"] as const).map((v) => (
-              <button
-                key={v}
-                onClick={() => setActiveView(v)}
-                className={`px-4 py-1 rounded-full text-[10px] font-display font-bold uppercase tracking-widest transition-colors ${
-                  activeView === v
-                    ? "bg-brand-primary text-white"
-                    : "text-brand-muted hover:text-brand-text"
-                }`}
-              >
-                {v === "jersey" ? "Jersey" : "Shorts"}
-              </button>
-            ))}
+          {/* JERSEY / SHORTS view tabs + Front/Back flip */}
+          <div className="absolute bottom-4 left-1/2 z-10 -translate-x-1/2 flex items-center gap-2">
+            <div className="flex gap-1 bg-brand-bg/80 backdrop-blur border border-brand-border rounded-full px-1 py-1">
+              {(["jersey", "shorts"] as const).map((v) => (
+                <button
+                  key={v}
+                  onClick={() => setActiveView(v)}
+                  className={`px-4 py-1 rounded-full text-[10px] font-display font-bold uppercase tracking-widest transition-colors ${
+                    activeView === v
+                      ? "bg-brand-primary text-white"
+                      : "text-brand-muted hover:text-brand-text"
+                  }`}
+                >
+                  {v === "jersey" ? "Jersey" : "Shorts"}
+                </button>
+              ))}
+            </div>
+            <button
+              style={{ touchAction: "manipulation" }}
+              onClick={() => setSceneYRot((r) => r + Math.PI)}
+              className="flex items-center gap-1 px-3 py-1.5 bg-brand-bg/80 backdrop-blur border border-brand-border rounded-full text-[10px] font-display font-bold uppercase tracking-widest text-brand-muted hover:text-brand-primary hover:border-brand-primary transition-colors"
+              title="Flip front / back"
+            >
+              ↔ Flip
+            </button>
           </div>
 
           {hasModel && mounted ? (
