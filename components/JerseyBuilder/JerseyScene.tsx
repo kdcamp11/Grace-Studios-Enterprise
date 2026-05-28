@@ -123,6 +123,7 @@ function cloneAndMapMaterials(
 /** Centre a scene's bounding box at world origin. */
 function useCenterOffset(scene: THREE.Object3D): [number, number, number] {
   return useMemo(() => {
+    scene.position.set(0, 0, 0); // reset before measuring so remounts always compute the same stable offset
     scene.updateMatrixWorld(true);
     const box = new THREE.Box3().setFromObject(scene);
     const c = new THREE.Vector3();
