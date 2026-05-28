@@ -81,7 +81,7 @@ interface ArtworkDraft {
 
 // ── Per-step constants for controls ──────────────────────────────────────────
 const PAN_STEP   = 0.5;           // world units per pan click
-const NUDGE      = 0.15;          // world units per artwork nudge click
+const NUDGE      = 0.3;           // world units per artwork nudge click
 const TWIST_STEP = Math.PI / 12;  // 15° per rotation click
 const ORBIT_STEP = Math.PI / 12;  // 15° per orbit click
 
@@ -230,9 +230,10 @@ function JerseyBuilderInner() {
   const [activeView,   setActiveView]   = useState<"jersey" | "shorts">("jersey");
   const [groupCenters, setGroupCenters] = useState<GroupCenters | null>(null);
   const [autoRotate,   setAutoRotate]   = useState(false);
-  const [sceneYRot,    setSceneYRot]    = useState(0);
-  const [sceneXTilt,   setSceneXTilt]   = useState(0);
-  const orbitRef = useRef<any>(null);
+  const orbitRef      = useRef<any>(null);
+  const sceneGroupRef = useRef<THREE.Group>(null);
+  const sceneYRotRef  = useRef(0);
+  const sceneXTiltRef = useRef(0);
 
   const handleGroupCenters = useCallback((centers: GroupCenters) => {
     setGroupCenters(centers);
@@ -261,11 +262,18 @@ function JerseyBuilderInner() {
   }, []);
 
   const rotateSceneY = useCallback((delta: number) => {
-    setSceneYRot((r) => r + delta);
+    sceneYRotRef.current += delta;
+    if (sceneGroupRef.current) sceneGroupRef.current.rotation.y = sceneYRotRef.current;
   }, []);
 
   const rotateSceneX = useCallback((delta: number) => {
-    setSceneXTilt((t) => Math.max(-Math.PI / 3, Math.min(Math.PI / 3, t + delta)));
+    sceneXTiltRef.current = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, sceneXTiltRef.current + delta));
+    if (sceneGroupRef.current) sceneGroupRef.current.rotation.x = sceneXTiltRef.current;
+  }, []);
+
+  const flipScene = useCallback(() => {
+    sceneYRotRef.current += Math.PI;
+    if (sceneGroupRef.current) sceneGroupRef.current.rotation.y = sceneYRotRef.current;
   }, []);
 
   // Reset camera and scene rotation when switching tabs
@@ -276,8 +284,12 @@ function JerseyBuilderInner() {
     controls.target.set(0, targetY, 0);
     controls.object.position.set(0, targetY, 13);
     controls.update();
-    setSceneYRot(0);
-    setSceneXTilt(0);
+    sceneYRotRef.current = 0;
+    sceneXTiltRef.current = 0;
+    if (sceneGroupRef.current) {
+      sceneGroupRef.current.rotation.y = 0;
+      sceneGroupRef.current.rotation.x = 0;
+    }
   }, [activeView, groupCenters]);
 
   // ── Mesh refs exposed by JerseyScene after load ─────────────────────────
@@ -603,7 +615,7 @@ function JerseyBuilderInner() {
             </div>
             <button
               style={{ touchAction: "manipulation" }}
-              onClick={() => setSceneYRot((r) => r + Math.PI)}
+              onClick={flipScene}
               className="flex items-center gap-1 px-3 py-1.5 bg-brand-bg/80 backdrop-blur border border-brand-border rounded-full text-[10px] font-display font-bold uppercase tracking-widest text-brand-muted hover:text-brand-primary hover:border-brand-primary transition-colors"
               title="Flip front / back"
             >
@@ -624,7 +636,7 @@ function JerseyBuilderInner() {
               <directionalLight position={[0, -2, 4]}  intensity={0.4} />
               <pointLight       position={[0, 4, 3]}   intensity={0.6} />
 
-              <group rotation={[sceneXTilt, sceneYRot, 0]}>
+              <group ref={sceneGroupRef}>
                 <Suspense fallback={null}>
                   <JerseyScene
                     colors={colors}
