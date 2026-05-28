@@ -67,6 +67,7 @@ interface ArtworkDraft {
   type: "logo" | "teamName" | "number" | "customText";
   label: string;
   view: "jersey" | "shorts";
+  side: "front" | "back";
   imageDataUrl?: string;
   fileName?: string;
   text?: string;
@@ -86,14 +87,13 @@ const TWIST_STEP = Math.PI / 12;  // 15° per rotation click
 
 // ── Available text fonts ──────────────────────────────────────────────────────
 const FONTS = [
-  { label: "Impact",           family: "Impact, 'Arial Black', Arial, sans-serif", google: null },
-  { label: "Bebas Neue",       family: "'Bebas Neue', Impact, sans-serif",          google: "Bebas+Neue" },
-  { label: "Anton",            family: "'Anton', Impact, sans-serif",               google: "Anton" },
-  { label: "Teko",             family: "'Teko', Impact, sans-serif",                google: "Teko:wght@700" },
-  { label: "Oswald",           family: "'Oswald', Impact, sans-serif",              google: "Oswald:wght@700" },
-  { label: "Barlow Condensed", family: "'Barlow Condensed', Impact, sans-serif",    google: "Barlow+Condensed:wght@800" },
-  { label: "Graduate",         family: "'Graduate', serif",                         google: "Graduate" },
-  { label: "Roboto Condensed", family: "'Roboto Condensed', Impact, sans-serif",    google: "Roboto+Condensed:wght@900" },
+  { label: "Classic",    family: "Impact, 'Arial Black', Arial, sans-serif",    google: null },
+  { label: "Elite",      family: "'Bebas Neue', Impact, sans-serif",             google: "Bebas+Neue" },
+  { label: "Street",     family: "'Anton', Impact, sans-serif",                  google: "Anton" },
+  { label: "Retro",      family: "'Graduate', serif",                            google: "Graduate" },
+  { label: "Luxury",     family: "'Cinzel', serif",                              google: "Cinzel:wght@700;900" },
+  { label: "Minimal",    family: "'Barlow Condensed', Impact, sans-serif",       google: "Barlow+Condensed:wght@800" },
+  { label: "Aggressive", family: "'Black Ops One', Impact, sans-serif",          google: "Black+Ops+One" },
 ] as const;
 type FontFamily = (typeof FONTS)[number]["family"];
 const DEFAULT_FONT: FontFamily = "Impact, 'Arial Black', Arial, sans-serif";
@@ -342,8 +342,9 @@ function JerseyBuilderInner() {
     };
   }, []);
 
-  // ── View toggle (JERSEY / SHORTS) ────────────────────────────────────────
+  // ── View toggle (JERSEY / SHORTS) + Front / Back side ───────────────────
   const [activeView,   setActiveView]   = useState<"jersey" | "shorts">("jersey");
+  const [activeSide,   setActiveSide]   = useState<"front" | "back">("front");
   const [groupCenters, setGroupCenters] = useState<GroupCenters | null>(null);
   const orbitRef      = useRef<any>(null);
   const sceneGroupRef = useRef<THREE.Group>(null);
@@ -364,6 +365,7 @@ function JerseyBuilderInner() {
 
   const flipScene = useCallback(() => {
     sceneYRotRef.current += Math.PI;
+    setActiveSide((s) => (s === "front" ? "back" : "front"));
   }, []);
 
   // Recenter camera when the garment model reports its bounding box centre.
@@ -378,9 +380,7 @@ function JerseyBuilderInner() {
     controls.update();
   }, [activeView, groupCenters, cameraZ]);
 
-  // On tab switch: immediately reset camera to Y=0 and reset scene rotation.
-  // Both GLBs are centred at Y≈0, so this shows the model instantly without
-  // waiting for groupCenters to update with the new tab's bounding box.
+  // On tab switch: reset camera, scene rotation, and return to front side.
   useEffect(() => {
     const controls = orbitRef.current;
     if (controls) {
@@ -390,6 +390,7 @@ function JerseyBuilderInner() {
     }
     sceneYRotRef.current = 0;
     sceneXTiltRef.current = 0;
+    setActiveSide("front");
   }, [activeView, cameraZ]);
 
   // ── Mesh refs exposed by JerseyScene after load ─────────────────────────
@@ -410,9 +411,9 @@ function JerseyBuilderInner() {
   }, []);
 
   /**
-   * Raycast from in front of the garment to place artwork.
-   * `heightFraction` is 0–1 from bottom to top of the garment bounding box.
-   * This is scale-independent so it works regardless of model units.
+   * Raycast from the current viewing direction to auto-place artwork on the
+   * active garment surface.  Hit and normal are converted to sceneGroup local
+   * space so placements are stable regardless of the current flip rotation.
    */
   const autoPlacePosition = useCallback(
     (heightFraction = 0.55): { position: [number, number, number]; rotation: [number, number, number] } => {
@@ -421,10 +422,9 @@ function JerseyBuilderInner() {
         try {
           mesh.updateWorldMatrix(true, false);
           const box = new THREE.Box3().setFromObject(mesh);
-          const size = new THREE.Vector3();
-          box.getSize(size);
-          // Pick Y by fraction of the garment height
-          const targetY = box.min.y + size.y * heightFraction;
+          const bsize = new THREE.Vector3();
+          box.getSize(bsize);
+          const targetY = box.min.y + bsize.y * heightFraction;
           const centerX = (box.min.x + box.max.x) / 2;
 
           const raycaster = new THREE.Raycaster();
@@ -435,21 +435,31 @@ function JerseyBuilderInner() {
           const hits = raycaster.intersectObject(mesh, true);
           if (hits.length > 0) {
             const hit = hits[0];
-            const normal = hit.face!.normal.clone()
+            const worldNormal = hit.face!.normal.clone()
               .transformDirection(mesh.matrixWorld)
               .normalize();
+
+            // Convert world-space hit → sceneGroup local space so the position
+            // is correct regardless of flip rotation (Y = 0 or Y = π)
+            const group = sceneGroupRef.current;
+            const worldPt = hit.point.clone().addScaledVector(worldNormal, 0.02);
+            if (group) {
+              group.updateWorldMatrix(true, false);
+              const localPt = group.worldToLocal(worldPt.clone());
+              const invMat  = group.matrixWorld.clone().invert();
+              const localN  = worldNormal.clone().applyMatrix4(invMat).normalize();
+              return {
+                position: [localPt.x, localPt.y, localPt.z],
+                rotation: normalToRotation(localN),
+              };
+            }
             return {
-              position: [
-                hit.point.x + normal.x * 0.02,
-                hit.point.y + normal.y * 0.02,
-                hit.point.z + normal.z * 0.02,
-              ],
-              rotation: normalToRotation(normal),
+              position: [worldPt.x, worldPt.y, worldPt.z],
+              rotation: normalToRotation(worldNormal),
             };
           }
         } catch { /* fallback below */ }
       }
-      // Fallback: use 0,0 world origin with a slight Z push — garment is centered at origin
       return { position: [0, 0, 0.5], rotation: [0, 0, 0] };
     },
     [activeView],
@@ -479,6 +489,7 @@ function JerseyBuilderInner() {
             type: "logo",
             label: file.name,
             view: activeView,
+            side: activeSide,
             imageDataUrl: dataUrl,
             fileName: file.name,
             textColor: "#ffffff",
@@ -493,7 +504,7 @@ function JerseyBuilderInner() {
         ]);
       }
     },
-    [autoPlacePosition],
+    [activeSide, autoPlacePosition],
   );
 
   /** Add a text artwork and auto-place it on the jersey front. */
@@ -522,6 +533,7 @@ function JerseyBuilderInner() {
         {
           id, type, label, text: text.trim(),
           view: activeView,
+          side: activeSide,
           textColor, outlineColor, fontFamily,
           placed: true,
           position,
@@ -531,30 +543,34 @@ function JerseyBuilderInner() {
         },
       ]);
     },
-    [textColor, outlineColor, autoPlacePosition],
+    [textColor, outlineColor, activeSide, autoPlacePosition],
   );
 
   /** Called when user clicks on the jersey while isPlacing is true (Move). */
   const handleSurfaceClick = useCallback(
     (hit: SurfaceHit) => {
       if (!placingId) return;
-      const rotation = normalToRotation(hit.normal);
-      // Nudge 2 cm along the surface normal so the plane sits on the material
+
+      // Convert world-space hit → sceneGroup local space (same as autoPlacePosition)
+      const group = sceneGroupRef.current;
+      const worldPt = hit.point.clone().addScaledVector(hit.normal, 0.02);
+      let position: [number, number, number];
+      let rotation: [number, number, number];
+
+      if (group) {
+        group.updateWorldMatrix(true, false);
+        const localPt = group.worldToLocal(worldPt.clone());
+        const invMat  = group.matrixWorld.clone().invert();
+        const localN  = hit.normal.clone().applyMatrix4(invMat).normalize();
+        position = [localPt.x, localPt.y, localPt.z];
+        rotation = normalToRotation(localN);
+      } else {
+        position = [worldPt.x, worldPt.y, worldPt.z];
+        rotation = normalToRotation(hit.normal);
+      }
+
       setArtworkDrafts((prev) =>
-        prev.map((a) =>
-          a.id === placingId
-            ? {
-                ...a,
-                placed:   true,
-                position: [
-                  hit.point.x + hit.normal.x * 0.02,
-                  hit.point.y + hit.normal.y * 0.02,
-                  hit.point.z + hit.normal.z * 0.02,
-                ] as [number, number, number],
-                rotation,
-              }
-            : a,
-        ),
+        prev.map((a) => (a.id === placingId ? { ...a, placed: true, position, rotation } : a)),
       );
       setPlacingId(null);
     },
@@ -600,7 +616,7 @@ function JerseyBuilderInner() {
   const sceneArtworks = useMemo<ArtworkItem[]>(
     () =>
       artworkDrafts
-        .filter((a) => a.placed && a.position && a.view === activeView)
+        .filter((a) => a.placed && a.position && a.view === activeView && a.side === activeSide)
         .map((a) => ({
           id:       a.id,
           type:     a.type,
@@ -611,7 +627,7 @@ function JerseyBuilderInner() {
           twist:    a.twist,
         })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [artworkDrafts, activeView],
+    [artworkDrafts, activeView, activeSide],
   );
 
   if (!ready) {
@@ -688,10 +704,14 @@ function JerseyBuilderInner() {
             <button
               style={{ touchAction: "manipulation" }}
               onClick={flipScene}
-              className="flex items-center gap-1 px-3 py-1.5 bg-brand-bg/80 backdrop-blur border border-brand-border rounded-full text-[10px] font-display font-bold uppercase tracking-widest text-brand-muted hover:text-brand-primary hover:border-brand-primary transition-colors"
+              className={`flex items-center gap-1 px-3 py-1.5 backdrop-blur border rounded-full text-[10px] font-display font-bold uppercase tracking-widest transition-colors ${
+                activeSide === "back"
+                  ? "bg-brand-primary text-white border-brand-primary"
+                  : "bg-brand-bg/80 border-brand-border text-brand-muted hover:text-brand-primary hover:border-brand-primary"
+              }`}
               title="Flip front / back"
             >
-              ↔ Flip
+              ↔ {activeSide === "front" ? "Front" : "Back"}
             </button>
           </div>
 
@@ -942,13 +962,15 @@ function JerseyBuilderInner() {
               </p>
             </section>
 
-            {/* ── Placed / pending artwork list (tab-specific) ── */}
-            {artworkDrafts.filter((a) => a.view === activeView).length > 0 && (
+            {/* ── Placed / pending artwork list (view + side specific) ── */}
+            {artworkDrafts.filter((a) => a.view === activeView && a.side === activeSide).length > 0 && (
               <>
                 <div className="h-px bg-brand-border" />
                 <section className="space-y-3">
-                  <p className="text-[9px] font-display font-bold uppercase tracking-[0.2em] text-brand-muted/60">Artwork</p>
-                  {artworkDrafts.filter((a) => a.view === activeView).map((art) => (
+                  <p className="text-[9px] font-display font-bold uppercase tracking-[0.2em] text-brand-muted/60">
+                    {activeView === "jersey" ? "Jersey" : "Shorts"} {activeSide === "front" ? "Front" : "Back"} Artwork
+                  </p>
+                  {artworkDrafts.filter((a) => a.view === activeView && a.side === activeSide).map((art) => (
                     <div
                       key={art.id}
                       className={`rounded-xl border px-3 py-3 space-y-2.5 transition-colors ${
