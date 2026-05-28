@@ -266,7 +266,7 @@ function JerseyBuilderInner() {
     sph.theta -= dTheta;
     sph.phi = Math.max(0.05, Math.min(Math.PI - 0.05, sph.phi + dPhi));
     ctrl.object.position.copy(ctrl.target).add(new THREE.Vector3().setFromSpherical(sph));
-    // Do NOT call ctrl.update() — R3F's useFrame handles it each frame
+    ctrl.update();
   }, []);
 
   // Reset camera to a clean front-facing view centred on the active garment
@@ -633,7 +633,6 @@ function JerseyBuilderInner() {
                 enablePan={false}
                 minDistance={5}
                 maxDistance={28}
-                target={[0, 0, 0]}
                 autoRotate={autoRotate}
                 autoRotateSpeed={2}
               />
