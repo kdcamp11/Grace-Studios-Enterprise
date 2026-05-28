@@ -65,22 +65,24 @@ const DEFAULT_COLORS: ZoneColors = {
 interface ArtworkDraft {
   id: string;
   type: "logo" | "teamName" | "number" | "customText";
-  label: string;          // UI display label
-  view: "jersey" | "shorts";   // which tab this artwork belongs to
-  // logo source
+  label: string;
+  view: "jersey" | "shorts";
   imageDataUrl?: string;
   fileName?: string;
-  // text source
   text?: string;
   textColor: string;
   outlineColor: string;
-  // placement
   placed: boolean;
   position?: [number, number, number];
   rotation?: [number, number, number];
   size: number;
-  // resolved texture (kept outside React state to avoid issues — see textureMapRef)
+  twist: number; // rotation around surface normal (radians)
 }
+
+// ── Per-step constants for controls ──────────────────────────────────────────
+const NUDGE      = 0.1;           // world units per position click
+const TWIST_STEP = Math.PI / 12;  // 15° per rotation click
+const ORBIT_STEP = Math.PI / 16;  // ~11° per camera click
 
 // ── Texture helpers ───────────────────────────────────────────────────────────
 
@@ -217,10 +219,31 @@ function JerseyBuilderInner() {
   // ── View toggle (JERSEY / SHORTS) ────────────────────────────────────────
   const [activeView,   setActiveView]   = useState<"jersey" | "shorts">("jersey");
   const [groupCenters, setGroupCenters] = useState<GroupCenters | null>(null);
+  const [autoRotate,   setAutoRotate]   = useState(false);
   const orbitRef = useRef<any>(null);
 
   const handleGroupCenters = useCallback((centers: GroupCenters) => {
     setGroupCenters(centers);
+  }, []);
+
+  const orbitCamera = useCallback((dTheta: number, dPhi: number) => {
+    const ctrl = orbitRef.current;
+    if (!ctrl) return;
+    const offset = new THREE.Vector3().subVectors(ctrl.object.position, ctrl.target);
+    const sph = new THREE.Spherical().setFromVector3(offset);
+    sph.theta -= dTheta;
+    sph.phi = Math.max(0.05, Math.min(Math.PI - 0.05, sph.phi + dPhi));
+    ctrl.object.position.copy(ctrl.target).add(new THREE.Vector3().setFromSpherical(sph));
+    ctrl.update();
+  }, []);
+
+  const zoomCamera = useCallback((factor: number) => {
+    const ctrl = orbitRef.current;
+    if (!ctrl) return;
+    const offset = new THREE.Vector3().subVectors(ctrl.object.position, ctrl.target);
+    const dist = Math.max(5, Math.min(40, offset.length() * factor));
+    ctrl.object.position.copy(ctrl.target).add(offset.normalize().multiplyScalar(dist));
+    ctrl.update();
   }, []);
 
   // Move camera target when tab changes
@@ -322,6 +345,7 @@ function JerseyBuilderInner() {
             position,
             rotation,
             size: 0.8,
+            twist: 0,
           },
         ]);
       }
@@ -356,6 +380,7 @@ function JerseyBuilderInner() {
           position,
           rotation,
           size: isNum ? 1.2 : 0.7,
+          twist: 0,
         },
       ]);
     },
@@ -397,6 +422,30 @@ function JerseyBuilderInner() {
     setPlacingId((p) => (p === id ? null : p));
   }, []);
 
+  const nudgeArtwork = useCallback((id: string, dx: number, dy: number) => {
+    setArtworkDrafts((prev) =>
+      prev.map((a) =>
+        a.id === id && a.position
+          ? { ...a, position: [a.position[0] + dx, a.position[1] + dy, a.position[2]] as [number, number, number] }
+          : a,
+      ),
+    );
+  }, []);
+
+  const twistArtwork = useCallback((id: string, delta: number) => {
+    setArtworkDrafts((prev) =>
+      prev.map((a) => (a.id === id ? { ...a, twist: a.twist + delta } : a)),
+    );
+  }, []);
+
+  const scaleArtwork = useCallback((id: string, factor: number) => {
+    setArtworkDrafts((prev) =>
+      prev.map((a) =>
+        a.id === id ? { ...a, size: Math.max(0.1, Math.min(3, a.size * factor)) } : a,
+      ),
+    );
+  }, []);
+
   /**
    * Build the ArtworkItem array that JerseyScene consumes.
    * Only placed items are included.
@@ -412,6 +461,7 @@ function JerseyBuilderInner() {
           position: a.position!,
           rotation: a.rotation ?? [0, 0, 0],
           size:     a.size,
+          twist:    a.twist,
         })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [artworkDrafts, activeView],
@@ -471,6 +521,34 @@ function JerseyBuilderInner() {
             </button>
           )}
 
+          {/* ── Camera controls ── */}
+          {!isPlacing && (() => {
+            const btn = "w-7 h-7 flex items-center justify-center rounded-lg bg-brand-bg/90 border border-brand-border text-brand-muted hover:text-brand-text hover:border-brand-primary text-sm transition-colors select-none";
+            return (
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 z-10 flex flex-col items-center gap-1 bg-brand-bg/80 backdrop-blur border border-brand-border rounded-xl p-2 shadow">
+                <p className="text-[7px] font-display uppercase tracking-widest text-brand-muted/60 mb-0.5">View</p>
+                <button className={btn} onClick={() => orbitCamera(0, -ORBIT_STEP)} title="Orbit up">↑</button>
+                <div className="flex gap-1">
+                  <button className={btn} onClick={() => orbitCamera(ORBIT_STEP, 0)} title="Orbit left">←</button>
+                  <button className={btn} onClick={() => orbitCamera(-ORBIT_STEP, 0)} title="Orbit right">→</button>
+                </div>
+                <button className={btn} onClick={() => orbitCamera(0, ORBIT_STEP)} title="Orbit down">↓</button>
+                <div className="w-full h-px bg-brand-border my-1" />
+                <div className="flex gap-1">
+                  <button className={btn} onClick={() => zoomCamera(0.85)} title="Zoom in">+</button>
+                  <button className={btn} onClick={() => zoomCamera(1.18)} title="Zoom out">−</button>
+                </div>
+                <button
+                  className={`${btn} mt-0.5 ${autoRotate ? "!text-brand-primary !border-brand-primary bg-brand-primary/10" : ""}`}
+                  onClick={() => setAutoRotate((r) => !r)}
+                  title="Toggle auto-rotate"
+                >
+                  ↺
+                </button>
+              </div>
+            );
+          })()}
+
           {/* JERSEY / SHORTS view tabs */}
           <div className="absolute bottom-4 left-1/2 z-10 -translate-x-1/2 flex gap-1 bg-brand-bg/80 backdrop-blur border border-brand-border rounded-full px-1 py-1">
             {(["jersey", "shorts"] as const).map((v) => (
@@ -522,6 +600,8 @@ function JerseyBuilderInner() {
                 minDistance={5}
                 maxDistance={40}
                 target={[0, 0, 0]}
+                autoRotate={autoRotate}
+                autoRotateSpeed={2}
               />
             </Canvas>
           ) : hasModel ? (
@@ -735,36 +815,73 @@ function JerseyBuilderInner() {
                         </button>
                       </div>
 
-                      {/* Size slider — only for placed items */}
-                      {art.placed && (
-                        <div className="space-y-1">
-                          <div className="flex items-center justify-between">
-                            <label className="text-[9px] font-display uppercase tracking-[0.15em] text-brand-muted/70">Size</label>
-                            <span className="text-[9px] font-barlow text-brand-muted/70">{(art.size * 100).toFixed(0)}%</span>
-                          </div>
-                          <input
-                            type="range" min={10} max={200} step={5}
-                            value={Math.round(art.size * 100)}
-                            onChange={(e) =>
-                              setArtworkDrafts((prev) =>
-                                prev.map((a) =>
-                                  a.id === art.id ? { ...a, size: Number(e.target.value) / 100 } : a
-                                )
-                              )
-                            }
-                            className="w-full h-1.5 rounded-full appearance-none bg-brand-border accent-[var(--brand-primary)] cursor-pointer"
-                          />
-                        </div>
-                      )}
+                      {art.placed && (() => {
+                        const cb = "w-7 h-7 flex items-center justify-center rounded bg-brand-surface border border-brand-border text-brand-muted hover:text-brand-text hover:border-brand-primary text-xs transition-colors select-none";
+                        return (
+                          <>
+                            {/* Position + Rotate row */}
+                            <div className="flex items-start gap-3">
+                              {/* D-pad */}
+                              <div className="flex flex-col items-center gap-0.5">
+                                <p className="text-[8px] font-display uppercase tracking-wider text-brand-muted/60 mb-0.5">Position</p>
+                                <button className={cb} onClick={() => nudgeArtwork(art.id, 0, NUDGE)}>↑</button>
+                                <div className="flex gap-0.5">
+                                  <button className={cb} onClick={() => nudgeArtwork(art.id, -NUDGE, 0)}>←</button>
+                                  <button className={cb} onClick={() => nudgeArtwork(art.id, NUDGE, 0)}>→</button>
+                                </div>
+                                <button className={cb} onClick={() => nudgeArtwork(art.id, 0, -NUDGE)}>↓</button>
+                              </div>
 
-                      {/* Re-place button */}
+                              {/* Rotate + Scale */}
+                              <div className="flex flex-col gap-1.5 flex-1">
+                                <div>
+                                  <p className="text-[8px] font-display uppercase tracking-wider text-brand-muted/60 mb-1">Rotate</p>
+                                  <div className="flex gap-0.5">
+                                    <button className={`${cb} flex-1`} onClick={() => twistArtwork(art.id, -TWIST_STEP)}>↺</button>
+                                    <button className={`${cb} flex-1`} onClick={() => twistArtwork(art.id,  TWIST_STEP)}>↻</button>
+                                  </div>
+                                </div>
+                                <div>
+                                  <p className="text-[8px] font-display uppercase tracking-wider text-brand-muted/60 mb-1">Scale</p>
+                                  <div className="flex gap-0.5">
+                                    <button className={`${cb} flex-1`} onClick={() => scaleArtwork(art.id, 0.85)}>−</button>
+                                    <button className={`${cb} flex-1`} onClick={() => scaleArtwork(art.id, 1.18)}>+</button>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Size fine-tune slider */}
+                            <div className="space-y-1">
+                              <div className="flex items-center justify-between">
+                                <label className="text-[9px] font-display uppercase tracking-[0.15em] text-brand-muted/70">Size</label>
+                                <span className="text-[9px] font-barlow text-brand-muted/70">{(art.size * 100).toFixed(0)}%</span>
+                              </div>
+                              <input
+                                type="range" min={10} max={300} step={5}
+                                value={Math.round(art.size * 100)}
+                                onChange={(e) =>
+                                  setArtworkDrafts((prev) =>
+                                    prev.map((a) =>
+                                      a.id === art.id ? { ...a, size: Number(e.target.value) / 100 } : a
+                                    )
+                                  )
+                                }
+                                className="w-full h-1.5 rounded-full appearance-none bg-brand-border accent-[var(--brand-primary)] cursor-pointer"
+                              />
+                            </div>
+                          </>
+                        );
+                      })()}
+
+                      {/* Click-to-place button */}
                       <button
                         onClick={() => setPlacingId(art.id)}
                         disabled={placingId === art.id}
                         className="w-full py-1.5 rounded-lg border border-brand-primary/40 text-[9px] font-display font-bold uppercase tracking-widest text-brand-primary hover:bg-brand-primary/10 disabled:opacity-50 transition-colors"
                       >
                         {art.placed
-                          ? `Move on ${activeView === "jersey" ? "Jersey" : "Shorts"}`
+                          ? `Click to Re-place on ${activeView === "jersey" ? "Jersey" : "Shorts"}`
                           : `Click ${activeView === "jersey" ? "Jersey" : "Shorts"} to Place →`}
                       </button>
                     </div>

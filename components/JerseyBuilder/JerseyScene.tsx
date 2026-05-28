@@ -43,6 +43,7 @@ export interface ArtworkItem {
   position: [number, number, number];
   rotation: [number, number, number];
   size: number;
+  twist?: number; // extra rotation around surface normal (radians)
 }
 
 export interface SurfaceHit {
@@ -138,19 +139,22 @@ function ArtworkPlanes({ artworks }: { artworks: ArtworkItem[] }) {
         if (!art.texture) return null;
         const aspect = art.type === "number" ? 0.6 : art.type === "logo" ? 1.0 : 2.2;
         return (
-          <mesh key={art.id} position={art.position} rotation={art.rotation} renderOrder={1}>
-            <planeGeometry args={[art.size * aspect, art.size]} />
-            <meshBasicMaterial
-              map={art.texture}
-              transparent
-              alphaTest={0.05}
-              depthWrite={false}
-              polygonOffset
-              polygonOffsetFactor={-4}
-              polygonOffsetUnits={-4}
-              side={THREE.DoubleSide}
-            />
-          </mesh>
+          // Outer group aligns plane with surface normal; inner mesh applies twist
+          <group key={art.id} position={art.position} rotation={art.rotation}>
+            <mesh rotation={[0, 0, art.twist ?? 0]} renderOrder={1}>
+              <planeGeometry args={[art.size * aspect, art.size]} />
+              <meshBasicMaterial
+                map={art.texture}
+                transparent
+                alphaTest={0.05}
+                depthWrite={false}
+                polygonOffset
+                polygonOffsetFactor={-4}
+                polygonOffsetUnits={-4}
+                side={THREE.DoubleSide}
+              />
+            </mesh>
+          </group>
         );
       })}
     </>
