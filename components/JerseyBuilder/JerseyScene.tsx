@@ -178,9 +178,10 @@ function SplitScene({
 
   // Clone materials on load
   useEffect(() => {
-    const { matByZone, jerseyTopMesh } = cloneAndMapMaterials(scene, colors);
+    const { matByZone, jerseyTopMesh, shortsMesh } = cloneAndMapMaterials(scene, colors);
     matByZoneRef.current = matByZone;
-    onMeshReady?.(jerseyTopMesh);
+    // Return whichever primary mesh this GLB contains
+    onMeshReady?.(jerseyTopMesh ?? shortsMesh);
   }, [scene]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Apply colours when they change
@@ -370,6 +371,7 @@ export default function JerseyScene({
               artworks={artworks}
               onSurfaceClick={onSurfaceClick}
               isPlacing={isPlacing}
+              onMeshReady={onShortsReady}
               onCenterY={handleShortsY}
             />
           </Suspense>

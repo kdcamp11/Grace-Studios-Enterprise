@@ -244,21 +244,27 @@ function JerseyBuilderInner() {
     shortsMeshRef.current = mesh;
   }, []);
 
-  /** Raycast from in front of the active garment to find the surface point
-   *  for auto-placing artwork.  Chooses jersey or shorts mesh by activeView. */
+  /**
+   * Raycast from in front of the garment to place artwork.
+   * `heightFraction` is 0–1 from bottom to top of the garment bounding box.
+   * This is scale-independent so it works regardless of model units.
+   */
   const autoPlacePosition = useCallback(
-    (yOffset = 0): { position: [number, number, number]; rotation: [number, number, number] } => {
+    (heightFraction = 0.55): { position: [number, number, number]; rotation: [number, number, number] } => {
       const mesh = activeView === "jersey" ? jerseyTopMeshRef.current : shortsMeshRef.current;
       if (mesh) {
         try {
           mesh.updateWorldMatrix(true, false);
           const box = new THREE.Box3().setFromObject(mesh);
-          const center = new THREE.Vector3();
-          box.getCenter(center);
+          const size = new THREE.Vector3();
+          box.getSize(size);
+          // Pick Y by fraction of the garment height
+          const targetY = box.min.y + size.y * heightFraction;
+          const centerX = (box.min.x + box.max.x) / 2;
 
           const raycaster = new THREE.Raycaster();
           raycaster.set(
-            new THREE.Vector3(center.x, center.y + yOffset, 50),
+            new THREE.Vector3(centerX, targetY, 50),
             new THREE.Vector3(0, 0, -1),
           );
           const hits = raycaster.intersectObject(mesh, true);
@@ -267,21 +273,19 @@ function JerseyBuilderInner() {
             const normal = hit.face!.normal.clone()
               .transformDirection(mesh.matrixWorld)
               .normalize();
-            // Nudge slightly along the normal so the plane sits on the surface
             return {
               position: [
-                hit.point.x + normal.x * 0.015,
-                hit.point.y + normal.y * 0.015,
-                hit.point.z + normal.z * 0.015,
+                hit.point.x + normal.x * 0.02,
+                hit.point.y + normal.y * 0.02,
+                hit.point.z + normal.z * 0.02,
               ],
               rotation: normalToRotation(normal),
             };
           }
-        } catch { /* ignore — use fallback */ }
+        } catch { /* fallback below */ }
       }
-      // Fallback positions for centred combined model
-      const fallbackY = activeView === "jersey" ? 1 + yOffset : -3 + yOffset;
-      return { position: [0, fallbackY, 0.5], rotation: [0, 0, 0] };
+      // Fallback: use 0,0 world origin with a slight Z push — garment is centered at origin
+      return { position: [0, 0, 0.5], rotation: [0, 0, 0] };
     },
     [activeView],
   );
@@ -302,7 +306,7 @@ function JerseyBuilderInner() {
         });
         const texture = await buildLogoTexture(dataUrl);
         textureMapRef.current[id] = texture;
-        const { position, rotation } = autoPlacePosition(1.5); // upper chest
+        const { position, rotation } = autoPlacePosition(0.68); // upper chest
         setArtworkDrafts((prev) => [
           ...prev,
           {
@@ -317,7 +321,7 @@ function JerseyBuilderInner() {
             placed: true,
             position,
             rotation,
-            size: 0.6,
+            size: 0.8,
           },
         ]);
       }
@@ -338,9 +342,9 @@ function JerseyBuilderInner() {
                   : type === "number"   ? `# ${text}`
                   : `Text: ${text}`;
 
-      // Auto-place: team name at upper chest, number at centre, custom at lower
-      const yOffset = type === "teamName" ? 1.5 : type === "number" ? 0 : -1;
-      const { position, rotation } = autoPlacePosition(yOffset);
+      // Fraction of garment height (0=bottom, 1=top): name near top, number mid, custom lower
+      const fraction = type === "teamName" ? 0.72 : type === "number" ? 0.55 : 0.38;
+      const { position, rotation } = autoPlacePosition(fraction);
 
       setArtworkDrafts((prev) => [
         ...prev,
@@ -351,7 +355,7 @@ function JerseyBuilderInner() {
           placed: true,
           position,
           rotation,
-          size: isNum ? 0.9 : 0.5,
+          size: isNum ? 1.2 : 0.7,
         },
       ]);
     },
@@ -363,13 +367,18 @@ function JerseyBuilderInner() {
     (hit: SurfaceHit) => {
       if (!placingId) return;
       const rotation = normalToRotation(hit.normal);
+      // Nudge 2 cm along the surface normal so the plane sits on the material
       setArtworkDrafts((prev) =>
         prev.map((a) =>
           a.id === placingId
             ? {
                 ...a,
                 placed:   true,
-                position: [hit.point.x, hit.point.y, hit.point.z] as [number, number, number],
+                position: [
+                  hit.point.x + hit.normal.x * 0.02,
+                  hit.point.y + hit.normal.y * 0.02,
+                  hit.point.z + hit.normal.z * 0.02,
+                ] as [number, number, number],
                 rotation,
               }
             : a,
@@ -734,7 +743,7 @@ function JerseyBuilderInner() {
                             <span className="text-[9px] font-barlow text-brand-muted/70">{(art.size * 100).toFixed(0)}%</span>
                           </div>
                           <input
-                            type="range" min={5} max={60} step={1}
+                            type="range" min={10} max={200} step={5}
                             value={Math.round(art.size * 100)}
                             onChange={(e) =>
                               setArtworkDrafts((prev) =>
