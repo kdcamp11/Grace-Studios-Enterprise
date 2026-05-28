@@ -646,6 +646,62 @@ function JerseyBuilderInner() {
     [artworkDrafts, activeView, activeSide],
   );
 
+  // ── Review CTA — skips Team Info for returning clients ───────────────────
+  const [isReviewing, setIsReviewing] = useState(false);
+
+  const handleReviewMyDesign = useCallback(async () => {
+    setIsReviewing(true);
+
+    const designState = {
+      zoneColors: {
+        jerseyTop:         colors.jerseyTop,
+        collar:            colors.collar,
+        jerseyShorts:      colors.jerseyShorts,
+        jerseySidePanels:  colors.jerseySidePanels,
+        jerseyLowerPanels: colors.jerseyLowerPanels,
+        sleevePanels:      colors.sleevePanels,
+        shortSidePanels:   colors.shortSidePanels,
+      },
+      logosToInclude: artworkDrafts.map((a) => a.label).filter(Boolean).join(", "),
+    };
+    saveBriefState(designState);
+
+    if (orderId) {
+      router.push(`/brief/${orderId}/builder-review`);
+      return;
+    }
+
+    // No orderId yet — try to silently create an order for returning clients
+    try {
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        const profileRes = await fetch("/api/brief/client-profile");
+        if (profileRes.ok) {
+          const { client } = await profileRes.json() as {
+            client: { name: string; contact_name?: string; email: string; city?: string; is_prefill?: boolean } | null;
+          };
+          if (client && !client.is_prefill) {
+            const startRes = await fetch("/api/brief/start", {
+              method:  "POST",
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+              body:    JSON.stringify({ teamName: client.name, contactName: client.contact_name ?? "", email: client.email, city: client.city ?? "", sport: "Basketball" }),
+            });
+            if (startRes.ok) {
+              const { orderId: newId, clientId } = await startRes.json();
+              saveBriefState({ ...designState, teamName: client.name, contactName: client.contact_name ?? "", email: client.email, city: client.city ?? "", sport: "Basketball", orderId: newId, clientId });
+              router.push(`/brief/${newId}/builder-review`);
+              return;
+            }
+          }
+        }
+      }
+    } catch { /* fall through to Team Info */ }
+
+    // New client or error: collect info first
+    router.push("/brief/new?path=builder-review");
+  }, [orderId, colors, artworkDrafts, router]); // eslint-disable-line react-hooks/exhaustive-deps
+
   if (!ready) {
     return (
       <div className="min-h-screen bg-brand-bg flex items-center justify-center">
@@ -1211,39 +1267,13 @@ function JerseyBuilderInner() {
 
           {/* ── CTA ── */}
           <div className="border-t border-brand-border px-6 py-5 space-y-3">
-            {(() => {
-              const colorParams = new URLSearchParams(
-                Object.fromEntries(ZONES.map((z) => [z.key + "Color", colors[z.key as keyof ZoneColors]]))
-              ).toString();
-              const href = orderId
-                ? `/brief/${orderId}/builder-review?${colorParams}`
-                : `/brief/new?path=builder-review`;
-              return (
-                <Link
-                  href={href}
-                  onClick={() =>
-                    saveBriefState({
-                      zoneColors: {
-                        jerseyTop:         colors.jerseyTop,
-                        collar:            colors.collar,
-                        jerseyShorts:      colors.jerseyShorts,
-                        jerseySidePanels:  colors.jerseySidePanels,
-                        jerseyLowerPanels: colors.jerseyLowerPanels,
-                        sleevePanels:      colors.sleevePanels,
-                        shortSidePanels:   colors.shortSidePanels,
-                      },
-                      logosToInclude: artworkDrafts
-                        .map((a) => a.label)
-                        .filter(Boolean)
-                        .join(", "),
-                    })
-                  }
-                  className="flex items-center justify-center w-full py-3.5 rounded-lg bg-brand-primary text-white font-display font-bold text-xs uppercase tracking-widest hover:bg-brand-secondary transition-colors"
-                >
-                  Review My Design →
-                </Link>
-              );
-            })()}
+            <button
+              onClick={handleReviewMyDesign}
+              disabled={isReviewing}
+              className="flex items-center justify-center w-full py-3.5 rounded-lg bg-brand-primary text-white font-display font-bold text-xs uppercase tracking-widest hover:bg-brand-secondary transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {isReviewing ? "Preparing…" : "Review My Design →"}
+            </button>
             <p className="text-[9px] font-barlow text-brand-muted/70 text-center leading-relaxed">
               Review your selections before submitting to Grace Studios.
             </p>
