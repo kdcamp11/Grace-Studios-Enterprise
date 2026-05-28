@@ -18,7 +18,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -213,6 +213,63 @@ function SceneRotationController({
   return null;
 }
 
+// ── Camera auto-fitter — fires inside Canvas when a new mesh is ready ────────
+//
+// Measures the jersey/shorts bounding box and drives the camera to whatever
+// distance makes the garment fill ~75 % of the viewport height (or ~85 % of
+// the width — whichever needs a farther camera).  Only activates on narrow
+// (mobile) canvases; desktop keeps the manual cameraZ value.
+
+function CameraFitter({
+  jerseyRef,
+  shortsRef,
+  activeView,
+  orbitRef,
+  tick,
+}: {
+  jerseyRef: React.RefObject<THREE.Mesh | null>;
+  shortsRef: React.RefObject<THREE.Mesh | null>;
+  activeView: "jersey" | "shorts";
+  orbitRef: React.RefObject<any>;
+  tick: number;
+}) {
+  const { camera, size } = useThree();
+
+  useEffect(() => {
+    if (tick === 0) return;
+    if (size.width >= 768) return; // desktop: leave camera alone
+
+    const mesh     = activeView === "jersey" ? jerseyRef.current : shortsRef.current;
+    const controls = orbitRef.current;
+    if (!mesh || !controls) return;
+
+    try {
+      mesh.updateWorldMatrix(true, false);
+      const box    = new THREE.Box3().setFromObject(mesh);
+      const center = new THREE.Vector3();
+      const bsize  = new THREE.Vector3();
+      box.getCenter(center);
+      box.getSize(bsize);
+
+      const cam     = camera as THREE.PerspectiveCamera;
+      const vFovRad = (cam.fov * Math.PI) / 180;
+      const aspect  = size.width / size.height;
+      const hFovRad = 2 * Math.atan(Math.tan(vFovRad / 2) * aspect);
+
+      // Camera distance so jersey fills 75 % of height and at most 85 % of width
+      const distV = (bsize.y / 2) / (0.75 * Math.tan(vFovRad / 2));
+      const distH = (bsize.x / 2) / (0.85 * Math.tan(hFovRad / 2));
+      const dist  = Math.max(distV, distH, 4); // never closer than near-clip
+
+      controls.target.copy(center);
+      controls.object.position.set(center.x, center.y, dist);
+      controls.update();
+    } catch { /* no-op: keep current camera */ }
+  }, [tick]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return null;
+}
+
 // ── Main builder ──────────────────────────────────────────────────────────────
 
 function JerseyBuilderInner() {
@@ -309,8 +366,10 @@ function JerseyBuilderInner() {
     sceneYRotRef.current += Math.PI;
   }, []);
 
-  // Recenter camera when the garment model reports its bounding box centre
+  // Recenter camera when the garment model reports its bounding box centre.
+  // On mobile, CameraFitter handles camera placement after GLB load — skip here.
   useEffect(() => {
+    if (cameraZ === 8) return; // mobile: CameraFitter takes over
     const controls = orbitRef.current;
     if (!controls || !groupCenters) return;
     const targetY = activeView === "jersey" ? groupCenters.jerseyTopY : groupCenters.shortsY;
@@ -337,12 +396,17 @@ function JerseyBuilderInner() {
   const jerseyTopMeshRef = useRef<THREE.Mesh | null>(null);
   const shortsMeshRef    = useRef<THREE.Mesh | null>(null);
 
+  // Incrementing this tick triggers CameraFitter to re-fit the camera
+  const [cameraFitTick, setCameraFitTick] = useState(0);
+
   const handleJerseyTopReady = useCallback((mesh: THREE.Mesh | null) => {
     jerseyTopMeshRef.current = mesh;
+    if (mesh) setCameraFitTick((t) => t + 1);
   }, []);
 
   const handleShortsReady = useCallback((mesh: THREE.Mesh | null) => {
     shortsMeshRef.current = mesh;
+    if (mesh) setCameraFitTick((t) => t + 1);
   }, []);
 
   /**
@@ -645,6 +709,13 @@ function JerseyBuilderInner() {
               <pointLight       position={[0, 4, 3]}   intensity={0.6} />
 
               <SceneRotationController groupRef={sceneGroupRef} yRef={sceneYRotRef} xRef={sceneXTiltRef} />
+              <CameraFitter
+                jerseyRef={jerseyTopMeshRef}
+                shortsRef={shortsMeshRef}
+                activeView={activeView}
+                orbitRef={orbitRef}
+                tick={cameraFitTick}
+              />
 
               <group ref={sceneGroupRef}>
                 <Suspense fallback={null}>
