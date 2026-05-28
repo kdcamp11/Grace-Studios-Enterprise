@@ -94,7 +94,7 @@ function buildTextTexture(
   strokeColor: string,
   isNumber: boolean,
 ): THREE.CanvasTexture {
-  const H = 256;
+  const H = 512;
   const fontSize = Math.floor(H * 0.72);
 
   // Measure text width on a scratch canvas before committing
@@ -369,7 +369,7 @@ function JerseyBuilderInner() {
             placed: true,
             position,
             rotation,
-            size: 0.8,
+            size: 1.8,
             twist: 0,
           },
         ]);
@@ -404,7 +404,7 @@ function JerseyBuilderInner() {
           placed: true,
           position,
           rotation,
-          size: isNum ? 1.2 : 0.7,
+          size: isNum ? 2.8 : 1.8,
           twist: 0,
         },
       ]);

@@ -147,15 +147,16 @@ function ArtworkPlanes({ artworks }: { artworks: ArtworkItem[] }) {
           <group key={art.id} position={art.position} rotation={art.rotation}>
             <mesh rotation={[0, 0, art.twist ?? 0]} renderOrder={1}>
               <planeGeometry args={[art.size * aspect, art.size]} />
-              <meshBasicMaterial
+              <meshStandardMaterial
                 map={art.texture}
                 transparent
                 alphaTest={0.05}
                 depthWrite={false}
+                roughness={1}
+                metalness={0}
                 polygonOffset
-                polygonOffsetFactor={-4}
-                polygonOffsetUnits={-4}
-                side={THREE.DoubleSide}
+                polygonOffsetFactor={-6}
+                polygonOffsetUnits={-6}
               />
             </mesh>
           </group>
