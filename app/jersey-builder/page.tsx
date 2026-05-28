@@ -72,6 +72,7 @@ interface ArtworkDraft {
   text?: string;
   textColor: string;
   outlineColor: string;
+  fontFamily: string;
   placed: boolean;
   position?: [number, number, number];
   rotation?: [number, number, number];
@@ -83,6 +84,20 @@ interface ArtworkDraft {
 const NUDGE      = 0.3;           // world units per artwork nudge click
 const TWIST_STEP = Math.PI / 12;  // 15° per rotation click
 
+// ── Available text fonts ──────────────────────────────────────────────────────
+const FONTS = [
+  { label: "Impact",           family: "Impact, 'Arial Black', Arial, sans-serif", google: null },
+  { label: "Bebas Neue",       family: "'Bebas Neue', Impact, sans-serif",          google: "Bebas+Neue" },
+  { label: "Anton",            family: "'Anton', Impact, sans-serif",               google: "Anton" },
+  { label: "Teko",             family: "'Teko', Impact, sans-serif",                google: "Teko:wght@700" },
+  { label: "Oswald",           family: "'Oswald', Impact, sans-serif",              google: "Oswald:wght@700" },
+  { label: "Barlow Condensed", family: "'Barlow Condensed', Impact, sans-serif",    google: "Barlow+Condensed:wght@800" },
+  { label: "Graduate",         family: "'Graduate', serif",                         google: "Graduate" },
+  { label: "Roboto Condensed", family: "'Roboto Condensed', Impact, sans-serif",    google: "Roboto+Condensed:wght@900" },
+] as const;
+type FontFamily = (typeof FONTS)[number]["family"];
+const DEFAULT_FONT: FontFamily = "Impact, 'Arial Black', Arial, sans-serif";
+
 // ── Texture helpers ───────────────────────────────────────────────────────────
 
 /** Build a CanvasTexture whose canvas is sized to exactly fit the rendered text. */
@@ -91,14 +106,16 @@ function buildTextTexture(
   fillColor: string,
   strokeColor: string,
   isNumber: boolean,
+  fontFamily: string = DEFAULT_FONT,
 ): THREE.CanvasTexture {
   const H = 512;
   const fontSize = Math.floor(H * 0.72);
+  const fontSpec  = `900 ${fontSize}px ${fontFamily}`;
 
   // Measure text width on a scratch canvas before committing
   const probe = document.createElement("canvas");
   const pc = probe.getContext("2d")!;
-  pc.font = `900 ${fontSize}px Impact, "Arial Black", Arial, sans-serif`;
+  pc.font = fontSpec;
   const measured = pc.measureText(text).width;
 
   // Canvas width = measured width + side padding so no glyph is clipped
@@ -112,7 +129,7 @@ function buildTextTexture(
   canvas.height = H;
   const ctx = canvas.getContext("2d")!;
   ctx.clearRect(0, 0, W, H);
-  ctx.font         = `900 ${fontSize}px Impact, "Arial Black", Arial, sans-serif`;
+  ctx.font         = fontSpec;
   ctx.textAlign    = "center";
   ctx.textBaseline = "middle";
   ctx.lineJoin     = "round";
@@ -248,6 +265,26 @@ function JerseyBuilderInner() {
   const [textColor,   setTextColor]   = useState("#ffffff");
   const [outlineColor,setOutlineColor]= useState("#000000");
 
+  // ── Font selection per text type ──────────────────────────────────────────
+  const [teamNameFont,   setTeamNameFont]   = useState<string>(DEFAULT_FONT);
+  const [jerseyNumFont,  setJerseyNumFont]  = useState<string>(DEFAULT_FONT);
+  const [customTextFont, setCustomTextFont] = useState<string>(DEFAULT_FONT);
+
+  // Load Google Fonts once on mount so canvas has them available
+  useEffect(() => {
+    const googleFamilies = FONTS.filter((f) => f.google).map((f) => f.google).join("&family=");
+    if (!googleFamilies) return;
+    const link = document.createElement("link");
+    link.rel  = "stylesheet";
+    link.href = `https://fonts.googleapis.com/css2?family=${googleFamilies}&display=swap`;
+    document.head.appendChild(link);
+    link.onload = () => {
+      FONTS.forEach((f) => {
+        if (f.google) document.fonts.load(`900 64px ${f.family}`).catch(() => {});
+      });
+    };
+  }, []);
+
   // ── View toggle (JERSEY / SHORTS) ────────────────────────────────────────
   const [activeView,   setActiveView]   = useState<"jersey" | "shorts">("jersey");
   const [groupCenters, setGroupCenters] = useState<GroupCenters | null>(null);
@@ -382,6 +419,7 @@ function JerseyBuilderInner() {
             fileName: file.name,
             textColor: "#ffffff",
             outlineColor: "#000000",
+            fontFamily: DEFAULT_FONT,
             placed: true,
             position,
             rotation,
@@ -396,11 +434,15 @@ function JerseyBuilderInner() {
 
   /** Add a text artwork and auto-place it on the jersey front. */
   const addTextArtwork = useCallback(
-    (type: ArtworkDraft["type"], text: string) => {
+    async (type: ArtworkDraft["type"], text: string, fontFamily: string) => {
       if (!text.trim()) return;
       const id    = crypto.randomUUID();
       const isNum = type === "number";
-      const texture = buildTextTexture(text.trim(), textColor, outlineColor, isNum);
+
+      // Ensure the chosen font is available in canvas before drawing
+      await document.fonts.load(`900 512px ${fontFamily}`).catch(() => {});
+
+      const texture = buildTextTexture(text.trim(), textColor, outlineColor, isNum, fontFamily);
       textureMapRef.current[id] = texture;
 
       const label = type === "teamName" ? `Name: ${text}`
@@ -416,7 +458,7 @@ function JerseyBuilderInner() {
         {
           id, type, label, text: text.trim(),
           view: activeView,
-          textColor, outlineColor,
+          textColor, outlineColor, fontFamily,
           placed: true,
           position,
           rotation,
@@ -537,7 +579,7 @@ function JerseyBuilderInner() {
       <div className="flex-1 flex flex-col lg:flex-row min-h-0">
 
         {/* ── 3-D Viewport ─────────────────────────────────────────────────── */}
-        <div className="relative flex-1 min-h-0 bg-white" style={{ minHeight: isMobile ? "clamp(480px, 72svh, 999px)" : "clamp(380px, 70vh, 999px)" }}>
+        <div className="relative flex-1 min-h-0 bg-white" style={{ minHeight: cameraZ === 8 ? "clamp(480px, 72svh, 999px)" : "clamp(380px, 70vh, 999px)" }}>
 
           {/* Viewport label */}
           <div className="absolute top-4 left-5 z-10 flex items-center gap-2 pointer-events-none">
@@ -707,6 +749,15 @@ function JerseyBuilderInner() {
               {/* Team name */}
               <div className="space-y-1.5">
                 <label className="block text-[10px] font-display uppercase tracking-widest text-brand-muted">Team Name</label>
+                <select
+                  value={teamNameFont}
+                  onChange={(e) => setTeamNameFont(e.target.value)}
+                  className="w-full bg-brand-surface border border-brand-border rounded-lg px-3 py-1.5 text-[10px] font-barlow text-brand-muted focus:outline-none focus:border-brand-primary transition-colors"
+                >
+                  {FONTS.map((f) => (
+                    <option key={f.family} value={f.family}>{f.label}</option>
+                  ))}
+                </select>
                 <div className="flex gap-2">
                   <input
                     value={teamName}
@@ -716,7 +767,7 @@ function JerseyBuilderInner() {
                     className="flex-1 bg-brand-surface border border-brand-border rounded-lg px-3 py-2 text-xs font-barlow text-brand-text placeholder-brand-muted/50 focus:outline-none focus:border-brand-primary transition-colors"
                   />
                   <button
-                    onClick={() => { addTextArtwork("teamName", teamName); setTeamName(""); }}
+                    onClick={() => { addTextArtwork("teamName", teamName, teamNameFont); setTeamName(""); }}
                     disabled={!teamName.trim()}
                     className="px-3 py-2 rounded-lg bg-brand-primary text-white text-[9px] font-display font-bold uppercase tracking-widest disabled:opacity-40 hover:bg-brand-secondary transition-colors"
                   >
@@ -728,6 +779,15 @@ function JerseyBuilderInner() {
               {/* Jersey number */}
               <div className="space-y-1.5">
                 <label className="block text-[10px] font-display uppercase tracking-widest text-brand-muted">Jersey Number</label>
+                <select
+                  value={jerseyNumFont}
+                  onChange={(e) => setJerseyNumFont(e.target.value)}
+                  className="w-full bg-brand-surface border border-brand-border rounded-lg px-3 py-1.5 text-[10px] font-barlow text-brand-muted focus:outline-none focus:border-brand-primary transition-colors"
+                >
+                  {FONTS.map((f) => (
+                    <option key={f.family} value={f.family}>{f.label}</option>
+                  ))}
+                </select>
                 <div className="flex gap-2">
                   <input
                     value={jerseyNum}
@@ -737,7 +797,7 @@ function JerseyBuilderInner() {
                     className="flex-1 bg-brand-surface border border-brand-border rounded-lg px-3 py-2 text-xs font-barlow text-brand-text placeholder-brand-muted/50 focus:outline-none focus:border-brand-primary transition-colors"
                   />
                   <button
-                    onClick={() => { addTextArtwork("number", jerseyNum); setJerseyNum(""); }}
+                    onClick={() => { addTextArtwork("number", jerseyNum, jerseyNumFont); setJerseyNum(""); }}
                     disabled={!jerseyNum.trim()}
                     className="px-3 py-2 rounded-lg bg-brand-primary text-white text-[9px] font-display font-bold uppercase tracking-widest disabled:opacity-40 hover:bg-brand-secondary transition-colors"
                   >
@@ -749,6 +809,15 @@ function JerseyBuilderInner() {
               {/* Custom text */}
               <div className="space-y-1.5">
                 <label className="block text-[10px] font-display uppercase tracking-widest text-brand-muted">Custom Text</label>
+                <select
+                  value={customTextFont}
+                  onChange={(e) => setCustomTextFont(e.target.value)}
+                  className="w-full bg-brand-surface border border-brand-border rounded-lg px-3 py-1.5 text-[10px] font-barlow text-brand-muted focus:outline-none focus:border-brand-primary transition-colors"
+                >
+                  {FONTS.map((f) => (
+                    <option key={f.family} value={f.family}>{f.label}</option>
+                  ))}
+                </select>
                 <div className="flex gap-2">
                   <input
                     value={customText}
@@ -758,7 +827,7 @@ function JerseyBuilderInner() {
                     className="flex-1 bg-brand-surface border border-brand-border rounded-lg px-3 py-2 text-xs font-barlow text-brand-text placeholder-brand-muted/50 focus:outline-none focus:border-brand-primary transition-colors"
                   />
                   <button
-                    onClick={() => { addTextArtwork("customText", customText); setCustomText(""); }}
+                    onClick={() => { addTextArtwork("customText", customText, customTextFont); setCustomText(""); }}
                     disabled={!customText.trim()}
                     className="px-3 py-2 rounded-lg bg-brand-primary text-white text-[9px] font-display font-bold uppercase tracking-widest disabled:opacity-40 hover:bg-brand-secondary transition-colors"
                   >
