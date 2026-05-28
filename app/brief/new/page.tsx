@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import BriefLayout from "@/components/brief/BriefLayout";
+import { BUILDER_STEPS } from "@/components/brief/BriefProgress";
 import { saveBriefState } from "@/lib/brief-state";
 import { createClient } from "@/lib/supabase/client";
 import type { ClientProfile } from "@/app/api/brief/client-profile/route";
@@ -152,10 +153,13 @@ function TeamInfoPage() {
   // ─────────────────────────────────────────────────────────────────────────
   // RETURNING CLIENT — just pick a sport
   // ─────────────────────────────────────────────────────────────────────────
+  const isBuilderPath = designPath === "builder" || designPath === "builder-review";
+
   if (existingClient) {
     return (
       <BriefLayout
         currentStep={1}
+        {...(isBuilderPath ? { steps: BUILDER_STEPS } : {})}
         title="New order"
         subtitle="Your team info is saved. Just pick a sport and we'll get started."
       >
@@ -233,6 +237,7 @@ function TeamInfoPage() {
   return (
     <BriefLayout
       currentStep={1}
+      {...(isBuilderPath ? { steps: BUILDER_STEPS } : {})}
       title="Tell us about your team"
       subtitle={
         hasPrefill
