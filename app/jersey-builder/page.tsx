@@ -279,8 +279,16 @@ function JerseyBuilderInner() {
     controls.update();
   }, [activeView, groupCenters]);
 
-  // Reset scene rotation ONLY when the user switches Jersey ↔ Shorts tabs
+  // On tab switch: immediately reset camera to Y=0 and reset scene rotation.
+  // Both GLBs are centred at Y≈0, so this shows the model instantly without
+  // waiting for groupCenters to update with the new tab's bounding box.
   useEffect(() => {
+    const controls = orbitRef.current;
+    if (controls) {
+      controls.target.set(0, 0, 0);
+      controls.object.position.set(0, 0, 13);
+      controls.update();
+    }
     sceneYRotRef.current = 0;
     sceneXTiltRef.current = 0;
   }, [activeView]);

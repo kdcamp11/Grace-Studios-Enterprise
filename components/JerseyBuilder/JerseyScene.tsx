@@ -344,15 +344,14 @@ export default function JerseyScene({
   onJerseyTopReady, onShortsReady, onGroupCenters,
 }: Props) {
 
-  // Separate-GLB callbacks bridge into the unified onGroupCenters API
+  // Separate-GLB callbacks bridge into the unified onGroupCenters API.
+  // Both GLBs are centred at Y≈0 by useCenterOffset, so 0 is a safe stub
+  // for whichever tab isn't currently active.
   const handleJerseyTopY = (y: number) => {
-    // We only know jerseyTopY here; shortsY will come from the other sub-scene.
-    // We pass a stub value for shortsY so the camera still targets correctly
-    // when on the jersey tab. The inverse happens when on the shorts tab.
-    onGroupCenters?.({ jerseyTopY: y, shortsY: y - 5 });
+    onGroupCenters?.({ jerseyTopY: y, shortsY: 0 });
   };
   const handleShortsY = (y: number) => {
-    onGroupCenters?.({ jerseyTopY: y + 5, shortsY: y });
+    onGroupCenters?.({ jerseyTopY: 0, shortsY: y });
   };
 
   if (separateGlbs) {
