@@ -235,15 +235,17 @@ function JerseyBuilderInner() {
     setGroupCenters(centers);
   }, []);
 
-  /** Move the camera target + position together (pans the garment in the viewport). */
+  /** Slide the jersey in the viewport by shifting camera + target together.
+   *  Negate dx/dy so button intent matches the visual: pressing RIGHT → jersey goes right.
+   *  Do NOT call ctrl.update() — R3F's useFrame calls it every frame and calling it
+   *  here would flush any pending sphericalDelta, causing an unintended rotation. */
   const panCamera = useCallback((dx: number, dy: number) => {
     const ctrl = orbitRef.current;
     if (!ctrl) return;
-    ctrl.target.x          += dx;
-    ctrl.target.y          += dy;
-    ctrl.object.position.x += dx;
-    ctrl.object.position.y += dy;
-    ctrl.update();
+    ctrl.target.x          -= dx;
+    ctrl.target.y          -= dy;
+    ctrl.object.position.x -= dx;
+    ctrl.object.position.y -= dy;
   }, []);
 
   const zoomCamera = useCallback((factor: number) => {
