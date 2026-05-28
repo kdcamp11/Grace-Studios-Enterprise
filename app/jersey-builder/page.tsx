@@ -230,6 +230,8 @@ function JerseyBuilderInner() {
   const [activeView,   setActiveView]   = useState<"jersey" | "shorts">("jersey");
   const [groupCenters, setGroupCenters] = useState<GroupCenters | null>(null);
   const [autoRotate,   setAutoRotate]   = useState(false);
+  const [sceneYRot,    setSceneYRot]    = useState(0);
+  const [sceneXTilt,   setSceneXTilt]   = useState(0);
   const orbitRef = useRef<any>(null);
 
   const handleGroupCenters = useCallback((centers: GroupCenters) => {
@@ -258,18 +260,15 @@ function JerseyBuilderInner() {
     ctrl.update();
   }, []);
 
-  const orbitCamera = useCallback((dTheta: number, dPhi: number) => {
-    const ctrl = orbitRef.current;
-    if (!ctrl) return;
-    const offset = new THREE.Vector3().subVectors(ctrl.object.position, ctrl.target);
-    const sph = new THREE.Spherical().setFromVector3(offset);
-    sph.theta -= dTheta;
-    sph.phi = Math.max(0.05, Math.min(Math.PI - 0.05, sph.phi + dPhi));
-    ctrl.object.position.copy(ctrl.target).add(new THREE.Vector3().setFromSpherical(sph));
-    ctrl.update();
+  const rotateSceneY = useCallback((delta: number) => {
+    setSceneYRot((r) => r + delta);
   }, []);
 
-  // Reset camera to a clean front-facing view centred on the active garment
+  const rotateSceneX = useCallback((delta: number) => {
+    setSceneXTilt((t) => Math.max(-Math.PI / 3, Math.min(Math.PI / 3, t + delta)));
+  }, []);
+
+  // Reset camera and scene rotation when switching tabs
   useEffect(() => {
     const controls = orbitRef.current;
     if (!controls || !groupCenters) return;
@@ -277,6 +276,8 @@ function JerseyBuilderInner() {
     controls.target.set(0, targetY, 0);
     controls.object.position.set(0, targetY, 13);
     controls.update();
+    setSceneYRot(0);
+    setSceneXTilt(0);
   }, [activeView, groupCenters]);
 
   // ── Mesh refs exposed by JerseyScene after load ─────────────────────────
@@ -559,12 +560,12 @@ function JerseyBuilderInner() {
                 <button className={btn} style={{ touchAction: "manipulation" }} onClick={() => panCamera(0, -PAN_STEP)} title="Move down">↓</button>
                 <div className="w-full h-px bg-brand-border my-0.5" />
                 <p className="text-[7px] font-display uppercase tracking-widest text-brand-muted/60">Rotate</p>
-                <button className={btn} style={{ touchAction: "manipulation" }} onClick={() => orbitCamera(0, -ORBIT_STEP)} title="Orbit up">↑</button>
+                <button className={btn} style={{ touchAction: "manipulation" }} onClick={() => rotateSceneX(-ORBIT_STEP)} title="Tilt up">↑</button>
                 <div className="flex gap-1.5">
-                  <button className={btn} style={{ touchAction: "manipulation" }} onClick={() => orbitCamera(-ORBIT_STEP, 0)} title="Orbit left">←</button>
-                  <button className={btn} style={{ touchAction: "manipulation" }} onClick={() => orbitCamera( ORBIT_STEP, 0)} title="Orbit right">→</button>
+                  <button className={btn} style={{ touchAction: "manipulation" }} onClick={() => rotateSceneY(-ORBIT_STEP)} title="Rotate left">←</button>
+                  <button className={btn} style={{ touchAction: "manipulation" }} onClick={() => rotateSceneY( ORBIT_STEP)} title="Rotate right">→</button>
                 </div>
-                <button className={btn} style={{ touchAction: "manipulation" }} onClick={() => orbitCamera(0, ORBIT_STEP)} title="Orbit down">↓</button>
+                <button className={btn} style={{ touchAction: "manipulation" }} onClick={() => rotateSceneX( ORBIT_STEP)} title="Tilt down">↓</button>
                 <div className="w-full h-px bg-brand-border my-0.5" />
                 <p className="text-[7px] font-display uppercase tracking-widest text-brand-muted/60">Zoom</p>
                 <div className="flex gap-1.5">
@@ -613,19 +614,21 @@ function JerseyBuilderInner() {
               <directionalLight position={[0, -2, 4]}  intensity={0.4} />
               <pointLight       position={[0, 4, 3]}   intensity={0.6} />
 
-              <Suspense fallback={null}>
-                <JerseyScene
-                  colors={colors}
-                  artworks={sceneArtworks}
-                  activeView={activeView}
-                  separateGlbs={true}
-                  onSurfaceClick={handleSurfaceClick}
-                  isPlacing={isPlacing}
-                  onJerseyTopReady={handleJerseyTopReady}
-                  onShortsReady={handleShortsReady}
-                  onGroupCenters={handleGroupCenters}
-                />
-              </Suspense>
+              <group rotation={[sceneXTilt, sceneYRot, 0]}>
+                <Suspense fallback={null}>
+                  <JerseyScene
+                    colors={colors}
+                    artworks={sceneArtworks}
+                    activeView={activeView}
+                    separateGlbs={true}
+                    onSurfaceClick={handleSurfaceClick}
+                    isPlacing={isPlacing}
+                    onJerseyTopReady={handleJerseyTopReady}
+                    onShortsReady={handleShortsReady}
+                    onGroupCenters={handleGroupCenters}
+                  />
+                </Suspense>
+              </group>
 
               <OrbitControls
                 ref={orbitRef}
