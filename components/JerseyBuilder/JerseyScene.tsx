@@ -103,6 +103,7 @@ function cloneAndMapMaterials(
     const rawMats = Array.isArray(node.material) ? node.material : [node.material];
     const cloned = rawMats.map((m) => {
       const mat = (m as THREE.MeshStandardMaterial).clone();
+      mat.side = THREE.DoubleSide; // show back faces when jersey is flipped
       const zoneKey = MAT_TO_ZONE[mat.name];
       if (zoneKey) {
         matByZone[zoneKey] = mat;

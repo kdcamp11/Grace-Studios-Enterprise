@@ -272,8 +272,17 @@ function JerseyBuilderInner() {
   }, []);
 
   const flipScene = useCallback(() => {
-    sceneYRotRef.current += Math.PI;
-    if (sceneGroupRef.current) sceneGroupRef.current.rotation.y = sceneYRotRef.current;
+    const ctrl = orbitRef.current;
+    if (!ctrl) return;
+    // Move camera to opposite side by negating X and Z offsets from target
+    const tx = ctrl.target.x;
+    const ty = ctrl.target.y;
+    const tz = ctrl.target.z;
+    const dx = ctrl.object.position.x - tx;
+    const dz = ctrl.object.position.z - tz;
+    ctrl.object.position.x = tx - dx;
+    ctrl.object.position.z = tz - dz;
+    ctrl.object.lookAt(ctrl.target);
   }, []);
 
   // Reset camera and scene rotation when switching tabs
