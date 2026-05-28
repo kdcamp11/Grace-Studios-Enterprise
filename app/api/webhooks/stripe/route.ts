@@ -327,6 +327,34 @@ async function handleDesignDepositCompleted(session: Stripe.Checkout.Session) {
     .update({ design_fee_paid: true })
     .eq("id", orderId);
 
+  // Advance the creative lifecycle on payment. Guarded so production orders are
+  // unaffected, and wrapped so a stage-advance failure never breaks the webhook.
+  try {
+    const { data: order } = await admin
+      .from("orders")
+      .select("stage, order_type, tenant_id")
+      .eq("id", orderId)
+      .single();
+
+    if (order && order.order_type === "creative") {
+      await admin
+        .from("orders")
+        .update({ stage: "creative_in_review" })
+        .eq("id", orderId);
+
+      await admin.from("stage_log").insert({
+        order_id:   orderId,
+        tenant_id:  order.tenant_id,
+        from_stage: order.stage,
+        to_stage:   "creative_in_review",
+        changed_by: "system",
+        note:       "Design activation paid",
+      });
+    }
+  } catch (err) {
+    console.error("[stripe webhook] creative stage advance failed:", err);
+  }
+
   // Update our deposit session record
   await admin
     .from("design_deposit_sessions")

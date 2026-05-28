@@ -5,6 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { getProfile } from "@/lib/profile";
 import TenantLogo from "@/components/TenantLogo";
+import { isAwaitingConcepts } from "@/lib/order-stages";
 
 interface Brief {
   id: string;
@@ -142,11 +143,11 @@ export default function DesignerOrderPage() {
           </h1>
         </div>
         <span className={`flex-shrink-0 px-3 py-1 rounded-full text-[10px] font-display uppercase tracking-wider border ${
-          order.stage === "onboarding"
+          isAwaitingConcepts(order.stage)
             ? "bg-brand-primary/10 text-brand-primary border-brand-primary/30"
             : "bg-emerald-500/10 text-emerald-500 border-emerald-500/30"
         }`}>
-          {order.stage === "onboarding" ? "Brief Ready" : "Concept Approved"}
+          {isAwaitingConcepts(order.stage) ? "Brief Ready" : "Concept Approved"}
         </span>
       </header>
 
@@ -164,7 +165,7 @@ export default function DesignerOrderPage() {
                     : `${concepts.length} concept${concepts.length !== 1 ? "s" : ""} generated${selected ? ", 1 selected by client" : ""}`}
                 </p>
               </div>
-              {order.stage === "onboarding" && (
+              {isAwaitingConcepts(order.stage) && (
                 <button
                   onClick={generateConcepts}
                   disabled={generating || !b}

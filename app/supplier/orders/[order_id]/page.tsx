@@ -7,6 +7,7 @@ import { getProfile } from "@/lib/profile";
 import TenantLogo from "@/components/TenantLogo";
 import { useTenant } from "@/lib/tenant/context";
 import type { OrderStage, RosterPlayer } from "@/types/database";
+import { stageLabel } from "@/lib/order-stages";
 
 interface Brief {
   design_system: string | null;
@@ -53,7 +54,8 @@ interface OrderDetail {
   media: MediaItem[];
 }
 
-const STAGE_LABELS: Record<OrderStage, string> = {
+// Partial: suppliers only see production orders; creative stages fall back to stageLabel().
+const STAGE_LABELS: Partial<Record<OrderStage, string>> = {
   onboarding:              "Brief Submitted",
   design_confirmed:        "Design Confirmed",
   files_sent:              "Files Sent: Ready for Production",
@@ -320,7 +322,7 @@ export default function SupplierOrderPage() {
             {order.client.name} · {order.client.sport} · {order.client.city}
           </p>
           <span className="inline-block mt-2 text-[10px] font-display uppercase tracking-wider px-2.5 py-1 rounded-full border border-brand-primary/30 bg-brand-primary/10 text-brand-primary">
-            {STAGE_LABELS[order.stage]}
+            {STAGE_LABELS[order.stage] ?? stageLabel(order.stage)}
           </span>
         </div>
 

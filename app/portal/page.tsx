@@ -9,27 +9,13 @@ import OrgLogo from "@/components/OrgLogo";
 import { useTenant } from "@/lib/tenant/context";
 import type { User } from "@supabase/supabase-js";
 import type { OrderStage } from "@/types/database";
-
-const STAGE_LABELS: Record<OrderStage, string> = {
-  onboarding:              "Brief Submitted: Awaiting Concepts",
-  design_confirmed:        "Designer Mockup Ready: Review Required",
-  files_sent:              "Files Approved: In Production",
-  first_piece_in_progress: "First Piece In Progress",
-  first_piece_review:      "⚡ First Piece Ready for Review",
-  bulk_production:         "Bulk Production",
-  qc_verified:             "QC Verified",
-  shipped:                 "Shipped",
-  delivered:               "Delivered",
-  complete:                "Complete",
-};
-
-const STAGE_COLOR: Record<string, string> = {
-  onboarding:          "text-brand-muted",
-  design_confirmed:    "text-amber-500",
-  files_sent:          "text-blue-400",
-  first_piece_review:  "text-amber-400 font-semibold",
-  complete:            "text-emerald-400",
-};
+import {
+  STAGE_COLOR,
+  stageLabel,
+  stageType,
+  normalizeStage,
+  isAwaitingConcepts,
+} from "@/lib/order-stages";
 
 interface Order {
   id: string;
@@ -38,6 +24,22 @@ interface Order {
   created_at: string;
   has_concepts: boolean;
   has_pending_review: boolean;    // client_visible media awaiting client decision
+  order_type?: "creative" | "production";
+  design_fee_paid?: boolean;
+  team_name?: string | null;
+  sport?: string | null;
+  zone_colors?: Record<string, string> | null;
+  logos_to_include?: string | null;
+  tracking_number?: string | null;
+}
+
+function isCreative(o: Order): boolean {
+  return o.order_type === "creative" || stageType(o.stage) === "creative";
+}
+
+function swatchHexes(zoneColors: Record<string, string> | null | undefined): string[] {
+  if (!zoneColors) return [];
+  return Object.values(zoneColors).filter((v): v is string => typeof v === "string" && !!v);
 }
 
 function PortalContent() {
@@ -53,6 +55,7 @@ function PortalContent() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasProfile, setHasProfile] = useState(false);
+  const [tab, setTab] = useState<"creative" | "production">("creative");
 
   useEffect(() => {
     async function load() {
@@ -183,74 +186,207 @@ function PortalContent() {
               </a>
             </div>
           ) : (
-            <div className="space-y-3">
-              {orders.map((order, i) => {
-                const orderLabel = order.order_number || order.id.slice(0, 8).toUpperCase();
+            (() => {
+              const creativeOrders   = orders.filter(isCreative);
+              const productionOrders  = orders.filter((o) => !isCreative(o));
+              const active            = tab === "creative" ? creativeOrders : productionOrders;
 
-                // First piece review takes priority over concepts if there's pending media
-                const dest = order.has_pending_review
-                  ? `/orders/${order.id}/tracker`
-                  : order.has_concepts
-                    ? `/orders/${order.id}/concepts`
-                    : `/orders/${order.id}/tracker`;
-
-                const cta = order.has_pending_review
-                  ? "Review First Piece →"
-                  : order.has_concepts
-                    ? "Review Concepts →"
-                    : "View Status →";
-
-                return (
-                  <div
-                    key={order.id}
-                    onClick={() => router.push(dest)}
-                    style={{ animationDelay: `${i * 60}ms` }}
-                    className={`animate-fade-up group bg-brand-surface border rounded-2xl px-6 py-5 flex items-center justify-between gap-4 cursor-pointer transition-all duration-300
-                      ${order.has_pending_review
-                        ? "border-amber-400/60 hover:border-amber-500 hover:shadow-[0_4px_24px_rgba(251,191,36,0.15)]"
-                        : "border-brand-border hover:border-brand-primary hover:shadow-[0_2px_12px_rgba(0,0,0,0.06)]"
-                      }`}
-                  >
-                    <div className="min-w-0 space-y-1.5">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="font-display font-bold uppercase tracking-wide text-brand-text text-base">
-                          Order {orderLabel}
-                        </p>
-                        {order.has_pending_review && (
-                          <span className="px-2 py-0.5 rounded-full bg-amber-400/10 text-amber-400 font-display font-bold text-[9px] uppercase tracking-widest border border-amber-400/30">
-                            Action Required
-                          </span>
-                        )}
-                        {!order.has_pending_review && order.has_concepts && (
-                          <span className="px-2 py-0.5 rounded-full bg-brand-primary/10 text-brand-primary font-display font-bold text-[9px] uppercase tracking-widest border border-brand-primary/30">
-                            Concepts Ready
-                          </span>
-                        )}
-                      </div>
-                      <p className={`text-xs font-barlow ${STAGE_COLOR[order.stage] ?? "text-brand-muted"}`}>
-                        {STAGE_LABELS[order.stage] ?? order.stage}
-                      </p>
-                      <p className="text-[11px] text-brand-muted font-barlow">
-                        {new Date(order.created_at).toLocaleDateString("en-US", {
-                          month: "long", day: "numeric", year: "numeric",
-                        })}
-                      </p>
-                    </div>
-                    <span className={`flex-shrink-0 text-xs font-display font-bold uppercase tracking-wider transition-colors
-                      ${order.has_pending_review
-                        ? "text-amber-600 group-hover:text-amber-700"
-                        : "text-brand-muted group-hover:text-brand-primary"
-                      }`}>
-                      {cta}
-                    </span>
+              return (
+                <div className="space-y-5">
+                  {/* Tabs */}
+                  <div className="flex gap-2">
+                    {([
+                      ["creative", "Creative", creativeOrders.length],
+                      ["production", "Production", productionOrders.length],
+                    ] as const).map(([key, label, count]) => (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => setTab(key)}
+                        className={`px-4 py-2 rounded-lg font-display font-bold text-xs uppercase tracking-widest transition-colors
+                          ${tab === key
+                            ? "bg-brand-primary text-white"
+                            : "bg-brand-surface border border-brand-border text-brand-muted hover:text-brand-text"
+                          }`}
+                      >
+                        {label} ({count})
+                      </button>
+                    ))}
                   </div>
-                );
-              })}
-            </div>
+
+                  {active.length === 0 ? (
+                    <p className="text-sm text-brand-muted font-barlow py-10 text-center">
+                      No {tab} orders yet.
+                    </p>
+                  ) : tab === "creative" ? (
+                    <div className="space-y-3">
+                      {active.map((order, i) => (
+                        <CreativeCard key={order.id} order={order} index={i} />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {active.map((order, i) => (
+                        <ProductionCard key={order.id} order={order} index={i} onOpen={() => router.push(`/orders/${order.id}/tracker`)} />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()
           )}
 
         </div>
       </main>
+    </div>
+  );
+}
+
+// ── Color-swatch preview (rendered from briefs.zone_colors — no canvas) ──────
+function SwatchPreview({ zoneColors }: { zoneColors: Record<string, string> | null | undefined }) {
+  const hexes = swatchHexes(zoneColors);
+  if (hexes.length === 0) {
+    return (
+      <div className="flex items-center gap-1.5">
+        {Array.from({ length: 7 }).map((_, i) => (
+          <div key={i} className="w-5 h-5 rounded-md bg-brand-border/60 border border-brand-border" />
+        ))}
+      </div>
+    );
+  }
+  return (
+    <div className="flex items-center gap-1.5">
+      {hexes.slice(0, 7).map((hex, i) => (
+        <div
+          key={i}
+          className="w-5 h-5 rounded-md border border-black/10 shadow-sm"
+          style={{ backgroundColor: hex }}
+          title={hex.toUpperCase()}
+        />
+      ))}
+    </div>
+  );
+}
+
+function CreativeCard({ order, index }: { order: Order; index: number }) {
+  const orderLabel = order.order_number || order.id.slice(0, 8).toUpperCase();
+  const norm       = normalizeStage(order.stage);
+  const notSubmitted = isAwaitingConcepts(order.stage); // creative_started / legacy onboarding
+  const approved   = norm === "creative_approved";
+
+  return (
+    <div
+      style={{ animationDelay: `${index * 60}ms` }}
+      className="animate-fade-up bg-brand-surface border border-brand-border rounded-2xl px-6 py-5 space-y-4 transition-all duration-300 hover:border-brand-primary hover:shadow-[0_2px_12px_rgba(0,0,0,0.06)]"
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0 space-y-1">
+          <p className="font-display font-bold uppercase tracking-wide text-brand-text text-base truncate">
+            {order.team_name || `Order ${orderLabel}`}
+          </p>
+          {order.sport && (
+            <p className="text-[11px] uppercase tracking-wider text-brand-muted font-display">{order.sport}</p>
+          )}
+        </div>
+        <span className="flex-shrink-0 px-2 py-0.5 rounded-full font-display font-bold text-[9px] uppercase tracking-widest border border-brand-border text-brand-muted">
+          {order.design_fee_paid ? "Activated" : "Awaiting Activation"}
+        </span>
+      </div>
+
+      <SwatchPreview zoneColors={order.zone_colors} />
+
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <p className={`text-xs font-barlow ${STAGE_COLOR[order.stage] ?? "text-brand-muted"}`}>
+          {stageLabel(order.stage)}
+        </p>
+        <p className="text-[11px] text-brand-muted font-barlow">
+          {new Date(order.created_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+        </p>
+      </div>
+
+      <div className="flex flex-wrap gap-2 pt-1">
+        <a
+          href={`/brief/${order.id}/builder-review`}
+          className="px-4 py-2 rounded-lg font-display font-bold text-[11px] uppercase tracking-widest border border-brand-border text-brand-muted hover:text-brand-text hover:border-brand-muted transition-colors"
+        >
+          View Design
+        </a>
+        {notSubmitted && (
+          <a
+            href={`/brief/${order.id}/builder-review`}
+            className="px-4 py-2 rounded-lg font-display font-bold text-[11px] uppercase tracking-widest bg-brand-primary text-white hover:bg-brand-secondary transition-colors"
+          >
+            Continue
+          </a>
+        )}
+        {approved ? (
+          <a
+            href={`/orders/${order.id}/checkout`}
+            className="px-4 py-2 rounded-lg font-display font-bold text-[11px] uppercase tracking-widest bg-emerald-500 text-white hover:bg-emerald-600 transition-colors"
+          >
+            Proceed to Production
+          </a>
+        ) : (
+          <button
+            type="button"
+            disabled
+            title="Coming soon"
+            className="px-4 py-2 rounded-lg font-display font-bold text-[11px] uppercase tracking-widest border border-brand-border text-brand-muted/50 cursor-not-allowed"
+          >
+            Proceed to Production
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ProductionCard({ order, index, onOpen }: { order: Order; index: number; onOpen: () => void }) {
+  const orderLabel = order.order_number || order.id.slice(0, 8).toUpperCase();
+  const cta = order.has_pending_review
+    ? "Review First Piece →"
+    : order.has_concepts
+      ? "Review Concepts →"
+      : "View Status →";
+
+  return (
+    <div
+      onClick={onOpen}
+      style={{ animationDelay: `${index * 60}ms` }}
+      className={`animate-fade-up group bg-brand-surface border rounded-2xl px-6 py-5 flex items-center justify-between gap-4 cursor-pointer transition-all duration-300
+        ${order.has_pending_review
+          ? "border-amber-400/60 hover:border-amber-500 hover:shadow-[0_4px_24px_rgba(251,191,36,0.15)]"
+          : "border-brand-border hover:border-brand-primary hover:shadow-[0_2px_12px_rgba(0,0,0,0.06)]"
+        }`}
+    >
+      <div className="min-w-0 space-y-1.5">
+        <div className="flex items-center gap-2 flex-wrap">
+          <p className="font-display font-bold uppercase tracking-wide text-brand-text text-base">
+            Order {orderLabel}
+          </p>
+          {order.has_pending_review && (
+            <span className="px-2 py-0.5 rounded-full bg-amber-400/10 text-amber-400 font-display font-bold text-[9px] uppercase tracking-widest border border-amber-400/30">
+              Action Required
+            </span>
+          )}
+        </div>
+        <p className={`text-xs font-barlow ${STAGE_COLOR[order.stage] ?? "text-brand-muted"}`}>
+          {stageLabel(order.stage)}
+        </p>
+        {order.tracking_number && (
+          <p className="text-[11px] text-brand-muted font-barlow">Tracking: {order.tracking_number}</p>
+        )}
+        <p className="text-[11px] text-brand-muted font-barlow">
+          {new Date(order.created_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+        </p>
+      </div>
+      <span className={`flex-shrink-0 text-xs font-display font-bold uppercase tracking-wider transition-colors
+        ${order.has_pending_review
+          ? "text-amber-600 group-hover:text-amber-700"
+          : "text-brand-muted group-hover:text-brand-primary"
+        }`}>
+        {cta}
+      </span>
     </div>
   );
 }

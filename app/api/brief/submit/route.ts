@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Build the order update — always set stage; also set concept_source if provided
-  const orderUpdate: Record<string, unknown> = { stage: "design_confirmed" };
+  const orderUpdate: Record<string, unknown> = { stage: "creative_submitted" };
   if (concept_source) orderUpdate.concept_source = concept_source;
 
   const { error: orderError } = await admin

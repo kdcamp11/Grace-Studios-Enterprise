@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
     // Create order
     const { data: order, error: orderError } = await admin
       .from("orders")
-      .insert({ tenant_id: tenant.id, client_id: client.id, stage: "onboarding" })
+      .insert({ tenant_id: tenant.id, client_id: client.id, stage: "creative_started", order_type: "creative" })
       .select("id")
       .single();
 

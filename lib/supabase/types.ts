@@ -16,9 +16,12 @@ export interface Subscription {
   updated_at: string;
 }
 export type UserRole = 'client' | 'supplier' | 'admin' | 'super_admin' | 'designer' | 'sales_rep';
+// Canonical vocabulary lives in lib/order-stages.ts — keep this union in sync.
 export type OrderStage =
+  // legacy stages (still written/read by older code paths)
   | 'onboarding'
   | 'design_confirmed'
+  // production stages
   | 'files_sent'
   | 'first_piece_in_progress'
   | 'first_piece_review'
@@ -26,7 +29,16 @@ export type OrderStage =
   | 'qc_verified'
   | 'shipped'
   | 'delivered'
-  | 'complete';
+  | 'complete'
+  // new creative lifecycle stages
+  | 'creative_started'
+  | 'creative_submitted'
+  | 'payment_pending'
+  | 'paid'
+  | 'creative_in_review'
+  | 'revision_requested'
+  | 'creative_approved'
+  | 'ready_for_production';
 
 export interface Tenant {
   id: string;
@@ -96,6 +108,8 @@ export interface Order {
   order_number: string | null;
   client_id: string;
   stage: OrderStage;
+  order_type?: 'creative' | 'production';
+  originating_creative_order_id?: string | null;
   package_tier: 'tier1' | 'tier2' | 'tier3' | 'tier4' | null;
   deposit_paid: boolean;
   balance_paid: boolean;

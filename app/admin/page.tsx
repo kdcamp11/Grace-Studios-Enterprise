@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { getProfile } from "@/lib/profile";
 import AdminHeader from "@/components/AdminHeader";
 import type { OrderStage } from "@/types/database";
+import { stageLabel } from "@/lib/order-stages";
 
 // ── Types ─────────────────────────────────────────────────────
 
@@ -248,7 +249,7 @@ export default function AdminPage() {
                     return (
                       <div key={stage} className="flex items-center gap-3">
                         <p className="text-[10px] font-display uppercase tracking-wider text-brand-muted w-36 flex-shrink-0 truncate">
-                          {STAGE_LABELS[stage] ?? stage}
+                          {STAGE_LABELS[stage] ?? stageLabel(stage)}
                         </p>
                         <div className="flex-1 bg-brand-bg rounded-full h-5 overflow-hidden border border-brand-border">
                           <div
@@ -327,7 +328,7 @@ export default function AdminPage() {
                       {o.sport && <p className="text-[10px] text-brand-muted capitalize">{o.sport}</p>}
                     </div>
                     <span className={`flex-shrink-0 inline-block px-2.5 py-1 rounded-full text-xs font-display uppercase tracking-wider ${STAGE_COLOR[o.stage] ?? ""}`}>
-                      {STAGE_LABELS[o.stage] ?? o.stage}
+                      {STAGE_LABELS[o.stage] ?? stageLabel(o.stage)}
                     </span>
                     <p className="flex-shrink-0 text-xs text-brand-muted hidden sm:block">{fmtDate(o.created_at)}</p>
                     <span className="text-brand-muted text-xs">→</span>
@@ -398,7 +399,7 @@ export default function AdminPage() {
                         <td className="px-5 py-4 text-brand-muted hidden sm:table-cell capitalize">{order.sport}</td>
                         <td className="px-5 py-4">
                           <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-display uppercase tracking-wider ${STAGE_COLOR[order.stage] ?? "bg-gray-800 text-gray-400"}`}>
-                            {STAGE_LABELS[order.stage] ?? order.stage}
+                            {STAGE_LABELS[order.stage] ?? stageLabel(order.stage)}
                           </span>
                         </td>
                         <td className="px-5 py-4 text-brand-muted text-xs hidden md:table-cell">
