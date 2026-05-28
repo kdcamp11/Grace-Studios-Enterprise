@@ -1144,7 +1144,7 @@ function JerseyBuilderInner() {
               ).toString();
               const href = orderId
                 ? `/brief/${orderId}/builder-review?${colorParams}`
-                : `/brief/new?path=builder`;
+                : `/brief/new?path=builder-review`;
               return (
                 <Link
                   href={href}

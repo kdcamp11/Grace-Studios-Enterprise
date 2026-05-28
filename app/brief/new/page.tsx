@@ -102,6 +102,9 @@ function TeamInfoPage() {
       // Route based on design path chosen before Team Info
       if (designPath === "ai") {
         router.push(`/brief/${data.orderId}/style`);
+      } else if (designPath === "builder-review") {
+        // User already built the jersey (design saved in brief state) — go straight to review
+        router.push(`/brief/${data.orderId}/builder-review`);
       } else if (designPath === "builder") {
         router.push(`/jersey-builder?orderId=${data.orderId}&sport=${encodeURIComponent(payload.sport)}`);
       } else if (designPath === "upload") {
