@@ -210,6 +210,9 @@ function JerseyBuilderInner() {
 
   useEffect(() => { setMounted(true); }, []);
 
+  // On mobile (portrait), bring the camera closer so the jersey fills the screen
+  const cameraZ = mounted && window.innerWidth < 768 ? 8 : 13;
+
   // ── Auth check ──────────────────────────────────────────────────────────
   useEffect(() => {
     (async () => {
@@ -275,9 +278,9 @@ function JerseyBuilderInner() {
     if (!controls || !groupCenters) return;
     const targetY = activeView === "jersey" ? groupCenters.jerseyTopY : groupCenters.shortsY;
     controls.target.set(0, targetY, 0);
-    controls.object.position.set(0, targetY, 13);
+    controls.object.position.set(0, targetY, cameraZ);
     controls.update();
-  }, [activeView, groupCenters]);
+  }, [activeView, groupCenters, cameraZ]);
 
   // On tab switch: immediately reset camera to Y=0 and reset scene rotation.
   // Both GLBs are centred at Y≈0, so this shows the model instantly without
@@ -286,12 +289,12 @@ function JerseyBuilderInner() {
     const controls = orbitRef.current;
     if (controls) {
       controls.target.set(0, 0, 0);
-      controls.object.position.set(0, 0, 13);
+      controls.object.position.set(0, 0, cameraZ);
       controls.update();
     }
     sceneYRotRef.current = 0;
     sceneXTiltRef.current = 0;
-  }, [activeView]);
+  }, [activeView, cameraZ]);
 
   // ── Mesh refs exposed by JerseyScene after load ─────────────────────────
   const jerseyTopMeshRef = useRef<THREE.Mesh | null>(null);
@@ -534,7 +537,7 @@ function JerseyBuilderInner() {
       <div className="flex-1 flex flex-col lg:flex-row min-h-0">
 
         {/* ── 3-D Viewport ─────────────────────────────────────────────────── */}
-        <div className="relative flex-1 min-h-0 bg-white" style={{ minHeight: "clamp(380px, 70vh, 999px)" }}>
+        <div className="relative flex-1 min-h-0 bg-white" style={{ minHeight: isMobile ? "clamp(480px, 72svh, 999px)" : "clamp(380px, 70vh, 999px)" }}>
 
           {/* Viewport label */}
           <div className="absolute top-4 left-5 z-10 flex items-center gap-2 pointer-events-none">
@@ -588,7 +591,7 @@ function JerseyBuilderInner() {
 
           {hasModel && mounted ? (
             <Canvas
-              camera={{ position: [0, 0, 13], fov: 38 }}
+              camera={{ position: [0, 0, cameraZ], fov: 38 }}
               style={{ width: "100%", height: "100%" }}
               gl={{ preserveDrawingBuffer: true, antialias: true }}
             >
