@@ -68,10 +68,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: clientError.message }, { status: 500 });
     }
 
-    // Create order
+    // Create order.
+    // Stage defaults to "onboarding" (legacy value) so this works before and
+    // after migration 019 is applied. order_type is omitted — the column either
+    // doesn't exist yet (pre-migration) or will default to "creative" (post-migration).
     const { data: order, error: orderError } = await admin
       .from("orders")
-      .insert({ tenant_id: tenant.id, client_id: client.id, stage: "creative_started", order_type: "creative" })
+      .insert({ tenant_id: tenant.id, client_id: client.id, stage: "onboarding" })
       .select("id")
       .single();
 

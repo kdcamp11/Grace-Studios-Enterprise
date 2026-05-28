@@ -31,8 +31,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: briefError.message }, { status: 500 });
   }
 
-  // Build the order update — always set stage; also set concept_source if provided
-  const orderUpdate: Record<string, unknown> = { stage: "creative_submitted" };
+  // Build the order update — always set stage; also set concept_source if provided.
+  // "design_confirmed" is the legacy equivalent of "creative_submitted" and is
+  // valid both before and after migration 019 is applied.
+  const orderUpdate: Record<string, unknown> = { stage: "design_confirmed" };
   if (concept_source) orderUpdate.concept_source = concept_source;
 
   const { error: orderError } = await admin
