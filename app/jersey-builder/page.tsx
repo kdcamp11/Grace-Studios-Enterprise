@@ -83,6 +83,7 @@ interface ArtworkDraft {
 const PAN_STEP   = 0.5;           // world units per pan click
 const NUDGE      = 0.15;          // world units per artwork nudge click
 const TWIST_STEP = Math.PI / 12;  // 15° per rotation click
+const ORBIT_STEP = Math.PI / 12;  // 15° per orbit click
 
 // ── Texture helpers ───────────────────────────────────────────────────────────
 
@@ -255,6 +256,17 @@ function JerseyBuilderInner() {
     const dist = Math.max(5, Math.min(28, offset.length() * factor));
     ctrl.object.position.copy(ctrl.target).add(offset.normalize().multiplyScalar(dist));
     ctrl.update();
+  }, []);
+
+  const orbitCamera = useCallback((dTheta: number, dPhi: number) => {
+    const ctrl = orbitRef.current;
+    if (!ctrl) return;
+    const offset = new THREE.Vector3().subVectors(ctrl.object.position, ctrl.target);
+    const sph = new THREE.Spherical().setFromVector3(offset);
+    sph.theta -= dTheta;
+    sph.phi = Math.max(0.05, Math.min(Math.PI - 0.05, sph.phi + dPhi));
+    ctrl.object.position.copy(ctrl.target).add(new THREE.Vector3().setFromSpherical(sph));
+    // Do NOT call ctrl.update() — R3F's useFrame handles it each frame
   }, []);
 
   // Reset camera to a clean front-facing view centred on the active garment
@@ -545,6 +557,14 @@ function JerseyBuilderInner() {
                   <button className={btn} style={{ touchAction: "manipulation" }} onClick={() => panCamera( PAN_STEP, 0)} title="Move right">→</button>
                 </div>
                 <button className={btn} style={{ touchAction: "manipulation" }} onClick={() => panCamera(0, -PAN_STEP)} title="Move down">↓</button>
+                <div className="w-full h-px bg-brand-border my-0.5" />
+                <p className="text-[7px] font-display uppercase tracking-widest text-brand-muted/60">Rotate</p>
+                <button className={btn} style={{ touchAction: "manipulation" }} onClick={() => orbitCamera(0, -ORBIT_STEP)} title="Orbit up">↑</button>
+                <div className="flex gap-1.5">
+                  <button className={btn} style={{ touchAction: "manipulation" }} onClick={() => orbitCamera(-ORBIT_STEP, 0)} title="Orbit left">←</button>
+                  <button className={btn} style={{ touchAction: "manipulation" }} onClick={() => orbitCamera( ORBIT_STEP, 0)} title="Orbit right">→</button>
+                </div>
+                <button className={btn} style={{ touchAction: "manipulation" }} onClick={() => orbitCamera(0, ORBIT_STEP)} title="Orbit down">↓</button>
                 <div className="w-full h-px bg-brand-border my-0.5" />
                 <p className="text-[7px] font-display uppercase tracking-widest text-brand-muted/60">Zoom</p>
                 <div className="flex gap-1.5">
