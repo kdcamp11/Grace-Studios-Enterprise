@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { getProfile } from "@/lib/profile";
 import TenantLogo from "@/components/TenantLogo";
+import MobileDropdown from "@/components/MobileDropdown";
 
 const SPORTS = ["Basketball", "Tracksuits", "Football", "Soccer", "Baseball", "Volleyball", "Other"];
 
@@ -102,7 +103,8 @@ export default function SupplierPortfolioPage() {
             Supplier Portal
           </a>
         </div>
-        <div className="flex items-center gap-5">
+        {/* Desktop nav */}
+        <div className="hidden lg:flex items-center gap-5">
           <a href="/supplier" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Orders</a>
           <a href="/supplier/portfolio" className="text-xs font-display font-bold uppercase tracking-wider text-brand-primary">Portfolio</a>
           <a href="/settings" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Settings</a>
@@ -113,6 +115,19 @@ export default function SupplierPortfolioPage() {
           >
             Sign Out
           </button>
+        </div>
+        {/* Mobile nav */}
+        <div className="lg:hidden">
+          <MobileDropdown
+            groups={[
+              [
+                { label: "Orders", href: "/supplier" },
+                { label: "Portfolio", href: "/supplier/portfolio" },
+                { label: "Settings", href: "/settings" },
+              ],
+              [{ label: "Sign Out", onClick: async () => { await supabase.auth.signOut(); router.replace("/login"); } }],
+            ]}
+          />
         </div>
       </header>
 

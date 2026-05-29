@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getProfile } from "@/lib/profile";
 import TenantLogo from "@/components/TenantLogo";
+import MobileDropdown from "@/components/MobileDropdown";
 import { createClient } from "@/lib/supabase/client";
 import { useRef } from "react";
 
@@ -114,12 +115,26 @@ export default function SupplierBillingPage() {
         <div className="flex items-center gap-4">
           <TenantLogo href="/supplier" />
         </div>
-        <div className="flex items-center gap-5">
-          <span className="text-xs text-brand-muted font-barlow hidden sm:block">{name}</span>
+        {/* Desktop nav */}
+        <div className="hidden lg:flex items-center gap-5">
+          <span className="text-xs text-brand-muted font-barlow">{name}</span>
           <a href="/supplier" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">← Orders</a>
           <a href="/supplier/portfolio" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Portfolio</a>
           <a href="/supplier/settings" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Settings</a>
           <button type="button" onClick={signOut} className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Sign Out</button>
+        </div>
+        {/* Mobile nav */}
+        <div className="lg:hidden">
+          <MobileDropdown
+            groups={[
+              [
+                { label: "← Orders", href: "/supplier" },
+                { label: "Portfolio", href: "/supplier/portfolio" },
+                { label: "Settings", href: "/supplier/settings" },
+              ],
+              [{ label: "Sign Out", onClick: signOut }],
+            ]}
+          />
         </div>
       </header>
 

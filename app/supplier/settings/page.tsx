@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { getProfile } from "@/lib/profile";
 import TenantLogo from "@/components/TenantLogo";
+import MobileDropdown from "@/components/MobileDropdown";
 
 const SPORTS   = ["Basketball","Football","Soccer","Baseball","Softball","Volleyball","Lacrosse","Hockey","Tennis","Wrestling","Tracksuits"];
 const PRODUCTS = ["Jersey","Shorts","Tracksuit","Jacket","Hoodie","Pants","Socks","Compression","Warmup"];
@@ -177,11 +178,25 @@ export default function SupplierSettingsPage() {
       {/* Header */}
       <header className="border-b border-brand-border px-6 py-4 flex items-center justify-between">
         <TenantLogo href="/supplier" />
-        <div className="flex items-center gap-5">
+        {/* Desktop nav */}
+        <div className="hidden lg:flex items-center gap-5">
           <a href="/supplier" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Orders</a>
           <a href="/supplier/portfolio" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Portfolio</a>
           <a href="/supplier/billing" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Billing</a>
           <button type="button" onClick={signOut} className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Sign Out</button>
+        </div>
+        {/* Mobile nav */}
+        <div className="lg:hidden">
+          <MobileDropdown
+            groups={[
+              [
+                { label: "Orders", href: "/supplier" },
+                { label: "Portfolio", href: "/supplier/portfolio" },
+                { label: "Billing", href: "/supplier/billing" },
+              ],
+              [{ label: "Sign Out", onClick: signOut }],
+            ]}
+          />
         </div>
       </header>
 

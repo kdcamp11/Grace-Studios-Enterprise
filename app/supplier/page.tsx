@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { getProfile } from "@/lib/profile";
 import TenantLogo from "@/components/TenantLogo";
+import MobileDropdown from "@/components/MobileDropdown";
 import { useTenant } from "@/lib/tenant/context";
 import type { OrderStage } from "@/types/database";
 import { stageLabel } from "@/lib/order-stages";
@@ -164,8 +165,9 @@ function SupplierPortalContent() {
       )}
       <header className="border-b border-brand-border px-6 py-4 flex items-center justify-between">
         <TenantLogo href="/supplier" />
-        <div className="flex items-center gap-5">
-          <span className="text-xs text-brand-muted font-barlow hidden sm:block">{name}</span>
+        {/* Desktop nav */}
+        <div className="hidden lg:flex items-center gap-5">
+          <span className="text-xs text-brand-muted font-barlow">{name}</span>
           <a href="/supplier/portfolio" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Portfolio</a>
           <a href="/supplier/billing" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Billing</a>
           <a href="/supplier/settings" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Settings</a>
@@ -173,6 +175,20 @@ function SupplierPortalContent() {
             <a href="/admin" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Admin</a>
           )}
           <button type="button" onClick={signOut} className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Sign Out</button>
+        </div>
+        {/* Mobile nav — hamburger dropdown */}
+        <div className="lg:hidden">
+          <MobileDropdown
+            groups={[
+              [
+                { label: "Portfolio", href: "/supplier/portfolio" },
+                { label: "Billing", href: "/supplier/billing" },
+                { label: "Settings", href: "/supplier/settings" },
+                ...(isAdminView ? [{ label: "Admin", href: "/admin" }] : []),
+              ],
+              [{ label: "Sign Out", onClick: signOut }],
+            ]}
+          />
         </div>
       </header>
 

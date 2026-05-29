@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { getProfile } from "@/lib/profile";
 import TenantLogo from "@/components/TenantLogo";
+import MobileDropdown from "@/components/MobileDropdown";
 import type { OrderStage } from "@/lib/supabase/types";
 import { isAwaitingConcepts, isInDesignReview, normalizeStage } from "@/lib/order-stages";
 
@@ -64,6 +65,11 @@ export default function DesignerQueuePage() {
   const [tab, setTab]         = useState<"needs_concepts" | "in_review">("needs_concepts");
   const [name, setName]       = useState("");
 
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    router.replace("/login");
+  };
+
   useEffect(() => {
     getProfile().then((profile) => {
       if (!profile || (profile.role !== "designer" && profile.role !== "admin" && profile.role !== "super_admin")) {
@@ -103,9 +109,19 @@ export default function DesignerQueuePage() {
             <h1 className="font-display text-base font-bold uppercase tracking-wide text-brand-text">Concept Queue</h1>
           </div>
         </div>
-        {name && (
-          <p className="text-xs font-barlow text-brand-muted hidden sm:block">{name}</p>
-        )}
+        {/* Desktop nav */}
+        <div className="hidden lg:flex items-center gap-5">
+          {name && <p className="text-xs font-barlow text-brand-muted">{name}</p>}
+          <button type="button" onClick={handleSignOut} className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Sign Out</button>
+        </div>
+        {/* Mobile nav — hamburger dropdown */}
+        <div className="lg:hidden">
+          <MobileDropdown
+            groups={[
+              [{ label: "Sign Out", onClick: handleSignOut }],
+            ]}
+          />
+        </div>
       </header>
 
       <main className="flex-1 px-4 py-6 flex flex-col items-center">

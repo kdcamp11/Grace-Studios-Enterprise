@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient, sessionReady } from "@/lib/supabase/client";
 import { getProfile } from "@/lib/profile";
 import OrgLogo from "@/components/OrgLogo";
+import MobileDropdown from "@/components/MobileDropdown";
 
 const WHAT_TO_EXPECT = [
   {
@@ -176,12 +177,29 @@ export default function ConsultationPage() {
       {/* Header */}
       <header className="border-b border-brand-border px-6 sm:px-10 py-5 flex items-center justify-between">
         <OrgLogo href="/portal" />
-        <div className="flex items-center gap-5">
+        {/* Desktop nav */}
+        <div className="hidden lg:flex items-center gap-5">
           <a href="/portal" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">← Orders</a>
           <a href="/portal/consultation" className="text-xs font-display font-bold uppercase tracking-wider text-brand-primary transition-colors">Work with Grace Studios</a>
           <a href="/billing" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Billing</a>
           <a href="/portal/settings" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Settings</a>
           <button type="button" onClick={signOut} className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Sign Out</button>
+        </div>
+        {/* Mobile nav */}
+        <div className="lg:hidden">
+          <MobileDropdown
+            groups={[
+              [
+                { label: "← Orders", href: "/portal" },
+                { label: "Work with Grace Studios", href: "/portal/consultation" },
+              ],
+              [
+                { label: "Billing", href: "/billing" },
+                { label: "Settings", href: "/portal/settings" },
+              ],
+              [{ label: "Sign Out", onClick: signOut }],
+            ]}
+          />
         </div>
       </header>
 

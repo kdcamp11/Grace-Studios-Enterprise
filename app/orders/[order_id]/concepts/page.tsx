@@ -6,6 +6,7 @@ import { createClient, sessionReady } from "@/lib/supabase/client";
 import { getProfile } from "@/lib/profile";
 import TenantLogo from "@/components/TenantLogo"; // kept for studio watermarks
 import OrgLogo from "@/components/OrgLogo";
+import MobileDropdown from "@/components/MobileDropdown";
 import { useTenant } from "@/lib/tenant/context";
 import type { DesignMetadata, GenerationStatus } from "@/app/api/generate-concepts/route";
 
@@ -904,10 +905,20 @@ export default function ConceptsPage() {
             Client Portal
           </a>
         </div>
-        <div className="flex items-center gap-5">
+        {/* Desktop nav */}
+        <div className="hidden lg:flex items-center gap-5">
           <a href="/portal" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Home</a>
           <button type="button" onClick={() => router.back()} className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">← Back</button>
           <button type="button" onClick={signOut} className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Sign Out</button>
+        </div>
+        {/* Mobile nav */}
+        <div className="lg:hidden">
+          <MobileDropdown
+            groups={[
+              [{ label: "Home", href: "/portal" }, { label: "← Back", onClick: () => router.back() }],
+              [{ label: "Sign Out", onClick: signOut }],
+            ]}
+          />
         </div>
       </header>
 

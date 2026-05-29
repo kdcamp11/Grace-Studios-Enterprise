@@ -6,6 +6,7 @@ import { createClient, sessionReady } from "@/lib/supabase/client";
 import { getProfile, rolePortal } from "@/lib/profile";
 import type { UserRole } from "@/lib/profile";
 import OrgLogo from "@/components/OrgLogo";
+import MobileDropdown from "@/components/MobileDropdown";
 import { useTenant } from "@/lib/tenant/context";
 import type { User } from "@supabase/supabase-js";
 import type { OrderStage } from "@/types/database";
@@ -113,18 +114,39 @@ function PortalContent() {
       {/* Header */}
       <header className="border-b border-brand-border px-6 sm:px-10 py-5 flex items-center justify-between">
         <OrgLogo href="/portal" />
-        <div className="flex items-center gap-5">
+
+        {/* Desktop nav */}
+        <div className="hidden lg:flex items-center gap-5">
           <a href="/brief/choose" className="text-xs font-display font-bold uppercase tracking-wider text-brand-primary hover:text-brand-secondary transition-colors">
             {hasProfile ? "+ New Order" : "+ New Brief"}
           </a>
           {(role === "admin" || role === "super_admin") && (
             <a href="/admin" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Admin Portal</a>
           )}
-<a href="/portfolio" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Portfolio</a>
+          <a href="/portfolio" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Portfolio</a>
           <a href="/portal/consultation" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Work with Grace Studios</a>
           <a href="/billing" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Billing</a>
           <a href="/portal/settings" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Settings</a>
           <button type="button" onClick={handleSignOut} className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Sign Out</button>
+        </div>
+
+        {/* Mobile nav — hamburger dropdown */}
+        <div className="lg:hidden">
+          <MobileDropdown
+            groups={[
+              [
+                { label: hasProfile ? "+ New Order" : "+ New Brief", href: "/brief/choose" },
+                ...(role === "admin" || role === "super_admin" ? [{ label: "Admin Portal", href: "/admin" }] : []),
+              ],
+              [
+                { label: "Portfolio",             href: "/portfolio" },
+                { label: "Work with Grace Studios", href: "/portal/consultation" },
+                { label: "Billing",               href: "/billing" },
+                { label: "Settings",              href: "/portal/settings" },
+              ],
+              [{ label: "Sign Out", onClick: handleSignOut }],
+            ]}
+          />
         </div>
       </header>
 
