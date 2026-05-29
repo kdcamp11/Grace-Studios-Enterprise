@@ -329,11 +329,6 @@ export default function ProductionChoicePage() {
             </button>
           </div>
 
-          {/* ── Minimum project note ─────────────────────────────────────── */}
-          <p className="text-[10px] font-barlow text-brand-muted/60 text-center leading-relaxed">
-            Full-service production projects typically begin at $2,500.
-          </p>
-
           {/* ── Confirm CTA ───────────────────────────────────────────────── */}
           {selected && (
             <div className="space-y-3">
