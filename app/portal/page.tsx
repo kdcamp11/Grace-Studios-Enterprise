@@ -268,16 +268,22 @@ function CreativeCard({ order, index }: { order: Order; index: number }) {
   const isBuilder    = order.concept_source === "client_provided";
 
   // Routing for "View Design" and "Continue"
-  // viewDesignHref is null when there's nothing meaningful to show yet
+  //
+  // Builder orders:
+  //   - "View Design" → builder-review (design summary: render, colors, logos)
+  //     Show it when the order has been submitted OR has a saved render/colors
+  //   - "Continue" → jersey builder (edit the design)
+  //
+  // AI orders:
+  //   - "View Design" → concepts page (only when concepts exist)
+  const hasBuilderData = !!(order.builder_render_url || order.zone_colors || !notSubmitted);
+
   const viewDesignHref: string | null = isBuilder
-    ? `/jersey-builder?orderId=${order.id}`
+    ? hasBuilderData ? `/brief/${order.id}/builder-review` : null
     : order.has_concepts
       ? `/orders/${order.id}/concepts`
       : null;
 
-  // "Continue" for any unsubmitted order goes to the jersey builder.
-  // For builder orders this restores their saved colors; for any other
-  // Design Started order builder-review has nothing useful to show.
   const continueHref = `/jersey-builder?orderId=${order.id}`;
 
   return (
@@ -298,9 +304,12 @@ function CreativeCard({ order, index }: { order: Order; index: number }) {
         </div>
 
         <div className="flex items-center gap-3 flex-shrink-0">
-          {/* Locked concept thumbnail — builder render takes priority over AI concept preview */}
+          {/* Thumbnail — clicking opens the review page for builder orders */}
           {(order.builder_render_url || order.preview_url) && !order.design_fee_paid && (
-            <div className="relative w-14 h-14 rounded-lg overflow-hidden border border-brand-border flex-shrink-0">
+            <a
+              href={viewDesignHref ?? "#"}
+              className="relative w-14 h-14 rounded-lg overflow-hidden border border-brand-border flex-shrink-0 hover:border-brand-primary transition-colors"
+            >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={order.builder_render_url ?? order.preview_url ?? ""}
@@ -312,7 +321,7 @@ function CreativeCard({ order, index }: { order: Order; index: number }) {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
                 </svg>
               </div>
-            </div>
+            </a>
           )}
 
           <span className="px-2 py-0.5 rounded-full font-display font-bold text-[9px] uppercase tracking-widest border border-brand-border text-brand-muted">
@@ -336,7 +345,7 @@ function CreativeCard({ order, index }: { order: Order; index: number }) {
             href={viewDesignHref}
             className="px-4 py-2 rounded-lg font-display font-bold text-[11px] uppercase tracking-widest border border-brand-border text-brand-muted hover:text-brand-text hover:border-brand-muted transition-colors"
           >
-            View Design
+            {isBuilder ? "Review Design" : "View Design"}
           </a>
         )}
         {notSubmitted && (
