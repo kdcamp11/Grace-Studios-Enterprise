@@ -64,8 +64,8 @@ export default function UploadProductionFilePage() {
         throw new Error(data.error ?? "Upload failed. Please try again.");
       }
 
-      // Success — go to checkout for design execution deposit
-      router.push(`/orders/${order_id}/checkout`);
+      // Success — review the uploaded file before activation/checkout
+      router.push(`/brief/${order_id}/upload-review`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
       setUploading(false);
