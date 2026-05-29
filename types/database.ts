@@ -291,7 +291,8 @@ export interface BriefState {
   email: string;
   city: string;
   sport: string;
-  orderId: string;
+  orderId: string;   // set after payment (webhook mints the order)
+  designId: string;  // set at Team Info — pre-payment design container
   clientId: string;
 
   // Screen 2

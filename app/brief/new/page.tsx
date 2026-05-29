@@ -74,22 +74,27 @@ function TeamInfoPage() {
     setLoading(true);
     setError("");
     try {
-      // Get the in-memory access token so the server can reliably link this
-      // order to the user's account even if cookie-based auth doesn't read correctly.
       const supabase = createClient();
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
 
-      const res = await fetch("/api/brief/start", {
+      // Determine design kind from the chosen path
+      const kind =
+        designPath === "builder" || designPath === "builder-review" ? "builder"
+        : designPath === "upload" ? "upload"
+        : "ai";
+
+      // Create a design (no order — order is minted by Stripe webhook at payment)
+      const res = await fetch("/api/design/start", {
         method:  "POST",
         headers: {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body:    JSON.stringify(payload),
+        body: JSON.stringify({ ...payload, kind }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Failed to start brief");
+      const data = await res.json() as { designId?: string; clientId?: string; error?: string };
+      if (!res.ok) throw new Error(data.error ?? "Failed to start design");
 
       saveBriefState({
         teamName:    payload.teamName,
@@ -97,24 +102,21 @@ function TeamInfoPage() {
         email:       payload.email,
         city:        payload.city,
         sport:       payload.sport,
-        orderId:     data.orderId,
-        clientId:    data.clientId,
+        designId:    data.designId ?? "",
+        clientId:    data.clientId ?? "",
       });
 
-      // Route based on design path chosen before Team Info
+      // Route by designId — downstream pages updated in Phase 4 to accept designId
       if (designPath === "ai") {
-        router.push(`/brief/${data.orderId}/style`);
+        router.push(`/brief/${data.designId}/style`);
       } else if (designPath === "builder-review") {
-        // User already built the jersey (design saved in brief state) — go straight to review
-        router.push(`/brief/${data.orderId}/builder-review`);
+        router.push(`/brief/${data.designId}/builder-review`);
       } else if (designPath === "builder") {
-        router.push(`/jersey-builder?orderId=${data.orderId}&sport=${encodeURIComponent(payload.sport)}`);
+        router.push(`/jersey-builder?designId=${data.designId}&sport=${encodeURIComponent(payload.sport)}`);
       } else if (designPath === "upload") {
-        // Client-provided concept — skip AI generation, go to upload page
-        router.push(`/orders/${data.orderId}/upload-concept`);
+        router.push(`/designs/${data.designId}/upload`);
       } else {
-        // Legacy fallback — direct links to /brief/new without a path param
-        router.push(`/brief/${data.orderId}/choose?sport=${encodeURIComponent(payload.sport)}`);
+        router.push(`/brief/${data.designId}/choose?sport=${encodeURIComponent(payload.sport)}`);
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");

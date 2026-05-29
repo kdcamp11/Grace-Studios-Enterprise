@@ -274,7 +274,9 @@ function CameraFitter({
 function JerseyBuilderInner() {
   const router       = useRouter();
   const searchParams = useSearchParams();
+  const designId     = searchParams.get("designId");
   const orderId      = searchParams.get("orderId");
+  const activeId     = designId ?? orderId; // prefer designId; fall back to legacy orderId
   const sport        = (searchParams.get("sport") ?? "").toLowerCase();
   const hasModel     = sport === "" || sport === "basketball";
 
@@ -666,12 +668,12 @@ function JerseyBuilderInner() {
     };
     saveBriefState(designState);
 
-    if (orderId) {
-      router.push(`/brief/${orderId}/builder-review`);
+    if (activeId) {
+      router.push(`/brief/${activeId}/builder-review`);
       return;
     }
 
-    // No orderId yet — try to silently create an order for returning clients
+    // No id yet — try to silently create a design for returning clients
     try {
       const supabase = createClient();
       const { data: { session } } = await supabase.auth.getSession();
@@ -682,14 +684,14 @@ function JerseyBuilderInner() {
             client: { name: string; contact_name?: string; email: string; city?: string; is_prefill?: boolean } | null;
           };
           if (client && !client.is_prefill) {
-            const startRes = await fetch("/api/brief/start", {
+            const startRes = await fetch("/api/design/start", {
               method:  "POST",
               headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
-              body:    JSON.stringify({ teamName: client.name, contactName: client.contact_name ?? "", email: client.email, city: client.city ?? "", sport: "Basketball" }),
+              body:    JSON.stringify({ teamName: client.name, contactName: client.contact_name ?? "", email: client.email, city: client.city ?? "", sport: "Basketball", kind: "builder" }),
             });
             if (startRes.ok) {
-              const { orderId: newId, clientId } = await startRes.json();
-              saveBriefState({ ...designState, teamName: client.name, contactName: client.contact_name ?? "", email: client.email, city: client.city ?? "", sport: "Basketball", orderId: newId, clientId });
+              const { designId: newId, clientId } = await startRes.json() as { designId: string; clientId: string };
+              saveBriefState({ ...designState, teamName: client.name, contactName: client.contact_name ?? "", email: client.email, city: client.city ?? "", sport: "Basketball", designId: newId, clientId });
               router.push(`/brief/${newId}/builder-review`);
               return;
             }
@@ -700,7 +702,7 @@ function JerseyBuilderInner() {
 
     // New client or error: collect info first
     router.push("/brief/new?path=builder-review");
-  }, [orderId, colors, artworkDrafts, router]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeId, colors, artworkDrafts, router]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!ready) {
     return (
