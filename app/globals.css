@@ -13,6 +13,7 @@
    ───────────────────────────────────────────────────────────────────────── */
 html {
   font-size: 18px;
+  scrollbar-gutter: stable;
 }
 
 /* Body copy boost — Barlow (non-display) text gets a slight size step so
