@@ -330,4 +330,7 @@ export interface BriefState {
     sleevePanels:       string;
     shortSidePanels:    string;
   } | null;
+
+  // Jersey Builder — render URL captured from canvas on "Review My Design"
+  renderUrl?: string | null;
 }

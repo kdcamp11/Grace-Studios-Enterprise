@@ -115,16 +115,23 @@ export default function BuilderReviewPage() {
     setError("");
 
     try {
+      const aiPrompt = JSON.stringify({
+        garmentType: "Basketball Jersey & Shorts",
+        sport:       brief?.sport || "Basketball",
+        renders:     { frontJersey: brief?.renderUrl ?? null },
+      });
+
       const res = await fetch("/api/brief/submit", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           order_id:          order_id,
-          concept_source:    "client_provided",   // routes post-payment to tracker
+          concept_source:    "client_provided",
           zone_colors:       brief?.zoneColors ?? null,
           logos_to_include:  brief?.logosToInclude || null,
           vision_prompt:     notes.trim() || null,
-          logo_placement:    "chest",             // default; designer confirms on execution
+          logo_placement:    "chest",
+          ai_prompt:         aiPrompt,
         }),
       });
 
@@ -259,7 +266,7 @@ export default function BuilderReviewPage() {
           <ol className="space-y-3">
             {[
               "Submit your builder design (you're here)",
-              "Activate your project. $100 applied to your final order total.",
+              "Activate your project. $149 Creative Activation applied toward your final order total.",
               "A Grace Studios designer executes your color layout",
               "You approve the final artwork before production begins",
               "Production and delivery managed by Grace Studios",

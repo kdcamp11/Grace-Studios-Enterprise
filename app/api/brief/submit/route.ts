@@ -21,11 +21,27 @@ export async function POST(req: NextRequest) {
 
   const admin = createAdminClient();
 
-  const { error: briefError } = await admin.from("briefs").insert({
-    ...briefFields,
-    order_id,
-    tenant_id: tenant.id,
-  });
+  // If a brief row was pre-created (e.g. by save-builder-preview), update it
+  // rather than inserting a duplicate.
+  const { data: existingBrief } = await admin
+    .from("briefs")
+    .select("id")
+    .eq("order_id", order_id)
+    .single();
+
+  let briefError;
+  if (existingBrief) {
+    ({ error: briefError } = await admin
+      .from("briefs")
+      .update({ ...briefFields })
+      .eq("id", existingBrief.id));
+  } else {
+    ({ error: briefError } = await admin.from("briefs").insert({
+      ...briefFields,
+      order_id,
+      tenant_id: tenant.id,
+    }));
+  }
 
   if (briefError) {
     return NextResponse.json({ error: briefError.message }, { status: 500 });

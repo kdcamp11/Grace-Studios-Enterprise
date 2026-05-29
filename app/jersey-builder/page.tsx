@@ -345,10 +345,11 @@ function JerseyBuilderInner() {
   const [activeView,   setActiveView]   = useState<"jersey" | "shorts">("jersey");
   const [activeSide,   setActiveSide]   = useState<"front" | "back">("front");
   const [groupCenters, setGroupCenters] = useState<GroupCenters | null>(null);
-  const orbitRef      = useRef<any>(null);
-  const sceneGroupRef = useRef<THREE.Group>(null);
-  const sceneYRotRef  = useRef(0);
-  const sceneXTiltRef = useRef(0);
+  const orbitRef           = useRef<any>(null);
+  const sceneGroupRef      = useRef<THREE.Group>(null);
+  const sceneYRotRef       = useRef(0);
+  const sceneXTiltRef      = useRef(0);
+  const canvasContainerRef = useRef<HTMLDivElement>(null);
 
   const groupCentersRef = useRef<GroupCenters | null>(null);
   const handleGroupCenters = useCallback((centers: GroupCenters) => {
@@ -652,6 +653,10 @@ function JerseyBuilderInner() {
   const handleReviewMyDesign = useCallback(async () => {
     setIsReviewing(true);
 
+    // Capture current canvas render for the portal thumbnail
+    const canvasEl = canvasContainerRef.current?.querySelector("canvas");
+    const imageDataUrl = canvasEl?.toDataURL("image/jpeg", 0.8) ?? null;
+
     const designState = {
       zoneColors: {
         jerseyTop:         colors.jerseyTop,
@@ -667,6 +672,14 @@ function JerseyBuilderInner() {
     saveBriefState(designState);
 
     if (orderId) {
+      // Save render to storage so the portal thumbnail shows immediately
+      if (imageDataUrl) {
+        fetch(`/api/orders/${orderId}/save-builder-preview`, {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          body:    JSON.stringify({ imageDataUrl, sport: "Basketball", garmentType: "Basketball Jersey & Shorts" }),
+        }).catch(() => {});
+      }
       router.push(`/brief/${orderId}/builder-review`);
       return;
     }
@@ -688,8 +701,17 @@ function JerseyBuilderInner() {
               body:    JSON.stringify({ teamName: client.name, contactName: client.contact_name ?? "", email: client.email, city: client.city ?? "", sport: "Basketball" }),
             });
             if (startRes.ok) {
-              const { orderId: newId, clientId } = await startRes.json();
-              saveBriefState({ ...designState, teamName: client.name, contactName: client.contact_name ?? "", email: client.email, city: client.city ?? "", sport: "Basketball", orderId: newId, clientId });
+              const { orderId: newId, clientId } = await startRes.json() as { orderId: string; clientId: string };
+              const stateWithMeta = { ...designState, teamName: client.name, contactName: client.contact_name ?? "", email: client.email, city: client.city ?? "", sport: "Basketball", orderId: newId, clientId };
+              saveBriefState(stateWithMeta);
+              // Save render now that we have an orderId
+              if (imageDataUrl) {
+                fetch(`/api/orders/${newId}/save-builder-preview`, {
+                  method:  "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body:    JSON.stringify({ imageDataUrl, sport: "Basketball", garmentType: "Basketball Jersey & Shorts" }),
+                }).catch(() => {});
+              }
               router.push(`/brief/${newId}/builder-review`);
               return;
             }
@@ -731,7 +753,7 @@ function JerseyBuilderInner() {
       <div className="flex-1 flex flex-col lg:flex-row min-h-0">
 
         {/* ── 3-D Viewport ─────────────────────────────────────────────────── */}
-        <div className="relative flex-1 min-h-0 bg-white">
+        <div ref={canvasContainerRef} className="relative flex-1 min-h-0 bg-white">
 
           {/* Viewport label */}
           <div className="absolute top-4 left-5 z-10 flex items-center gap-2 pointer-events-none">
