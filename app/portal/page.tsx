@@ -27,6 +27,7 @@ interface Order {
   has_pending_review: boolean;    // client_visible media awaiting client decision
   order_type?: "creative" | "production";
   design_fee_paid?: boolean;
+  preview_url?: string | null;
   team_name?: string | null;
   sport?: string | null;
   logos_to_include?: string | null;
@@ -278,9 +279,29 @@ function CreativeCard({ order, index }: { order: Order; index: number }) {
             <p className="text-[11px] uppercase tracking-wider text-brand-muted font-display">{order.sport}</p>
           )}
         </div>
-        <span className="flex-shrink-0 px-2 py-0.5 rounded-full font-display font-bold text-[9px] uppercase tracking-widest border border-brand-border text-brand-muted">
-          {order.design_fee_paid ? "Activated" : "Awaiting Activation"}
-        </span>
+
+        <div className="flex items-center gap-3 flex-shrink-0">
+          {/* Locked concept thumbnail — shown when concepts exist but not yet activated */}
+          {order.preview_url && !order.design_fee_paid && (
+            <div className="relative w-14 h-14 rounded-lg overflow-hidden border border-brand-border flex-shrink-0">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={order.preview_url}
+                alt="Concept preview"
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-brand-bg/60 to-brand-bg/90 flex items-center justify-end pr-1.5">
+                <svg className="w-3.5 h-3.5 text-brand-muted/70" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+                </svg>
+              </div>
+            </div>
+          )}
+
+          <span className="px-2 py-0.5 rounded-full font-display font-bold text-[9px] uppercase tracking-widest border border-brand-border text-brand-muted">
+            {order.design_fee_paid ? "Activated" : "Awaiting Activation"}
+          </span>
+        </div>
       </div>
 
       <div className="flex items-center justify-between gap-3 flex-wrap">

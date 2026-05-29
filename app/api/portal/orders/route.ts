@@ -69,7 +69,7 @@ export async function GET() {
 
   // Fetch concepts, first-piece-media, and briefs (for design preview) in parallel
   const [{ data: concepts }, { data: mediaRows }, { data: briefRows }] = await Promise.all([
-    admin.from("concepts").select("order_id").in("order_id", orderIds),
+    admin.from("concepts").select("order_id, image_url").in("order_id", orderIds),
     admin
       .from("first_piece_media")
       .select("order_id, client_approved")
@@ -82,6 +82,13 @@ export async function GET() {
   ]);
 
   const conceptOrderIds = new Set((concepts ?? []).map((c) => c.order_id));
+  // First concept image per order (for locked preview thumbnail)
+  const previewByOrder = new Map<string, string>();
+  for (const c of (concepts ?? [])) {
+    if (c.image_url && !previewByOrder.has(c.order_id)) {
+      previewByOrder.set(c.order_id, c.image_url);
+    }
+  }
   const pendingReviewIds = new Set(
     (mediaRows ?? [])
       .filter((m) => m.client_approved === null)
@@ -97,6 +104,7 @@ export async function GET() {
       ...o,
       has_concepts:       conceptOrderIds.has(o.id),
       has_pending_review: pendingReviewIds.has(o.id),
+      preview_url:        previewByOrder.get(o.id) ?? null,
       team_name:          clientMeta?.name ?? null,
       sport:              clientMeta?.sport ?? null,
       zone_colors:        (brief?.zone_colors as Record<string, string> | string[] | null) ?? null,
