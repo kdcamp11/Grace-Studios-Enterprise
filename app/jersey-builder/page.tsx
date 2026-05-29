@@ -660,6 +660,33 @@ function JerseyBuilderInner() {
     [artworkDrafts, activeView, activeSide],
   );
 
+  // ── Save CTA ─────────────────────────────────────────────────────────────
+  const [isSaving, setIsSaving]   = useState(false);
+  const [savedOk,  setSavedOk]    = useState(false);
+
+  const handleSave = useCallback(async () => {
+    if (!orderId || isSaving) return;
+    setIsSaving(true);
+    setSavedOk(false);
+
+    const canvasEl    = canvasContainerRef.current?.querySelector("canvas");
+    const imageDataUrl = canvasEl?.toDataURL("image/jpeg", 0.8) ?? null;
+
+    if (imageDataUrl) {
+      try {
+        await fetch(`/api/orders/${orderId}/save-builder-preview`, {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          body:    JSON.stringify({ imageDataUrl, sport: "Basketball", garmentType: "Basketball Jersey & Shorts" }),
+        });
+        setSavedOk(true);
+        setTimeout(() => setSavedOk(false), 2500);
+      } catch { /* silent */ }
+    }
+
+    setIsSaving(false);
+  }, [orderId, isSaving]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Review CTA — skips Team Info for returning clients ───────────────────
   const [isReviewing, setIsReviewing] = useState(false);
 
@@ -1312,6 +1339,16 @@ function JerseyBuilderInner() {
             >
               {isReviewing ? "Preparing…" : "Review My Design →"}
             </button>
+            {orderId && (
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={isSaving}
+                className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg border border-brand-border text-brand-muted font-display font-bold text-[11px] uppercase tracking-widest hover:border-brand-primary hover:text-brand-text transition-colors disabled:opacity-50"
+              >
+                {isSaving ? "Saving…" : savedOk ? "✓ Saved" : "Save Design"}
+              </button>
+            )}
             <p className="text-[9px] font-barlow text-brand-muted/70 text-center leading-relaxed">
               Review your selections before submitting to Grace Studios.
             </p>

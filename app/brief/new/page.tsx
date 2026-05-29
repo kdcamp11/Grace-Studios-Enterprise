@@ -8,10 +8,8 @@ import { saveBriefState } from "@/lib/brief-state";
 import { createClient } from "@/lib/supabase/client";
 import type { ClientProfile } from "@/app/api/brief/client-profile/route";
 
-const SPORTS = [
-  "Basketball",
-  "Tracksuits",
-];
+const ALL_SPORTS    = ["Basketball", "Tracksuits"];
+const BUILDER_SPORTS = ["Basketball"]; // jersey builder only supports basketball
 
 function TeamInfoPage() {
   const router = useRouter();
@@ -155,6 +153,7 @@ function TeamInfoPage() {
   // RETURNING CLIENT — just pick a sport
   // ─────────────────────────────────────────────────────────────────────────
   const isBuilderPath = designPath === "builder" || designPath === "builder-review";
+  const SPORTS        = isBuilderPath ? BUILDER_SPORTS : ALL_SPORTS;
 
   if (existingClient) {
     return (
