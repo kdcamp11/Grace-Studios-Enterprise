@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { createClient, sessionReady } from "@/lib/supabase/client";
 import { getProfile } from "@/lib/profile";
@@ -8,6 +8,7 @@ import OrgLogo from "@/components/OrgLogo";
 import MobileDropdown from "@/components/MobileDropdown";
 import { useTenant } from "@/lib/tenant/context";
 import type { DesignMetadata, GenerationStatus } from "@/app/api/generate-concepts/route";
+import { RendersBoard } from "@/components/concepts/RendersBoard";
 
 /**
  * /designs/[design_id]/concepts
@@ -30,8 +31,10 @@ interface GenerationProgress {
 }
 
 interface BoardData {
-  teamName: string;
-  metadata: DesignMetadata;
+  teamName:    string;
+  orderNumber: string;
+  metadata:    DesignMetadata;
+  logoUrls:    string[];
 }
 
 const STEP_LABELS = [
@@ -81,37 +84,6 @@ function GeneratingState({ gen }: { gen: GenerationProgress }) {
   );
 }
 
-function RenderImage({ url, alt, className, style }: { url?: string; alt: string; className?: string; style?: React.CSSProperties }) {
-  const [loaded, setLoaded] = useState(false);
-  const [error,  setError]  = useState(false);
-
-  if (!url) return (
-    <div className={`bg-gray-50 flex items-center justify-center ${className ?? ""}`} style={style}>
-      <span className="text-gray-300 text-[10px] font-display uppercase tracking-wider">Rendering…</span>
-    </div>
-  );
-
-  return (
-    <div className={`relative bg-gray-50 overflow-hidden ${className ?? ""}`} style={style}>
-      {!loaded && !error && <div className="absolute inset-0 animate-pulse bg-gray-100" />}
-      {error ? (
-        <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-gray-300 text-[10px]">Unavailable</span>
-        </div>
-      ) : (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={url}
-          alt={alt}
-          onLoad={() => setLoaded(true)}
-          onError={() => setError(true)}
-          className={`w-full h-full object-contain transition-opacity duration-500 ${loaded ? "opacity-100" : "opacity-0"}`}
-        />
-      )}
-    </div>
-  );
-}
-
 export default function DesignConceptsPage() {
   const { design_id } = useParams<{ design_id: string }>();
   const router        = useRouter();
@@ -137,7 +109,7 @@ export default function DesignConceptsPage() {
 
     const { brief: briefRow, conceptRows, order: designRow } =
       await res.json() as {
-        brief: { ai_prompt?: string } | null;
+        brief: { ai_prompt?: string; logo_urls?: unknown } | null;
         conceptRows: { concept_number: number; image_url: string }[];
         order: { clients?: { name?: string } | { name?: string }[] } | null;
       };
@@ -176,7 +148,13 @@ export default function DesignConceptsPage() {
     const clientData = Array.isArray(designRow?.clients) ? designRow?.clients[0] : designRow?.clients;
     const teamName   = (clientData as { name?: string })?.name ?? "Your Team";
 
-    setBoardData({ teamName, metadata });
+    const logoUrls: string[] = Array.isArray(briefRow?.logo_urls)
+      ? (briefRow.logo_urls as unknown[]).filter((u): u is string => typeof u === "string" && u.startsWith("http"))
+      : [];
+
+    const orderNumber = design_id.slice(0, 8).toUpperCase();
+
+    setBoardData({ teamName, orderNumber, metadata, logoUrls });
     return true;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [design_id]);
@@ -348,14 +326,14 @@ export default function DesignConceptsPage() {
             </div>
           )}
 
-          {/* Board ready — locked teaser + activate */}
+          {/* Board ready — full render board + activate */}
           {hasBoard && renders && (
             <div className="space-y-4">
-              {/* Teaser header */}
+              {/* Activation header */}
               <div className="rounded-xl border border-brand-primary/20 bg-brand-surface px-5 py-4 flex items-center gap-4">
                 <div className="w-8 h-8 rounded-lg bg-brand-primary/10 border border-brand-primary/30 flex items-center justify-center flex-shrink-0">
                   <svg className="w-4 h-4 text-brand-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
                 <div className="flex-1 min-w-0">
@@ -363,7 +341,7 @@ export default function DesignConceptsPage() {
                     Your design is ready
                   </p>
                   <p className="text-[10px] text-brand-muted font-barlow mt-0.5">
-                    Activate your project to unlock all 4 views and move into production.
+                    Activate your project to put a Grace Studios designer on it and move into production.
                   </p>
                 </div>
                 <a
@@ -374,48 +352,8 @@ export default function DesignConceptsPage() {
                 </a>
               </div>
 
-              {/* Front jersey — visible preview */}
-              <div className="rounded-xl overflow-hidden border border-gray-200 shadow-lg bg-gray-50">
-                <div className="border-b border-gray-100 bg-white px-4 py-2 flex items-center justify-between">
-                  <span className="text-[8px] font-bold uppercase tracking-[0.28em] text-gray-400">Preview: Front View</span>
-                  <span className="text-[8px] font-display uppercase tracking-wider text-gray-300">{boardData.teamName}</span>
-                </div>
-                <RenderImage
-                  url={renders.frontJersey}
-                  alt="Front view preview"
-                  className="w-full"
-                  style={{ height: "min(60vw, 420px)" }}
-                />
-              </div>
-
-              {/* Locked grid — 3 blurred placeholders */}
-              <div className="grid grid-cols-3 gap-3">
-                {[
-                  { label: "Back View" },
-                  { label: "Front Shorts / Pants" },
-                  { label: "Back Shorts / Pants" },
-                ].map(({ label }) => (
-                  <div
-                    key={label}
-                    className="relative rounded-xl overflow-hidden border border-brand-border bg-brand-surface aspect-square flex items-center justify-center"
-                  >
-                    <div
-                      className="absolute inset-0 bg-cover bg-center"
-                      style={{
-                        backgroundImage: renders.frontJersey ? `url(${renders.frontJersey})` : undefined,
-                        filter: "blur(14px) brightness(0.35)",
-                        transform: "scale(1.1)",
-                      }}
-                    />
-                    <div className="relative z-10 flex flex-col items-center gap-2">
-                      <svg className="w-6 h-6 text-brand-muted/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
-                      </svg>
-                      <span className="text-[8px] font-display uppercase tracking-wider text-brand-muted/60">{label}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              {/* Full concept board */}
+              <RendersBoard data={boardData} studioName={tenant.name} />
 
               {/* CTA */}
               <a

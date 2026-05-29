@@ -43,7 +43,9 @@ export default function DesignActivatedPage() {
           };
 
           if (status === "converted" && orderId) {
-            router.replace(kind === "upload"
+            // Upload and builder designs are executed by a Grace Studios designer
+            // (no AI concept set to review) → tracker. AI briefs → concepts board.
+            router.replace(kind === "upload" || kind === "builder"
               ? `/orders/${orderId}/tracker`
               : `/orders/${orderId}/concepts`);
             return;

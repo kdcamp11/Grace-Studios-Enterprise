@@ -37,15 +37,38 @@ export async function GET(req: NextRequest) {
     .select("id, client_id, stage, design_fee_paid, order_type")
     .eq("id", orderId)
     .eq("tenant_id", tenant.id)
-    .single();
+    .maybeSingle();
 
-  if (!order) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  // Fall back to the designs table — pre-payment builder/AI designs have no
+  // order yet, so the id in the URL is actually a design_id.
+  let isDesign = false;
+  let clientId: string | null = order?.client_id ?? null;
+  let stage = order?.stage ?? "creative_started";
+  let designFeePaid = order?.design_fee_paid ?? false;
+  let orderType = order?.order_type ?? null;
 
-  // Ownership check: the order's client must belong to this user (by user_id or email).
+  if (!order) {
+    const { data: design } = await admin
+      .from("designs")
+      .select("id, client_id, status")
+      .eq("id", orderId)
+      .eq("tenant_id", tenant.id)
+      .maybeSingle();
+
+    if (!design) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+    isDesign      = true;
+    clientId      = design.client_id;
+    stage         = "creative_started";
+    designFeePaid = false;
+    orderType     = null;
+  }
+
+  // Ownership check: the client must belong to this user (by user_id or email).
   const { data: client } = await admin
     .from("clients")
     .select("id, name, sport, user_id, email")
-    .eq("id", order.client_id)
+    .eq("id", clientId!)
     .single();
 
   const owns =
@@ -55,14 +78,11 @@ export async function GET(req: NextRequest) {
 
   if (!owns) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  // Load the brief (latest, if multiple) for the design preview.
-  const { data: brief } = await admin
-    .from("briefs")
-    .select("id, zone_colors, logos_to_include, vision_prompt")
-    .eq("order_id", orderId)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  // Load the brief (latest, if multiple) for the design preview — keyed by
+  // design_id pre-payment, order_id post-payment.
+  const { data: brief } = isDesign
+    ? await admin.from("briefs").select("id, zone_colors, logos_to_include, vision_prompt").eq("design_id", orderId).order("created_at", { ascending: false }).limit(1).maybeSingle()
+    : await admin.from("briefs").select("id, zone_colors, logos_to_include, vision_prompt").eq("order_id", orderId).order("created_at", { ascending: false }).limit(1).maybeSingle();
 
   return NextResponse.json({
     teamName:        client?.name ?? null,
@@ -71,8 +91,9 @@ export async function GET(req: NextRequest) {
     logosToInclude:  brief?.logos_to_include ?? null,
     visionPrompt:    brief?.vision_prompt ?? null,
     hasBrief:        !!brief,
-    stage:           order.stage,
-    designFeePaid:   order.design_fee_paid,
-    orderType:       order.order_type,
+    stage,
+    designFeePaid,
+    orderType,
+    isDesign,
   });
 }
