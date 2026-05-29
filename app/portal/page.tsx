@@ -269,9 +269,7 @@ function CreativeCard({ order, index }: { order: Order; index: number }) {
 
   // Routing for "View Design" and "Continue"
   const viewDesignHref = isBuilder
-    ? notSubmitted
-      ? `/jersey-builder?orderId=${order.id}`
-      : `/brief/${order.id}/builder-review`
+    ? `/jersey-builder?orderId=${order.id}`
     : `/orders/${order.id}/concepts`;
 
   const continueHref = isBuilder

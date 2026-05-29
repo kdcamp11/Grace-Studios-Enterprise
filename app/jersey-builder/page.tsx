@@ -410,6 +410,19 @@ function JerseyBuilderInner() {
     if (mesh) setCameraFitTick((t) => t + 1);
   }, []);
 
+  // Restore saved zone colors from the server when opened with an existing orderId
+  useEffect(() => {
+    if (!orderId) return;
+    fetch(`/api/portal/design?order_id=${encodeURIComponent(orderId)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { zoneColors?: Record<string, string> | null } | null) => {
+        if (!data?.zoneColors || Array.isArray(data.zoneColors)) return;
+        setColors((prev) => ({ ...prev, ...data.zoneColors as ZoneColors }));
+      })
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orderId]);
+
   /**
    * Raycast from the current viewing direction to auto-place artwork on the
    * active garment surface.  Hit and normal are converted to sceneGroup local
@@ -668,6 +681,9 @@ function JerseyBuilderInner() {
         shortSidePanels:   colors.shortSidePanels,
       },
       logosToInclude: artworkDrafts.map((a) => a.label).filter(Boolean).join(", "),
+      // Store the data URL in localStorage so builder-review shows the image
+      // immediately without waiting for the server upload to complete.
+      renderUrl: imageDataUrl,
     };
     saveBriefState(designState);
 
