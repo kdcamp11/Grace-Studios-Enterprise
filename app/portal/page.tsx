@@ -28,6 +28,7 @@ interface Order {
   design_fee_paid?: boolean;
   preview_url?: string | null;
   builder_render_url?: string | null;
+  zone_colors?: Record<string, string> | string[] | null;
   garment_type?: string | null;
   team_name?: string | null;
   sport?: string | null;
@@ -263,7 +264,13 @@ function CreativeCard({ order, index }: { order: Order; index: number }) {
   const orderLabel   = order.order_number || order.id.slice(0, 8).toUpperCase();
   const notSubmitted = isAwaitingConcepts(order.stage); // creative_started / legacy onboarding
   const approved     = !notSubmitted;
-  const isBuilder    = order.concept_source === "client_provided";
+  // A builder order is tagged client_provided. Older builder orders predate that
+  // tag, so also treat saved builder data (zone colors / render) as a builder
+  // signal — but only when there are no AI concepts, since a design brief always
+  // produces concepts and must never be mistaken for a builder order.
+  const isBuilder =
+    order.concept_source === "client_provided" ||
+    (!order.has_concepts && !!(order.zone_colors || order.builder_render_url));
 
   // Routing for "View Design" and "Continue"
   //
@@ -272,8 +279,8 @@ function CreativeCard({ order, index }: { order: Order; index: number }) {
   //     Show it when the order has been submitted OR has a saved render/colors
   //   - "Continue" → jersey builder (edit the design)
   //
-  // AI orders:
-  //   - "View Design" → concepts page (only when concepts exist)
+  // Design brief orders:
+  //   - "View Design" / "Continue" → concepts page (the generated concepts)
   const hasBuilderData = !!(order.builder_render_url || order.zone_colors || !notSubmitted);
 
   const viewDesignHref: string | null = isBuilder
@@ -282,7 +289,9 @@ function CreativeCard({ order, index }: { order: Order; index: number }) {
       ? `/orders/${order.id}/concepts`
       : null;
 
-  const continueHref = `/jersey-builder?orderId=${order.id}`;
+  const continueHref = isBuilder
+    ? `/jersey-builder?orderId=${order.id}`
+    : `/orders/${order.id}/concepts`;
 
   return (
     <div
