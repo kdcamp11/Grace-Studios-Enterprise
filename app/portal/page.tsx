@@ -264,15 +264,12 @@ function CreativeCard({ order, index }: { order: Order; index: number }) {
   const orderLabel   = order.order_number || order.id.slice(0, 8).toUpperCase();
   const notSubmitted = isAwaitingConcepts(order.stage); // creative_started / legacy onboarding
   const approved     = !notSubmitted;
-  // An order is a jersey-builder order only when it has NO AI concepts.
-  // has_concepts is the definitive signal — if concepts exist it's a design brief
-  // regardless of what concept_source says (an old save may have tagged it
-  // client_provided even though it went through the AI brief flow).
-  const isBuilder =
-    !order.has_concepts && (
-      order.concept_source === "client_provided" ||
-      !!(order.zone_colors || order.builder_render_url)
-    );
+  // The order's creation path is the single source of truth. Jersey-builder
+  // orders are tagged concept_source = "client_provided" (by the builder save
+  // and the builder-review submit). AI design-brief orders are never tagged.
+  // We rely solely on this tag — never on saved colors/renders, since a brief
+  // order can also carry color data and must not be mistaken for a builder order.
+  const isBuilder = order.concept_source === "client_provided";
 
   // Routing for "View Design" and "Continue"
   //
