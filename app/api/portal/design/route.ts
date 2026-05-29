@@ -65,10 +65,12 @@ export async function GET(req: NextRequest) {
     .maybeSingle();
 
   let renderUrl: string | null = null;
+  let builderArtwork: unknown[] = [];
   if (brief?.ai_prompt) {
     try {
       const meta = JSON.parse(brief.ai_prompt as string);
       if (meta.renders?.frontJersey) renderUrl = meta.renders.frontJersey as string;
+      if (Array.isArray(meta.builder?.artwork)) builderArtwork = meta.builder.artwork;
     } catch { /* ignore */ }
   }
 
@@ -79,6 +81,7 @@ export async function GET(req: NextRequest) {
     logosToInclude:  brief?.logos_to_include ?? null,
     visionPrompt:    brief?.vision_prompt ?? null,
     renderUrl,
+    builderArtwork,
     hasBrief:        !!brief,
     stage:           order.stage,
     designFeePaid:   order.design_fee_paid,

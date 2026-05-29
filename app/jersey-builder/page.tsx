@@ -159,13 +159,28 @@ function buildLogoTexture(src: string): Promise<THREE.Texture> {
   });
 }
 
-/** Compute a world-space Euler rotation that aligns the decal's +Z with `normal`. */
+/**
+ * Compute a world-space Euler rotation that aligns the decal's +Z with `normal`
+ * while keeping the decal's +Y locked to world-up. Using a fixed up-vector basis
+ * (instead of the shortest-arc quaternion) prevents text/numbers from appearing
+ * slanted on curved or side-facing surfaces — they stay upright. The per-artwork
+ * `twist` slider still applies intentional rotation on top of this.
+ */
 function normalToRotation(normal: THREE.Vector3): [number, number, number] {
-  const q = new THREE.Quaternion().setFromUnitVectors(
-    new THREE.Vector3(0, 0, 1),
-    normal.clone().normalize(),
-  );
-  const e = new THREE.Euler().setFromQuaternion(q);
+  const forward = normal.clone().normalize();
+  const worldUp = new THREE.Vector3(0, 1, 0);
+
+  // right = worldUp × forward. Degenerates when the surface faces straight up
+  // or down (shoulders) — fall back to a world X reference in that case.
+  let right = new THREE.Vector3().crossVectors(worldUp, forward);
+  if (right.lengthSq() < 1e-6) {
+    right = new THREE.Vector3().crossVectors(new THREE.Vector3(1, 0, 0), forward);
+  }
+  right.normalize();
+
+  const up = new THREE.Vector3().crossVectors(forward, right).normalize();
+  const m  = new THREE.Matrix4().makeBasis(right, up, forward);
+  const e  = new THREE.Euler().setFromRotationMatrix(m);
   return [e.x, e.y, e.z];
 }
 
@@ -417,16 +432,56 @@ function JerseyBuilderInner() {
     if (mesh) setCameraFitTick((t) => t + 1);
   }, []);
 
-  // Restore saved zone colors from the server when opened with an existing orderId
+  // Restore the saved design (zone colors + artwork) when opened with an
+  // existing orderId so a continued session shows the user's prior work.
   useEffect(() => {
     if (!orderId) return;
-    fetch(`/api/portal/design?order_id=${encodeURIComponent(orderId)}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data: { zoneColors?: Record<string, string> | null } | null) => {
-        if (!data?.zoneColors || Array.isArray(data.zoneColors)) return;
-        setColors((prev) => ({ ...prev, ...data.zoneColors as ZoneColors }));
-      })
-      .catch(() => {});
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const r = await fetch(`/api/portal/design?order_id=${encodeURIComponent(orderId)}`);
+        if (!r.ok) return;
+        const data = await r.json() as {
+          zoneColors?: Record<string, string> | null;
+          builderArtwork?: ArtworkDraft[];
+        };
+        if (cancelled) return;
+
+        if (data.zoneColors && !Array.isArray(data.zoneColors)) {
+          setColors((prev) => ({ ...prev, ...data.zoneColors as ZoneColors }));
+        }
+
+        // Rebuild artwork textures from the serialized drafts.
+        const saved = Array.isArray(data.builderArtwork) ? data.builderArtwork : [];
+        if (saved.length > 0) {
+          // Wait for web fonts so restored text renders in the right typeface.
+          try { await document.fonts.ready; } catch { /* ignore */ }
+          const restored: ArtworkDraft[] = [];
+          for (const a of saved) {
+            try {
+              if (a.type === "logo" && a.imageDataUrl) {
+                textureMapRef.current[a.id] = await buildLogoTexture(a.imageDataUrl);
+              } else if (a.text) {
+                textureMapRef.current[a.id] = buildTextTexture(
+                  a.text,
+                  a.textColor,
+                  a.outlineColor,
+                  a.type === "number",
+                  a.fontFamily,
+                );
+              } else {
+                continue; // nothing renderable
+              }
+              restored.push(a);
+            } catch { /* skip a broken artwork */ }
+          }
+          if (!cancelled && restored.length > 0) setArtworkDrafts(restored);
+        }
+      } catch { /* ignore */ }
+    })();
+
+    return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orderId]);
 
@@ -679,20 +734,24 @@ function JerseyBuilderInner() {
     const canvasEl    = canvasContainerRef.current?.querySelector("canvas");
     const imageDataUrl = canvasEl?.toDataURL("image/jpeg", 0.8) ?? null;
 
-    if (imageDataUrl) {
-      try {
-        await fetch(`/api/orders/${orderId}/save-builder-preview`, {
-          method:  "POST",
-          headers: { "Content-Type": "application/json" },
-          body:    JSON.stringify({ imageDataUrl, sport: "Basketball", garmentType: "Basketball Jersey & Shorts" }),
-        });
-        setSavedOk(true);
-        setTimeout(() => setSavedOk(false), 2500);
-      } catch { /* silent */ }
-    }
+    try {
+      await fetch(`/api/orders/${orderId}/save-builder-preview`, {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({
+          imageDataUrl,
+          sport: "Basketball",
+          garmentType: "Basketball Jersey & Shorts",
+          zoneColors: colors,
+          artwork: artworkDrafts,   // full state — restored on next open
+        }),
+      });
+      setSavedOk(true);
+      setTimeout(() => setSavedOk(false), 2500);
+    } catch { /* silent */ }
 
     setIsSaving(false);
-  }, [orderId, isSaving]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [orderId, isSaving, colors, artworkDrafts]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Review CTA — skips Team Info for returning clients ───────────────────
   const [isReviewing, setIsReviewing] = useState(false);
@@ -722,14 +781,13 @@ function JerseyBuilderInner() {
     saveBriefState(designState);
 
     if (orderId) {
-      // Save render to storage so the portal thumbnail shows immediately
-      if (imageDataUrl) {
-        fetch(`/api/orders/${orderId}/save-builder-preview`, {
-          method:  "POST",
-          headers: { "Content-Type": "application/json" },
-          body:    JSON.stringify({ imageDataUrl, sport: "Basketball", garmentType: "Basketball Jersey & Shorts" }),
-        }).catch(() => {});
-      }
+      // Save render + full design state so the thumbnail and the builder both
+      // restore correctly on the next visit.
+      fetch(`/api/orders/${orderId}/save-builder-preview`, {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ imageDataUrl, sport: "Basketball", garmentType: "Basketball Jersey & Shorts", zoneColors: colors, artwork: artworkDrafts }),
+      }).catch(() => {});
       router.push(`/brief/${orderId}/builder-review`);
       return;
     }
@@ -754,14 +812,12 @@ function JerseyBuilderInner() {
               const { orderId: newId, clientId } = await startRes.json() as { orderId: string; clientId: string };
               const stateWithMeta = { ...designState, teamName: client.name, contactName: client.contact_name ?? "", email: client.email, city: client.city ?? "", sport: "Basketball", orderId: newId, clientId };
               saveBriefState(stateWithMeta);
-              // Save render now that we have an orderId
-              if (imageDataUrl) {
-                fetch(`/api/orders/${newId}/save-builder-preview`, {
-                  method:  "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body:    JSON.stringify({ imageDataUrl, sport: "Basketball", garmentType: "Basketball Jersey & Shorts" }),
-                }).catch(() => {});
-              }
+              // Save render + full design state now that we have an orderId
+              fetch(`/api/orders/${newId}/save-builder-preview`, {
+                method:  "POST",
+                headers: { "Content-Type": "application/json" },
+                body:    JSON.stringify({ imageDataUrl, sport: "Basketball", garmentType: "Basketball Jersey & Shorts", zoneColors: colors, artwork: artworkDrafts }),
+              }).catch(() => {});
               router.push(`/brief/${newId}/builder-review`);
               return;
             }
@@ -1206,7 +1262,7 @@ function JerseyBuilderInner() {
                               </span>
                             </div>
                             <input
-                              type="range" min={-200} max={200} step={5}
+                              type="range" min={-450} max={450} step={5}
                               value={Math.round((art.position?.[1] ?? 0) * 100)}
                               onChange={(e) =>
                                 setArtworkDrafts((prev) =>
