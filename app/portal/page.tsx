@@ -33,6 +33,18 @@ interface Order {
   tracking_number?: string | null;
 }
 
+interface SavedDesign {
+  id:         string;
+  kind:       "ai" | "builder" | "upload";
+  status:     "draft" | "submitted";
+  createdAt:  string;
+  teamName:   string | null;
+  sport:      string | null;
+  hasFile:    boolean;
+  hasBuilder: boolean;
+  hasBrief:   boolean;
+}
+
 function isCreative(o: Order): boolean {
   return o.order_type === "creative" || stageType(o.stage) === "creative";
 }
@@ -47,7 +59,8 @@ function PortalContent() {
   const submitted = searchParams.get("submitted");
   const [user, setUser]     = useState<User | null>(null);
   const [role, setRole]     = useState<UserRole | null>(null);
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [orders, setOrders]   = useState<Order[]>([]);
+  const [designs, setDesigns] = useState<SavedDesign[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasProfile, setHasProfile] = useState(false);
   const [tab, setTab] = useState<"creative" | "production">("creative");
@@ -71,9 +84,10 @@ function PortalContent() {
 
       // Use admin API for all data — bypasses RLS on clients + orders tables.
       // Direct Supabase client reads were being silently blocked by RLS policies.
-      const [profileRes, ordersRes] = await Promise.all([
+      const [profileRes, ordersRes, designsRes] = await Promise.all([
         fetch("/api/brief/client-profile"),
         fetch("/api/portal/orders"),
+        fetch("/api/portal/designs"),
       ]);
 
       if (profileRes.ok) {
@@ -89,6 +103,11 @@ function PortalContent() {
             stage: o.stage as OrderStage,
           }))
         );
+      }
+
+      if (designsRes.ok) {
+        const { designs: fetchedDesigns } = await designsRes.json();
+        setDesigns(fetchedDesigns ?? []);
       }
 
       setLoading(false);
@@ -172,6 +191,25 @@ function PortalContent() {
                 >
                   View Concepts →
                 </a>
+              </div>
+            </div>
+          )}
+
+          {/* Saved Designs — pre-payment, only shown when designs exist */}
+          {designs.length > 0 && (
+            <div className="space-y-4">
+              <div className="border-b border-brand-border pb-4">
+                <h2 className="font-display text-3xl font-bold uppercase tracking-wide text-brand-text leading-none">
+                  Saved Designs
+                </h2>
+                <p className="text-xs text-brand-muted font-barlow mt-1">
+                  Continue where you left off — activate when you&apos;re ready.
+                </p>
+              </div>
+              <div className="space-y-3">
+                {designs.map((d, i) => (
+                  <SavedDesignCard key={d.id} design={d} index={i} />
+                ))}
               </div>
             </div>
           )}
@@ -375,6 +413,77 @@ function ProductionCard({ order, index, onOpen }: { order: Order; index: number;
         }`}>
         {cta}
       </span>
+    </div>
+  );
+}
+
+const KIND_LABEL: Record<string, string> = {
+  ai:      "AI Brief",
+  builder: "Jersey Builder",
+  upload:  "File Upload",
+};
+
+function SavedDesignCard({ design, index }: { design: SavedDesign; index: number }) {
+  function continueHref(): string {
+    if (design.kind === "upload") {
+      return design.hasFile
+        ? `/designs/${design.id}/upload-review`
+        : `/designs/${design.id}/upload`;
+    }
+    if (design.kind === "builder") {
+      return `/jersey-builder?designId=${design.id}`;
+    }
+    // AI
+    return design.hasBrief
+      ? `/brief/${design.id}/choose`
+      : `/brief/${design.id}/choose`;
+  }
+
+  return (
+    <div
+      style={{ animationDelay: `${index * 60}ms` }}
+      className="animate-fade-up bg-brand-surface border border-brand-border rounded-2xl px-6 py-5 space-y-4
+        transition-all duration-300 hover:border-brand-primary hover:shadow-[0_2px_12px_rgba(0,0,0,0.06)]"
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0 space-y-1">
+          <p className="font-display font-bold uppercase tracking-wide text-brand-text text-base truncate">
+            {design.teamName ?? "Untitled Design"}
+          </p>
+          {design.sport && (
+            <p className="text-[11px] uppercase tracking-wider text-brand-muted font-display">{design.sport}</p>
+          )}
+        </div>
+        <span className="flex-shrink-0 px-2 py-0.5 rounded-full font-display font-bold text-[9px] uppercase tracking-widest border border-brand-border text-brand-muted">
+          {KIND_LABEL[design.kind] ?? design.kind}
+        </span>
+      </div>
+
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <p className="text-xs font-barlow text-brand-muted">
+          {design.status === "submitted" ? "File uploaded — ready to activate" : "In progress"}
+        </p>
+        <p className="text-[11px] text-brand-muted font-barlow">
+          {new Date(design.createdAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+        </p>
+      </div>
+
+      <div className="flex flex-wrap gap-2 pt-1">
+        <a
+          href={continueHref()}
+          className="px-4 py-2 rounded-lg font-display font-bold text-[11px] uppercase tracking-widest border border-brand-border text-brand-muted hover:text-brand-text hover:border-brand-muted transition-colors"
+        >
+          Continue
+        </a>
+        {design.status === "submitted" && (
+          <a
+            href={`/designs/${design.id}/checkout`}
+            className="px-4 py-2 rounded-lg font-display font-bold text-[11px] uppercase tracking-widest bg-brand-primary text-white hover:bg-brand-secondary transition-colors"
+          >
+            Activate — $149 →
+          </a>
+        )}
+      </div>
     </div>
   );
 }
