@@ -10,6 +10,7 @@ import type { ClientProfile } from "@/app/api/brief/client-profile/route";
 
 const SPORTS = [
   "Basketball",
+  "Tracksuits",
 ];
 
 function TeamInfoPage() {

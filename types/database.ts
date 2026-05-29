@@ -295,7 +295,7 @@ export interface BriefState {
   clientId: string;
 
   // Screen 2
-  designSystem: "bold" | "gradient" | "program" | "culture" | "";
+  designSystem: "bold" | "gradient" | "program" | "culture" | "freestyle" | "";
   jerseycut: "mens" | "womens" | "youth" | "unisex" | "";
   sublimated: boolean | null;
 

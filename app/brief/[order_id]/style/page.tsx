@@ -11,6 +11,7 @@ const SYSTEMS = [
     badge: "Bold System",
     name: "Bold Statement",
     tagline: "For teams that want to stand out.",
+    tracksuitOnly: false,
     bullets: [
       "Oversized, disproportionate lettering",
       "Aggressive, high-energy layout",
@@ -22,6 +23,7 @@ const SYSTEMS = [
     badge: "Gradient System",
     name: "Modern Gradient",
     tagline: "Modern, elevated, and dynamic.",
+    tracksuitOnly: false,
     bullets: [
       "Color transitions and blends",
       "Clean but eye-catching finish",
@@ -33,6 +35,7 @@ const SYSTEMS = [
     badge: "Program System",
     name: "Clean Program",
     tagline: "Professional and consistent.",
+    tracksuitOnly: false,
     bullets: [
       "Balanced, collegiate feel",
       "Timeless and structured design",
@@ -44,10 +47,23 @@ const SYSTEMS = [
     badge: "Culture System",
     name: "Street Culture",
     tagline: "Built for the culture.",
+    tracksuitOnly: false,
     bullets: [
       "Fashion-forward aesthetics",
       "Off-balance, expressive typography",
       "Player-driven identity",
+    ],
+  },
+  {
+    id: "freestyle",
+    badge: "Freestyle System",
+    name: "Freestyle",
+    tagline: "Tonal panels. Contrast piping. Elevated quiet.",
+    tracksuitOnly: true,
+    bullets: [
+      "Angular side-panel blocking, tonal contrast",
+      "Thin piping along shoulder and sleeve seam",
+      "Oversized drop-shoulder, wide-leg silhouette",
     ],
   },
 ];
@@ -157,6 +173,61 @@ function CultureJersey() {
   );
 }
 
+function FreestyleTracksuit() {
+  return (
+    <svg viewBox="0 0 180 370" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+      {/* ── JACKET ── */}
+      {/* Stand collar */}
+      <rect x="76" y="2" width="28" height="20" rx="3" fill="#1c1c1c" stroke="#2e2e2e" strokeWidth="1" />
+      {/* Jacket body */}
+      <path d="M20,22 L160,22 L158,165 L22,165 Z" fill="#111111" />
+      {/* Left side panel */}
+      <polygon points="20,22 46,22 32,165 20,165" fill="#272727" />
+      {/* Right side panel */}
+      <polygon points="160,22 134,22 148,165 160,165" fill="#272727" />
+      {/* Left sleeve — puffed */}
+      <path d="M20,22 C4,18 -8,28 -5,60 L2,125 L16,120 L22,52 Z" fill="#111111" />
+      {/* Right sleeve */}
+      <path d="M160,22 C176,18 188,28 185,60 L178,125 L164,120 L158,52 Z" fill="#111111" />
+      {/* Left sleeve piping */}
+      <line x1="20" y1="30" x2="-3" y2="62" stroke="#2e2e2e" strokeWidth="1.5" />
+      {/* Right sleeve piping */}
+      <line x1="160" y1="30" x2="183" y2="62" stroke="#2e2e2e" strokeWidth="1.5" />
+      {/* Left shoulder seam piping */}
+      <line x1="20" y1="22" x2="20" y2="22" stroke="#2e2e2e" strokeWidth="1" />
+      {/* Center zip */}
+      <line x1="90" y1="22" x2="90" y2="165" stroke="#282828" strokeWidth="1.5" />
+      {/* Zip pull */}
+      <rect x="86" y="28" width="8" height="5" rx="1.5" fill="#303030" />
+      {/* Drawcord toggles */}
+      <circle cx="78" cy="161" r="3" fill="#1e1e1e" />
+      <circle cx="102" cy="161" r="3" fill="#1e1e1e" />
+      {/* Hip pockets */}
+      <line x1="32" y1="140" x2="55" y2="143" stroke="#1e1e1e" strokeWidth="1" />
+      <line x1="148" y1="140" x2="125" y2="143" stroke="#1e1e1e" strokeWidth="1" />
+
+      {/* ── GAP ── */}
+
+      {/* ── PANTS ── */}
+      {/* Waistband */}
+      <rect x="34" y="180" width="112" height="17" rx="2" fill="#1a1a1a" />
+      {/* Drawstring loops */}
+      <path d="M82,180 L78,197 M98,180 L102,197" stroke="#2e2e2e" strokeWidth="1.5" />
+      {/* Left leg */}
+      <path d="M34,197 L8,368 L80,368 L88,197 Z" fill="#111111" />
+      {/* Right leg */}
+      <path d="M92,197 L100,368 L172,368 L146,197 Z" fill="#111111" />
+      {/* Left side panel */}
+      <polygon points="34,197 20,197 8,368 18,368" fill="#272727" />
+      {/* Right side panel */}
+      <polygon points="146,197 160,197 172,368 162,368" fill="#272727" />
+      {/* Pocket lines */}
+      <line x1="44" y1="207" x2="56" y2="233" stroke="#1e1e1e" strokeWidth="1" />
+      <line x1="136" y1="207" x2="124" y2="233" stroke="#1e1e1e" strokeWidth="1" />
+    </svg>
+  );
+}
+
 const JERSEY_SVG: Record<string, React.FC> = {
   bold: BoldJersey,
   gradient: GradientJersey,
@@ -170,7 +241,7 @@ export default function StylePage() {
   const router = useRouter();
   const { order_id } = useParams<{ order_id: string }>();
 
-  const [selected, setSelected] = useState<"bold" | "gradient" | "program" | "culture" | "">("");
+  const [selected, setSelected] = useState<"bold" | "gradient" | "program" | "culture" | "freestyle" | "">("");
   const [jerseycut, setJerseycut] = useState("");
   const [sublimated, setSublimated] = useState<boolean | null>(null);
   const [sport, setSport] = useState("");
@@ -203,7 +274,7 @@ export default function StylePage() {
   function handleContinue() {
     if (!canContinue) return;
     saveBriefState({
-      designSystem: selected as "bold" | "gradient" | "program" | "culture",
+      designSystem: selected as "bold" | "gradient" | "program" | "culture" | "freestyle",
       jerseycut: jerseycut as "mens" | "womens" | "youth" | "unisex",
       sublimated,
     });
@@ -219,8 +290,9 @@ export default function StylePage() {
       <div className="space-y-8">
         {/* Design system cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4" style={{ visibility: sportLoaded ? "visible" : "hidden" }}>
-          {SYSTEMS.map((system) => {
+          {SYSTEMS.filter((s) => !s.tracksuitOnly || isTracksuit).map((system) => {
             const isSelected = selected === system.id;
+            const FreestyleSVG = system.id === "freestyle" ? FreestyleTracksuit : null;
             return (
               <button
                 key={system.id}
@@ -232,18 +304,24 @@ export default function StylePage() {
                     : "border-brand-border bg-brand-surface hover:border-brand-muted"
                   }`}
               >
-                {/* Jersey photo */}
+                {/* Jersey / tracksuit preview */}
                 <div className="relative bg-white h-52 flex items-center justify-center">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={
-                      isTracksuit
-                        ? `/reference-library/garments/tracksuits/${system.id}/front-reference.jpeg`
-                        : `/jerseys/${system.id}.jpeg`
-                    }
-                    alt={system.name}
-                    className="h-full w-full object-contain p-3"
-                  />
+                  {FreestyleSVG ? (
+                    <div className="h-full w-full p-3">
+                      <FreestyleSVG />
+                    </div>
+                  ) : (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img
+                      src={
+                        isTracksuit
+                          ? `/reference-library/garments/tracksuits/${system.id}/front-reference.jpeg`
+                          : `/jerseys/${system.id}.jpeg`
+                      }
+                      alt={system.name}
+                      className="h-full w-full object-contain p-3"
+                    />
+                  )}
                   {isSelected && (
                     <span className="absolute top-3 right-3 w-6 h-6 bg-brand-primary rounded-full flex items-center justify-center z-10">
                       <svg className="w-3.5 h-3.5 text-brand-bg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>

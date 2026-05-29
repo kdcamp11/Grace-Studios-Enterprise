@@ -105,16 +105,25 @@ export const SYSTEM_VISUAL_LANGUAGE: Record<string, string> = {
     "Numbers and lettering are structured, proportional, and classically weighted",
     "Timeless — reproduces cleanly across all gear types",
   ].join(". "),
+
+  freestyle: [
+    "Tonal side-panel blocking — primary body color with angular geometric side inserts in a close complementary tone",
+    "Thin contrast piping runs continuously from shoulder tip to wrist hem along the outer sleeve seam",
+    "Clean angular panel cuts along the chest sides, armhole to jacket bottom — no diagonal slashing, no bold graphic lines",
+    "Understated luxury-athletic execution: minimal graphic treatment, no oversized lettering dominating the body",
+    "Relaxed oversized drop-shoulder silhouette with a fashion-forward wide-leg pant — elevated streetwear energy without loud graphics",
+  ].join(". "),
 };
 
 /**
  * Short (8–12 word) system phrase for the Replicate prompt.
  */
 export const SYSTEM_PROMPT_SHORT: Record<string, string> = {
-  bold:     "aggressive diagonal panels, high contrast color blocking, oversized graphics",
-  gradient: "smooth color gradient fade, premium motion lines, clean structure",
-  culture:  "streetwear aesthetic, asymmetric layered composition, fashion-forward",
-  program:  "clean collegiate layout, balanced symmetric panels, minimal classic design",
+  bold:      "aggressive diagonal panels, high contrast color blocking, oversized graphics",
+  gradient:  "smooth color gradient fade, premium motion lines, clean structure",
+  culture:   "streetwear aesthetic, asymmetric layered composition, fashion-forward",
+  program:   "clean collegiate layout, balanced symmetric panels, minimal classic design",
+  freestyle: "tonal side panel blocking, contrast shoulder piping, minimal clean silhouette",
 };
 
 // ─── Reference-file resolution ────────────────────────────────────────────────
@@ -148,7 +157,7 @@ function firstExisting(...candidates: string[]): string | null {
  */
 export function resolveReferenceFiles(sport: string, designSystem: string): ReferenceFiles {
   const sportSlug = SPORT_SLUGS[sport.toLowerCase()] ?? "basketball";
-  const system    = ["bold", "gradient", "culture", "program"].includes(designSystem.toLowerCase())
+  const system    = ["bold", "gradient", "culture", "program", "freestyle"].includes(designSystem.toLowerCase())
     ? designSystem.toLowerCase()
     : "bold";
 
