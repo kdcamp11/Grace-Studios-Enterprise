@@ -29,6 +29,7 @@ interface Order {
   preview_url?: string | null;
   builder_render_url?: string | null;
   zone_colors?: Record<string, string> | string[] | null;
+  client_concept_url?: string | null;
   garment_type?: string | null;
   team_name?: string | null;
   sport?: string | null;
@@ -264,33 +265,40 @@ function CreativeCard({ order, index }: { order: Order; index: number }) {
   const orderLabel   = order.order_number || order.id.slice(0, 8).toUpperCase();
   const notSubmitted = isAwaitingConcepts(order.stage); // creative_started / legacy onboarding
   const approved     = !notSubmitted;
-  // The order's creation path is the single source of truth. Jersey-builder
-  // orders are tagged concept_source = "client_provided" (by the builder save
-  // and the builder-review submit). AI design-brief orders are never tagged.
-  // We rely solely on this tag — never on saved colors/renders, since a brief
-  // order can also carry color data and must not be mistaken for a builder order.
-  const isBuilder = order.concept_source === "client_provided";
+  // The order's creation path is the source of truth. There are three kinds:
+  //
+  //   1. AI design brief   — concept_source null/"ai"; we generate concepts.
+  //   2. Jersey builder     — concept_source "client_provided" + builder data
+  //                           (zone_colors / builder render), no uploaded file.
+  //   3. Uploaded concept   — concept_source "client_provided" + client_concept_url
+  //                           (client uploaded a production file).
+  //
+  // Kinds 2 and 3 share the "client_provided" tag, so we split them by the
+  // presence of an uploaded file. We never use saved colors/renders to decide
+  // brief-vs-client — only the tag — since brief orders can also carry colors.
+  const isClientProvided = order.concept_source === "client_provided";
+  const isUpload  = isClientProvided && !!order.client_concept_url;
+  const isBuilder = isClientProvided && !isUpload;
 
   // Routing for "View Design" and "Continue"
   //
-  // Builder orders:
-  //   - "View Design" → builder-review (design summary: render, colors, logos)
-  //     Show it when the order has been submitted OR has a saved render/colors
-  //   - "Continue" → jersey builder (edit the design)
-  //
-  // Design brief orders:
-  //   - "View Design" / "Continue" → concepts page (the generated concepts)
+  //   - Jersey builder: View Design → builder-review; Continue → jersey builder
+  //   - Uploaded concept: View Design / Continue → upload-review
+  //   - AI design brief: View Design / Continue → concepts (when concepts exist)
   const hasBuilderData = !!(order.builder_render_url || order.zone_colors || !notSubmitted);
 
-  const viewDesignHref: string | null = isBuilder
-    ? hasBuilderData ? `/brief/${order.id}/builder-review` : null
-    : order.has_concepts
-      ? `/orders/${order.id}/concepts`
-      : null;
-
-  const continueHref = isBuilder
-    ? `/jersey-builder?orderId=${order.id}`
-    : `/orders/${order.id}/concepts`;
+  let viewDesignHref: string | null;
+  let continueHref: string;
+  if (isUpload) {
+    viewDesignHref = `/brief/${order.id}/upload-review`;
+    continueHref   = `/brief/${order.id}/upload-review`;
+  } else if (isBuilder) {
+    viewDesignHref = hasBuilderData ? `/brief/${order.id}/builder-review` : null;
+    continueHref   = `/jersey-builder?orderId=${order.id}`;
+  } else {
+    viewDesignHref = order.has_concepts ? `/orders/${order.id}/concepts` : null;
+    continueHref   = `/orders/${order.id}/concepts`;
+  }
 
   return (
     <div

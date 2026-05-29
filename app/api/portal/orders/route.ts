@@ -77,7 +77,7 @@ export async function GET() {
       .eq("client_visible", true),
     admin
       .from("briefs")
-      .select("order_id, zone_colors, logos_to_include, ai_prompt")
+      .select("order_id, zone_colors, logos_to_include, ai_prompt, client_concept_url")
       .in("order_id", orderIds),
   ]);
 
@@ -127,6 +127,10 @@ export async function GET() {
       sport:              hasBrief ? (clientMeta?.sport ?? null) : null,
       zone_colors:        (brief?.zone_colors as Record<string, string> | string[] | null) ?? null,
       logos_to_include:   (brief?.logos_to_include as string | null) ?? null,
+      // Set only for the upload-concept flow (client uploaded a production file).
+      // Lets the portal distinguish uploaded-concept orders from jersey-builder
+      // orders — both carry concept_source = "client_provided".
+      client_concept_url: (brief?.client_concept_url as string | null) ?? null,
     };
   });
 

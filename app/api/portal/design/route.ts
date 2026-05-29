@@ -58,7 +58,7 @@ export async function GET(req: NextRequest) {
   // Load the brief (latest, if multiple) for the design preview.
   const { data: brief } = await admin
     .from("briefs")
-    .select("id, zone_colors, logos_to_include, vision_prompt, ai_prompt")
+    .select("id, zone_colors, logos_to_include, vision_prompt, ai_prompt, client_concept_url, client_concept_notes")
     .eq("order_id", orderId)
     .order("created_at", { ascending: false })
     .limit(1)
@@ -82,6 +82,8 @@ export async function GET(req: NextRequest) {
     visionPrompt:    brief?.vision_prompt ?? null,
     renderUrl,
     builderArtwork,
+    clientConceptUrl:   brief?.client_concept_url ?? null,
+    clientConceptNotes: brief?.client_concept_notes ?? null,
     hasBrief:        !!brief,
     stage:           order.stage,
     designFeePaid:   order.design_fee_paid,
