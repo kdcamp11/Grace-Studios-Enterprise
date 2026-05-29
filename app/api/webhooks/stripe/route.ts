@@ -309,26 +309,119 @@ async function refreshInvoiceStatus(
 
 async function handleDesignDepositCompleted(session: Stripe.Checkout.Session) {
   const admin    = createAdminClient();
-  const orderId  = session.metadata?.order_id;
+  const designId = session.metadata?.design_id;   // new design-keyed flow
+  const orderId  = session.metadata?.order_id;    // legacy order-keyed flow
   const tenantId = session.metadata?.tenant_id;
-
-  if (!orderId) {
-    console.error("[stripe webhook] design_deposit session missing order_id:", session.id);
-    return;
-  }
 
   const paymentIntentId = typeof session.payment_intent === "string"
     ? session.payment_intent
     : session.payment_intent?.id ?? null;
 
+  if (designId) {
+    await handleDesignDepositFromDesign(session, designId, tenantId ?? null, paymentIntentId, admin);
+  } else if (orderId) {
+    await handleDesignDepositFromOrder(session, orderId, tenantId ?? null, paymentIntentId, admin);
+  } else {
+    console.error("[stripe webhook] design_deposit session missing both design_id and order_id:", session.id);
+  }
+}
+
+async function handleDesignDepositFromDesign(
+  session: Stripe.Checkout.Session,
+  designId: string,
+  tenantId: string | null,
+  paymentIntentId: string | null,
+  admin: ReturnType<typeof createAdminClient>,
+) {
+  // Load the design to get client_id, tenant_id, kind
+  const { data: design } = await admin
+    .from("designs")
+    .select("tenant_id, client_id, kind")
+    .eq("id", designId)
+    .single();
+
+  if (!design) {
+    console.error("[stripe webhook] design not found for design_id:", designId);
+    return;
+  }
+
+  const effectiveTenantId = tenantId ?? design.tenant_id;
+
+  // Mint the order from the design
+  const { data: order, error: orderError } = await admin
+    .from("orders")
+    .insert({
+      tenant_id:       effectiveTenantId,
+      client_id:       design.client_id,
+      stage:           "creative_in_review",
+      design_fee_paid: true,
+      concept_source:  design.kind === "upload" || design.kind === "builder"
+                         ? "client_provided"
+                         : null,
+    })
+    .select("id")
+    .single();
+
+  if (orderError || !order) {
+    console.error("[stripe webhook] failed to mint order from design:", designId, orderError);
+    return;
+  }
+
+  const orderId = order.id;
+
+  // Stamp order_id on any briefs and concepts linked to this design
+  await Promise.all([
+    admin.from("briefs").update({ order_id: orderId }).eq("design_id", designId),
+    admin.from("concepts").update({ order_id: orderId }).eq("design_id", designId),
+  ]);
+
+  // Record the conversion on the design itself
+  await admin
+    .from("designs")
+    .update({ status: "converted", order_id: orderId })
+    .eq("id", designId);
+
+  // Stage log
+  await admin.from("stage_log").insert({
+    order_id:   orderId,
+    tenant_id:  effectiveTenantId,
+    from_stage: "onboarding",
+    to_stage:   "creative_in_review",
+    changed_by: "system",
+    note:       "Creative Activation paid — order minted from design",
+  }).catch((err) => console.error("[stripe webhook] stage_log insert failed:", err));
+
+  // Record the deposit session now that we have an order_id
+  await admin.from("design_deposit_sessions").insert({
+    tenant_id:                  effectiveTenantId,
+    order_id:                   orderId,
+    amount_cents:               session.amount_total ?? 14900,
+    status:                     "paid",
+    stripe_checkout_session_id: session.id,
+    stripe_payment_intent_id:   paymentIntentId,
+  }).catch((err) => console.error("[stripe webhook] design_deposit_sessions insert failed:", err));
+
+  // Auto-transfer net to tenant Connect account if configured
+  const grossCents = session.amount_total ?? 14900;
+  await createConnectTransfer(effectiveTenantId, grossCents, paymentIntentId, admin).catch(
+    (err) => console.error("[stripe webhook] design deposit connect transfer failed:", err),
+  );
+}
+
+async function handleDesignDepositFromOrder(
+  session: Stripe.Checkout.Session,
+  orderId: string,
+  tenantId: string | null,
+  paymentIntentId: string | null,
+  admin: ReturnType<typeof createAdminClient>,
+) {
   // Mark the order as design-fee paid
   await admin
     .from("orders")
     .update({ design_fee_paid: true })
     .eq("id", orderId);
 
-  // Advance the creative lifecycle on payment. Guarded so production orders are
-  // unaffected, and wrapped so a stage-advance failure never breaks the webhook.
+  // Advance the creative lifecycle
   try {
     const { data: order } = await admin
       .from("orders")
@@ -355,16 +448,17 @@ async function handleDesignDepositCompleted(session: Stripe.Checkout.Session) {
     console.error("[stripe webhook] creative stage advance failed:", err);
   }
 
-  // Update our deposit session record
+  // Update the deposit session record
   await admin
     .from("design_deposit_sessions")
     .update({ status: "paid", stripe_payment_intent_id: paymentIntentId })
     .eq("stripe_checkout_session_id", session.id);
 
-  // Auto-transfer net to tenant's Connect account if configured
-  if (tenantId) {
-    const grossCents = session.amount_total ?? 15000;
-    await createConnectTransfer(tenantId, grossCents, paymentIntentId, admin).catch(
+  // Auto-transfer net to tenant Connect account if configured
+  const effectiveTenantId = tenantId ?? "";
+  if (effectiveTenantId) {
+    const grossCents = session.amount_total ?? 14900;
+    await createConnectTransfer(effectiveTenantId, grossCents, paymentIntentId, admin).catch(
       (err) => console.error("[stripe webhook] design deposit connect transfer failed:", err),
     );
   }
