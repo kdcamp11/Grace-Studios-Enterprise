@@ -126,7 +126,6 @@ function PortalContent() {
           {(role === "admin" || role === "super_admin") && (
             <a href="/admin" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Admin Portal</a>
           )}
-          <a href="/portfolio" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Portfolio</a>
           <a href="/portal/consultation" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Work with Grace Studios</a>
           <a href="/billing" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Billing</a>
           <a href="/portal/settings" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Settings</a>
@@ -142,7 +141,6 @@ function PortalContent() {
                 ...(role === "admin" || role === "super_admin" ? [{ label: "Admin Portal", href: "/admin" }] : []),
               ],
               [
-                { label: "Portfolio",             href: "/portfolio" },
                 { label: "Work with Grace Studios", href: "/portal/consultation" },
                 { label: "Billing",               href: "/billing" },
                 { label: "Settings",              href: "/portal/settings" },

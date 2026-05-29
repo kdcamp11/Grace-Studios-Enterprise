@@ -358,15 +358,6 @@ const SUPPLIER_FEATURES = [
   {
     icon: (
       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
-      </svg>
-    ),
-    title: "Portfolio Showcase",
-    body: "Upload your best work. Programs browse production portfolios when choosing who to work with. Your quality speaks for you.",
-  },
-  {
-    icon: (
-      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12zm0 3h.008v.008H6.75V15zm0 3h.008v.008H6.75V18z" />
       </svg>
     ),
@@ -696,12 +687,6 @@ export default function LoginPage() {
                 </p>
               </div>
 
-              <Link
-                href="/portfolio"
-                className="mt-2 self-start inline-flex items-center gap-2.5 px-5 py-3 rounded-xl border border-brand-border text-brand-muted font-display font-bold text-xs uppercase tracking-widest hover:border-brand-primary hover:text-brand-primary transition-colors duration-200"
-              >
-                View Program →
-              </Link>
             </div>
 
             {/* Right — partner video */}
@@ -1192,7 +1177,7 @@ export default function LoginPage() {
             </div>
             <div className="flex flex-col gap-4 lg:items-end lg:pb-0.5">
               <p className="text-xs font-barlow text-brand-muted max-w-[260px] leading-relaxed lg:text-right">
-                Apply to join the supplier network. Set your catalog, upload your portfolio, and start receiving
+                Apply to join the supplier network. Set your catalog and start receiving
                 pre-approved production orders.
               </p>
               <div className="flex flex-col sm:flex-row gap-3">

@@ -31,7 +31,7 @@ const SUPPLIER_PLANS: PlanCard[] = [
     features: [
       "Unlimited assigned orders",
       "Full supplier portal access",
-      "Portfolio gallery (up to 50 items)",
+
       "Stripe Connect payouts",
       "Priority order routing",
       "Email & chat support",
@@ -119,7 +119,6 @@ export default function SupplierBillingPage() {
         <div className="hidden lg:flex items-center gap-5">
           <span className="text-xs text-brand-muted font-barlow">{name}</span>
           <a href="/supplier" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">← Orders</a>
-          <a href="/supplier/portfolio" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Portfolio</a>
           <a href="/supplier/settings" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Settings</a>
           <button type="button" onClick={signOut} className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Sign Out</button>
         </div>
@@ -129,7 +128,6 @@ export default function SupplierBillingPage() {
             groups={[
               [
                 { label: "← Orders", href: "/supplier" },
-                { label: "Portfolio", href: "/supplier/portfolio" },
                 { label: "Settings", href: "/supplier/settings" },
               ],
               [{ label: "Sign Out", onClick: signOut }],

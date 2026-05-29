@@ -254,7 +254,6 @@ export default function SettingsPage() {
               <p className="text-xs font-display uppercase tracking-widest text-brand-primary">Supplier Portal</p>
               <div className="space-y-2">
                 {[
-                  { href: "/supplier/portfolio", label: "Manage Portfolio", desc: "Add and curate your production work" },
                   { href: "/supplier/billing",   label: "Studio License",   desc: "View and upgrade your plan" },
                   { href: "/supplier",            label: "Active Orders",    desc: "See all orders assigned to you" },
                 ].map((link) => (

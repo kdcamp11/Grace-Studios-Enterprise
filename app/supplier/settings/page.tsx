@@ -181,7 +181,6 @@ export default function SupplierSettingsPage() {
         {/* Desktop nav */}
         <div className="hidden lg:flex items-center gap-5">
           <a href="/supplier" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Orders</a>
-          <a href="/supplier/portfolio" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Portfolio</a>
           <a href="/supplier/billing" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Billing</a>
           <button type="button" onClick={signOut} className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Sign Out</button>
         </div>
@@ -191,7 +190,6 @@ export default function SupplierSettingsPage() {
             groups={[
               [
                 { label: "Orders", href: "/supplier" },
-                { label: "Portfolio", href: "/supplier/portfolio" },
                 { label: "Billing", href: "/supplier/billing" },
               ],
               [{ label: "Sign Out", onClick: signOut }],

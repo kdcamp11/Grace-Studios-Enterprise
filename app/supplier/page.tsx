@@ -168,7 +168,6 @@ function SupplierPortalContent() {
         {/* Desktop nav */}
         <div className="hidden lg:flex items-center gap-5">
           <span className="text-xs text-brand-muted font-barlow">{name}</span>
-          <a href="/supplier/portfolio" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Portfolio</a>
           <a href="/supplier/billing" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Billing</a>
           <a href="/supplier/settings" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Settings</a>
           {isAdminView && (
@@ -181,7 +180,6 @@ function SupplierPortalContent() {
           <MobileDropdown
             groups={[
               [
-                { label: "Portfolio", href: "/supplier/portfolio" },
                 { label: "Billing", href: "/supplier/billing" },
                 { label: "Settings", href: "/supplier/settings" },
                 ...(isAdminView ? [{ label: "Admin", href: "/admin" }] : []),

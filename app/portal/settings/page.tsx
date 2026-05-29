@@ -211,7 +211,6 @@ export default function PortalSettingsPage() {
         <div className="hidden lg:flex items-center gap-5">
           <a href="/portal" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">My Orders</a>
           <a href="/brief/choose" className="text-xs font-display font-bold uppercase tracking-wider text-brand-primary hover:text-brand-secondary transition-colors">+ New Order</a>
-          <a href="/portfolio" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Portfolio</a>
           <a href="/contact" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Creative Direction</a>
           <a href="/billing" className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Billing</a>
           <button type="button" onClick={signOut} className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors">Sign Out</button>
@@ -225,7 +224,6 @@ export default function PortalSettingsPage() {
                 { label: "+ New Order", href: "/brief/choose" },
               ],
               [
-                { label: "Portfolio", href: "/portfolio" },
                 { label: "Creative Direction", href: "/contact" },
                 { label: "Billing", href: "/billing" },
               ],
