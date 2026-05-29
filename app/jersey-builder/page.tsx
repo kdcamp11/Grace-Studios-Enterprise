@@ -290,10 +290,17 @@ function JerseyBuilderInner() {
   useEffect(() => {
     (async () => {
       try {
+        // createClient() must be called first — it starts the session migration
+        // that sessionReady() waits for. Calling sessionReady() before
+        // createClient() causes a deadlock (the promise never resolves).
+        const supabase = createClient();
         await sessionReady();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) { router.replace("/login"); return; }
+        // Redirect suppliers away; clients may have no profile row so we
+        // only act if a profile exists and is supplier-role.
         const profile = await getProfile();
-        if (!profile) { router.replace("/login"); return; }
-        if (profile.role === "supplier") { router.replace("/supplier"); return; }
+        if (profile?.role === "supplier") { router.replace("/supplier"); return; }
         setReady(true);
       } catch { router.replace("/login"); }
     })();
