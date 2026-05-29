@@ -184,9 +184,9 @@ export async function POST(req: NextRequest) {
             </div>
 
             <div style="background: #1a1a1a; border-radius: 8px; padding: 16px;">
-              <p style="color: ${accentColor}; font-size: 12px; margin: 0 0 8px; text-transform: uppercase; letter-spacing: 1px;">Revision Fee Notice</p>
+              <p style="color: ${accentColor}; font-size: 12px; margin: 0 0 8px; text-transform: uppercase; letter-spacing: 1px;">Revision Policy</p>
               <p style="font-size: 12px; color: #888; margin: 0; line-height: 1.6;">
-                Design changes after approval are subject to revision fees: Color change $25 · Logo change $75 · Layout change $150.
+                One revision round is included with your approval. Additional revision rounds are billed at $125 per round.
               </p>
             </div>
           </div>

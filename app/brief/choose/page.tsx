@@ -109,10 +109,10 @@ export default function ChoosePage() {
                 <span className="text-[9px] font-display uppercase tracking-widest text-brand-muted/60">Fully Managed</span>
               </div>
               <p className="font-display font-bold uppercase tracking-wide text-brand-text text-lg leading-snug mb-4">
-                Creative Direction.<br />Managed to Delivery.
+                Elevated Apparel Development.<br />Concept Through Delivery.
               </p>
               <ul className="space-y-2.5 flex-1 mb-6">
-                {["Creative direction and strategic partnership", "Concepts developed around your program and identity", "Supplier coordination and production management", "Starting at $300+"].map((item) => (
+                {["Creative direction and program strategy", "Concepts built around your program identity", "Managed supplier coordination and fulfillment oversight", "Full-service production typically begins at $2,500."].map((item) => (
                   <li key={item} className="flex items-start gap-2.5">
                     <span className="w-1 h-1 rounded-full bg-brand-primary flex-shrink-0 mt-1.5" />
                     <span className="text-[11px] font-barlow text-brand-muted leading-snug">{item}</span>
@@ -130,14 +130,14 @@ export default function ChoosePage() {
             {/* ── Card 2: Self Service ── */}
             <div className="flex flex-col p-7 border-b lg:border-b-0 lg:border-r border-brand-border">
               <div className="flex items-center justify-between mb-5">
-                <span className="text-[9px] font-display font-bold uppercase tracking-[0.2em] text-brand-primary">Self Service</span>
-                <span className="text-[9px] font-display uppercase tracking-widest text-brand-muted/60">Two Paths</span>
+                <span className="text-[9px] font-display font-bold uppercase tracking-[0.2em] text-brand-primary">Self-Directed</span>
+                <span className="text-[9px] font-display uppercase tracking-widest text-brand-muted/60">Flexible Workflow</span>
               </div>
               <p className="font-display font-bold uppercase tracking-wide text-brand-text text-lg leading-snug mb-2">
-                Design Freely.<br />Activate When Ready.
+                Structured Development.<br />Ready When You Are.
               </p>
               <p className="text-[11px] font-barlow text-brand-muted mb-5 leading-relaxed">
-                Free to build. $100 activation applied toward your final order.
+                $149 Creative Activation applied toward your final order.
               </p>
               <div className="space-y-3 flex-1">
                 <p className="text-[9px] font-display font-bold uppercase tracking-[0.2em] text-brand-muted/60">Choose Your Path</p>
@@ -147,7 +147,7 @@ export default function ChoosePage() {
                 >
                   <div>
                     <p className="text-[11px] font-display font-bold uppercase tracking-wider text-brand-text group-hover:text-brand-primary transition-colors">Design Brief</p>
-                    <p className="text-[10px] font-barlow text-brand-muted mt-0.5">Submit your vision, we build the concept.</p>
+                    <p className="text-[10px] font-barlow text-brand-muted mt-0.5">Define your direction. We develop the concept.</p>
                   </div>
                   <span className="text-brand-muted group-hover:text-brand-primary transition-colors">→</span>
                 </Link>
@@ -157,7 +157,7 @@ export default function ChoosePage() {
                 >
                   <div>
                     <p className="text-[11px] font-display font-bold uppercase tracking-wider text-brand-text group-hover:text-brand-primary transition-colors">Jersey Builder</p>
-                    <p className="text-[10px] font-barlow text-brand-muted mt-0.5">Color every zone, selections drive the brief.</p>
+                    <p className="text-[10px] font-barlow text-brand-muted mt-0.5">Select your colorway. Your choices build the production brief.</p>
                   </div>
                   <span className="text-brand-muted group-hover:text-brand-primary transition-colors">→</span>
                 </Link>
@@ -171,10 +171,10 @@ export default function ChoosePage() {
                 <span className="text-[9px] font-display uppercase tracking-widest text-brand-muted/60">Your Artwork</span>
               </div>
               <p className="font-display font-bold uppercase tracking-wide text-brand-text text-lg leading-snug mb-4">
-                Your Files.<br />Our Production Network.
+                Your Files.<br />Managed to Delivery.
               </p>
               <ul className="space-y-2.5 flex-1 mb-6">
-                {["Adobe Illustrator, EPS, PDF or SVG", "Your artwork. Your IP. Always.", "Managed production and fulfillment", "Fulfillment, QC, and delivery tracking"].map((item) => (
+                {["Adobe Illustrator, EPS, PDF or SVG", "Your artwork. Your IP. Always.", "Managed production support and fulfillment oversight", "Fulfillment, QC, and delivery tracking"].map((item) => (
                   <li key={item} className="flex items-start gap-2.5">
                     <span className="w-1 h-1 rounded-full bg-brand-primary flex-shrink-0 mt-1.5" />
                     <span className="text-[11px] font-barlow text-brand-muted leading-snug">{item}</span>
@@ -182,7 +182,7 @@ export default function ChoosePage() {
                 ))}
               </ul>
               <p className="text-[10px] font-barlow text-brand-muted/60 italic mb-4 leading-relaxed">
-                Have a sketch or concept? Creative Direction is the right starting point.
+                Have a concept in progress? Creative Direction is the right starting point.
               </p>
               <a
                 href="/brief/new?path=upload"
