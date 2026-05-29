@@ -58,11 +58,19 @@ export async function GET(req: NextRequest) {
   // Load the brief (latest, if multiple) for the design preview.
   const { data: brief } = await admin
     .from("briefs")
-    .select("id, zone_colors, logos_to_include, vision_prompt")
+    .select("id, zone_colors, logos_to_include, vision_prompt, ai_prompt")
     .eq("order_id", orderId)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
+
+  let renderUrl: string | null = null;
+  if (brief?.ai_prompt) {
+    try {
+      const meta = JSON.parse(brief.ai_prompt as string);
+      if (meta.renders?.frontJersey) renderUrl = meta.renders.frontJersey as string;
+    } catch { /* ignore */ }
+  }
 
   return NextResponse.json({
     teamName:        client?.name ?? null,
@@ -70,6 +78,7 @@ export async function GET(req: NextRequest) {
     zoneColors:      brief?.zone_colors ?? null,
     logosToInclude:  brief?.logos_to_include ?? null,
     visionPrompt:    brief?.vision_prompt ?? null,
+    renderUrl,
     hasBrief:        !!brief,
     stage:           order.stage,
     designFeePaid:   order.design_fee_paid,

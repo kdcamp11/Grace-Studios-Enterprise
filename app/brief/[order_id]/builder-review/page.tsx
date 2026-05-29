@@ -76,6 +76,7 @@ export default function BuilderReviewPage() {
             zoneColors: BriefState["zoneColors"];
             logosToInclude: string | null;
             visionPrompt: string | null;
+            renderUrl: string | null;
             hasBrief: boolean;
             stage: string;
             designFeePaid: boolean;
@@ -92,6 +93,7 @@ export default function BuilderReviewPage() {
               sport:          d.sport ?? local?.sport ?? "",
               zoneColors:     d.zoneColors ?? local?.zoneColors ?? null,
               logosToInclude: d.logosToInclude ?? local?.logosToInclude ?? "",
+              renderUrl:      d.renderUrl ?? local?.renderUrl ?? null,
             } as BriefState;
           }
         }
@@ -180,6 +182,18 @@ export default function BuilderReviewPage() {
       subtitle="Confirm your jersey colors and logos before submitting to Grace Studios."
     >
       <div className="space-y-6">
+
+        {/* ── Builder Render Preview ─────────────────────────────────────────── */}
+        {brief.renderUrl && (
+          <div className="rounded-xl overflow-hidden border border-brand-border bg-white">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={brief.renderUrl}
+              alt="Your jersey design"
+              className="w-full object-contain max-h-64"
+            />
+          </div>
+        )}
 
         {/* ── Team Info ──────────────────────────────────────────────────────── */}
         <div className="bg-brand-surface rounded-xl border border-brand-border p-5">

@@ -14,7 +14,6 @@ import {
   STAGE_COLOR,
   stageLabel,
   stageType,
-  normalizeStage,
   isAwaitingConcepts,
 } from "@/lib/order-stages";
 
@@ -34,6 +33,7 @@ interface Order {
   sport?: string | null;
   logos_to_include?: string | null;
   tracking_number?: string | null;
+  concept_source?: string | null;
 }
 
 function isCreative(o: Order): boolean {
@@ -262,10 +262,21 @@ function PortalContent() {
 }
 
 function CreativeCard({ order, index }: { order: Order; index: number }) {
-  const orderLabel = order.order_number || order.id.slice(0, 8).toUpperCase();
-  const norm       = normalizeStage(order.stage);
+  const orderLabel   = order.order_number || order.id.slice(0, 8).toUpperCase();
   const notSubmitted = isAwaitingConcepts(order.stage); // creative_started / legacy onboarding
-  const approved   = !notSubmitted; // clickable once brief is submitted
+  const approved     = !notSubmitted;
+  const isBuilder    = order.concept_source === "client_provided";
+
+  // Routing for "View Design" and "Continue"
+  const viewDesignHref = isBuilder
+    ? notSubmitted
+      ? `/jersey-builder?orderId=${order.id}`
+      : `/brief/${order.id}/builder-review`
+    : `/orders/${order.id}/concepts`;
+
+  const continueHref = isBuilder
+    ? `/jersey-builder?orderId=${order.id}`
+    : `/brief/${order.id}/builder-review`;
 
   return (
     <div
@@ -319,14 +330,14 @@ function CreativeCard({ order, index }: { order: Order; index: number }) {
 
       <div className="flex flex-wrap gap-2 pt-1">
         <a
-          href={`/brief/${order.id}/builder-review`}
+          href={viewDesignHref}
           className="px-4 py-2 rounded-lg font-display font-bold text-[11px] uppercase tracking-widest border border-brand-border text-brand-muted hover:text-brand-text hover:border-brand-muted transition-colors"
         >
           View Design
         </a>
         {notSubmitted && (
           <a
-            href={`/brief/${order.id}/builder-review`}
+            href={continueHref}
             className="px-4 py-2 rounded-lg font-display font-bold text-[11px] uppercase tracking-widest bg-brand-primary text-white hover:bg-brand-secondary transition-colors"
           >
             Continue
@@ -343,7 +354,7 @@ function CreativeCard({ order, index }: { order: Order; index: number }) {
           <button
             type="button"
             disabled
-            title="Coming soon"
+            title="Submit your brief first"
             className="px-4 py-2 rounded-lg font-display font-bold text-[11px] uppercase tracking-widest border border-brand-border text-brand-muted/50 cursor-not-allowed"
           >
             Proceed to Production

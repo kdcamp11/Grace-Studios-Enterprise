@@ -90,5 +90,12 @@ export async function POST(
     });
   }
 
+  // Mark the order as client-provided so the portal can identify it as a builder order
+  await admin
+    .from("orders")
+    .update({ concept_source: "client_provided" })
+    .eq("id", orderId)
+    .is("concept_source", null);
+
   return NextResponse.json({ renderUrl });
 }

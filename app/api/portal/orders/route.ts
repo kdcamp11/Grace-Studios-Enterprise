@@ -57,7 +57,7 @@ export async function GET() {
   // Fetch orders
   const { data: orderRows } = await admin
     .from("orders")
-    .select("id, order_number, stage, created_at, order_type, design_fee_paid, tracking_number")
+    .select("id, order_number, stage, created_at, order_type, design_fee_paid, tracking_number, concept_source")
     .eq("client_id", client.id)
     .order("created_at", { ascending: false });
 
@@ -112,6 +112,8 @@ export async function GET() {
       } catch { /* ignore malformed JSON */ }
     }
 
+    const hasBrief = briefByOrder.has(o.id);
+
     return {
       ...o,
       has_concepts:       conceptOrderIds.has(o.id),
@@ -120,7 +122,9 @@ export async function GET() {
       builder_render_url: builderRenderUrl,
       garment_type:       garmentType,
       team_name:          clientMeta?.name ?? null,
-      sport:              clientMeta?.sport ?? null,
+      // Only use client-level sport as fallback when there's a brief — otherwise
+      // clientMeta.sport reflects a different order's garment type entirely.
+      sport:              hasBrief ? (clientMeta?.sport ?? null) : null,
       zone_colors:        (brief?.zone_colors as Record<string, string> | string[] | null) ?? null,
       logos_to_include:   (brief?.logos_to_include as string | null) ?? null,
     };
