@@ -758,6 +758,21 @@ export default function ConceptsPage() {
         return;
       }
 
+      // Is there a brief at all for this order? An order can be created (stage
+      // "creative_started") before any design exists — e.g. the user filled in
+      // Team Info then abandoned before choosing/finishing a design path. Such
+      // orders have NO brief row, so there's nothing to generate or display.
+      // Send them back to choose a design path (reusing this order) rather than
+      // showing "Generation failed / Brief not found".
+      const boardRes = await fetch(`/api/portal/board-data?order_id=${order_id}`);
+      if (!cancelled && boardRes.ok) {
+        const { brief: briefRow } = await boardRes.json() as { brief: unknown };
+        if (!briefRow) {
+          router.replace(`/brief/${order_id}/choose`);
+          return;
+        }
+      }
+
       const statusRes  = await fetch(`/api/generate-concepts/status?order_id=${order_id}`);
       const statusData = await statusRes.json() as GenerationProgress;
       if (cancelled) return;
