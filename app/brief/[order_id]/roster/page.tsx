@@ -103,8 +103,9 @@ export default function RosterPage() {
       }
       clearBriefState();
       if (isDesignFlow) {
-        // Pre-payment: go to checkout to activate the project
-        router.push(`/designs/${order_id}/checkout`);
+        // Pre-payment: go to the design concepts page to watch generation and
+        // see the teaser preview, then activate ($149) from there.
+        router.push(`/designs/${order_id}/concepts`);
       } else {
         // Post-payment: go to concepts page to see live generation progress
         router.push(`/orders/${order_id}/concepts`);
@@ -253,7 +254,7 @@ export default function RosterPage() {
               bg-brand-primary text-brand-bg hover:bg-brand-secondary
               disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            {saving ? "Saving…" : isDesignFlow ? "Continue to Activation →" : "Finish & View Concepts →"}
+            {saving ? "Saving…" : isDesignFlow ? "Generate My Concept →" : "Finish & View Concepts →"}
           </button>
         </div>
       </div>

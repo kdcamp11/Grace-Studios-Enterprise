@@ -9,9 +9,10 @@ export async function GET(req: NextRequest) {
   const { data: { user } } = await serverClient.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const order_id = req.nextUrl.searchParams.get("order_id");
-  if (!order_id) {
-    return NextResponse.json({ error: "order_id required" }, { status: 400 });
+  const order_id  = req.nextUrl.searchParams.get("order_id");
+  const design_id = req.nextUrl.searchParams.get("design_id");
+  if (!order_id && !design_id) {
+    return NextResponse.json({ error: "order_id or design_id required" }, { status: 400 });
   }
 
   const supabase = createClient(
@@ -19,11 +20,9 @@ export async function GET(req: NextRequest) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  const { data: brief } = await supabase
-    .from("briefs")
-    .select("ai_prompt")
-    .eq("order_id", order_id)
-    .single();
+  const { data: brief } = design_id
+    ? await supabase.from("briefs").select("ai_prompt").eq("design_id", design_id).maybeSingle()
+    : await supabase.from("briefs").select("ai_prompt").eq("order_id", order_id!).maybeSingle();
 
   if (!brief?.ai_prompt) {
     return NextResponse.json({ status: "not_started" as GenerationStatus });
