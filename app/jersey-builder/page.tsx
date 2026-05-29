@@ -160,22 +160,25 @@ function buildLogoTexture(src: string): Promise<THREE.Texture> {
 }
 
 /**
- * Compute a world-space Euler rotation that aligns the decal's +Z with `normal`
- * while keeping the decal's +Y locked to world-up. Using a fixed up-vector basis
- * (instead of the shortest-arc quaternion) prevents text/numbers from appearing
- * slanted on curved or side-facing surfaces — they stay upright. The per-artwork
- * `twist` slider still applies intentional rotation on top of this.
+ * Compute a world-space Euler rotation that aligns the decal with `normal` while
+ * guaranteeing it never rolls (tilts) in screen space.
+ *
+ * A surface normal that points diagonally up-and-to-the-side (e.g. the upper
+ * chest near the collar) would otherwise introduce a roll, making text look
+ * slanted. We drop the sideways (X) component of the normal before building the
+ * basis: the decal still leans with the garment's up/down curvature, but its
+ * up-vector always projects to true vertical — so text/numbers stay upright.
+ * The per-artwork `twist` slider applies any intentional rotation on top.
  */
 function normalToRotation(normal: THREE.Vector3): [number, number, number] {
-  const forward = normal.clone().normalize();
-  const worldUp = new THREE.Vector3(0, 1, 0);
+  // Flatten the sideways component → no roll, pitch (lean) preserved.
+  const forward = new THREE.Vector3(0, normal.y, normal.z);
+  if (forward.lengthSq() < 1e-6) forward.set(0, 0, 1); // pure sideways normal → face forward
+  forward.normalize();
 
-  // right = worldUp × forward. Degenerates when the surface faces straight up
-  // or down (shoulders) — fall back to a world X reference in that case.
+  const worldUp = new THREE.Vector3(0, 1, 0);
   let right = new THREE.Vector3().crossVectors(worldUp, forward);
-  if (right.lengthSq() < 1e-6) {
-    right = new THREE.Vector3().crossVectors(new THREE.Vector3(1, 0, 0), forward);
-  }
+  if (right.lengthSq() < 1e-6) right.set(1, 0, 0); // surface faces straight up/down
   right.normalize();
 
   const up = new THREE.Vector3().crossVectors(forward, right).normalize();
@@ -713,7 +716,10 @@ function JerseyBuilderInner() {
           type:     a.type,
           texture:  textureMapRef.current[a.id] ?? null,
           position: a.position!,
-          rotation: a.rotation ?? [0, 0, 0],
+          // Text/names/numbers always render flat-upright (facing forward) so they
+          // can never appear slanted — even if an older save baked in a tilted
+          // rotation. Logos keep their surface-conforming rotation.
+          rotation: a.type === "logo" ? (a.rotation ?? [0, 0, 0]) : [0, 0, 0],
           size:     a.size,
           scaleX:   a.scaleX,
           twist:    a.twist,
