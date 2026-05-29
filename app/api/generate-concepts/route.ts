@@ -1066,6 +1066,8 @@ export async function POST(req: NextRequest) {
       ? { field: "design_id", id: design_id as string }
       : { field: "order_id",  id: order_id  as string };
 
+    console.log(`[generate-concepts] Starting (${bf.field}=${bf.id})`);
+
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -1111,6 +1113,7 @@ export async function POST(req: NextRequest) {
     const { data: brief, error: briefError } = await supabase
       .from("briefs").select("*").eq(bf.field, bf.id).maybeSingle();
     if (briefError || !brief) {
+      console.error(`[generate-concepts] Brief not found (${bf.field}=${bf.id}):`, briefError);
       return NextResponse.json({ error: "Brief not found" }, { status: 404 });
     }
 
@@ -1130,6 +1133,7 @@ export async function POST(req: NextRequest) {
       const { data: order, error: orderError } = await supabase
         .from("orders").select("client_id, order_number, tenant_id").eq("id", bf.id).single();
       if (orderError || !order) {
+        console.error(`[generate-concepts] Order not found (${bf.id}):`, orderError);
         return NextResponse.json({ error: "Order not found" }, { status: 404 });
       }
       clientId    = order.client_id as string;
@@ -1181,6 +1185,7 @@ export async function POST(req: NextRequest) {
       boardFormat: "renders",
       designSystem,
     });
+    console.log(`[generate-concepts] Marked queued`);
 
     // ── 6. Build Claude content blocks ────────────────────────────────────────
 

@@ -89,7 +89,13 @@ export default function ReviewPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(idField),
-      }).catch(() => {});
+      }).then(res => {
+        if (!res.ok) {
+          console.warn("[brief/review] generate-concepts returned", res.status);
+        }
+      }).catch(err => {
+        console.warn("[brief/review] generate-concepts failed:", err);
+      });
 
       // Notify admin that a new brief was submitted
       fetch("/api/notify", {
