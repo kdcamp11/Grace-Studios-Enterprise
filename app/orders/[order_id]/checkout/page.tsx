@@ -16,8 +16,8 @@ interface OrderInfo {
   concept_source:  "ai" | "client_provided";
 }
 
-// Project activation — $100.00 (matches DESIGN_DEPOSIT_CENTS in the API)
-const ACTIVATION_FEE_DISPLAY = "$100";
+// Creative Activation — $149.00 (matches DESIGN_DEPOSIT_CENTS in the API)
+const ACTIVATION_FEE_DISPLAY = "$149";
 
 export default function CheckoutPage() {
   const { order_id } = useParams<{ order_id: string }>();
@@ -122,16 +122,15 @@ export default function CheckoutPage() {
           {/* Heading */}
           <div className="text-center space-y-3">
             <p className="text-[10px] font-display uppercase tracking-[0.3em] text-brand-primary">
-              Project Activation
+              Creative Activation
             </p>
             <h1 className="font-display text-3xl font-bold uppercase tracking-wide text-brand-text leading-tight">
-              Design Freely.{" "}
-              <span className="text-brand-primary">Activate When You&apos;re Ready.</span>
+              Your Project{" "}
+              <span className="text-brand-primary">Starts Here.</span>
             </h1>
             <p className="text-sm text-brand-muted font-barlow leading-relaxed max-w-sm mx-auto">
-              Build your uniforms, explore styles, and create concepts at no cost. When
-              you&apos;re ready to move into production, activate your project and our team
-              takes it from concept to execution.
+              Creative Activation includes onboarding, project setup, concept development
+              access, and production preparation — applied toward your final order total.
             </p>
           </div>
 
@@ -199,7 +198,7 @@ export default function CheckoutPage() {
             <div className="px-6 py-5 flex items-center justify-between bg-brand-surface rounded-b-2xl">
               <div>
                 <span className="text-sm font-display font-bold uppercase tracking-wider text-brand-text">
-                  Project Activation
+                  Creative Activation
                 </span>
                 <p className="text-[9px] text-brand-muted font-barlow mt-0.5">
                   Applied toward your final order total
@@ -214,7 +213,7 @@ export default function CheckoutPage() {
           {/* What activation unlocks */}
           <div className="rounded-2xl border border-brand-border bg-brand-surface px-5 py-4 space-y-2">
             <p className="text-[9px] font-display font-bold uppercase tracking-[0.28em] text-brand-muted mb-3">
-              What activation unlocks
+              What&apos;s Included
             </p>
             {isClientProvided ? (
               <>
@@ -245,7 +244,7 @@ export default function CheckoutPage() {
                 transition-all duration-200 shadow-[0_4px_24px_rgba(212,175,55,0.25)]
                 hover:shadow-[0_4px_32px_rgba(212,175,55,0.4)]"
             >
-              {paying ? "Redirecting…" : `Activate Project: ${ACTIVATION_FEE_DISPLAY}`}
+              {paying ? "Redirecting…" : `Creative Activation — ${ACTIVATION_FEE_DISPLAY}`}
             </button>
 
             {error && (
@@ -254,7 +253,7 @@ export default function CheckoutPage() {
 
             <p className="text-[10px] text-brand-muted font-barlow text-center leading-relaxed">
               Secure checkout via Stripe.{" "}
-              {ACTIVATION_FEE_DISPLAY} is applied toward your final order total.
+              Your Creative Activation is applied toward your final order total.
             </p>
           </div>
 

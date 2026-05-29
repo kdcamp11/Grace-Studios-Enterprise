@@ -5,13 +5,13 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveTenant } from "@/lib/tenant/resolve";
 import { rateLimit } from "@/lib/rate-limit";
 
-// Project activation amount in cents ($100.00)
-const DESIGN_DEPOSIT_CENTS = 10_000;
+// Creative Activation amount in cents ($149.00)
+const DESIGN_DEPOSIT_CENTS = 14_900;
 
 /**
  * POST /api/orders/[order_id]/design-deposit
  *
- * Creates a Stripe Checkout Session for the $100 project activation fee.
+ * Creates a Stripe Checkout Session for the $149 Creative Activation fee.
  * On success, the Stripe webhook sets orders.design_fee_paid = true
  * and records the session in design_deposit_sessions.
  *
@@ -124,7 +124,7 @@ export async function POST(
 
     // ── Build Stripe Checkout Session ─────────────────────────────────────────
     const isClientProvided = orderData.concept_source === "client_provided";
-    const productName = `${tenant.name} — Project Activation`;
+    const productName = `${tenant.name} — Creative Activation`;
     const description = "Applied toward your final order total";
 
     const host =
