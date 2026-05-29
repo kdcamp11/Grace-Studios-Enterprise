@@ -619,7 +619,15 @@ export default function ConceptsPage() {
     if (briefRow?.ai_prompt) {
       try {
         const parsed = JSON.parse(briefRow.ai_prompt as string) as DesignMetadata;
-        if (parsed.status === "completed") metadata = parsed;
+        // Show the design whenever a finished render actually exists — don't
+        // gate on the status flag. A later failed re-run (e.g. OpenAI billing
+        // limit) merge-patches status to "failed" while leaving the original
+        // renders intact, so the concepts are still valid and viewable.
+        const hasRenders   = !!parsed.renders?.frontJersey;
+        const hasBoardImage = !!parsed.boardImage;
+        if (parsed.status === "completed" || hasRenders || hasBoardImage) {
+          metadata = parsed;
+        }
       } catch { /* ignore */ }
     }
 
