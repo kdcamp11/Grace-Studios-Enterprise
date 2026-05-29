@@ -754,11 +754,28 @@ export default function ConceptsPage() {
       const statusData = await statusRes.json() as GenerationProgress;
       if (cancelled) return;
 
+      // Drive purely off the persisted generation status. Only auto-start
+      // generation when this order has NEVER been generated — never re-run for
+      // a "completed" order (viewing should show existing concepts) or a
+      // "failed" one (the user retries explicitly via Regenerate).
       if (statusData.status === "generating" || statusData.status === "queued") {
         setGen(statusData);
         generationFiredRef.current = true;
         pollIntervalRef.current = setInterval(pollStatus, 5000);
+      } else if (statusData.status === "completed") {
+        // Concepts exist but loadBoard didn't surface them (transient fetch
+        // issue). Retry the load — do NOT regenerate.
+        generationFiredRef.current = true; // guard against any later auto-trigger
+        const ok = await loadBoard();
+        if (cancelled) return;
+        setGen(prev => ({ ...prev, status: ok ? "completed" : "failed",
+          error: ok ? null : "Couldn't load your concepts. Please refresh." }));
+      } else if (statusData.status === "failed") {
+        // Surface the failure with a manual retry — don't silently re-run.
+        setGen(statusData.error ? statusData : { ...statusData, status: "failed",
+          error: "Concept generation failed. Please try again." });
       } else {
+        // not_started — genuine first run.
         await triggerGeneration();
       }
     }
