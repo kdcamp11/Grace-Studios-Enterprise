@@ -435,8 +435,8 @@ function SavedDesignCard({ design, index }: { design: SavedDesign; index: number
     }
     // AI
     return design.hasBrief
-      ? `/brief/${design.id}/choose`
-      : `/brief/${design.id}/choose`;
+      ? `/designs/${design.id}/checkout`
+      : `/brief/${design.id}/style`;
   }
 
   return (
