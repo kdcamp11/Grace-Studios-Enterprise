@@ -268,9 +268,12 @@ function CreativeCard({ order, index }: { order: Order; index: number }) {
   const isBuilder    = order.concept_source === "client_provided";
 
   // Routing for "View Design" and "Continue"
-  const viewDesignHref = isBuilder
+  // viewDesignHref is null when there's nothing meaningful to show yet
+  const viewDesignHref: string | null = isBuilder
     ? `/jersey-builder?orderId=${order.id}`
-    : `/orders/${order.id}/concepts`;
+    : order.has_concepts
+      ? `/orders/${order.id}/concepts`
+      : null;
 
   const continueHref = isBuilder
     ? `/jersey-builder?orderId=${order.id}`
@@ -327,12 +330,14 @@ function CreativeCard({ order, index }: { order: Order; index: number }) {
       </div>
 
       <div className="flex flex-wrap gap-2 pt-1">
-        <a
-          href={viewDesignHref}
-          className="px-4 py-2 rounded-lg font-display font-bold text-[11px] uppercase tracking-widest border border-brand-border text-brand-muted hover:text-brand-text hover:border-brand-muted transition-colors"
-        >
-          View Design
-        </a>
+        {viewDesignHref && (
+          <a
+            href={viewDesignHref}
+            className="px-4 py-2 rounded-lg font-display font-bold text-[11px] uppercase tracking-widest border border-brand-border text-brand-muted hover:text-brand-text hover:border-brand-muted transition-colors"
+          >
+            View Design
+          </a>
+        )}
         {notSubmitted && (
           <a
             href={continueHref}
