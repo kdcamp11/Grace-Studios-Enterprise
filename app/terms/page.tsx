@@ -84,11 +84,12 @@ export default async function TermsPage() {
           <Section title="4. Orders and Payment">
             <div className="space-y-4">
               <div>
-                <p className="text-xs font-display uppercase tracking-wider text-brand-primary mb-2">Design Fee</p>
+                <p className="text-xs font-display uppercase tracking-wider text-brand-primary mb-2">Creative Activation</p>
                 <P>
-                  A design fee is charged before concept delivery. This fee covers AI concept generation and designer
-                  review and is <strong className="text-brand-text">non-refundable</strong> once generation begins.
-                  The current design fee is displayed at checkout and is subject to change with notice.
+                  A $149 Creative Activation is charged before concept delivery. This covers project onboarding,
+                  concept development access, and production preparation. The Creative Activation is{" "}
+                  <strong className="text-brand-text">non-refundable</strong> once generation begins and is applied
+                  toward your final order total.
                 </P>
               </div>
               <div>
@@ -143,22 +144,21 @@ export default async function TermsPage() {
 
           <Section title="6. Design Revisions">
             <P>
-              Your design direction is locked upon brief submission. Post-submission revisions are available at
-              additional cost before production begins:
+              One revision round is included with your project. Additional revision rounds are available before
+              production begins:
             </P>
             <div className="bg-brand-surface border border-brand-border rounded-xl overflow-hidden mt-3">
               <table className="w-full text-sm font-barlow">
                 <thead>
                   <tr className="border-b border-brand-border">
-                    <th className="text-left px-5 py-3 text-xs font-display uppercase tracking-wider text-brand-muted">Change</th>
+                    <th className="text-left px-5 py-3 text-xs font-display uppercase tracking-wider text-brand-muted">Revision</th>
                     <th className="text-left px-5 py-3 text-xs font-display uppercase tracking-wider text-brand-muted">Fee</th>
                   </tr>
                 </thead>
                 <tbody>
                   {[
-                    ["Color change", "$25"],
-                    ["Logo change", "$75"],
-                    ["Layout / panel change", "$150"],
+                    ["Revision round (1 included)", "Included"],
+                    ["Additional revision rounds", "$125 per round"],
                   ].map(([type, fee]) => (
                     <tr key={type} className="border-b border-brand-border last:border-b-0">
                       <td className="px-5 py-3 text-brand-text">{type}</td>

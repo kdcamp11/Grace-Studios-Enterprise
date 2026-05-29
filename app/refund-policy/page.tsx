@@ -46,15 +46,16 @@ export default async function RefundPolicyPage() {
             </P>
           </Section>
 
-          <Section title="1. Design Fee">
+          <Section title="1. Creative Activation">
             <P>
-              The design fee covers AI-assisted concept generation and designer review. It is{" "}
-              <strong className="text-brand-text">non-refundable</strong> once concept generation has begun, as design
-              work is performed immediately upon brief submission.
+              The $149 Creative Activation covers project onboarding, concept development access, and production
+              preparation. It is <strong className="text-brand-text">non-refundable</strong> once concept generation
+              has begun, as design work is performed immediately upon brief submission. The Creative Activation is
+              applied toward your final order total.
             </P>
             <P>
               If a technical failure on our part prevents concept delivery, we will regenerate your concepts at no
-              additional charge or issue a full refund of the design fee upon request.
+              additional charge or issue a full refund of the Creative Activation upon request.
             </P>
           </Section>
 
@@ -108,23 +109,22 @@ export default async function RefundPolicyPage() {
 
           <Section title="5. Design Revisions">
             <P>
-              Your design direction is locked after brief submission. Post-approval revisions are subject to the
-              following fees:
+              One revision round is included with your project. Additional revision rounds are available before
+              production begins:
             </P>
             <div className="bg-brand-surface border border-brand-border rounded-xl overflow-hidden mt-3">
               <table className="w-full text-sm font-barlow">
                 <thead>
                   <tr className="border-b border-brand-border">
-                    <th className="text-left px-5 py-3 text-xs font-display uppercase tracking-wider text-brand-muted">Revision Type</th>
+                    <th className="text-left px-5 py-3 text-xs font-display uppercase tracking-wider text-brand-muted">Revision</th>
                     <th className="text-left px-5 py-3 text-xs font-display uppercase tracking-wider text-brand-muted">Fee</th>
                     <th className="text-left px-5 py-3 text-xs font-display uppercase tracking-wider text-brand-muted">Availability</th>
                   </tr>
                 </thead>
                 <tbody>
                   {[
-                    ["Color change", "$25", "Before production"],
-                    ["Logo change", "$75", "Before production"],
-                    ["Layout / panel change", "$150", "Before production"],
+                    ["One revision round included", "$0", "Before production"],
+                    ["Additional revision rounds", "$125 per round", "Before production"],
                     ["Post-production change", "Not available", "—"],
                   ].map(([type, fee, avail]) => (
                     <tr key={type} className="border-b border-brand-border last:border-b-0">
@@ -144,7 +144,7 @@ export default async function RefundPolicyPage() {
                 You may cancel your order at any time with no charge.
               </Li>
               <Li label="After brief submission, before design approval">
-                The design fee is non-refundable. No production charges apply.
+                The Creative Activation is non-refundable. No production charges apply.
               </Li>
               <Li label="After design approval, before production confirmed">
                 Design fee non-refundable. Production deposit fully refundable.
