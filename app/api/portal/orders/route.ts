@@ -77,7 +77,7 @@ export async function GET() {
       .eq("client_visible", true),
     admin
       .from("briefs")
-      .select("order_id, zone_colors, logos_to_include")
+      .select("order_id, zone_colors, logos_to_include, ai_prompt")
       .in("order_id", orderIds),
   ]);
 
@@ -100,11 +100,25 @@ export async function GET() {
 
   const orders = orderRows.map((o) => {
     const brief = briefByOrder.get(o.id);
+
+    // Parse ai_prompt JSON for per-order garment type and builder renders
+    let garmentType: string | null = null;
+    let builderRenderUrl: string | null = null;
+    if (brief?.ai_prompt) {
+      try {
+        const meta = JSON.parse(brief.ai_prompt as string);
+        if (meta.garmentType) garmentType = meta.garmentType as string;
+        if (meta.renders?.frontJersey) builderRenderUrl = meta.renders.frontJersey as string;
+      } catch { /* ignore malformed JSON */ }
+    }
+
     return {
       ...o,
       has_concepts:       conceptOrderIds.has(o.id),
       has_pending_review: pendingReviewIds.has(o.id),
       preview_url:        previewByOrder.get(o.id) ?? null,
+      builder_render_url: builderRenderUrl,
+      garment_type:       garmentType,
       team_name:          clientMeta?.name ?? null,
       sport:              clientMeta?.sport ?? null,
       zone_colors:        (brief?.zone_colors as Record<string, string> | string[] | null) ?? null,

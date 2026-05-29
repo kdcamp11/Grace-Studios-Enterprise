@@ -28,6 +28,8 @@ interface Order {
   order_type?: "creative" | "production";
   design_fee_paid?: boolean;
   preview_url?: string | null;
+  builder_render_url?: string | null;
+  garment_type?: string | null;
   team_name?: string | null;
   sport?: string | null;
   logos_to_include?: string | null;
@@ -275,18 +277,20 @@ function CreativeCard({ order, index }: { order: Order; index: number }) {
           <p className="font-display font-bold uppercase tracking-wide text-brand-text text-base truncate">
             {order.team_name || `Order ${orderLabel}`}
           </p>
-          {order.sport && (
-            <p className="text-[11px] uppercase tracking-wider text-brand-muted font-display">{order.sport}</p>
+          {(order.garment_type || order.sport) && (
+            <p className="text-[11px] uppercase tracking-wider text-brand-muted font-display">
+              {order.garment_type ?? order.sport}
+            </p>
           )}
         </div>
 
         <div className="flex items-center gap-3 flex-shrink-0">
-          {/* Locked concept thumbnail — shown when concepts exist but not yet activated */}
-          {order.preview_url && !order.design_fee_paid && (
+          {/* Locked concept thumbnail — builder render takes priority over AI concept preview */}
+          {(order.builder_render_url || order.preview_url) && !order.design_fee_paid && (
             <div className="relative w-14 h-14 rounded-lg overflow-hidden border border-brand-border flex-shrink-0">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={order.preview_url}
+                src={order.builder_render_url ?? order.preview_url ?? ""}
                 alt="Concept preview"
                 className="w-full h-full object-cover"
               />
