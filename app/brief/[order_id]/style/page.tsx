@@ -56,14 +56,14 @@ const SYSTEMS = [
   },
   {
     id: "freestyle",
-    badge: "Freestyle System",
+    badge: "Freestyle",
     name: "Freestyle",
-    tagline: "Tonal panels. Contrast piping. Elevated quiet.",
+    tagline: "Your vision. Our silhouette. Your design.",
     tracksuitOnly: true,
     bullets: [
-      "Angular side-panel blocking, tonal contrast",
-      "Thin piping along shoulder and sleeve seam",
-      "Oversized drop-shoulder, wide-leg silhouette",
+      "No preset design rules — you define the direction",
+      "Vision notes drive the concept, not system templates",
+      "Built on Grace Studios silhouette standards",
     ],
   },
 ];

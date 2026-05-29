@@ -145,7 +145,8 @@ export default function ReferencePage() {
     setAccentColor(state.accentColor       || defaults.accent);
   }, []);
 
-  const canContinue = true;
+  const isFreestyle = designSystem === "freestyle";
+  const canContinue = !isFreestyle || visionPrompt.trim().length > 0;
 
   // ── Upload helpers ─────────────────────────────────────────────────────────
 
@@ -246,10 +247,49 @@ export default function ReferencePage() {
   return (
     <BriefLayout
       currentStep={3}
-      title="Logo & Details"
-      subtitle="Upload your logo and set your colors — these feed directly into the AI."
+      title={isFreestyle ? "Your Vision" : "Logo & Details"}
+      subtitle={isFreestyle
+        ? "Freestyle puts your creative direction first. Describe what you want — the design is built around your vision."
+        : "Upload your logo and set your colors — these feed directly into the AI."
+      }
     >
       <div className="space-y-8">
+
+        {/* ── Freestyle vision field (top-priority for freestyle) ───────── */}
+        {isFreestyle && (
+          <div className="rounded-xl border border-brand-primary/30 bg-brand-primary/5 p-5 space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="w-1 self-stretch rounded-full bg-brand-primary flex-shrink-0" />
+              <div>
+                <p className="font-display font-bold uppercase tracking-wide text-brand-text text-sm">
+                  Your Vision Drives Everything
+                </p>
+                <p className="text-xs font-barlow text-brand-muted mt-1 leading-relaxed">
+                  Freestyle has no preset design rules. Describe your concept — the panel layout, vibe,
+                  references, aesthetic — and Grace Studios will execute it within our silhouette standards.
+                  The more specific you are, the closer the first concept lands.
+                </p>
+              </div>
+            </div>
+            <div>
+              <label className="block text-[10px] font-display uppercase tracking-[0.2em] text-brand-primary mb-2">
+                Vision Notes <span className="text-brand-primary">*</span>
+              </label>
+              <textarea
+                value={visionPrompt}
+                onChange={(e) => { setVisionPrompt(e.target.value); saveBriefState({ visionPrompt: e.target.value }); }}
+                placeholder="Describe your vision in as much detail as you want — the look, the vibe, specific panel geometry, color blocking, cultural references, materials, anything that matters to you…"
+                rows={6}
+                className="w-full bg-brand-surface border border-brand-primary/40 rounded-lg px-4 py-3 text-brand-text font-barlow text-sm placeholder-brand-muted/60 focus:outline-none focus:border-brand-primary transition-colors resize-none"
+              />
+              {visionPrompt.trim().length === 0 && (
+                <p className="mt-1.5 text-[10px] font-barlow text-brand-primary/70">
+                  Required for Freestyle — this is what the designer will build from.
+                </p>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* ── Color picker ─────────────────────────────────────────────── */}
         <div>
@@ -355,18 +395,20 @@ export default function ReferencePage() {
               />
             </div>
 
-            <div>
-              <label className="block text-[10px] font-display uppercase tracking-[0.2em] text-brand-muted mb-2">
-                Vision Notes <span className="normal-case font-barlow font-normal">(optional)</span>
-              </label>
-              <textarea
-                value={visionPrompt}
-                onChange={(e) => setVisionPrompt(e.target.value)}
-                placeholder="Describe your vision — vibe, inspiration, specific elements you want on the jersey…"
-                rows={4}
-                className="w-full bg-brand-surface border border-brand-border rounded-lg px-4 py-3 text-brand-text font-barlow text-sm placeholder-brand-muted focus:outline-none focus:border-brand-primary transition-colors resize-none"
-              />
-            </div>
+            {!isFreestyle && (
+              <div>
+                <label className="block text-[10px] font-display uppercase tracking-[0.2em] text-brand-muted mb-2">
+                  Vision Notes <span className="normal-case font-barlow font-normal">(optional)</span>
+                </label>
+                <textarea
+                  value={visionPrompt}
+                  onChange={(e) => { setVisionPrompt(e.target.value); saveBriefState({ visionPrompt: e.target.value }); }}
+                  placeholder="Describe your vision — vibe, inspiration, specific elements you want on the jersey…"
+                  rows={4}
+                  className="w-full bg-brand-surface border border-brand-border rounded-lg px-4 py-3 text-brand-text font-barlow text-sm placeholder-brand-muted focus:outline-none focus:border-brand-primary transition-colors resize-none"
+                />
+              </div>
+            )}
           </div>
 
           {/* Navigation */}

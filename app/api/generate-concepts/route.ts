@@ -410,6 +410,7 @@ function buildClaudePrompt(
     ? `LOGO ZONE RULE: Team logos are uploaded LOCKED ASSETS. Do NOT describe logo artwork in the description field. Write ONLY "Clean logo zone — [size] on [location]". The logo is composited in production.`
     : `LOGO ZONE RULE: Describe clean empty logo placement zones only. Write "Clean logo zone — [size] on [location]". Do not generate or describe any logo artwork.`;
 
+  const isFreestyle    = designSystem.toLowerCase() === "freestyle";
   const systemLanguage = SYSTEM_VISUAL_LANGUAGE[designSystem] ?? SYSTEM_VISUAL_LANGUAGE.bold;
   const isTracksuit    = sport.toLowerCase() === "tracksuits";
 
@@ -446,15 +447,32 @@ DESCRIPTION RULES:
 - Pants are wide-leg with open bottom nylon hem — they stack at the ankle.
 `.trim() : "";
 
-  return `You are a senior sportswear designer at ${studioName} analyzing a brief to produce controlled render directives.
+  // For Freestyle, the client's vision is the primary design directive —
+  // it moves to the top of the prompt and replaces the system visual language.
+  const freestyleVisionDirective = isFreestyle && brief.vision_prompt
+    ? `⚠️ FREESTYLE — CLIENT VISION IS THE PRIMARY DESIGN DIRECTIVE ⚠️
+The client chose Freestyle, meaning their stated vision drives every design decision.
+You MUST execute the following vision exactly as described. Do NOT apply Bold, Gradient, Program, or Culture system defaults unless the client explicitly referenced them.
 
+CLIENT VISION: "${brief.vision_prompt}"
+
+Build the panel geometry, graphic placement, color blocking, and overall aesthetic entirely around this vision. Grace Studios' construction standards still apply (stand collar, wide-leg pant, nylon shell, open hems), but the visual language comes from the client.`
+    : isFreestyle
+    ? `⚠️ FREESTYLE — OPEN CLIENT BRIEF ⚠️
+The client chose Freestyle, meaning there are no pre-prescribed design system rules. Use Grace Studios' silhouette standards and produce a clean, elevated tracksuit design. Apply tonal side-panel blocking and contrast piping as a tasteful default while leaving room for the client's vision.`
+    : "";
+
+  return `You are a senior sportswear designer at ${studioName} analyzing a brief to produce controlled render directives.
+${freestyleVisionDirective ? `\n${freestyleVisionDirective}\n` : ""}
 ═══ REFERENCE IMAGES PROVIDED ═══
 ${referenceAnnotation || "No reference images loaded — follow design system spec below."}
 
 ═══ DESIGN SYSTEM ═══
 System: ${designSystem.toUpperCase()}
-Visual language (do not blend with other systems):
-${systemLanguage}
+${isFreestyle
+  ? "This is a Freestyle brief. Design language is determined by the client vision above, not by a fixed system template."
+  : `Visual language (do not blend with other systems):\n${systemLanguage}`
+}
 
 ═══ PROJECT BRIEF ═══
 Client: ${teamName}, ${city} — ${sport}

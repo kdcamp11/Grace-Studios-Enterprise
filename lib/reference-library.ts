@@ -107,11 +107,11 @@ export const SYSTEM_VISUAL_LANGUAGE: Record<string, string> = {
   ].join(". "),
 
   freestyle: [
-    "Tonal side-panel blocking — primary body color with angular geometric side inserts in a close complementary tone",
-    "Thin contrast piping runs continuously from shoulder tip to wrist hem along the outer sleeve seam",
-    "Clean angular panel cuts along the chest sides, armhole to jacket bottom — no diagonal slashing, no bold graphic lines",
-    "Understated luxury-athletic execution: minimal graphic treatment, no oversized lettering dominating the body",
-    "Relaxed oversized drop-shoulder silhouette with a fashion-forward wide-leg pant — elevated streetwear energy without loud graphics",
+    "CLIENT VISION DRIVES ALL DESIGN DECISIONS — this is not a pre-prescribed design system",
+    "Interpret and execute the client's vision notes exactly as described: their panel geometry, graphic placement, and overall aesthetic are the primary directive",
+    "Apply Grace Studios' construction standards and silhouette philosophy (stand collar, wide-leg pant, nylon shell) — but let the client's stated vision guide every visual decision",
+    "Do not impose bold diagonal panels, gradients, or collegiate symmetry unless the client explicitly asked for them",
+    "If the client described a specific vibe, reference, or element — build the design around it, not around a default system template",
   ].join(". "),
 };
 
@@ -123,7 +123,7 @@ export const SYSTEM_PROMPT_SHORT: Record<string, string> = {
   gradient:  "smooth color gradient fade, premium motion lines, clean structure",
   culture:   "streetwear aesthetic, asymmetric layered composition, fashion-forward",
   program:   "clean collegiate layout, balanced symmetric panels, minimal classic design",
-  freestyle: "tonal side panel blocking, contrast shoulder piping, minimal clean silhouette",
+  freestyle: "client vision directed, open design brief, execute stated vision within Grace Studios silhouette",
 };
 
 // ─── Reference-file resolution ────────────────────────────────────────────────
