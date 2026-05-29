@@ -275,9 +275,10 @@ function CreativeCard({ order, index }: { order: Order; index: number }) {
       ? `/orders/${order.id}/concepts`
       : null;
 
-  const continueHref = isBuilder
-    ? `/jersey-builder?orderId=${order.id}`
-    : `/brief/${order.id}/builder-review`;
+  // "Continue" for any unsubmitted order goes to the jersey builder.
+  // For builder orders this restores their saved colors; for any other
+  // Design Started order builder-review has nothing useful to show.
+  const continueHref = `/jersey-builder?orderId=${order.id}`;
 
   return (
     <div
