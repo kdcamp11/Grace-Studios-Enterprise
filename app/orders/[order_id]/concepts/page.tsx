@@ -978,8 +978,16 @@ export default function ConceptsPage() {
               <div>
                 <p className="text-brand-text font-barlow font-medium">Generation failed</p>
                 {gen.error && <p className="text-xs text-red-400 font-barlow mt-1 max-w-sm">{gen.error}</p>}
-                <p className="text-xs text-brand-muted font-barlow mt-2">Please contact {tenant.name} support to retry.</p>
+                <p className="text-xs text-brand-muted font-barlow mt-2">Try again, or contact {tenant.name} support if it keeps failing.</p>
               </div>
+              <button
+                type="button"
+                onClick={handleRegenerate}
+                disabled={regenerating}
+                className="px-6 py-2.5 rounded-lg font-display font-bold text-xs uppercase tracking-widest border border-brand-primary text-brand-primary hover:bg-brand-primary hover:text-white disabled:opacity-50 transition-colors"
+              >
+                {regenerating ? "Retrying…" : "↺ Try Again"}
+              </button>
             </div>
           )}
 
