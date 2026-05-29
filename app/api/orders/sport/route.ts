@@ -5,7 +5,9 @@ const adminSupabase = createAdminClient();
 
 /**
  * GET /api/orders/sport?orderId=<uuid>
- * Returns the sport for a given order. Uses service-role key to bypass RLS.
+ * Returns the sport for a given order or design. Checks orders first; if not
+ * found falls back to the designs table so pre-payment (design-keyed) brief
+ * pages work without an order existing yet.
  */
 export async function GET(req: NextRequest) {
   const orderId = req.nextUrl.searchParams.get("orderId");
@@ -13,36 +15,35 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "orderId required" }, { status: 400 });
   }
 
-  // Step 1: get client_id from orders
-  const { data: order, error: orderError } = await adminSupabase
+  // Try orders first (legacy + post-payment flows)
+  const { data: order } = await adminSupabase
     .from("orders")
     .select("client_id")
     .eq("id", orderId)
-    .single();
+    .maybeSingle();
 
-  if (orderError) {
-    console.error("[sport] order error:", orderError);
-    return NextResponse.json({ error: orderError.message }, { status: 500 });
+  let clientId = order?.client_id ?? null;
+
+  // Fallback: check designs table (pre-payment design-keyed flow)
+  if (!clientId) {
+    const { data: design } = await adminSupabase
+      .from("designs")
+      .select("client_id")
+      .eq("id", orderId)
+      .maybeSingle();
+    clientId = design?.client_id ?? null;
   }
 
-  if (!order?.client_id) {
-    console.error("[sport] no client_id for order", orderId);
+  if (!clientId) {
     return NextResponse.json({ sport: "" });
   }
 
-  // Step 2: get sport from clients
-  const { data: client, error: clientError } = await adminSupabase
+  const { data: client } = await adminSupabase
     .from("clients")
     .select("sport")
-    .eq("id", order.client_id)
+    .eq("id", clientId)
     .single();
 
-  if (clientError) {
-    console.error("[sport] client error:", clientError);
-    return NextResponse.json({ error: clientError.message }, { status: 500 });
-  }
-
-  const sport = client?.sport ?? "";
-  console.log("[sport] orderId:", orderId, "→ sport:", sport);
-  return NextResponse.json({ sport });
+  return NextResponse.json({ sport: client?.sport ?? "" });
 }
+

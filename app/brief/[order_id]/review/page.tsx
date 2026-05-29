@@ -42,15 +42,20 @@ export default function ReviewPage() {
     setLoading(true);
     setError("");
 
+    // If briefState has a designId matching the URL param, we're in pre-payment design flow
+    const isDesignFlow = !!(brief?.designId && brief.designId === order_id);
+
     try {
       const logoUrls = brief?.logoUrls ?? [];
       const refUrls = brief?.referenceImageUrls ?? [];
+
+      const idField = isDesignFlow ? { design_id: order_id } : { order_id };
 
       const submitRes = await fetch("/api/brief/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          order_id,
+          ...idField,
           logo_url: logoUrls[0] || null,
           logo_urls: logoUrls.length ? logoUrls : null,
           reference_image_url: refUrls[0] || null,
@@ -83,7 +88,7 @@ export default function ReviewPage() {
       fetch("/api/generate-concepts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ order_id }),
+        body: JSON.stringify(idField),
       }).catch(() => {});
 
       // Notify admin that a new brief was submitted
@@ -93,7 +98,7 @@ export default function ReviewPage() {
         body: JSON.stringify({ event: "brief_submitted", order_id }),
       }).catch(() => {});
 
-      // Route to roster step — it finalises player data then routes to portal
+      // Route to roster step — it finalises player data then routes to checkout (design flow) or concepts (order flow)
       router.push(`/brief/${order_id}/roster`);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Something went wrong. Please try again.";

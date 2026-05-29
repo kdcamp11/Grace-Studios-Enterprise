@@ -332,26 +332,27 @@ async function generateGarmentRender(
   return urlData.publicUrl;
 }
 
+type BriefFilter = { field: "order_id" | "design_id"; id: string };
+
 /** Merge-patch briefs.ai_prompt without wiping fields set in earlier steps. */
 async function saveStatus(
   supabase: SupabaseClient,
-  order_id: string,
+  bf: BriefFilter,
   patch: Partial<DesignMetadata>,
 ): Promise<void> {
-  const { data } = await supabase
-    .from("briefs")
-    .select("ai_prompt")
-    .eq("order_id", order_id)
-    .single();
+  const q = supabase.from("briefs").select("ai_prompt");
+  const { data } = bf.field === "design_id"
+    ? await q.eq("design_id", bf.id).maybeSingle()
+    : await q.eq("order_id",  bf.id).maybeSingle();
 
   let current: Partial<DesignMetadata> = {};
   if (data?.ai_prompt) {
     try { current = JSON.parse(data.ai_prompt as string); } catch { /* ignore */ }
   }
-  await supabase
-    .from("briefs")
-    .update({ ai_prompt: JSON.stringify({ ...current, ...patch }) })
-    .eq("order_id", order_id);
+  const u = supabase.from("briefs").update({ ai_prompt: JSON.stringify({ ...current, ...patch }) });
+  bf.field === "design_id"
+    ? await u.eq("design_id", bf.id)
+    : await u.eq("order_id",  bf.id);
 }
 
 // ─── Claude prompt builder ────────────────────────────────────────────────────
@@ -1056,26 +1057,33 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
-    const { order_id } = await req.json();
-    if (!order_id) {
-      return NextResponse.json({ error: "order_id required" }, { status: 400 });
+    const { order_id, design_id } = await req.json();
+    if (!order_id && !design_id) {
+      return NextResponse.json({ error: "order_id or design_id required" }, { status: 400 });
     }
+
+    const bf: BriefFilter = design_id
+      ? { field: "design_id", id: design_id as string }
+      : { field: "order_id",  id: order_id  as string };
 
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
     );
 
-    // Verify the order belongs to the request tenant
+    // Verify the record belongs to the request tenant
     const tenant = await getRequestTenant();
     if (tenant) {
+      const table = bf.field === "design_id" ? "designs" : "orders";
       const { data: tenantCheck } = await supabase
-        .from("orders")
+        .from(table)
         .select("id")
-        .eq("id", order_id)
+        .eq("id", bf.id)
         .eq("tenant_id", tenant.id)
         .single();
-      if (!tenantCheck) return NextResponse.json({ error: "Order not found" }, { status: 404 });
+      if (!tenantCheck) {
+        return NextResponse.json({ error: bf.field === "design_id" ? "Design not found" : "Order not found" }, { status: 404 });
+      }
     }
 
     // ── 1. Duplicate-generation guard ─────────────────────────────────────────
@@ -1083,8 +1091,8 @@ export async function POST(req: NextRequest) {
     const { data: existingBrief } = await supabase
       .from("briefs")
       .select("ai_prompt")
-      .eq("order_id", order_id)
-      .single();
+      .eq(bf.field, bf.id)
+      .maybeSingle();
 
     if (existingBrief?.ai_prompt) {
       try {
@@ -1098,22 +1106,39 @@ export async function POST(req: NextRequest) {
       } catch { /* not valid JSON — proceed */ }
     }
 
-    // ── 2. Fetch brief / order / client ───────────────────────────────────────
+    // ── 2. Fetch brief / design-or-order / client ─────────────────────────────
 
     const { data: brief, error: briefError } = await supabase
-      .from("briefs").select("*").eq("order_id", order_id).single();
+      .from("briefs").select("*").eq(bf.field, bf.id).maybeSingle();
     if (briefError || !brief) {
       return NextResponse.json({ error: "Brief not found" }, { status: 404 });
     }
 
-    const { data: order, error: orderError } = await supabase
-      .from("orders").select("client_id, order_number, tenant_id").eq("id", order_id).single();
-    if (orderError || !order) {
-      return NextResponse.json({ error: "Order not found" }, { status: 404 });
+    let clientId:    string;
+    let orderNumber: string | null = null;
+    let tenantId:    string | null = null;
+
+    if (bf.field === "design_id") {
+      const { data: design, error: designError } = await supabase
+        .from("designs").select("client_id, tenant_id").eq("id", bf.id).single();
+      if (designError || !design) {
+        return NextResponse.json({ error: "Design not found" }, { status: 404 });
+      }
+      clientId = design.client_id as string;
+      tenantId = (design as { tenant_id?: string }).tenant_id ?? null;
+    } else {
+      const { data: order, error: orderError } = await supabase
+        .from("orders").select("client_id, order_number, tenant_id").eq("id", bf.id).single();
+      if (orderError || !order) {
+        return NextResponse.json({ error: "Order not found" }, { status: 404 });
+      }
+      clientId    = order.client_id as string;
+      orderNumber = (order.order_number as string | null) ?? null;
+      tenantId    = (order as { tenant_id?: string }).tenant_id ?? null;
     }
 
     const { data: client, error: clientError } = await supabase
-      .from("clients").select("name, city, sport, email").eq("id", order.client_id).single();
+      .from("clients").select("name, city, sport, email").eq("id", clientId).single();
     if (clientError || !client) {
       return NextResponse.json({ error: "Client not found" }, { status: 404 });
     }
@@ -1148,7 +1173,7 @@ export async function POST(req: NextRequest) {
 
     // ── 5. Mark queued ────────────────────────────────────────────────────────
 
-    await saveStatus(supabase, order_id, {
+    await saveStatus(supabase, bf, {
       status:      "queued",
       progress:    0,
       total:       4,
@@ -1256,7 +1281,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Mark generating
-    await saveStatus(supabase, order_id, {
+    await saveStatus(supabase, bf, {
       ...metadata,
       status:   "generating",
       progress: 0,
@@ -1309,7 +1334,7 @@ export async function POST(req: NextRequest) {
         const url = await generateGarmentRender(
           renderPrompt,
           supabase,
-          order_id,
+          bf.id,
           key,
           hasLogoRef ? primaryLogoUrl : null,
           garmentRefUrl,
@@ -1319,7 +1344,7 @@ export async function POST(req: NextRequest) {
       } catch (imgErr: unknown) {
         const msg = imgErr instanceof Error ? imgErr.message : String(imgErr);
         console.error(`[generate-concepts] ${label} failed:`, msg);
-        await saveStatus(supabase, order_id, {
+        await saveStatus(supabase, bf, {
           ...metadata,
           status: "failed",
           error:  `${label} render failed: ${msg}`,
@@ -1328,7 +1353,7 @@ export async function POST(req: NextRequest) {
       }
 
       // Save progress after each render so UI updates incrementally
-      await saveStatus(supabase, order_id, {
+      await saveStatus(supabase, bf, {
         ...metadata,
         status:      "generating",
         progress:    i + 1,
@@ -1362,18 +1387,18 @@ export async function POST(req: NextRequest) {
     await supabase
       .from("briefs")
       .update({ ai_prompt: JSON.stringify(finalMetadata) })
-      .eq("order_id", order_id);
+      .eq(bf.field, bf.id);
 
     // ── 12. Insert concept rows (1 per render view for legacy fallback) ────────
 
-    await supabase.from("concepts").delete().eq("order_id", order_id);
+    await supabase.from("concepts").delete().eq(bf.field, bf.id);
 
-    const tenantId = (order as { tenant_id?: string }).tenant_id;
+    const conceptIdField = bf.field === "design_id" ? "design_id" : "order_id";
     const conceptRows = [
-      { order_id, tenant_id: tenantId, concept_number: 1, image_url: renders.frontJersey!, selected: false },
-      { order_id, tenant_id: tenantId, concept_number: 2, image_url: renders.backJersey!,  selected: false },
-      { order_id, tenant_id: tenantId, concept_number: 3, image_url: renders.frontShorts!, selected: false },
-      { order_id, tenant_id: tenantId, concept_number: 4, image_url: renders.backShorts!,  selected: false },
+      { [conceptIdField]: bf.id, tenant_id: tenantId, concept_number: 1, image_url: renders.frontJersey!, selected: false },
+      { [conceptIdField]: bf.id, tenant_id: tenantId, concept_number: 2, image_url: renders.backJersey!,  selected: false },
+      { [conceptIdField]: bf.id, tenant_id: tenantId, concept_number: 3, image_url: renders.frontShorts!, selected: false },
+      { [conceptIdField]: bf.id, tenant_id: tenantId, concept_number: 4, image_url: renders.backShorts!,  selected: false },
     ];
 
     const { error: conceptError } = await supabase.from("concepts").insert(conceptRows);
@@ -1384,13 +1409,14 @@ export async function POST(req: NextRequest) {
     // ── 13. Notify client ─────────────────────────────────────────────────────
 
     try {
-      if (client?.email) {
-        const orderNumber = order.order_number ?? order_id.slice(0, 8).toUpperCase();
+      // Only send concepts-ready email once there's an order (design_id flow has no order yet)
+      if (client?.email && bf.field === "order_id") {
+        const displayOrderNumber = orderNumber ?? bf.id.slice(0, 8).toUpperCase();
         await sendConceptsReady({
           clientEmail: client.email,
           teamName:    client.name ?? "Client",
-          orderNumber,
-          orderId:     order_id,
+          orderNumber: displayOrderNumber,
+          orderId:     bf.id,
           tenant: tenant ? { name: tenant.name, brandColor: tenant.brand_primary, adminEmail: tenant.support_email } : undefined,
         });
       }
@@ -1400,7 +1426,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       status:      "completed",
-      order_id,
+      ...(bf.field === "order_id" ? { order_id: bf.id } : { design_id: bf.id }),
       boardFormat: "renders",
     });
 
