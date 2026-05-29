@@ -262,7 +262,7 @@ function CreativeCard({ order, index }: { order: Order; index: number }) {
   const orderLabel = order.order_number || order.id.slice(0, 8).toUpperCase();
   const norm       = normalizeStage(order.stage);
   const notSubmitted = isAwaitingConcepts(order.stage); // creative_started / legacy onboarding
-  const approved   = norm === "creative_approved";
+  const approved   = !notSubmitted; // clickable once brief is submitted
 
   return (
     <div

@@ -485,24 +485,12 @@ export default function ApprovePage() {
             </Section>
           )}
 
-          {/* ── Design Lock Warning ───────────────────────────────────────── */}
+          {/* ── Design Direction Notice ───────────────────────────────────── */}
           <div className="rounded-xl border border-amber-200 bg-amber-50 p-5">
-            <p className="text-[10px] font-display uppercase tracking-[0.22em] text-amber-700 mb-2">Design Lock Notice</p>
+            <p className="text-[10px] font-display uppercase tracking-[0.22em] text-amber-700 mb-2">Design Direction Notice</p>
             <p className="text-sm text-amber-800 font-barlow leading-relaxed">
-              Once approved, your design is locked and sent to our production team. Any changes after this point are subject to revision fees.
+              Once submitted, your design direction is confirmed and moves to production. One revision round is included. Additional revision rounds are billed at $125 per round.
             </p>
-            <div className="flex flex-wrap gap-3 mt-3">
-              {[
-                { label: "Color change",  price: "$25"  },
-                { label: "Logo change",   price: "$75"  },
-                { label: "Layout change", price: "$150" },
-              ].map(({ label, price }) => (
-                <div key={label} className="flex items-center gap-1.5 bg-white border border-amber-200 rounded-lg px-3 py-1.5">
-                  <span className="text-[10px] font-barlow text-amber-700">{label}</span>
-                  <span className="text-[10px] font-display font-bold text-amber-600">{price}</span>
-                </div>
-              ))}
-            </div>
           </div>
 
           {error && (

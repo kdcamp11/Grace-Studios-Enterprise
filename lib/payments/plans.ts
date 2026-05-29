@@ -1,60 +1,72 @@
 import type { TenantPlan } from "@/lib/supabase/types";
 
 export interface PlanConfig {
-  id: TenantPlan;
-  label: string;
-  priceMonthly: number; // in cents
-  stripePriceId: string | null; // null = free/manual
-  features: string[];
+  id:            TenantPlan;
+  label:         string;
+  tagline:       string;
+  priceMonthly:  number;       // in cents; 0 = free or contact-sales
+  contactSales:  boolean;      // true = enterprise, show "Contact Sales" not a price
+  stripePriceId: string | null;
+  features:      string[];
   limits: {
-    orders: number | null; // null = unlimited
-    users: number | null;
+    orders:  number | null;    // null = unlimited
+    users:   number | null;
     clients: number | null;
   };
 }
 
 export const PLANS: Record<TenantPlan, PlanConfig> = {
   starter: {
-    id: "starter",
-    label: "Starter",
-    priceMonthly: 0,
-    stripePriceId: null,
+    id:            "starter",
+    label:         "Starter",
+    tagline:       "Operational infrastructure for growing apparel programs.",
+    priceMonthly:  9900,        // $99/mo
+    contactSales:  false,
+    stripePriceId: process.env.STRIPE_PRICE_STARTER ?? null,
     features: [
-      "Up to 10 active orders",
-      "Up to 3 team members",
-      "AI concept generation",
-      "Client portal",
-      "Basic email notifications",
+      "Full platform workflow — order, track, deliver",
+      "Client portal and brief management",
+      "Concept development and design approvals",
+      "Production coordination and fulfillment oversight",
+      "Up to 5 team members",
+      "Standard support",
     ],
-    limits: { orders: 10, users: 3, clients: 50 },
+    limits: { orders: 25, users: 5, clients: 100 },
   },
   pro: {
-    id: "pro",
-    label: "Pro",
-    priceMonthly: 29900, // $299/mo
+    id:            "pro",
+    label:         "Pro",
+    tagline:       "The primary operating tier for serious apparel organizations.",
+    priceMonthly:  24900,       // $249/mo
+    contactSales:  false,
     stripePriceId: process.env.STRIPE_PRICE_PRO ?? null,
     features: [
-      "Unlimited orders",
-      "Up to 10 team members",
-      "AI concept generation",
-      "Client portal + custom domain",
-      "Priority email support",
+      "Everything in Starter",
+      "Unlimited orders and client accounts",
+      "Expanded supplier coordination and fulfillment management",
+      "Advanced organization and roster management",
+      "Priority concept development queue",
+      "Up to 15 team members",
+      "Priority support",
       "Stripe Connect payouts",
     ],
-    limits: { orders: null, users: 10, clients: null },
+    limits: { orders: null, users: 15, clients: null },
   },
   enterprise: {
-    id: "enterprise",
-    label: "Enterprise",
-    priceMonthly: 99900, // $999/mo
-    stripePriceId: process.env.STRIPE_PRICE_ENTERPRISE ?? null,
+    id:            "enterprise",
+    label:         "Enterprise",
+    tagline:       "Custom operational solutions for large-scale programs and multi-org operations.",
+    priceMonthly:  0,
+    contactSales:  true,
+    stripePriceId: null,
     features: [
-      "Unlimited everything",
-      "Dedicated account manager",
-      "Custom AI training",
-      "White-label mobile app",
-      "SLA guarantee",
-      "Custom integrations",
+      "Everything in Pro",
+      "Dedicated account management",
+      "Multi-program and white-label capabilities",
+      "Custom operational integrations",
+      "High-volume fulfillment support",
+      "Custom SLA and service agreements",
+      "Unlimited team members",
     ],
     limits: { orders: null, users: null, clients: null },
   },

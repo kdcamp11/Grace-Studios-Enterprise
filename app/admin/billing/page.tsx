@@ -189,10 +189,13 @@ export default function BillingPage() {
                       {status.replace("_", " ")}
                     </span>
                   </div>
-                  {current !== "starter" && (
+                  {(data?.planConfig.priceMonthly ?? 0) > 0 && (
                     <p className="text-sm font-barlow" style={{ color: "var(--brand-muted)" }}>
                       {fmt$(data?.planConfig.priceMonthly ?? 0)} / month
                     </p>
+                  )}
+                  {data?.planConfig.contactSales && (
+                    <p className="text-sm font-barlow" style={{ color: "var(--brand-muted)" }}>Custom pricing</p>
                   )}
                   {trialDays !== null && (
                     <p className="text-sm font-barlow mt-1" style={{ color: "var(--brand-primary)" }}>
@@ -266,13 +269,13 @@ export default function BillingPage() {
             </div>
           </section>
 
-          {/* Studio license / upgrade */}
+          {/* Platform plan / upgrade */}
           <section className="space-y-4">
             <h2 className="font-display font-bold uppercase tracking-widest text-xs border-b pb-2" style={{ borderColor: "var(--brand-border)", color: "var(--brand-muted)" }}>
-              Studio License
+              Platform Plan
             </h2>
             <p className="text-xs font-barlow" style={{ color: "var(--brand-muted)" }}>
-              Select a plan to upgrade your studio license. Pro and Enterprise unlock unlimited orders, custom domains, and priority support.
+              Grace Studios Enterprise is the operational backbone for your apparel program — order management, client workflow, supplier coordination, and fulfillment oversight in one platform.
             </p>
 
             {/* Selectable plan cards */}
@@ -280,14 +283,13 @@ export default function BillingPage() {
               {(Object.values(PLANS) as PlanConfig[]).map((plan) => {
                 const isCurrent  = plan.id === current;
                 const isSelected = selectedPlan === plan.id;
-                const isClient   = plan.id === "starter";
 
                 return (
                   <div
                     key={plan.id}
-                    onClick={() => !isCurrent && !isClient && setSelectedPlan(plan.id === selectedPlan ? null : plan.id)}
+                    onClick={() => !isCurrent && !plan.contactSales && setSelectedPlan(plan.id === selectedPlan ? null : plan.id)}
                     className={`rounded-xl border p-5 flex flex-col gap-3 transition-all duration-200 ${
-                      isClient ? "opacity-50" : isCurrent ? "" : "cursor-pointer hover:border-opacity-80"
+                      plan.contactSales ? "" : isCurrent ? "" : "cursor-pointer hover:border-opacity-80"
                     }`}
                     style={{
                       borderColor: isSelected
@@ -313,16 +315,20 @@ export default function BillingPage() {
                             Selected
                           </span>
                         )}
-                        {isClient && (
-                          <span className="text-[10px] font-display uppercase tracking-wider px-2 py-0.5 rounded-full border" style={{ borderColor: "var(--brand-border)", color: "var(--brand-muted)" }}>
-                            Clients Only
-                          </span>
-                        )}
                       </div>
                       <p className="text-xl font-display font-bold">
-                        {plan.priceMonthly === 0 ? "Free" : fmt$(plan.priceMonthly)}
-                        {plan.priceMonthly > 0 && <span className="text-xs font-barlow font-normal" style={{ color: "var(--brand-muted)" }}>/mo</span>}
+                        {plan.contactSales
+                          ? "Custom"
+                          : plan.priceMonthly === 0
+                          ? "Free"
+                          : fmt$(plan.priceMonthly)}
+                        {!plan.contactSales && plan.priceMonthly > 0 && (
+                          <span className="text-xs font-barlow font-normal" style={{ color: "var(--brand-muted)" }}>/mo</span>
+                        )}
                       </p>
+                      {plan.tagline && (
+                        <p className="text-[11px] font-barlow mt-1.5 leading-snug" style={{ color: "var(--brand-muted)" }}>{plan.tagline}</p>
+                      )}
                     </div>
                     <ul className="flex-1 space-y-1.5">
                       {plan.features.map((f) => (
@@ -332,6 +338,16 @@ export default function BillingPage() {
                         </li>
                       ))}
                     </ul>
+                    {plan.contactSales && !isCurrent && (
+                      <a
+                        href="/contact"
+                        className="mt-1 inline-flex items-center justify-center w-full py-2.5 rounded-lg text-xs font-display font-bold uppercase tracking-widest transition-opacity hover:opacity-80"
+                        style={{ background: "var(--brand-primary)", color: "#fff" }}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        Contact Sales →
+                      </a>
+                    )}
                   </div>
                 );
               })}
@@ -341,7 +357,10 @@ export default function BillingPage() {
             {selectedPlan && selectedPlan !== current && (
               <div className="flex items-center justify-between rounded-xl border p-4" style={{ borderColor: "var(--brand-border)", background: "var(--brand-surface)" }}>
                 <p className="text-sm font-barlow" style={{ color: "var(--brand-muted)" }}>
-                  Upgrading to <strong style={{ color: "var(--brand-text)" }}>{PLANS[selectedPlan].label}</strong>: {fmt$(PLANS[selectedPlan].priceMonthly)}/mo
+                  {PLANS[selectedPlan].contactSales
+                    ? <>Enterprise pricing is customized. <strong style={{ color: "var(--brand-text)" }}>Contact our team to get started.</strong></>
+                    : <>Upgrading to <strong style={{ color: "var(--brand-text)" }}>{PLANS[selectedPlan].label}</strong>: {fmt$(PLANS[selectedPlan].priceMonthly)}/mo</>
+                  }
                 </p>
                 <div className="flex items-center gap-3">
                   <button
@@ -351,7 +370,15 @@ export default function BillingPage() {
                   >
                     Cancel
                   </button>
-                  {PLANS[selectedPlan].stripePriceId ? (
+                  {PLANS[selectedPlan].contactSales ? (
+                    <a
+                      href="/contact"
+                      className="px-5 py-2.5 rounded-lg text-xs font-display font-bold uppercase tracking-widest text-white transition-opacity hover:opacity-80"
+                      style={{ background: "var(--brand-primary)" }}
+                    >
+                      Contact Sales →
+                    </a>
+                  ) : PLANS[selectedPlan].stripePriceId ? (
                     <button
                       onClick={() => upgrade(selectedPlan)}
                       disabled={upgrading === selectedPlan}
@@ -361,12 +388,13 @@ export default function BillingPage() {
                       {upgrading === selectedPlan ? "Redirecting…" : `Upgrade to ${PLANS[selectedPlan].label} →`}
                     </button>
                   ) : (
-                    <button
+                    <a
+                      href="/contact"
                       className="px-5 py-2.5 rounded-lg text-xs font-display font-bold uppercase tracking-widest text-white transition-opacity hover:opacity-80"
                       style={{ background: "var(--brand-primary)" }}
                     >
                       Contact Us →
-                    </button>
+                    </a>
                   )}
                 </div>
               </div>

@@ -222,18 +222,17 @@ export default function ProductionChoicePage() {
                       )}
                     </div>
                     <p className="font-display font-bold uppercase tracking-wide text-sm text-brand-text">
-                      Design File Only
+                      Design Package
                     </p>
                   </div>
                   <p className="text-xs text-brand-muted font-barlow leading-relaxed ml-6">
-                    Receive all high-res AI concept renders and design files. Perfect if you&apos;re printing
-                    independently or want the files for your own production vendor.
+                    Receive all high-resolution concept renders and design files — ready for your production vendor or internal use.
                   </p>
                   <ul className="mt-3 ml-6 space-y-1">
                     {[
-                      "All 4 high-res concept renders (PNG)",
-                      "Design system specification sheet",
-                      "Color swatches with hex + Pantone codes",
+                      "All 4 high-resolution concept renders",
+                      "Design specification and colorway sheet",
+                      "Hex and Pantone color references",
                     ].map((item) => (
                       <li key={item} className="flex items-center gap-2 text-[11px] text-brand-muted font-barlow">
                         <span className="text-brand-primary text-[8px]">✓</span>
@@ -270,22 +269,22 @@ export default function ProductionChoicePage() {
                       )}
                     </div>
                     <p className="font-display font-bold uppercase tracking-wide text-sm text-brand-text">
-                      Full Production
+                      Managed Production
                     </p>
                     <span className="text-[8px] font-display font-bold uppercase tracking-widest px-2 py-0.5 rounded bg-brand-primary/20 text-brand-primary border border-brand-primary/30">
                       Recommended
                     </span>
                   </div>
                   <p className="text-xs text-brand-muted font-barlow leading-relaxed ml-6">
-                    We manufacture everything to spec, from first piece sample to full bulk run, QC checked and delivered.
+                    Grace Studios manages production end to end — from first piece sample through bulk fulfillment, quality inspection, and delivery.
                   </p>
                   <ul className="mt-3 ml-6 space-y-1">
                     {[
-                      "Everything in Design File",
-                      "First piece sample for your approval",
-                      "Full bulk production to your roster",
-                      "Quality control inspection",
-                      "Shipping & delivery tracking",
+                      "Everything in Design Package",
+                      "First piece sample for your review and approval",
+                      "Managed bulk production to your full roster",
+                      "Quality control and fulfillment oversight",
+                      "Shipping coordination and delivery tracking",
                     ].map((item) => (
                       <li key={item} className="flex items-center gap-2 text-[11px] text-brand-muted font-barlow">
                         <span className="text-brand-primary text-[8px]">✓</span>

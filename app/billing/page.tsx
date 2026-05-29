@@ -23,7 +23,7 @@ function UsageBar({ used, included }: { used: number; included: number | null })
     return (
       <div className="space-y-1.5">
         <div className="h-2 rounded-full bg-brand-primary w-full" />
-        <span className="text-[10px] font-barlow text-brand-muted">Unlimited runs, no cap</span>
+        <span className="text-[10px] font-barlow text-brand-muted">Unlimited access this cycle</span>
       </div>
     );
   }
@@ -38,7 +38,7 @@ function UsageBar({ used, included }: { used: number; included: number | null })
         />
       </div>
       <div className="flex justify-between">
-        <span className="text-[10px] font-barlow text-brand-muted">{used} of {included} included runs used</span>
+        <span className="text-[10px] font-barlow text-brand-muted">{used} of {included} included this cycle</span>
         {over && (
           <span className="text-[10px] font-display uppercase tracking-wider text-amber-500 font-bold">
             {used - included} over limit
@@ -157,15 +157,15 @@ function BillingContent() {
             <div className="flex items-center gap-2.5 mb-3">
               <div className="w-[3px] h-5 bg-brand-primary flex-shrink-0" />
               <span className="text-[10px] font-display font-bold uppercase tracking-[0.3em] text-brand-primary">
-                AI Usage & Billing
+                Concept Development
               </span>
             </div>
             <h1 className="font-display font-bold uppercase tracking-tight text-brand-text leading-none mb-2"
                 style={{ fontSize: "clamp(1.8rem, 3vw, 2.6rem)" }}>
-              Concept Generation
+              Concept Development
             </h1>
             <p className="text-sm font-barlow text-brand-muted max-w-md leading-relaxed">
-              Each run generates 4 AI concept designs. Your included runs reset on the 1st of each month.
+              Concept development access is included with your account. Your activity resets on the 1st of each month.
             </p>
           </div>
 
@@ -198,9 +198,9 @@ function BillingContent() {
 
             <div className="grid grid-cols-3 gap-4 pt-1">
               {[
-                { label: "Included",   value: runsIncluded === null ? "∞" : runsIncluded, sub: "runs/month" },
+                { label: "Included",   value: runsIncluded === null ? "∞" : runsIncluded, sub: "per cycle" },
                 { label: "Used",       value: thisMonth,  sub: "this month" },
-                { label: "Additional", value: over,       sub: over > 0 ? `$${over * 25} due` : "none", alert: over > 0 },
+                { label: "Additional", value: over,       sub: over > 0 ? "billed separately" : "none", alert: over > 0 },
               ].map(({ label, value, sub, alert }) => (
                 <div key={label} className="text-center">
                   <p className={`font-display font-bold text-2xl leading-none ${alert ? "text-amber-500" : "text-brand-text"}`}>{value}</p>
@@ -213,7 +213,7 @@ function BillingContent() {
 
           {/* ── Plan selector ─────────────────────────────────── */}
           <div className="space-y-3">
-            <p className="text-[10px] font-display uppercase tracking-widest text-brand-muted">Choose a Plan</p>
+            <p className="text-[10px] font-display uppercase tracking-widest text-brand-muted">Concept Development Plan</p>
 
             <div className="grid sm:grid-cols-3 gap-4">
               {PLANS_ORDER.map((planId) => {
@@ -343,7 +343,7 @@ function BillingContent() {
                         <span className="text-xs font-barlow text-brand-muted">{h.runs} run{h.runs !== 1 ? "s" : ""}</span>
                       </div>
                       <span className="text-xs font-barlow text-brand-muted">
-                        {add > 0 ? `+$${add * 25}` : "—"}
+                        {add > 0 ? "billed separately" : "—"}
                       </span>
                     </div>
                   );
