@@ -126,6 +126,81 @@ export const SYSTEM_PROMPT_SHORT: Record<string, string> = {
   freestyle: "client vision directed, open design brief, execute stated vision within Grace Studios silhouette",
 };
 
+// ─── Tracksuit design philosophy ──────────────────────────────────────────────
+
+/**
+ * Authoritative Grace Athletics tracksuit design philosophy.
+ * Injected at the TOP of every Claude and OpenAI prompt for tracksuit orders.
+ * This is the foundation — system visual language and client vision are applied
+ * WITHIN these non-negotiable silhouette and construction standards.
+ */
+export const TRACKSUIT_DESIGN_PHILOSOPHY = `
+GRACE ATHLETICS TRACKSUIT DESIGN PHILOSOPHY — NON-NEGOTIABLE FOUNDATION
+
+AESTHETIC: Elevated vintage athletic wear. Premium reinterpretation of late-90s and early-2000s basketball warmups, collegiate sideline suits, and team-issued nylon sets. Not modern techwear. Not slim-fit activewear.
+
+JACKET SILHOUETTE (non-negotiable):
+Relaxed boxy fit. Slightly cropped proportions. Lightweight nylon shell structure. Soft drape with realistic wrinkling and natural stacking. Vintage warmup energy — not luxury tailoring, not over-engineered.
+
+PANT SILHOUETTE (non-negotiable):
+Wide straight-leg from hip to floor. Full-volume nylon shape. Natural stacking and fabric collapse at the ankle. Relaxed fit throughout. Absolutely no jogger tapering. No narrowing below the knee.
+
+FABRIC: Matte nylon shell. Slightly crinkled windbreaker material. Lightweight woven athletic fabric. Vintage Nike Team / Adidas Team / AAU warmup texture. Real and wearable — not futuristic, not overly technical.
+
+GRAPHICS & BRANDING: Integrated into garment construction — not pasted on top. Use paneling, piping, asymmetry, oversized typography, or bold placement intentionally per design system. Never add Nike, Adidas, Puma, Under Armour, Jordan, Reebok, or any third-party brand marks.
+
+AVOID: skinny fits, techwear aesthetics, futuristic paneling, compression-inspired cuts, excessive branding, over-designed graphics, artificial AI textures, ribbed cuffs, elastic ankle openings, jogger taper.
+
+RENDER QUALITY: Real garments. Real fabric behavior. Real lighting. Studio-shot apparel photography. Premium sportswear campaign visuals. Not AI-looking.
+`.trim();
+
+/**
+ * Tracksuit-specific system visual language.
+ * Used in place of SYSTEM_VISUAL_LANGUAGE when sport === "tracksuits".
+ * Describes how each Grace system expresses itself on the tracksuit silhouette.
+ */
+export const TRACKSUIT_SYSTEM_LANGUAGE: Record<string, string> = {
+  bold: [
+    "Aggressive oversized typography dominating jacket front and back panels",
+    "High-energy color-blocked panels on jacket body and full outer pant leg",
+    "Maximum visual impact — loud on-court presence from 50 feet",
+    "Strong geometric panel cuts across chest, sleeves, and leg panels",
+    "Graphics feel sublimated INTO the fabric, not applied on top",
+  ].join(". "),
+
+  gradient: [
+    "Smooth continuous color fade across jacket body and pant legs — gradient is the entire visual statement",
+    "No hard panel lines — color transitions replace traditional blocking",
+    "Modern and elevated with precision detailing and subtle motion-line accents",
+    "Dynamic movement through color — clean, eye-catching, contemporary",
+    "Premium sportswear aesthetic with fashion-forward proportions",
+  ].join(". "),
+
+  culture: [
+    "Fashion-forward streetwear-influenced composition with intentional asymmetry",
+    "Expressive layered typography — team name treated as graphic art, not a label",
+    "Off-balance panel placement and experimental graphic layouts",
+    "Player-driven cultural identity with streetwear edge",
+    "Editorial paneling and bold graphic shapes that feel fashion-forward",
+  ].join(". "),
+
+  program: [
+    "Professional collegiate structure with precise balanced layout",
+    "Simple bold side piping stripe or clean panel as the primary design element",
+    "Clean minimal aesthetic — collegiate sideline or professional team-issued tone",
+    "Lettering and wordmarks are structured, proportional, classically weighted",
+    "Timeless — reproduces cleanly across all apparel, built for longevity",
+  ].join(". "),
+
+  freestyle: [
+    "Grace Athletics silhouette is the non-negotiable foundation: boxy jacket, wide-leg pant, nylon shell, vintage warmup energy",
+    "Within that silhouette, the client's stated vision drives all panel geometry, graphic placement, and color blocking",
+    "No preset panel system — execute the client's visual direction exactly",
+    "Do not impose Bold, Gradient, Program, or Culture defaults unless the client explicitly referenced them",
+    "Vintage realism and authentic fabric behavior apply regardless of design direction",
+  ].join(". "),
+};
+
 // ─── Reference-file resolution ────────────────────────────────────────────────
 
 export interface ReferenceFiles {

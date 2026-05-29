@@ -9,6 +9,8 @@ import {
   getReferenceUrls,
   buildReferenceAnnotation,
   SYSTEM_VISUAL_LANGUAGE,
+  TRACKSUIT_DESIGN_PHILOSOPHY,
+  TRACKSUIT_SYSTEM_LANGUAGE,
 } from "@/lib/reference-library";
 import sharp from "sharp";
 import fsPromises from "fs/promises";
@@ -411,8 +413,10 @@ function buildClaudePrompt(
     : `LOGO ZONE RULE: Describe clean empty logo placement zones only. Write "Clean logo zone — [size] on [location]". Do not generate or describe any logo artwork.`;
 
   const isFreestyle    = designSystem.toLowerCase() === "freestyle";
-  const systemLanguage = SYSTEM_VISUAL_LANGUAGE[designSystem] ?? SYSTEM_VISUAL_LANGUAGE.bold;
   const isTracksuit    = sport.toLowerCase() === "tracksuits";
+  const systemLanguage = isTracksuit
+    ? (TRACKSUIT_SYSTEM_LANGUAGE[designSystem] ?? TRACKSUIT_SYSTEM_LANGUAGE.bold)
+    : (SYSTEM_VISUAL_LANGUAGE[designSystem]    ?? SYSTEM_VISUAL_LANGUAGE.bold);
 
   // ── Tracksuit-specific Claude constraints ──────────────────────────────────
   const tracksuitConstraints = isTracksuit ? `
@@ -447,23 +451,32 @@ DESCRIPTION RULES:
 - Pants are wide-leg with open bottom nylon hem — they stack at the ankle.
 `.trim() : "";
 
-  // For Freestyle, the client's vision is the primary design directive —
-  // it moves to the top of the prompt and replaces the system visual language.
+  // For Freestyle: silhouette/construction is the non-negotiable foundation,
+  // then client vision is applied within it — not the other way around.
   const freestyleVisionDirective = isFreestyle && brief.vision_prompt
-    ? `⚠️ FREESTYLE — CLIENT VISION IS THE PRIMARY DESIGN DIRECTIVE ⚠️
-The client chose Freestyle, meaning their stated vision drives every design decision.
-You MUST execute the following vision exactly as described. Do NOT apply Bold, Gradient, Program, or Culture system defaults unless the client explicitly referenced them.
+    ? `⚠️ FREESTYLE BRIEF ⚠️
+
+STEP 1 — SILHOUETTE FOUNDATION (non-negotiable, applies before all other decisions):
+Grace Athletics tracksuit construction standards govern the garment. Boxy relaxed jacket with nylon shell, stand collar, full-length sleeves with clean open hems, flat windbreaker bottom hem. Wide-leg straight nylon trousers with open ankle hems — absolutely no taper, no jogger. Vintage warmup energy. These silhouette rules cannot be overridden by client vision.
+
+STEP 2 — CLIENT VISION (applied within the silhouette above):
+Within the non-negotiable silhouette, execute the following client vision exactly as described. This drives all panel geometry, graphic placement, color blocking, and aesthetic direction.
 
 CLIENT VISION: "${brief.vision_prompt}"
 
-Build the panel geometry, graphic placement, color blocking, and overall aesthetic entirely around this vision. Grace Studios' construction standards still apply (stand collar, wide-leg pant, nylon shell, open hems), but the visual language comes from the client.`
+Do NOT impose Bold, Gradient, Program, or Culture system defaults unless the client explicitly referenced them. The client's stated direction is the creative law — the silhouette is the physical law.`
     : isFreestyle
-    ? `⚠️ FREESTYLE — OPEN CLIENT BRIEF ⚠️
-The client chose Freestyle, meaning there are no pre-prescribed design system rules. Use Grace Studios' silhouette standards and produce a clean, elevated tracksuit design. Apply tonal side-panel blocking and contrast piping as a tasteful default while leaving room for the client's vision.`
+    ? `⚠️ FREESTYLE — OPEN BRIEF ⚠️
+
+STEP 1 — SILHOUETTE FOUNDATION (non-negotiable):
+Grace Athletics tracksuit construction standards apply: boxy relaxed nylon jacket, wide-leg straight nylon trousers, stand collar, clean open hems throughout, vintage warmup energy. These cannot be changed.
+
+STEP 2 — OPEN CREATIVE DIRECTION:
+No client vision was provided. Produce a clean, elevated tracksuit within the silhouette above. Use tonal side-panel blocking and contrast piping as a tasteful default that can be refined in later rounds.`
     : "";
 
   return `You are a senior sportswear designer at ${studioName} analyzing a brief to produce controlled render directives.
-${freestyleVisionDirective ? `\n${freestyleVisionDirective}\n` : ""}
+${isTracksuit ? `\n${TRACKSUIT_DESIGN_PHILOSOPHY}\n` : ""}${freestyleVisionDirective ? `\n${freestyleVisionDirective}\n` : ""}
 ═══ REFERENCE IMAGES PROVIDED ═══
 ${referenceAnnotation || "No reference images loaded — follow design system spec below."}
 
@@ -683,38 +696,44 @@ const GARMENT_CONSTRUCTION: Record<RenderViewKey, string> = {
 // Jacket-only system spec — only injected into jacket (frontJersey/backJersey) prompts
 const GRACE_TRACKSUIT_SYSTEM_JACKET = `
 ⚠️ CONSTRUCTION OVERRIDE — READ FIRST BEFORE ALL OTHER INSTRUCTIONS ⚠️
-THIS IS A WINDBREAKER JACKET. Premium nylon windbreaker construction — smooth shell, clean open hems, structured collar.
-SLEEVE CUFFS: The sleeve fabric simply ends. It folds over once (1cm) and is topstitched flat. The wrist opening is a plain open tube of nylon — wide, loose, open. Identical to the sleeve hem on a premium nylon windbreaker jacket. There is NO ribbing. NO elastic band. NO knit cuff. NO gathered wrist. The sleeve just ends cleanly.
-JACKET BOTTOM: Straight flat nylon hem with hidden drawcord channel. Like a windbreaker hem. Not banded. Not ribbed.
+THIS IS A VINTAGE ATHLETIC WINDBREAKER JACKET. Elevated reinterpretation of late-90s / early-2000s basketball warmup jackets and collegiate sideline suits. Premium nylon shell — not modern techwear, not slim-fit, not luxury tailoring.
+
+SLEEVE ENDS: The sleeve fabric simply ends. It folds over once (1cm) and is topstitched flat. The wrist opening is a plain open tube of nylon — wide, loose, open. Identical to the sleeve hem on a premium nylon windbreaker. There is NO ribbing. NO elastic band. NO knit cuff. NO gathered wrist. The sleeve just ends cleanly.
+JACKET BOTTOM HEM: Straight flat nylon hem with hidden drawcord channel. Windbreaker hem. Not banded. Not ribbed.
 COLLAR: Flat woven nylon stand collar. Same fabric as body. Not ribbed. Not knit.
 
-GRACE ATHLETICS — LUXURY NYLON WINDBREAKER JACKET RENDER RULES
+GRACE ATHLETICS — VINTAGE NYLON WINDBREAKER JACKET RENDER RULES
 
-GARMENT TYPE: Premium athletic windbreaker jacket — zip-front nylon shell. Grace Athletics nylon windbreaker standard.
+GARMENT TYPE: Premium athletic windbreaker jacket — zip-front nylon shell. Vintage warmup energy. Grace Athletics nylon windbreaker standard.
 
-MATERIAL: smooth woven nylon shell — subtle sheen, soft light reflections, natural crinkle in folds. Windbreaker quality.
+SILHOUETTE: Relaxed, slightly boxy. Hip length or below. Straight drop from shoulders. No waist cinching. Slightly cropped proportions with fashion-forward elongated feel.
 
-SILHOUETTE: Relaxed, slightly oversized. Hip length or below. Straight drop from shoulders. No waist cinching. Fashion elongated proportions.
+MATERIAL: Smooth woven nylon shell. Subtle sheen, soft light reflections, natural crinkle in folds. Slightly matte windbreaker surface — like vintage Nike Team or Adidas Team warmup fabric. Real and wearable, not futuristic.
 
-RENDER QUALITY: 3D semi-photorealistic. Soft studio lighting. Realistic nylon drape and folds. Premium campaign quality — Grace Athletics nylon shell standard.
+AVOID IN THIS RENDER: skinny fit, techwear look, futuristic paneling, compression styling, ribbed cuffs, elastic ankle cuffs, AI-looking textures.
+
+RENDER QUALITY: Studio-shot apparel photography quality. Real fabric behavior. Realistic nylon drape and folds. Soft studio lighting. Premium Grace Athletics sportswear campaign standard — not AI-looking.
 `.trim();
 
 // Pants-only system spec — only injected into pants (frontShorts/backShorts) prompts
 const GRACE_TRACKSUIT_SYSTEM_PANTS = `
 ⚠️ CONSTRUCTION OVERRIDE — READ FIRST BEFORE ALL OTHER INSTRUCTIONS ⚠️
-THESE ARE WIDE-LEG NYLON TROUSERS. Premium wide-leg nylon windbreaker trouser construction — straight wide legs, clean open hems.
-ANKLE HEM: The pant leg simply ends. It folds over once (1cm) and is topstitched flat. The ankle opening is the full width of the lower leg — wide, open, flat. The pants stack on the floor. Identical to wide-leg windbreaker trousers. There is NO ribbing. NO elastic ankle. NO gathered cuff. NO tapered leg. The leg is the same width from hip to ankle.
-LEG SHAPE: Wide and straight from hip to floor. Palazzo trouser proportions. Not tapered. Not slim. Not fitted.
+THESE ARE WIDE-LEG VINTAGE ATHLETIC NYLON TROUSERS. Elevated reinterpretation of late-90s / early-2000s basketball warmup pants, tearaway-inspired silhouette, collegiate sideline pant. Not joggers. Not tapered. Not slim. Not techwear.
 
-GRACE ATHLETICS — LUXURY NYLON WIDE-LEG TROUSERS RENDER RULES
+ANKLE HEM: The pant leg simply ends. It folds over once (1cm) and is topstitched flat. The ankle opening is the full width of the lower leg — wide, open, flat. The pants stack on the floor. Like wide-leg windbreaker trousers. There is NO ribbing. NO elastic ankle. NO gathered cuff. NO tapered leg. The leg is the same width from hip to ankle.
+LEG SHAPE: Wide and straight from hip to floor. Full volume. Palazzo trouser proportions. The same width at the knee as at the ankle.
 
-GARMENT TYPE: Premium athletic wide-leg nylon trousers — windbreaker shell fabric. Grace Athletics wide-leg nylon pant standard.
+GRACE ATHLETICS — VINTAGE NYLON WIDE-LEG TROUSERS RENDER RULES
 
-MATERIAL: smooth woven nylon shell — subtle sheen, soft light reflections, natural drape. Windbreaker quality.
+GARMENT TYPE: Premium athletic wide-leg nylon trousers — windbreaker shell fabric. Tearaway/warmup inspiration. Grace Athletics wide-leg nylon pant standard.
 
-SILHOUETTE: Relaxed and wide from hip to floor. Long and flowing. Fashion elongated proportions.
+SILHOUETTE: Relaxed and wide from hip to floor. Full-volume nylon shape. Natural stacking and fabric collapse at ankle. Long and flowing — fashion-forward elongated proportions.
 
-RENDER QUALITY: 3D semi-photorealistic. Soft studio lighting. Realistic nylon drape. Premium campaign quality.
+MATERIAL: Smooth woven nylon shell. Subtle sheen, soft light reflections, natural drape in folds. Slightly matte windbreaker surface — vintage Nike Team / Adidas Team warmup fabric quality. Real and wearable, not futuristic.
+
+AVOID IN THIS RENDER: tapered legs, jogger silhouette, slim fit, techwear aesthetics, elastic ankle cuffs, ribbed ankle bands, futuristic paneling, AI-looking textures.
+
+RENDER QUALITY: Studio-shot apparel photography quality. Real fabric behavior. Realistic nylon drape. Soft studio lighting. Premium Grace Athletics sportswear campaign standard — not AI-looking.
 `.trim();
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -729,8 +748,10 @@ function buildGarmentPrompt(
   sport:        string  = "basketball",
 ): string {
   const system      = designSystem.toLowerCase();
-  const systemFull  = SYSTEM_VISUAL_LANGUAGE[system] ?? SYSTEM_VISUAL_LANGUAGE.bold;
   const isTracksuit = sport.toLowerCase() === "tracksuits";
+  const systemFull  = isTracksuit
+    ? (TRACKSUIT_SYSTEM_LANGUAGE[system] ?? TRACKSUIT_SYSTEM_LANGUAGE.bold)
+    : (SYSTEM_VISUAL_LANGUAGE[system]    ?? SYSTEM_VISUAL_LANGUAGE.bold);
 
   // ── Vision notes + mascot extraction ─────────────────────────────────────
   // vision_prompt is collected in the brief form. It carries client-specified
@@ -982,6 +1003,9 @@ function buildGarmentPrompt(
     // details (mascot accessories, style references, era-specific elements)
     // are not overridden by generic construction prompts below.
     !mascotName && visionDirective ? visionDirective : "",
+
+    // ── TRACKSUIT PHILOSOPHY — top-level aesthetic foundation ──
+    isTracksuit ? TRACKSUIT_DESIGN_PHILOSOPHY : "",
 
     // ── TRACKSUIT SYSTEM SPEC (view-specific — jacket rules for jacket, pant rules for pants) ──
     isTracksuit ? (isJersey ? GRACE_TRACKSUIT_SYSTEM_JACKET : GRACE_TRACKSUIT_SYSTEM_PANTS) : "",
