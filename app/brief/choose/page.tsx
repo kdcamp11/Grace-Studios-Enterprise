@@ -29,13 +29,13 @@ const PATHS = [
   },
   {
     id: "self-service",
-    badge: "Self Service",
-    sub: "Two Paths",
-    headline: "Design Freely.\nActivate When Ready.",
-    body: "Free to build. $100 activation applied toward your final order.",
+    badge: "Self-Directed",
+    sub: "Flexible Workflow",
+    headline: "Structured Development.\nReady When You Are.",
+    body: "$149 Creative Activation applied toward your final order.",
     subPaths: [
-      { label: "Design Brief", desc: "Submit your vision, we build the concept", href: "/brief/new?path=ai" },
-      { label: "Jersey Builder", desc: "Color every zone, selections drive the brief", href: "/brief/new?path=builder" },
+      { label: "Design Brief", desc: "Define your direction. We develop the concept.", href: "/brief/new?path=ai" },
+      { label: "Jersey Builder", desc: "Select your colorway. Your choices build the production brief.", href: "/brief/new?path=builder" },
     ],
   },
   {

@@ -588,7 +588,7 @@ function JerseyBuilderInner() {
 
   /** Snap artwork to a preset position on the active garment. */
   const snapArtwork = useCallback(
-    (id: string, preset: "center" | "upper" | "mid" | "lower") => {
+    (id: string, preset: "center" | "collar" | "upper" | "mid" | "lower" | "hem") => {
       if (preset === "center") {
         setArtworkDrafts((prev) =>
           prev.map((a) =>
@@ -599,7 +599,11 @@ function JerseyBuilderInner() {
         );
         return;
       }
-      const fraction = preset === "upper" ? 0.72 : preset === "mid" ? 0.55 : 0.38;
+      const fraction =
+        preset === "collar" ? 0.90 :
+        preset === "upper"  ? 0.72 :
+        preset === "mid"    ? 0.55 :
+        preset === "lower"  ? 0.38 : 0.18; // hem
       const { position, rotation } = autoPlacePosition(fraction);
       setArtworkDrafts((prev) =>
         prev.map((a) => (a.id === id ? { ...a, position, rotation } : a)),
@@ -1085,10 +1089,12 @@ function JerseyBuilderInner() {
                             <p className="text-[9px] font-display uppercase tracking-[0.15em] text-brand-muted/70">Snap To</p>
                             <div className="grid grid-cols-4 gap-1">
                               {([
-                                { id: "center", label: "⊕ Ctr",  title: "Snap to horizontal centre" },
-                                { id: "upper",  label: "↑ Top",  title: "Snap to upper chest" },
-                                { id: "mid",    label: "· Mid",  title: "Snap to mid chest" },
-                                { id: "lower",  label: "↓ Bot",  title: "Snap to lower body" },
+                                { id: "center", label: "⊕ Ctr",    title: "Snap to horizontal centre" },
+                                { id: "collar", label: "↑↑ Collar", title: "Snap to collar / neck area" },
+                                { id: "upper",  label: "↑ Chest",  title: "Snap to upper chest" },
+                                { id: "mid",    label: "· Mid",    title: "Snap to mid chest" },
+                                { id: "lower",  label: "↓ Lower",  title: "Snap to lower body" },
+                                { id: "hem",    label: "↓↓ Hem",   title: "Snap to hem / waist" },
                               ] as const).map((p) => (
                                 <button
                                   key={p.id}
@@ -1138,7 +1144,7 @@ function JerseyBuilderInner() {
                               </span>
                             </div>
                             <input
-                              type="range" min={-200} max={200} step={5}
+                              type="range" min={-500} max={500} step={5}
                               value={Math.round((art.position?.[1] ?? 0) * 100)}
                               onChange={(e) =>
                                 setArtworkDrafts((prev) =>
