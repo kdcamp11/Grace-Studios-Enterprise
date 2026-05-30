@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
   // Pull design metadata from brief for garment type + design system
   const { data: brief } = await adminSupabase
     .from("briefs")
-    .select("ai_prompt, design_system")
+    .select("ai_prompt, design_system, zone_colors")
     .eq("order_id", orderId)
     .single();
 
@@ -51,11 +51,17 @@ export async function GET(req: NextRequest) {
     } catch { /* ignore */ }
   }
 
+  // Detect builder orders: explicit concept_source OR brief has zone_colors (older orders
+  // that were created before concept_source was consistently set).
+  const hasZoneColors = !!(brief?.zone_colors && !Array.isArray(brief.zone_colors));
+  const isBuilder = order.concept_source === "client_provided" || hasZoneColors;
+
   return NextResponse.json({
     order_number:       order.order_number ?? orderId.slice(0, 8).toUpperCase(),
     design_fee_paid:    order.design_fee_paid    ?? false,
     production_choice:  order.production_choice  ?? null,
     concept_source:     (order.concept_source as string) ?? "ai",
+    is_builder:         isBuilder,
     team_name:          client?.name    ?? "Your Team",
     sport:              client?.sport   ?? "",
     garment_type:       garmentType,

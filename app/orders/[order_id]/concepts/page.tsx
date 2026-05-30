@@ -453,9 +453,9 @@ export default function ConceptsPage() {
       // Check payment status and order kind via service-role API
       const infoRes  = await fetch(`/api/orders/info?orderId=${order_id}`);
       if (!cancelled && infoRes.ok) {
-        const info = await infoRes.json() as { design_fee_paid: boolean; concept_source?: string };
+        const info = await infoRes.json() as { design_fee_paid: boolean; concept_source?: string; is_builder?: boolean };
         setFeePaid(info.design_fee_paid);
-        setIsBuilderOrder(info.concept_source === "client_provided");
+        setIsBuilderOrder(info.is_builder ?? info.concept_source === "client_provided");
       } else if (!cancelled) {
         setFeePaid(false);
       }
