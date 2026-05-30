@@ -265,6 +265,33 @@ function CameraFitter({
   return null;
 }
 
+// ── In-Canvas capturer ──────────────────────────────────────────────────────
+//
+// Exposes a capture() on the shared ref that forces a SYNCHRONOUS render of the
+// current scene + camera, then reads the WebGL buffer. Capturing from outside
+// the render loop (plain canvas.toDataURL) is unreliable because there is no
+// guarantee a frame for the just-switched garment was drawn yet — this draws
+// one on demand right before the read, so the buffer always matches the active
+// view. Requires gl preserveDrawingBuffer:true (set on the Canvas).
+
+type CaptureFn = () => string | null;
+
+function SceneCapturer({ captureRef }: { captureRef: React.MutableRefObject<CaptureFn | null> }) {
+  const { gl, scene, camera } = useThree();
+  useEffect(() => {
+    captureRef.current = () => {
+      try {
+        gl.render(scene, camera);
+        return gl.domElement.toDataURL("image/jpeg", 0.8);
+      } catch {
+        return null;
+      }
+    };
+    return () => { captureRef.current = null; };
+  }, [gl, scene, camera, captureRef]);
+  return null;
+}
+
 // ── Main builder ──────────────────────────────────────────────────────────────
 
 function JerseyBuilderInner() {
@@ -470,6 +497,9 @@ function JerseyBuilderInner() {
   // available at save/review time without requiring the user to visit the tab.
   const shortsPreviewRef   = useRef<string | null>(null);
   const jerseyPreviewRef   = useRef<string | null>(null);
+  // Set by SceneCapturer (inside Canvas) — forces a synchronous render + buffer
+  // read so captures always reflect the currently active garment.
+  const captureRef         = useRef<CaptureFn | null>(null);
 
   const groupCentersRef = useRef<GroupCenters | null>(null);
   const handleGroupCenters = useCallback((centers: GroupCenters) => {
@@ -837,11 +867,13 @@ function JerseyBuilderInner() {
       setActiveView(view);
       setActiveSide("front");
       await waitForMesh(meshRef);
-      // Mesh is mounted; let the camera-fit effect + OrbitControls settle and
-      // Three.js render the framed garment before reading the buffer.
+      // Mesh is mounted; let the camera-fit effect + OrbitControls settle.
       await wait(400);
       await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-      const url = canvas.toDataURL("image/jpeg", 0.8);
+      // Force a synchronous render of the active garment before reading the
+      // buffer — guarantees the capture matches the current view (fixes blank
+      // shorts when the GLB had just swapped in). Falls back to the raw canvas.
+      const url = captureRef.current?.() ?? canvas.toDataURL("image/jpeg", 0.8);
       if (view === "shorts") shortsPreviewRef.current = url;
       else                   jerseyPreviewRef.current = url;
       return url;
@@ -1069,6 +1101,7 @@ function JerseyBuilderInner() {
               <pointLight       position={[0, 4, 3]}   intensity={0.6} />
 
               <SceneRotationController groupRef={sceneGroupRef} yRef={sceneYRotRef} xRef={sceneXTiltRef} />
+              <SceneCapturer captureRef={captureRef} />
               <CameraFitter
                 jerseyRef={jerseyTopMeshRef}
                 shortsRef={shortsMeshRef}
