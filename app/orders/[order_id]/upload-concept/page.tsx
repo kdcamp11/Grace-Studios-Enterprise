@@ -219,7 +219,7 @@ export default function UploadProductionFilePage() {
             <ol className="space-y-3">
               {[
                 "Upload your production file (you're here)",
-                "Activate your project: $100 applied to your final order total",
+                "Activate your project: $149 applied to your final order total",
                 "Grace Studios designer prepares production-ready output",
                 "You approve the final artwork before production begins",
                 "Supplier produces and ships to your team",

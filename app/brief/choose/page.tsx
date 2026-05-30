@@ -22,7 +22,7 @@ const PATHS = [
       "Creative direction and strategic partnership",
       "Concepts developed around your program and identity",
       "Supplier coordination and production management",
-      "Starting at $300+",
+      "Full-service production typically begins at $2,500",
     ],
     cta: "Work with Grace Studios →",
     href: "/contact",

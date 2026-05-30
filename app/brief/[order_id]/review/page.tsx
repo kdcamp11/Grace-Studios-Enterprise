@@ -204,8 +204,8 @@ export default function ReviewPage() {
         <div className="bg-brand-surface border border-brand-border rounded-xl p-4">
           <p className="text-xs font-display uppercase tracking-wider text-brand-primary mb-2">Design Lock Notice</p>
           <p className="text-sm text-brand-muted font-barlow leading-relaxed">
-            Once submitted, concept generation begins and your design direction is locked. Changes after approval are subject to revision fees:
-            <span className="text-brand-text"> Color change $25 · Logo change $75 · Layout change $150</span>
+            Once submitted, concept generation begins and your design direction is locked.
+            <span className="text-brand-text"> One revision round is included. Additional revision rounds are billed at $125 per round.</span>
           </p>
         </div>
 
