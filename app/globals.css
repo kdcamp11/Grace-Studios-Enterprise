@@ -13,7 +13,13 @@
    ───────────────────────────────────────────────────────────────────────── */
 html {
   font-size: 18px;
+  /* Always reserve the vertical scrollbar track so the viewport width never
+     changes between the short loading-spinner state and the tall landing page.
+     scrollbar-gutter covers modern engines; overflow-y: scroll forces the
+     track in every browser (incl. Safari < 16.4) so centered content can't
+     jump left/right when the scrollbar appears. */
   scrollbar-gutter: stable;
+  overflow-y: scroll;
 }
 
 /* Body copy boost — Barlow (non-display) text gets a slight size step so
