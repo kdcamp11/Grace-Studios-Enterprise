@@ -57,7 +57,7 @@ export async function GET() {
   // Fetch orders
   const { data: orderRows } = await admin
     .from("orders")
-    .select("id, order_number, stage, created_at, order_type, design_fee_paid, tracking_number, concept_source")
+    .select("id, order_number, stage, created_at, order_type, design_fee_paid, tracking_number, concept_source, production_choice")
     .eq("client_id", client.id)
     .order("created_at", { ascending: false });
 

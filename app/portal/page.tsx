@@ -36,6 +36,7 @@ interface Order {
   logos_to_include?: string | null;
   tracking_number?: string | null;
   concept_source?: string | null;
+  production_choice?: "design_file" | "production" | null;
 }
 
 interface SavedDesign {
@@ -53,7 +54,13 @@ interface SavedDesign {
 }
 
 function isCreative(o: Order): boolean {
-  return o.order_type === "creative" || stageType(o.stage) === "creative";
+  // An order belongs in the Production tab once it has been moved into
+  // production — either by reaching a production stage, by the client making a
+  // production choice, or because it was created as a "production" order
+  // (uploaded files / production-network). Everything else is still Creative.
+  if (o.order_type === "production") return false;
+  if (o.production_choice) return false;
+  return stageType(o.stage) === "creative";
 }
 
 function PortalContent() {
@@ -428,7 +435,9 @@ function CreativeCard({ order, index }: { order: Order; index: number }) {
         )}
         {approved ? (
           <a
-            href={`/orders/${order.id}/checkout`}
+            href={order.design_fee_paid
+              ? `/orders/${order.id}/production`
+              : `/orders/${order.id}/checkout`}
             className="px-4 py-2 rounded-lg font-display font-bold text-[11px] uppercase tracking-widest bg-emerald-500 text-white hover:bg-emerald-600 transition-colors"
           >
             Proceed to Production
