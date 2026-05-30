@@ -94,6 +94,13 @@ export default function DesignConceptsPage() {
   const [boardData, setBoardData] = useState<BoardData | null>(null);
   const [gen, setGen]             = useState<GenerationProgress>({ status: "not_started", progress: 0, total: 4, error: null });
 
+  const [regenerating, setRegenerating] = useState(false);
+  const [confirmStep, setConfirmStep]   = useState(false);
+  const [declineStep, setDeclineStep]   = useState(false);
+  const [declineNote, setDeclineNote]   = useState("");
+  const [declining, setDeclining]       = useState(false);
+  const [actionError, setActionError]   = useState<string | null>(null);
+
   const generationFiredRef = useRef(false);
   const pollIntervalRef    = useRef<NodeJS.Timeout | null>(null);
 
@@ -176,7 +183,7 @@ export default function DesignConceptsPage() {
   }, [design_id]);
 
   // ── Trigger generation ────────────────────────────────────────────────────
-  const triggerGeneration = useCallback(async () => {
+  const triggerGeneration = useCallback(async (force = false) => {
     if (generationFiredRef.current) return;
     generationFiredRef.current = true;
     setGen({ status: "queued", progress: 0, total: 4, error: null });
@@ -184,7 +191,7 @@ export default function DesignConceptsPage() {
     const res = await fetch("/api/generate-concepts", {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify({ design_id }),
+      body:    JSON.stringify({ design_id, ...(force ? { force: true } : {}) }),
     });
 
     if (res.status === 409) {
@@ -252,6 +259,69 @@ export default function DesignConceptsPage() {
     router.replace("/login");
   }
 
+  // ── Regenerate — force a fresh concept from the same brief ────────────────
+  async function handleRegenerate() {
+    if (regenerating || declining) return;
+    setRegenerating(true);
+    setActionError(null);
+    setBoardData(null);
+    setGen({ status: "not_started", progress: 0, total: 4, error: null });
+    generationFiredRef.current = false;
+    if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+    await triggerGeneration(true);
+    setRegenerating(false);
+  }
+
+  // ── Decline — capture a revision note, fold it into the brief vision, then
+  //    regenerate so the new concept reflects the requested changes ──────────
+  async function handleConfirmDecline() {
+    setDeclining(true);
+    setActionError(null);
+    try {
+      const note = declineNote.trim();
+      if (note) {
+        // Merge the revision note into the brief's vision so regeneration uses it.
+        let existingVision = "";
+        try {
+          const dRes = await fetch(`/api/portal/design?order_id=${encodeURIComponent(design_id)}`);
+          if (dRes.ok) {
+            const d = await dRes.json() as { visionPrompt?: string | null };
+            existingVision = (d.visionPrompt ?? "").trim();
+          }
+        } catch { /* best effort */ }
+
+        const combinedVision = [existingVision, `Revision request: ${note}`]
+          .filter(Boolean)
+          .join("\n\n");
+
+        await fetch("/api/brief/submit", {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          body:    JSON.stringify({ design_id, vision_prompt: combinedVision }),
+        });
+      }
+
+      setDeclineStep(false);
+      setDeclineNote("");
+      // Regenerate with the updated brief
+      setBoardData(null);
+      setGen({ status: "not_started", progress: 0, total: 4, error: null });
+      generationFiredRef.current = false;
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+      await triggerGeneration(true);
+    } catch {
+      setActionError("Couldn't request changes. Please try again.");
+    } finally {
+      setDeclining(false);
+    }
+  }
+
+  // ── Approve — commit to this concept by moving into Creative Activation ───
+  function handleApprove() {
+    setConfirmStep(true);
+    setActionError(null);
+  }
+
   const isGenerating = gen.status === "generating" || gen.status === "queued";
   const isFailed     = gen.status === "failed";
   const hasBoard     = !!boardData;
@@ -293,7 +363,7 @@ export default function DesignConceptsPage() {
               {isGenerating
                 ? "Our AI is building your concept board from your design brief. This takes 2–3 minutes."
                 : hasBoard
-                ? "Here's a first look. Activate your project to unlock all views and move into production."
+                ? "Review your concept. Approve to move into activation, regenerate for a fresh take, or decline to request changes."
                 : isFailed
                 ? "Generation encountered an issue."
                 : "Preparing your concept…"}
@@ -355,25 +425,113 @@ export default function DesignConceptsPage() {
               {/* Full concept board */}
               <RendersBoard data={boardData} studioName={tenant.name} />
 
-              {/* CTA */}
-              <a
-                href={checkoutHref}
-                className="block w-full py-4 rounded-xl text-center font-display font-bold text-sm uppercase tracking-[0.15em]
-                  bg-brand-primary text-white hover:bg-brand-secondary transition-all duration-200
-                  shadow-[0_4px_24px_rgba(212,175,55,0.2)] hover:shadow-[0_4px_32px_rgba(212,175,55,0.35)]"
-              >
-                Creative Activation — $149 →
-              </a>
+              {/* Error */}
+              {actionError && (
+                <p className="text-xs text-red-400 font-barlow bg-red-950/30 border border-red-800 rounded-xl px-4 py-3">
+                  {actionError}
+                </p>
+              )}
 
-              {/* Later — leave without activating, return to orders */}
-              <button
-                type="button"
-                onClick={() => router.push("/portal")}
-                className="block w-full py-3 rounded-xl text-center font-display font-bold text-xs uppercase tracking-[0.15em]
-                  border border-brand-border text-brand-muted hover:text-brand-text hover:border-brand-muted transition-colors"
-              >
-                Later
-              </button>
+              {/* Approve confirmation */}
+              {confirmStep && (
+                <div className="rounded-xl border border-brand-primary/40 bg-brand-surface px-5 py-4 flex flex-col gap-3">
+                  <p className="text-sm font-barlow text-brand-text font-medium">
+                    Approve this concept and move into activation?
+                  </p>
+                  <p className="text-xs font-barlow text-brand-muted leading-relaxed">
+                    Creative Activation ($149, applied toward your final order) puts a Grace Studios
+                    designer on your project and unlocks production.
+                  </p>
+                  <div className="flex gap-3 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setConfirmStep(false)}
+                      className="px-8 py-3.5 rounded-xl font-display font-bold text-sm uppercase tracking-[0.15em] transition-all duration-200 border border-brand-border text-brand-muted hover:text-brand-text hover:border-brand-muted"
+                    >
+                      Cancel
+                    </button>
+                    <a
+                      href={checkoutHref}
+                      className="flex-1 py-3.5 rounded-xl text-center font-display font-bold text-sm uppercase tracking-[0.15em] transition-all duration-200 bg-brand-primary text-white hover:bg-brand-secondary"
+                    >
+                      Proceed to Activation →
+                    </a>
+                  </div>
+                </div>
+              )}
+
+              {/* Decline confirmation */}
+              {declineStep && (
+                <div className="rounded-xl border border-red-800/40 bg-red-950/10 px-5 py-4 flex flex-col gap-3">
+                  <p className="text-sm font-barlow text-brand-text font-medium">
+                    Request changes to this concept?
+                  </p>
+                  <p className="text-xs font-barlow text-brand-muted leading-relaxed">
+                    Tell us what to change and we&apos;ll generate a fresh concept that reflects your notes.
+                  </p>
+                  <textarea
+                    value={declineNote}
+                    onChange={(e) => setDeclineNote(e.target.value)}
+                    rows={2}
+                    placeholder="Describe what you'd like changed (optional)…"
+                    className="w-full bg-brand-bg border border-brand-border rounded-lg px-3 py-2.5 text-brand-text font-barlow text-sm placeholder-brand-muted/50 focus:outline-none focus:border-red-600 transition-colors resize-none"
+                  />
+                  <div className="flex gap-3 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => { setDeclineStep(false); setDeclineNote(""); }}
+                      disabled={declining}
+                      className="px-8 py-3.5 rounded-xl font-display font-bold text-sm uppercase tracking-[0.15em] transition-all duration-200 border border-brand-border text-brand-muted hover:text-brand-text hover:border-brand-muted disabled:opacity-40"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleConfirmDecline}
+                      disabled={declining}
+                      className="flex-1 py-3.5 rounded-xl font-display font-bold text-sm uppercase tracking-[0.15em] transition-all duration-200 bg-red-700 text-white hover:bg-red-600 disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      {declining ? "Regenerating…" : "Request Changes & Regenerate →"}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Action row — Regenerate · Decline · Approve */}
+              {!confirmStep && !declineStep && (
+                <div className="flex items-center gap-3 pt-1 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={handleRegenerate}
+                    disabled={regenerating || declining}
+                    className="px-8 py-3.5 rounded-xl font-display font-bold text-sm uppercase tracking-[0.15em] transition-all duration-200
+                      border border-brand-border text-brand-muted hover:text-brand-text hover:border-brand-primary
+                      disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {regenerating ? "Regenerating…" : "↺ Regenerate"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setDeclineStep(true); setActionError(null); }}
+                    disabled={regenerating || declining}
+                    className="px-8 py-3.5 rounded-xl font-display font-bold text-sm uppercase tracking-[0.15em] transition-all duration-200
+                      border border-red-800/50 text-red-400 hover:bg-red-900/20 hover:border-red-600
+                      disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Decline This Design
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleApprove}
+                    disabled={regenerating || declining}
+                    className="flex-1 py-3.5 rounded-xl font-display font-bold text-sm uppercase tracking-[0.15em] transition-all duration-200
+                      bg-brand-primary text-white hover:bg-brand-secondary
+                      disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Approve This Design →
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
