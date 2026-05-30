@@ -379,6 +379,20 @@ function CreativeCard({ order, index }: { order: Order; index: number }) {
               </div>
             </a>
           )}
+          {/* Color swatch fallback for builder orders without a render URL */}
+          {isBuilder && !order.builder_render_url && !order.preview_url &&
+            order.zone_colors && !Array.isArray(order.zone_colors) && (
+            <div className="w-14 h-14 rounded-lg flex-shrink-0 border border-brand-border overflow-hidden grid grid-cols-2">
+              {([
+                (order.zone_colors as Record<string, string>).jerseyTop,
+                (order.zone_colors as Record<string, string>).collar,
+                (order.zone_colors as Record<string, string>).jerseySidePanels,
+                (order.zone_colors as Record<string, string>).jerseyShorts,
+              ].filter(Boolean) as string[]).slice(0, 4).map((color, i) => (
+                <div key={i} style={{ backgroundColor: color }} className="w-full h-full" />
+              ))}
+            </div>
+          )}
 
           <span className="px-2 py-0.5 rounded-full font-display font-bold text-[9px] uppercase tracking-widest border border-brand-border text-brand-muted">
             {order.design_fee_paid ? "Activated" : "Awaiting Activation"}
