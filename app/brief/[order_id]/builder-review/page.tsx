@@ -303,14 +303,23 @@ export default function BuilderReviewPage() {
           /* ── Read-only: design submitted — show payment CTA if unpaid ─────── */
           <div className="space-y-4">
             {feePaid ? (
-              <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/5 px-5 py-4 flex items-center gap-3">
-                <span className="px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-400 font-display font-bold text-[10px] uppercase tracking-widest border border-emerald-500/30">
-                  Active
-                </span>
-                <p className="text-sm font-barlow text-brand-muted">
-                  Your project is active. A Grace Studios designer is working on your design.
-                </p>
-              </div>
+              <>
+                <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/5 px-5 py-4 flex items-center gap-3">
+                  <span className="px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-400 font-display font-bold text-[10px] uppercase tracking-widest border border-emerald-500/30">
+                    Active
+                  </span>
+                  <p className="text-sm font-barlow text-brand-muted">
+                    Your project is active. A Grace Studios designer is working on your design.
+                  </p>
+                </div>
+                <a
+                  href={`/orders/${order_id}/production`}
+                  className="block w-full py-3.5 rounded-lg text-center font-display font-bold text-base uppercase tracking-widest
+                    bg-brand-primary text-brand-bg hover:bg-brand-secondary transition-all duration-200"
+                >
+                  Proceed to Production →
+                </a>
+              </>
             ) : (
               <>
                 <div className="rounded-xl border border-brand-primary/30 bg-brand-primary/5 px-5 py-4">
