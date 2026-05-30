@@ -284,7 +284,7 @@ function JerseyBuilderInner() {
   // On mobile (portrait), bring the camera closer so the jersey fills the screen
   const cameraZ = mounted && window.innerWidth < 768 ? 9 : 13;
 
-  // ── Auth check + restore saved design colors ────────────────────────────
+  // ── Auth check ──────────────────────────────────────────────────────────
   useEffect(() => {
     (async () => {
       try {
@@ -292,24 +292,32 @@ function JerseyBuilderInner() {
         const profile = await getProfile();
         if (!profile) { router.replace("/login"); return; }
         if (profile.role === "supplier") { router.replace("/supplier"); return; }
-
-        // If continuing a saved design, restore its zone colors from the server
-        if (activeId) {
-          try {
-            const res = await fetch(`/api/portal/design?order_id=${encodeURIComponent(activeId)}`);
-            if (res.ok) {
-              const data = await res.json() as { zoneColors?: Record<string, string> | null };
-              if (data.zoneColors && typeof data.zoneColors === "object") {
-                setColors((prev) => ({ ...prev, ...data.zoneColors }));
-              }
-            }
-          } catch { /* non-critical — continue with defaults */ }
-        }
-
         setReady(true);
       } catch { router.replace("/login"); }
     })();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Restore saved zone colors when continuing a design ───────────────────
+  // Runs after ready so the builder is never blocked by the server fetch.
+  useEffect(() => {
+    if (!activeId) return;
+    (async () => {
+      try {
+        const controller = new AbortController();
+        const t = setTimeout(() => controller.abort(), 6000);
+        const res = await fetch(`/api/portal/design?order_id=${encodeURIComponent(activeId)}`, {
+          signal: controller.signal,
+        });
+        clearTimeout(t);
+        if (!res.ok) return;
+        const data = await res.json() as { zoneColors?: Record<string, string> | null };
+        if (data.zoneColors && typeof data.zoneColors === "object") {
+          setColors((prev) => ({ ...prev, ...(data.zoneColors as Record<string, string>) }));
+        }
+      } catch { /* non-critical */ }
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeId]);
 
   // ── Zone colours ────────────────────────────────────────────────────────
   const [colors, setColors] = useState<ZoneColors>(DEFAULT_COLORS);
