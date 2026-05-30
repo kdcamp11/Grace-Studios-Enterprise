@@ -63,7 +63,7 @@ function PortalContent() {
   const [designs, setDesigns] = useState<SavedDesign[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasProfile, setHasProfile] = useState(false);
-  const [tab, setTab] = useState<"creative" | "production">("creative");
+  const [tab, setTab] = useState<"creative" | "production" | "designs">("creative");
 
   useEffect(() => {
     async function load() {
@@ -195,100 +195,102 @@ function PortalContent() {
             </div>
           )}
 
-          {/* Saved Designs — pre-payment, only shown when designs exist */}
-          {designs.length > 0 && (
-            <div className="space-y-4">
-              <div className="border-b border-brand-border pb-4">
-                <h2 className="font-display text-3xl font-bold uppercase tracking-wide text-brand-text leading-none">
-                  Saved Designs
-                </h2>
-                <p className="text-xs text-brand-muted font-barlow mt-1">
-                  Continue where you left off — activate when you&apos;re ready.
-                </p>
-              </div>
-              <div className="space-y-3">
-                {designs.map((d, i) => (
-                  <SavedDesignCard key={d.id} design={d} index={i} />
-                ))}
-              </div>
-            </div>
-          )}
+          {/* Tabs + content */}
+          {(() => {
+            const creativeOrders   = orders.filter(isCreative);
+            const productionOrders = orders.filter((o) => !isCreative(o));
 
-          {/* Section header */}
-          <div className="border-b border-brand-border pb-4">
-            <h2 className="font-display text-3xl font-bold uppercase tracking-wide text-brand-text leading-none">
-              Your Orders
-            </h2>
-          </div>
+            return (
+              <div className="space-y-5">
+                {/* Tab bar */}
+                <div className="flex gap-2 flex-wrap">
+                  {([
+                    ["creative",   "Creative",      creativeOrders.length],
+                    ["production", "Production",    productionOrders.length],
+                    ["designs",    "Saved Designs", designs.length],
+                  ] as const).map(([key, label, count]) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setTab(key)}
+                      className={`px-4 py-2 rounded-lg font-display font-bold text-xs uppercase tracking-widest transition-colors
+                        ${tab === key
+                          ? "bg-brand-primary text-white"
+                          : "bg-brand-surface border border-brand-border text-brand-muted hover:text-brand-text"
+                        }`}
+                    >
+                      {label} ({count})
+                    </button>
+                  ))}
+                </div>
 
-          {/* Orders */}
-          {orders.length === 0 ? (
-            <div className="text-center py-20 space-y-6">
-              <div className="space-y-2">
-                <p className="font-display text-2xl font-bold uppercase tracking-wide text-brand-text">
-                  No orders yet
-                </p>
-                <p className="text-sm text-brand-muted font-barlow">
-                  Submit your first brief and receive a design concept, backed by Grace Studios design philosophy, within minutes.
-                </p>
-              </div>
-              <a
-                href="/brief/choose"
-                className="inline-block px-8 py-4 rounded-lg font-display font-bold text-sm uppercase tracking-widest bg-brand-primary text-white hover:bg-brand-secondary transition-colors"
-              >
-                {hasProfile ? "Start a New Order →" : "Submit Your First Brief →"}
-              </a>
-            </div>
-          ) : (
-            (() => {
-              const creativeOrders   = orders.filter(isCreative);
-              const productionOrders  = orders.filter((o) => !isCreative(o));
-              const active            = tab === "creative" ? creativeOrders : productionOrders;
-
-              return (
-                <div className="space-y-5">
-                  {/* Tabs */}
-                  <div className="flex gap-2">
-                    {([
-                      ["creative", "Creative", creativeOrders.length],
-                      ["production", "Production", productionOrders.length],
-                    ] as const).map(([key, label, count]) => (
-                      <button
-                        key={key}
-                        type="button"
-                        onClick={() => setTab(key)}
-                        className={`px-4 py-2 rounded-lg font-display font-bold text-xs uppercase tracking-widest transition-colors
-                          ${tab === key
-                            ? "bg-brand-primary text-white"
-                            : "bg-brand-surface border border-brand-border text-brand-muted hover:text-brand-text"
-                          }`}
+                {/* Tab content */}
+                {tab === "designs" ? (
+                  designs.length === 0 ? (
+                    <div className="text-center py-20 space-y-6">
+                      <div className="space-y-2">
+                        <p className="font-display text-2xl font-bold uppercase tracking-wide text-brand-text">
+                          No saved designs yet
+                        </p>
+                        <p className="text-sm text-brand-muted font-barlow">
+                          Start a brief to create your first design concept.
+                        </p>
+                      </div>
+                      <a
+                        href="/brief/choose"
+                        className="inline-block px-8 py-4 rounded-lg font-display font-bold text-sm uppercase tracking-widest bg-brand-primary text-white hover:bg-brand-secondary transition-colors"
                       >
-                        {label} ({count})
-                      </button>
-                    ))}
-                  </div>
-
-                  {active.length === 0 ? (
-                    <p className="text-sm text-brand-muted font-barlow py-10 text-center">
-                      No {tab} orders yet.
-                    </p>
-                  ) : tab === "creative" ? (
-                    <div className="space-y-3">
-                      {active.map((order, i) => (
-                        <CreativeCard key={order.id} order={order} index={i} />
-                      ))}
+                        Start a New Design →
+                      </a>
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      {active.map((order, i) => (
+                      {designs.map((d, i) => (
+                        <SavedDesignCard key={d.id} design={d} index={i} />
+                      ))}
+                    </div>
+                  )
+                ) : tab === "creative" ? (
+                  creativeOrders.length === 0 ? (
+                    <div className="text-center py-20 space-y-6">
+                      <div className="space-y-2">
+                        <p className="font-display text-2xl font-bold uppercase tracking-wide text-brand-text">
+                          No orders yet
+                        </p>
+                        <p className="text-sm text-brand-muted font-barlow">
+                          Submit your first brief and receive a design concept within minutes.
+                        </p>
+                      </div>
+                      <a
+                        href="/brief/choose"
+                        className="inline-block px-8 py-4 rounded-lg font-display font-bold text-sm uppercase tracking-widest bg-brand-primary text-white hover:bg-brand-secondary transition-colors"
+                      >
+                        {hasProfile ? "Start a New Order →" : "Submit Your First Brief →"}
+                      </a>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {creativeOrders.map((order, i) => (
+                        <CreativeCard key={order.id} order={order} index={i} />
+                      ))}
+                    </div>
+                  )
+                ) : (
+                  productionOrders.length === 0 ? (
+                    <p className="text-sm text-brand-muted font-barlow py-10 text-center">
+                      No production orders yet.
+                    </p>
+                  ) : (
+                    <div className="space-y-3">
+                      {productionOrders.map((order, i) => (
                         <ProductionCard key={order.id} order={order} index={i} onOpen={() => router.push(`/orders/${order.id}/tracker`)} />
                       ))}
                     </div>
-                  )}
-                </div>
-              );
-            })()
-          )}
+                  )
+                )}
+              </div>
+            );
+          })()}
 
         </div>
       </main>

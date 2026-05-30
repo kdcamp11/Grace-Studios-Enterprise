@@ -159,13 +159,29 @@ function buildLogoTexture(src: string): Promise<THREE.Texture> {
   });
 }
 
-/** Compute a world-space Euler rotation that aligns the decal's +Z with `normal`. */
+/**
+ * Compute a world-space Euler rotation that aligns the decal's +Z with `normal`
+ * while keeping its +Y aligned with world-up. This prevents the text from
+ * tilting/slanting on curved chest surfaces — `setFromUnitVectors` alone picks
+ * the minimal rotation, which introduces an arbitrary roll when the surface
+ * normal has any horizontal component.
+ */
 function normalToRotation(normal: THREE.Vector3): [number, number, number] {
-  const q = new THREE.Quaternion().setFromUnitVectors(
-    new THREE.Vector3(0, 0, 1),
-    normal.clone().normalize(),
-  );
-  const e = new THREE.Euler().setFromQuaternion(q);
+  const forward = normal.clone().normalize();
+  const worldUp = new THREE.Vector3(0, 1, 0);
+
+  // Near-vertical surfaces (top/hem) have no stable up — fall back to minimal rotation.
+  if (Math.abs(forward.dot(worldUp)) > 0.99) {
+    const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), forward);
+    const e = new THREE.Euler().setFromQuaternion(q);
+    return [e.x, e.y, e.z];
+  }
+
+  // Orthonormal basis: +Z → normal, +Y → world-up (projected), +X → their cross.
+  const right = new THREE.Vector3().crossVectors(worldUp, forward).normalize();
+  const up    = new THREE.Vector3().crossVectors(forward, right).normalize();
+  const m = new THREE.Matrix4().makeBasis(right, up, forward);
+  const e = new THREE.Euler().setFromRotationMatrix(m);
   return [e.x, e.y, e.z];
 }
 

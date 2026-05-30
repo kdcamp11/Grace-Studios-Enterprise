@@ -21,6 +21,11 @@ function TeamInfoPage() {
   // (no path) → fall back to /brief/[orderId]/choose (legacy)
   const designPath = searchParams.get("path") ?? null;
 
+  // The Jersey Builder only has a 3D model for basketball — Tracksuits are
+  // AI-brief / upload only, so don't offer them on the builder path.
+  const isBuilderPath = designPath === "builder" || designPath === "builder-review";
+  const sportOptions  = isBuilderPath ? SPORTS.filter((s) => s !== "Tracksuits") : SPORTS;
+
   // Shared state
   const [sport, setSport]       = useState("");
   const [loading, setLoading]   = useState(false);
@@ -156,8 +161,6 @@ function TeamInfoPage() {
   // ─────────────────────────────────────────────────────────────────────────
   // RETURNING CLIENT — just pick a sport
   // ─────────────────────────────────────────────────────────────────────────
-  const isBuilderPath = designPath === "builder" || designPath === "builder-review";
-
   if (existingClient) {
     return (
       <BriefLayout
@@ -192,7 +195,7 @@ function TeamInfoPage() {
               Sport
             </label>
             <div className="flex flex-wrap gap-2">
-              {SPORTS.map((s) => (
+              {sportOptions.map((s) => (
                 <button
                   key={s}
                   type="button"
@@ -312,7 +315,7 @@ function TeamInfoPage() {
             Sport
           </label>
           <div className="flex flex-wrap gap-2">
-            {SPORTS.map((s) => (
+            {sportOptions.map((s) => (
               <button
                 key={s}
                 type="button"

@@ -6,7 +6,7 @@ import BriefLayout from "@/components/brief/BriefLayout";
 import { loadBriefState, clearBriefState } from "@/lib/brief-state";
 import type { RosterPlayer } from "@/types/database";
 
-const SIZES = ["YS", "YM", "YL", "YXL", "AS", "AM", "AL", "AXL", "A2XL", "A3XL"];
+const SIZES = ["S", "M", "L", "XL", "XXL"];
 const CUTS = ["Mens", "Womens", "Youth"];
 const COLUMNS = ["name", "number", "size", "cut"] as const;
 
