@@ -21,6 +21,7 @@ interface UploadDesign {
   teamName:           string | null;
   sport:              string | null;
   clientConceptUrl:   string | null;
+  clientPhotoUrl:     string | null;
   clientConceptNotes: string | null;
   hasBrief:           boolean;
   stage:              string;
@@ -84,6 +85,7 @@ export default function UploadReviewPage() {
   const conceptUrl = design?.clientConceptUrl ?? null;
   const fileName   = conceptUrl ? fileNameFromUrl(conceptUrl) : null;
   const fileExt    = conceptUrl ? fileExtFromUrl(conceptUrl) : null;
+  const photoUrl   = design?.clientPhotoUrl ?? null;
 
   return (
     <BriefLayout
@@ -93,9 +95,9 @@ export default function UploadReviewPage() {
     >
       <div className="space-y-6">
 
-        {/* ── Uploaded File ──────────────────────────────────────────────────── */}
+        {/* ── Uploaded Design File ───────────────────────────────────────────── */}
         <div className="bg-brand-surface rounded-xl border border-brand-border p-5">
-          <p className="text-xs font-display uppercase tracking-widest text-brand-primary mb-3">Uploaded File</p>
+          <p className="text-xs font-display uppercase tracking-widest text-brand-primary mb-3">Design File</p>
           {conceptUrl ? (
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-lg bg-brand-primary/10 border border-brand-primary/30 flex items-center justify-center flex-shrink-0">
@@ -115,6 +117,23 @@ export default function UploadReviewPage() {
             </div>
           ) : (
             <p className="text-sm font-barlow text-brand-muted">No file uploaded yet.</p>
+          )}
+        </div>
+
+        {/* ── Reference Photo ────────────────────────────────────────────────── */}
+        <div className="bg-brand-surface rounded-xl border border-brand-border p-5">
+          <p className="text-xs font-display uppercase tracking-widest text-brand-primary mb-3">Reference Photo</p>
+          {photoUrl ? (
+            <a href={photoUrl} target="_blank" rel="noopener noreferrer" className="block">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={photoUrl}
+                alt="Reference photo"
+                className="w-full max-h-80 object-contain rounded-lg border border-brand-border bg-brand-bg"
+              />
+            </a>
+          ) : (
+            <p className="text-sm font-barlow text-brand-muted">No photo uploaded yet.</p>
           )}
         </div>
 

@@ -80,9 +80,10 @@ export async function GET(req: NextRequest) {
 
   // Load the brief (latest, if multiple) for the design preview — keyed by
   // design_id pre-payment, order_id post-payment.
+  const briefCols = "id, zone_colors, logos_to_include, vision_prompt, ai_prompt, client_concept_url, client_photo_url, client_concept_notes";
   const { data: brief } = isDesign
-    ? await admin.from("briefs").select("id, zone_colors, logos_to_include, vision_prompt, ai_prompt").eq("design_id", orderId).order("created_at", { ascending: false }).limit(1).maybeSingle()
-    : await admin.from("briefs").select("id, zone_colors, logos_to_include, vision_prompt, ai_prompt").eq("order_id", orderId).order("created_at", { ascending: false }).limit(1).maybeSingle();
+    ? await admin.from("briefs").select(briefCols).eq("design_id", orderId).order("created_at", { ascending: false }).limit(1).maybeSingle()
+    : await admin.from("briefs").select(briefCols).eq("order_id", orderId).order("created_at", { ascending: false }).limit(1).maybeSingle();
 
   let renderUrl: string | null = null;
   let builderArtwork: unknown[] = [];
@@ -103,6 +104,7 @@ export async function GET(req: NextRequest) {
     renderUrl,
     builderArtwork,
     clientConceptUrl:   brief?.client_concept_url ?? null,
+    clientPhotoUrl:     brief?.client_photo_url ?? null,
     clientConceptNotes: brief?.client_concept_notes ?? null,
     hasBrief:        !!brief,
     stage,
