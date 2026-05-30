@@ -4,8 +4,8 @@ import { useState, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import OrgLogo from "@/components/OrgLogo";
 
-const ACCEPTED = ".ai,.eps,.pdf,.svg";
-const ACCEPTED_LABEL = "Adobe Illustrator (.ai), EPS, PDF, or SVG";
+const ACCEPTED = ".ai,.eps,.pdf,.svg,.jpg,.jpeg,.png,.webp";
+const ACCEPTED_LABEL = "Adobe Illustrator (.ai), EPS, PDF, SVG, or Photo (JPG, PNG, WEBP)";
 const MAX_MB = 50;
 
 export default function UploadProductionFilePage() {
@@ -122,18 +122,18 @@ export default function UploadProductionFilePage() {
               Accepted file types
             </p>
             <div className="flex flex-wrap gap-2">
-              {["Adobe Illustrator (.ai)", "EPS", "PDF", "SVG"].map((type) => (
+              {["Adobe Illustrator (.ai)", "EPS", "PDF", "SVG", "JPG / PNG", "WEBP"].map((type) => (
                 <span key={type} className="text-[9px] font-display font-bold uppercase tracking-wider px-2 py-1 rounded border border-brand-border text-brand-muted bg-brand-bg">
                   {type}
                 </span>
               ))}
             </div>
             <p className="text-[9px] font-barlow text-brand-muted/60 mt-2 leading-relaxed">
-              Have a sketch or rough concept instead?{" "}
+              Need concept development from scratch?{" "}
               <a href="/contact" className="underline text-brand-primary hover:text-brand-secondary transition-colors">
-                Use our Consultation path
+                Try our Creative Direction path
               </a>{" "}
-              Our team will work with you from scratch.
+              — our team builds the concept with you.
             </p>
           </div>
 

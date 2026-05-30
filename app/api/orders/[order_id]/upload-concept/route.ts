@@ -3,8 +3,6 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { assertClientOrder, isErrorResponse } from "@/lib/api/assert-client-order";
 import { rateLimit } from "@/lib/rate-limit";
 
-// Production-ready file formats only.
-// Sketches and rough concepts should go through the Consultation path.
 const ALLOWED_MIME_TYPES = [
   "application/pdf",
   "image/svg+xml",
@@ -15,10 +13,14 @@ const ALLOWED_MIME_TYPES = [
   "application/x-eps",
   "image/x-eps",
   "application/octet-stream",     // Many .ai files upload as binary — checked by extension below
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/webp",
 ];
 
 // Extension-based fallback for files that upload as octet-stream
-const ALLOWED_EXTENSIONS = [".ai", ".eps", ".pdf", ".svg"];
+const ALLOWED_EXTENSIONS = [".ai", ".eps", ".pdf", ".svg", ".jpg", ".jpeg", ".png", ".webp"];
 
 const MAX_FILE_SIZE_MB = 50;
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
@@ -67,7 +69,7 @@ export async function POST(
 
   if (!mimeAllowed && !extAllowed) {
     return NextResponse.json(
-      { error: "File type not allowed. Upload a production-ready file: Adobe Illustrator (.ai), EPS, PDF, or SVG. For sketches or rough concepts, please use the Consultation path." },
+      { error: "File type not allowed. Upload a design file (.ai, .eps, .pdf, .svg) or a photo (.jpg, .png, .webp)." },
       { status: 400 },
     );
   }
