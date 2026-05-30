@@ -126,7 +126,8 @@ export default function DesignConceptsPage() {
     if (briefRow?.ai_prompt) {
       try {
         const parsed = JSON.parse(briefRow.ai_prompt as string) as DesignMetadata;
-        if (parsed.status === "completed") metadata = parsed;
+        const hasRenders = !!parsed.renders?.frontJersey;
+        if (parsed.status === "completed" || hasRenders) metadata = parsed;
       } catch { /* ignore */ }
     }
 
@@ -183,34 +184,43 @@ export default function DesignConceptsPage() {
   }, [design_id]);
 
   // ── Trigger generation ────────────────────────────────────────────────────
-  const triggerGeneration = useCallback(async (force = false) => {
+  const triggerGeneration = useCallback((force = false) => {
     if (generationFiredRef.current) return;
     generationFiredRef.current = true;
     setGen({ status: "queued", progress: 0, total: 4, error: null });
 
-    const res = await fetch("/api/generate-concepts", {
+    if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+
+    // Fire the generation request without blocking — it can take 2–3 min.
+    // Polling starts immediately so progress updates appear during generation.
+    fetch("/api/generate-concepts", {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
       body:    JSON.stringify({ design_id, ...(force ? { force: true } : {}) }),
+    }).then(async (res) => {
+      if (res.status === 409) {
+        const body = await res.json() as { status?: string };
+        if (body.status === "already_completed") {
+          if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+          await loadBoard();
+        }
+        // already_running: polling already handles it
+      } else if (!res.ok) {
+        if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+        let errMsg = "Concept generation failed. Please try again.";
+        try {
+          const body = await res.json() as { error?: string };
+          if (body.error) errMsg = body.error;
+        } catch { /* ignore */ }
+        if (res.status === 429) errMsg = "Too many requests. Please wait a few minutes and try again.";
+        setGen({ status: "failed", progress: 0, total: 4, error: errMsg });
+        generationFiredRef.current = false;
+      }
+    }).catch(() => {
+      // Network error — polling will see failed status or keep retrying
     });
 
-    if (res.status === 409) {
-      const body = await res.json();
-      if (body.status === "already_completed") { await loadBoard(); return; }
-      // already_running — fall through to polling
-    } else if (!res.ok) {
-      let errMsg = "Concept generation failed. Please try again.";
-      try {
-        const body = await res.json() as { error?: string };
-        if (body.error) errMsg = body.error;
-      } catch { /* ignore */ }
-      if (res.status === 429) errMsg = "Too many requests. Please wait a few minutes and try again.";
-      setGen({ status: "failed", progress: 0, total: 4, error: errMsg });
-      generationFiredRef.current = false;
-      return;
-    }
-
-    if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+    // Polling detects queued → generating → completed and loads the board.
     pollIntervalRef.current = setInterval(pollStatus, 5000);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [design_id, pollStatus, loadBoard]);
@@ -254,22 +264,29 @@ export default function DesignConceptsPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [design_id]);
 
+  // Clear regenerating/declining flags once generation resolves
+  useEffect(() => {
+    if (gen.status === "completed" || gen.status === "failed") {
+      setRegenerating(false);
+      setDeclining(false);
+    }
+  }, [gen.status]);
+
   async function signOut() {
     await supabase.auth.signOut();
     router.replace("/login");
   }
 
   // ── Regenerate — force a fresh concept from the same brief ────────────────
-  async function handleRegenerate() {
+  function handleRegenerate() {
     if (regenerating || declining) return;
     setRegenerating(true);
     setActionError(null);
     setBoardData(null);
     setGen({ status: "not_started", progress: 0, total: 4, error: null });
     generationFiredRef.current = false;
-    if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
-    await triggerGeneration(true);
-    setRegenerating(false);
+    triggerGeneration(true);
+    // regenerating cleared when polling detects completion or failure via useEffect below
   }
 
   // ── Decline — capture a revision note, fold it into the brief vision, then
@@ -308,7 +325,7 @@ export default function DesignConceptsPage() {
       setGen({ status: "not_started", progress: 0, total: 4, error: null });
       generationFiredRef.current = false;
       if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
-      await triggerGeneration(true);
+      triggerGeneration(true);
     } catch {
       setActionError("Couldn't request changes. Please try again.");
     } finally {
