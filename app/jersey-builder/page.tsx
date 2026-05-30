@@ -376,6 +376,14 @@ function JerseyBuilderInner() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [designId, colors]);
 
+  // ── Artwork drafts ──────────────────────────────────────────────────────
+  const [artworkDrafts, setArtworkDrafts] = useState<ArtworkDraft[]>([]);
+  /**
+   * Textures are stored outside React state to avoid serialisation overhead.
+   * Key = artwork.id
+   */
+  const textureMapRef = useRef<Record<string, THREE.Texture>>({});
+
   // Auto-save artwork (text, numbers, logos) to the brief so returning to the
   // builder restores the full design. Debounced 3 s; designId only.
   const artworkSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -392,14 +400,6 @@ function JerseyBuilderInner() {
     return () => { if (artworkSaveTimerRef.current) clearTimeout(artworkSaveTimerRef.current); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [designId, artworkDrafts]);
-
-  // ── Artwork drafts ──────────────────────────────────────────────────────
-  const [artworkDrafts, setArtworkDrafts] = useState<ArtworkDraft[]>([]);
-  /**
-   * Textures are stored outside React state to avoid serialisation overhead.
-   * Key = artwork.id
-   */
-  const textureMapRef = useRef<Record<string, THREE.Texture>>({});
 
   // ── Artwork that is waiting to be placed (click-to-place mode) ───────────
   const [placingId, setPlacingId] = useState<string | null>(null);
