@@ -808,8 +808,10 @@ function JerseyBuilderInner() {
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
 
   // Captures the jersey-front and shorts-front canvas screenshots, regardless of
-  // which tab the user is currently on. Briefly switches to each front view to
-  // grab a fresh frame, then restores the user's original view/side.
+  // which tab the user is currently on. Because separateGlbs mounts only the
+  // active garment's GLB (the other is unmounted and must lazily load on switch),
+  // we switch views, wait for that garment's mesh ref to populate, then let the
+  // camera settle and capture. Restores the user's original position.
   const captureAllViews = useCallback(async (): Promise<{ jerseyUrl: string | null; shortsUrl: string | null }> => {
     const canvas = canvasContainerRef.current?.querySelector("canvas");
     if (!canvas) return { jerseyUrl: jerseyPreviewRef.current, shortsUrl: shortsPreviewRef.current };
@@ -817,10 +819,27 @@ function JerseyBuilderInner() {
     const origView = activeViewRef.current;
     const origSide = activeSideRef.current;
 
-    const snapFront = async (view: "jersey" | "shorts"): Promise<string | null> => {
+    const wait = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
+
+    // Poll a mesh ref until the GLB has mounted (max ~3s), so we never capture
+    // an empty frame while Suspense is still loading the garment.
+    const waitForMesh = async (ref: React.RefObject<THREE.Mesh | null>) => {
+      for (let i = 0; i < 60; i++) {
+        if (ref.current) return;
+        await wait(50);
+      }
+    };
+
+    const snapFront = async (
+      view: "jersey" | "shorts",
+      meshRef: React.RefObject<THREE.Mesh | null>,
+    ): Promise<string | null> => {
       setActiveView(view);
       setActiveSide("front");
-      // Two animation frames so Three.js renders the switched garment + camera.
+      await waitForMesh(meshRef);
+      // Mesh is mounted; let the camera-fit effect + OrbitControls settle and
+      // Three.js render the framed garment before reading the buffer.
+      await wait(400);
       await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
       const url = canvas.toDataURL("image/jpeg", 0.8);
       if (view === "shorts") shortsPreviewRef.current = url;
@@ -828,8 +847,11 @@ function JerseyBuilderInner() {
       return url;
     };
 
-    const jerseyUrl = await snapFront("jersey");
-    const shortsUrl = await snapFront("shorts");
+    const jerseyUrl = await snapFront("jersey", jerseyTopMeshRef);
+    // Switching to shorts unmounts the jersey GLB and mounts Shorts.glb — clear
+    // the stale ref so waitForMesh blocks until the new mesh actually mounts.
+    shortsMeshRef.current = null;
+    const shortsUrl = await snapFront("shorts", shortsMeshRef);
 
     // Restore the user's original position.
     setActiveView(origView);
