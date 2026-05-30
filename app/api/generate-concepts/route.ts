@@ -1041,7 +1041,7 @@ function buildGarmentPrompt(
     `Background: pure clean white (#ffffff). No cast shadows on background. No floor, no environment. Isolated garment only.`,
 
     // ── Output ──
-    `Output: single isolated garment render, square crop, photorealistic premium sportswear quality.`,
+    `Output: single isolated garment render on a square canvas. The ENTIRE garment must be fully visible and centered within the frame with comfortable margin on all sides — do not crop, cut off, or let any edge of the garment touch or exceed the frame boundary. Full garment in view, photorealistic premium sportswear quality.`,
   ].filter(Boolean).join("\n\n");
 }
 

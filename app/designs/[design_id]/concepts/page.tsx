@@ -364,6 +364,16 @@ export default function DesignConceptsPage() {
               >
                 Creative Activation — $149 →
               </a>
+
+              {/* Later — leave without activating, return to orders */}
+              <button
+                type="button"
+                onClick={() => router.push("/portal")}
+                className="block w-full py-3 rounded-xl text-center font-display font-bold text-xs uppercase tracking-[0.15em]
+                  border border-brand-border text-brand-muted hover:text-brand-text hover:border-brand-muted transition-colors"
+              >
+                Later
+              </button>
             </div>
           )}
 
