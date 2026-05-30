@@ -396,7 +396,7 @@ export default function ConceptsPage() {
 
   // ── Trigger generation ────────────────────────────────────────────────────
 
-  const triggerGeneration = useCallback(async () => {
+  const triggerGeneration = useCallback(async (force = false) => {
     if (generationFiredRef.current) return;
     generationFiredRef.current = true;
     setGen({ status: "queued", progress: 0, total: 4, error: null });
@@ -404,12 +404,17 @@ export default function ConceptsPage() {
     const res = await fetch("/api/generate-concepts", {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify({ order_id }),
+      body:    JSON.stringify({ order_id, ...(force ? { force: true } : {}) }),
     });
 
     if (res.status === 409) {
       const body = await res.json();
-      if (body.status === "already_completed") { await loadBoard(); return; }
+      if (body.status === "already_completed") {
+        // Previous generation is done — reload the board and clear the spinner.
+        await loadBoard();
+        setGen(prev => ({ ...prev, status: "completed" }));
+        return;
+      }
       // already_running — just start polling
     } else if (!res.ok) {
       // Show a real error rather than an infinite spinner
@@ -525,7 +530,7 @@ export default function ConceptsPage() {
     setGen({ status: "not_started", progress: 0, total: 4, error: null });
     generationFiredRef.current = false;
     if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
-    await triggerGeneration();
+    await triggerGeneration(true);
     setRegenerating(false);
   }
 

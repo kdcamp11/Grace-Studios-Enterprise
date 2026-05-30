@@ -1057,7 +1057,7 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
-    const { order_id, design_id } = await req.json();
+    const { order_id, design_id, force } = await req.json();
     if (!order_id && !design_id) {
       return NextResponse.json({ error: "order_id or design_id required" }, { status: 400 });
     }
@@ -1102,7 +1102,9 @@ export async function POST(req: NextRequest) {
         if (existing.status === "generating" || existing.status === "queued") {
           return NextResponse.json({ status: "already_running" }, { status: 409 });
         }
-        if (existing.status === "completed") {
+        // force=true (explicit regenerate) skips the already_completed guard so a
+        // new generation run can proceed even when a previous one finished.
+        if (existing.status === "completed" && !force) {
           return NextResponse.json({ status: "already_completed" }, { status: 409 });
         }
       } catch { /* not valid JSON — proceed */ }
@@ -1438,6 +1440,15 @@ export async function POST(req: NextRequest) {
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     console.error("[generate-concepts] error:", message);
+    // Best-effort: mark the brief as failed so the client stops polling
+    try {
+      const { order_id: oid, design_id: did } = await req.clone().json().catch(() => ({})) as { order_id?: string; design_id?: string };
+      if (oid || did) {
+        const bf: BriefFilter = did ? { field: "design_id", id: did } : { field: "order_id", id: oid! };
+        const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+        await saveStatus(sb, bf, { status: "failed", progress: 0, total: 4, error: message });
+      }
+    } catch { /* ignore — best-effort only */ }
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
