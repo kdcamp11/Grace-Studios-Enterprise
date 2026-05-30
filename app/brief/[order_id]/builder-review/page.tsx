@@ -47,6 +47,8 @@ export default function BuilderReviewPage() {
   // Read-only when the design is already submitted/paid (set from the server).
   const [submitted, setSubmitted]     = useState(false);
   const [ready, setReady]             = useState(false);
+  // True when the URL param is a pre-payment design_id (no order exists yet).
+  const [isDesignFlow, setIsDesignFlow] = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
@@ -58,9 +60,12 @@ export default function BuilderReviewPage() {
 
       // 1. Try localStorage first (normal first-time flow).
       const local = loadBriefState();
+      // Pre-payment builder designs carry designId in briefState; the URL param
+      // is that design_id, not an order id.
+      if (local?.designId && local.designId === order_id) setIsDesignFlow(true);
       const hasLocalForThisOrder =
         !!local &&
-        local.orderId === order_id &&
+        (local.orderId === order_id || local.designId === order_id) &&
         (!!local.teamName || (local.zoneColors && Object.keys(local.zoneColors).length > 0));
 
       // 2. Fetch the persisted design from the server. We always do this so we
@@ -80,10 +85,12 @@ export default function BuilderReviewPage() {
             hasBrief: boolean;
             stage: string;
             designFeePaid: boolean;
+            isDesign?: boolean;
           };
           const isSubmitted =
             d.hasBrief || d.designFeePaid || (d.stage !== "creative_started" && d.stage !== "onboarding");
           if (active) setSubmitted(isSubmitted);
+          if (active && d.isDesign) setIsDesignFlow(true);
           if (active && d.visionPrompt) setNotes(d.visionPrompt);
           if (d.teamName || d.zoneColors) {
             serverBrief = {
@@ -117,6 +124,7 @@ export default function BuilderReviewPage() {
     setError("");
 
     try {
+      const idField = isDesignFlow ? { design_id: order_id } : { order_id };
       const aiPrompt = JSON.stringify({
         garmentType: "Basketball Jersey & Shorts",
         sport:       brief?.sport || "Basketball",
@@ -127,8 +135,8 @@ export default function BuilderReviewPage() {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          order_id:          order_id,
-          concept_source:    "client_provided",
+          ...idField,
+          concept_source:    "client_provided",   // routes post-payment to tracker
           zone_colors:       brief?.zoneColors ?? null,
           logos_to_include:  brief?.logosToInclude || null,
           vision_prompt:     notes.trim() || null,
@@ -142,6 +150,20 @@ export default function BuilderReviewPage() {
         throw new Error(body.error ?? "Submission failed. Please try again.");
       }
 
+      // Save roster if collected in the builder flow
+      const currentBrief = loadBriefState();
+      if (currentBrief.playerRoster && currentBrief.playerRoster.length > 0) {
+        fetch("/api/brief/roster", {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          body:    JSON.stringify({
+            ...idField,
+            player_roster: currentBrief.playerRoster,
+            player_names:  true,
+          }),
+        }).catch(() => {});
+      }
+
       // Notify admin
       fetch("/api/notify", {
         method:  "POST",
@@ -150,7 +172,9 @@ export default function BuilderReviewPage() {
       }).catch(() => {});
 
       clearBriefState();
-      router.push(`/orders/${order_id}/checkout`);
+      // Builder designs are executed by a Grace Studios designer (no AI render),
+      // so go straight to checkout/activation. Pre-payment uses the design route.
+      router.push(isDesignFlow ? `/designs/${order_id}/checkout` : `/orders/${order_id}/checkout`);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
     } finally {
@@ -280,7 +304,7 @@ export default function BuilderReviewPage() {
           <ol className="space-y-3">
             {[
               "Submit your builder design (you're here)",
-              "Activate your project. $149 Creative Activation applied toward your final order total.",
+              "Activate your project. $149 applied to your final order total.",
               "A Grace Studios designer executes your color layout",
               "You approve the final artwork before production begins",
               "Production and delivery managed by Grace Studios",

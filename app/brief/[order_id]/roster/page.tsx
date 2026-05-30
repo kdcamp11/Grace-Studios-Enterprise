@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useRef, KeyboardEvent } from "react";
+import { useState, useRef, useEffect, KeyboardEvent } from "react";
 import { useRouter, useParams } from "next/navigation";
 import BriefLayout from "@/components/brief/BriefLayout";
-import { clearBriefState } from "@/lib/brief-state";
+import { loadBriefState, clearBriefState } from "@/lib/brief-state";
 import type { RosterPlayer } from "@/types/database";
 
-const SIZES = ["YS", "YM", "YL", "YXL", "AS", "AM", "AL", "AXL", "A2XL", "A3XL"];
+const SIZES = ["S", "M", "L", "XL", "XXL"];
 const CUTS = ["Mens", "Womens", "Youth"];
 const COLUMNS = ["name", "number", "size", "cut"] as const;
 
@@ -22,6 +22,12 @@ export default function RosterPage() {
   const [players, setPlayers] = useState<RosterPlayer[]>([emptyPlayer()]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [isDesignFlow, setIsDesignFlow] = useState(false);
+
+  useEffect(() => {
+    const state = loadBriefState();
+    setIsDesignFlow(!!(state?.designId && state.designId === order_id));
+  }, [order_id]);
 
   function updatePlayer(index: number, field: keyof RosterPlayer, value: string) {
     setPlayers((prev) => {
@@ -81,11 +87,12 @@ export default function RosterPage() {
     setSaving(true);
     setError("");
     try {
+      const idField = isDesignFlow ? { design_id: order_id } : { order_id };
       const res = await fetch("/api/brief/roster", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          order_id,
+          ...idField,
           player_roster: hasPlayers ? roster : null,
           player_names: hasPlayers,
         }),
@@ -95,8 +102,14 @@ export default function RosterPage() {
         throw new Error(error);
       }
       clearBriefState();
-      // Go directly to concepts page so the user sees the live generation progress bar
-      router.push(`/orders/${order_id}/concepts`);
+      if (isDesignFlow) {
+        // Pre-payment: go to the design concepts page to watch generation and
+        // see the teaser preview, then activate ($149) from there.
+        router.push(`/designs/${order_id}/concepts`);
+      } else {
+        // Post-payment: go to concepts page to see live generation progress
+        router.push(`/orders/${order_id}/concepts`);
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Something went wrong.";
       setError(msg);
@@ -241,7 +254,7 @@ export default function RosterPage() {
               bg-brand-primary text-brand-bg hover:bg-brand-secondary
               disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            {saving ? "Saving…" : "Finish & View Concepts →"}
+            {saving ? "Saving…" : isDesignFlow ? "Generate My Concept →" : "Finish & View Concepts →"}
           </button>
         </div>
       </div>

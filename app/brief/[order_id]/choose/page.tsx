@@ -1,9 +1,10 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import BriefLayout from "@/components/brief/BriefLayout";
+import { loadBriefState } from "@/lib/brief-state";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // This interstitial sits between Step 1 (Team Info) and Step 2 (Design System).
@@ -27,7 +28,7 @@ const PATHS = [
     ],
     cta: "Continue with AI Brief →",
     accentColor: "group-hover:bg-brand-primary",
-    hrefFn: (orderId: string, _sport: string) => `/brief/${orderId}/style`,
+    hrefFn: (orderId: string, _sport: string, _isDesign: boolean) => `/brief/${orderId}/style`,
   },
   {
     id: "builder",
@@ -43,7 +44,8 @@ const PATHS = [
     ],
     cta: "Open Jersey Builder →",
     accentColor: "group-hover:bg-brand-secondary",
-    hrefFn: (orderId: string, sport: string) => `/jersey-builder?orderId=${orderId}&sport=${encodeURIComponent(sport)}`,
+    hrefFn: (orderId: string, sport: string, isDesign: boolean) =>
+      `/jersey-builder?${isDesign ? "designId" : "orderId"}=${orderId}&sport=${encodeURIComponent(sport)}`,
   },
 ] as const;
 
@@ -51,6 +53,12 @@ function ChooseInner() {
   const { order_id } = useParams<{ order_id: string }>();
   const searchParams = useSearchParams();
   const sport = searchParams.get("sport") ?? "";
+  const [isDesignFlow, setIsDesignFlow] = useState(false);
+
+  useEffect(() => {
+    const state = loadBriefState();
+    setIsDesignFlow(!!(state?.designId && state.designId === order_id));
+  }, [order_id]);
 
   return (
     <BriefLayout
@@ -62,7 +70,7 @@ function ChooseInner() {
         {PATHS.map((path) => (
           <Link
             key={path.id}
-            href={path.hrefFn(order_id, sport)}
+            href={path.hrefFn(order_id, sport, isDesignFlow)}
             className="group relative flex flex-col gap-5 p-6 rounded-2xl border border-brand-border bg-brand-bg hover:bg-brand-surface hover:border-brand-primary/40 transition-all duration-300 shadow-sm hover:shadow-md"
           >
             {/* Accent bar */}

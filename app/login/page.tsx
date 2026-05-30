@@ -151,7 +151,6 @@ const PATH_CARDS = [
       "Creative direction and program strategy",
       "Concepts built around your program identity",
       "Managed supplier coordination and fulfillment oversight",
-      "Full-service production typically begins at $2,500.",
     ],
     cta: "Work with Grace Studios →",
   },
@@ -566,12 +565,12 @@ export default function LoginPage() {
                 <div className="relative flex flex-col gap-3 p-4 rounded-2xl border border-brand-border/70 bg-brand-bg shadow-sm flex-1">
                   <div className="absolute top-0 left-0 right-0 h-[2px] bg-brand-primary/60 rounded-t-2xl" />
                   <div className="flex items-center justify-between">
-                    <span className="text-[9px] font-display font-bold uppercase tracking-[0.2em] px-2.5 py-1 rounded border text-brand-primary bg-brand-primary/10 border-brand-primary/30">Self Service</span>
-                    <span className="text-[9px] font-display uppercase tracking-widest text-brand-muted/60">Two Paths</span>
+                    <span className="text-[9px] font-display font-bold uppercase tracking-[0.2em] px-2.5 py-1 rounded border text-brand-primary bg-brand-primary/10 border-brand-primary/30">Self-Directed</span>
+                    <span className="text-[9px] font-display uppercase tracking-widest text-brand-muted/60">Flexible Workflow</span>
                   </div>
-                  <p className="font-display font-bold uppercase tracking-wide text-brand-text leading-snug" style={{ fontSize: "clamp(0.85rem, 1.1vw, 0.95rem)" }}>Design Freely. Activate When Ready.</p>
+                  <p className="font-display font-bold uppercase tracking-wide text-brand-text leading-snug" style={{ fontSize: "clamp(0.85rem, 1.1vw, 0.95rem)" }}>Structured Development. Ready When You Are.</p>
                   <p className="text-xs font-barlow text-brand-muted leading-relaxed">
-                    Free to build. $100 activation applied toward your final order.
+                    $149 Creative Activation applied toward your final order.
                   </p>
                   <div className="flex flex-col gap-2 border-t border-brand-border pt-3 flex-1">
                     <p className="text-[8px] font-display font-bold uppercase tracking-[0.28em] text-brand-muted mb-1">Choose your path</p>

@@ -38,6 +38,20 @@ interface Order {
   concept_source?: string | null;
 }
 
+interface SavedDesign {
+  id:           string;
+  kind:         "ai" | "builder" | "upload";
+  status:       "draft" | "submitted";
+  createdAt:    string;
+  teamName:     string | null;
+  sport:        string | null;
+  hasFile:      boolean;
+  hasBuilder:   boolean;
+  hasBrief:     boolean;
+  thumbnailUrl: string | null;
+  zoneColors:   Record<string, string> | null;
+}
+
 function isCreative(o: Order): boolean {
   return o.order_type === "creative" || stageType(o.stage) === "creative";
 }
@@ -52,10 +66,11 @@ function PortalContent() {
   const submitted = searchParams.get("submitted");
   const [user, setUser]     = useState<User | null>(null);
   const [role, setRole]     = useState<UserRole | null>(null);
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [orders, setOrders]   = useState<Order[]>([]);
+  const [designs, setDesigns] = useState<SavedDesign[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasProfile, setHasProfile] = useState(false);
-  const [tab, setTab] = useState<"creative" | "production">("creative");
+  const [tab, setTab] = useState<"creative" | "production" | "designs">("creative");
 
   useEffect(() => {
     async function load() {
@@ -76,9 +91,10 @@ function PortalContent() {
 
       // Use admin API for all data — bypasses RLS on clients + orders tables.
       // Direct Supabase client reads were being silently blocked by RLS policies.
-      const [profileRes, ordersRes] = await Promise.all([
+      const [profileRes, ordersRes, designsRes] = await Promise.all([
         fetch("/api/brief/client-profile"),
         fetch("/api/portal/orders"),
+        fetch("/api/portal/designs"),
       ]);
 
       if (profileRes.ok) {
@@ -94,6 +110,11 @@ function PortalContent() {
             stage: o.stage as OrderStage,
           }))
         );
+      }
+
+      if (designsRes.ok) {
+        const { designs: fetchedDesigns } = await designsRes.json();
+        setDesigns(fetchedDesigns ?? []);
       }
 
       setLoading(false);
@@ -179,81 +200,102 @@ function PortalContent() {
             </div>
           )}
 
-          {/* Section header */}
-          <div className="border-b border-brand-border pb-4">
-            <h2 className="font-display text-3xl font-bold uppercase tracking-wide text-brand-text leading-none">
-              Your Orders
-            </h2>
-          </div>
+          {/* Tabs + content */}
+          {(() => {
+            const creativeOrders   = orders.filter(isCreative);
+            const productionOrders = orders.filter((o) => !isCreative(o));
 
-          {/* Orders */}
-          {orders.length === 0 ? (
-            <div className="text-center py-20 space-y-6">
-              <div className="space-y-2">
-                <p className="font-display text-2xl font-bold uppercase tracking-wide text-brand-text">
-                  No orders yet
-                </p>
-                <p className="text-sm text-brand-muted font-barlow">
-                  Submit your first brief and receive a design concept, backed by Grace Studios design philosophy, within minutes.
-                </p>
-              </div>
-              <a
-                href="/brief/choose"
-                className="inline-block px-8 py-4 rounded-lg font-display font-bold text-sm uppercase tracking-widest bg-brand-primary text-white hover:bg-brand-secondary transition-colors"
-              >
-                {hasProfile ? "Start a New Order →" : "Submit Your First Brief →"}
-              </a>
-            </div>
-          ) : (
-            (() => {
-              const creativeOrders   = orders.filter(isCreative);
-              const productionOrders  = orders.filter((o) => !isCreative(o));
-              const active            = tab === "creative" ? creativeOrders : productionOrders;
+            return (
+              <div className="space-y-5">
+                {/* Tab bar */}
+                <div className="flex gap-2 flex-wrap">
+                  {([
+                    ["creative",   "Creative",      creativeOrders.length],
+                    ["production", "Production",    productionOrders.length],
+                    ["designs",    "Saved Designs", designs.length],
+                  ] as const).map(([key, label, count]) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setTab(key)}
+                      className={`px-4 py-2 rounded-lg font-display font-bold text-xs uppercase tracking-widest transition-colors
+                        ${tab === key
+                          ? "bg-brand-primary text-white"
+                          : "bg-brand-surface border border-brand-border text-brand-muted hover:text-brand-text"
+                        }`}
+                    >
+                      {label} ({count})
+                    </button>
+                  ))}
+                </div>
 
-              return (
-                <div className="space-y-5">
-                  {/* Tabs */}
-                  <div className="flex gap-2">
-                    {([
-                      ["creative", "Creative", creativeOrders.length],
-                      ["production", "Production", productionOrders.length],
-                    ] as const).map(([key, label, count]) => (
-                      <button
-                        key={key}
-                        type="button"
-                        onClick={() => setTab(key)}
-                        className={`px-4 py-2 rounded-lg font-display font-bold text-xs uppercase tracking-widest transition-colors
-                          ${tab === key
-                            ? "bg-brand-primary text-white"
-                            : "bg-brand-surface border border-brand-border text-brand-muted hover:text-brand-text"
-                          }`}
+                {/* Tab content */}
+                {tab === "designs" ? (
+                  designs.length === 0 ? (
+                    <div className="text-center py-20 space-y-6">
+                      <div className="space-y-2">
+                        <p className="font-display text-2xl font-bold uppercase tracking-wide text-brand-text">
+                          No saved designs yet
+                        </p>
+                        <p className="text-sm text-brand-muted font-barlow">
+                          Start a brief to create your first design concept.
+                        </p>
+                      </div>
+                      <a
+                        href="/brief/choose"
+                        className="inline-block px-8 py-4 rounded-lg font-display font-bold text-sm uppercase tracking-widest bg-brand-primary text-white hover:bg-brand-secondary transition-colors"
                       >
-                        {label} ({count})
-                      </button>
-                    ))}
-                  </div>
-
-                  {active.length === 0 ? (
-                    <p className="text-sm text-brand-muted font-barlow py-10 text-center">
-                      No {tab} orders yet.
-                    </p>
-                  ) : tab === "creative" ? (
-                    <div className="space-y-3">
-                      {active.map((order, i) => (
-                        <CreativeCard key={order.id} order={order} index={i} />
-                      ))}
+                        Start a New Design →
+                      </a>
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      {active.map((order, i) => (
+                      {designs.map((d, i) => (
+                        <SavedDesignCard key={d.id} design={d} index={i} />
+                      ))}
+                    </div>
+                  )
+                ) : tab === "creative" ? (
+                  creativeOrders.length === 0 ? (
+                    <div className="text-center py-20 space-y-6">
+                      <div className="space-y-2">
+                        <p className="font-display text-2xl font-bold uppercase tracking-wide text-brand-text">
+                          No orders yet
+                        </p>
+                        <p className="text-sm text-brand-muted font-barlow">
+                          Submit your first brief and receive a design concept within minutes.
+                        </p>
+                      </div>
+                      <a
+                        href="/brief/choose"
+                        className="inline-block px-8 py-4 rounded-lg font-display font-bold text-sm uppercase tracking-widest bg-brand-primary text-white hover:bg-brand-secondary transition-colors"
+                      >
+                        {hasProfile ? "Start a New Order →" : "Submit Your First Brief →"}
+                      </a>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {creativeOrders.map((order, i) => (
+                        <CreativeCard key={order.id} order={order} index={i} />
+                      ))}
+                    </div>
+                  )
+                ) : (
+                  productionOrders.length === 0 ? (
+                    <p className="text-sm text-brand-muted font-barlow py-10 text-center">
+                      No production orders yet.
+                    </p>
+                  ) : (
+                    <div className="space-y-3">
+                      {productionOrders.map((order, i) => (
                         <ProductionCard key={order.id} order={order} index={i} onOpen={() => router.push(`/orders/${order.id}/tracker`)} />
                       ))}
                     </div>
-                  )}
-                </div>
-              );
-            })()
-          )}
+                  )
+                )}
+              </div>
+            );
+          })()}
 
         </div>
       </main>
@@ -438,6 +480,123 @@ function ProductionCard({ order, index, onOpen }: { order: Order; index: number;
         }`}>
         {cta}
       </span>
+    </div>
+  );
+}
+
+const KIND_LABEL: Record<string, string> = {
+  ai:      "AI Brief",
+  builder: "Jersey Builder",
+  upload:  "File Upload",
+};
+
+function DesignThumbnail({ design }: { design: SavedDesign }) {
+  if (design.thumbnailUrl) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={design.thumbnailUrl}
+        alt="Design concept"
+        className="w-16 h-16 rounded-xl object-cover flex-shrink-0 border border-brand-border/60"
+      />
+    );
+  }
+
+  if (design.kind === "builder" && design.zoneColors) {
+    const swatchColors = [
+      design.zoneColors.jerseyTop,
+      design.zoneColors.collar,
+      design.zoneColors.jerseySidePanels,
+      design.zoneColors.jerseyShorts,
+    ].filter(Boolean).slice(0, 4);
+    return (
+      <div className="w-16 h-16 rounded-xl flex-shrink-0 border border-brand-border/60 overflow-hidden grid grid-cols-2">
+        {swatchColors.map((color, i) => (
+          <div key={i} style={{ backgroundColor: color }} className="w-full h-full" />
+        ))}
+        {swatchColors.length < 4 && Array.from({ length: 4 - swatchColors.length }).map((_, i) => (
+          <div key={`empty-${i}`} className="w-full h-full bg-brand-surface" />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-16 h-16 rounded-xl flex-shrink-0 border border-brand-border/60 bg-brand-surface flex items-center justify-center">
+      <svg className="w-6 h-6 text-brand-border" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9.53 16.122a3 3 0 00-5.78 1.128 2.25 2.25 0 01-2.4 2.245 4.5 4.5 0 008.4-2.245c0-.399-.078-.78-.22-1.128zm0 0a15.998 15.998 0 003.388-1.62m-5.043-.025a15.994 15.994 0 011.622-3.395m3.42 3.42a15.995 15.995 0 004.764-4.648l3.876-5.814a1.151 1.151 0 00-1.597-1.597L14.146 6.32a15.996 15.996 0 00-4.649 4.763m3.42 3.42a6.776 6.776 0 00-3.42-3.42" />
+      </svg>
+    </div>
+  );
+}
+
+function SavedDesignCard({ design, index }: { design: SavedDesign; index: number }) {
+  function continueHref(): string {
+    if (design.kind === "upload") {
+      return design.hasFile
+        ? `/designs/${design.id}/upload-review`
+        : `/designs/${design.id}/upload`;
+    }
+    if (design.kind === "builder") {
+      return `/jersey-builder?designId=${design.id}`;
+    }
+    // AI
+    return design.hasBrief
+      ? `/designs/${design.id}/concepts`
+      : `/brief/${design.id}/style`;
+  }
+
+  return (
+    <div
+      style={{ animationDelay: `${index * 60}ms` }}
+      className="animate-fade-up bg-brand-surface border border-brand-border rounded-2xl px-5 py-4
+        transition-all duration-300 hover:border-brand-primary hover:shadow-[0_2px_12px_rgba(0,0,0,0.06)]"
+    >
+      <div className="flex items-start gap-4">
+        <DesignThumbnail design={design} />
+
+        <div className="flex-1 min-w-0 space-y-3">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0 space-y-0.5">
+              <p className="font-display font-bold uppercase tracking-wide text-brand-text text-sm truncate">
+                {design.teamName ?? "Untitled Design"}
+              </p>
+              {design.sport && (
+                <p className="text-[10px] uppercase tracking-wider text-brand-muted font-display">{design.sport}</p>
+              )}
+            </div>
+            <span className="flex-shrink-0 px-2 py-0.5 rounded-full font-display font-bold text-[9px] uppercase tracking-widest border border-brand-border text-brand-muted">
+              {KIND_LABEL[design.kind] ?? design.kind}
+            </span>
+          </div>
+
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <p className="text-[11px] font-barlow text-brand-muted">
+              {design.status === "submitted" ? "Ready to activate" : "In progress"}
+            </p>
+            <p className="text-[10px] text-brand-muted font-barlow">
+              {new Date(design.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <a
+              href={continueHref()}
+              className="px-3 py-1.5 rounded-lg font-display font-bold text-[10px] uppercase tracking-widest border border-brand-border text-brand-muted hover:text-brand-text hover:border-brand-muted transition-colors"
+            >
+              Continue
+            </a>
+            {design.status === "submitted" && (
+              <a
+                href={`/designs/${design.id}/checkout`}
+                className="px-3 py-1.5 rounded-lg font-display font-bold text-[10px] uppercase tracking-widest bg-brand-primary text-white hover:bg-brand-secondary transition-colors"
+              >
+                Activate — $149 →
+              </a>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

@@ -9,6 +9,7 @@ export const defaultBriefState: BriefState = {
   city: "",
   sport: "",
   orderId: "",
+  designId: "",
   clientId: "",
   designSystem: "",
   jerseycut: "",

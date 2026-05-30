@@ -8,8 +8,11 @@ import { createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function GET(req: NextRequest) {
-  const order_id = req.nextUrl.searchParams.get("order_id");
-  if (!order_id) return NextResponse.json({ error: "order_id required" }, { status: 400 });
+  const order_id  = req.nextUrl.searchParams.get("order_id");
+  const design_id = req.nextUrl.searchParams.get("design_id");
+  if (!order_id && !design_id) {
+    return NextResponse.json({ error: "order_id or design_id required" }, { status: 400 });
+  }
 
   // Auth check
   const supabase = createServerClient();
@@ -18,7 +21,7 @@ export async function GET(req: NextRequest) {
 
   const admin = createAdminClient();
 
-  // Verify this user owns this order (or is admin/super_admin)
+  // Verify this user owns this order/design (or is admin/super_admin)
   const { data: profile } = await admin
     .from("profiles")
     .select("role")
@@ -28,20 +31,18 @@ export async function GET(req: NextRequest) {
   const isAdminRole = profile?.role === "admin" || profile?.role === "super_admin";
 
   if (!isAdminRole) {
-    // Make sure the order belongs to a client linked to this user
-    const { data: order } = await admin
-      .from("orders")
-      .select("id, client_id")
-      .eq("id", order_id)
-      .single();
+    // Resolve the owning client_id from either orders or designs
+    const { data: row } = design_id
+      ? await admin.from("designs").select("id, client_id").eq("id", design_id).maybeSingle()
+      : await admin.from("orders").select("id, client_id").eq("id", order_id!).maybeSingle();
 
-    if (!order) return NextResponse.json({ error: "Order not found" }, { status: 404 });
+    if (!row) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
     // Check client belongs to user (by user_id or email)
     const { data: clientByUserId } = await admin
       .from("clients")
       .select("id")
-      .eq("id", order.client_id)
+      .eq("id", row.client_id)
       .eq("user_id", user.id)
       .single();
 
@@ -49,7 +50,7 @@ export async function GET(req: NextRequest) {
       const { data: clientByEmail } = await admin
         .from("clients")
         .select("id")
-        .eq("id", order.client_id)
+        .eq("id", row.client_id)
         .eq("email", user.email.toLowerCase())
         .single();
 
@@ -62,25 +63,19 @@ export async function GET(req: NextRequest) {
   }
 
   // Fetch brief data
-  const { data: brief } = await admin
-    .from("briefs")
-    .select("ai_prompt, logo_urls, logo_placement")
-    .eq("order_id", order_id)
-    .single();
+  const { data: brief } = design_id
+    ? await admin.from("briefs").select("ai_prompt, logo_urls, logo_placement").eq("design_id", design_id).maybeSingle()
+    : await admin.from("briefs").select("ai_prompt, logo_urls, logo_placement").eq("order_id", order_id!).maybeSingle();
 
   // Fetch concept rows (legacy / renders-in-concepts-table format)
-  const { data: conceptRows } = await admin
-    .from("concepts")
-    .select("id, concept_number, image_url")
-    .eq("order_id", order_id)
-    .order("concept_number");
+  const { data: conceptRows } = design_id
+    ? await admin.from("concepts").select("id, concept_number, image_url").eq("design_id", design_id).order("concept_number")
+    : await admin.from("concepts").select("id, concept_number, image_url").eq("order_id", order_id!).order("concept_number");
 
-  // Fetch order + client name
-  const { data: orderRow } = await admin
-    .from("orders")
-    .select("order_number, clients(name)")
-    .eq("id", order_id)
-    .single();
+  // Fetch order/design + client name
+  const { data: orderRow } = design_id
+    ? await admin.from("designs").select("clients(name)").eq("id", design_id).maybeSingle()
+    : await admin.from("orders").select("order_number, clients(name)").eq("id", order_id!).maybeSingle();
 
   return NextResponse.json({
     brief: brief ?? null,

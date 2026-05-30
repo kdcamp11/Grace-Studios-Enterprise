@@ -26,6 +26,7 @@ import Link from "next/link";
 import { createClient, sessionReady } from "@/lib/supabase/client";
 import { getProfile } from "@/lib/profile";
 import { saveBriefState } from "@/lib/brief-state";
+import type { RosterPlayer } from "@/types/database";
 import JerseyScene, {
   type ZoneColors,
   type ArtworkItem,
@@ -97,6 +98,11 @@ const FONTS = [
 type FontFamily = (typeof FONTS)[number]["family"];
 const DEFAULT_FONT: FontFamily = "Impact, 'Arial Black', Arial, sans-serif";
 
+const ROSTER_SIZES = ["S", "M", "L", "XL", "XXL"];
+const ROSTER_CUTS  = ["Mens", "Womens", "Youth"];
+
+function emptyRosterPlayer(): RosterPlayer { return { name: "", number: "", size: "", cut: "" }; }
+
 // ── Texture helpers ───────────────────────────────────────────────────────────
 
 /** Build a CanvasTexture whose canvas is sized to exactly fit the rendered text. */
@@ -157,34 +163,6 @@ function buildLogoTexture(src: string): Promise<THREE.Texture> {
     img.onerror = reject;
     img.src     = src;
   });
-}
-
-/**
- * Compute a world-space Euler rotation that aligns the decal with `normal` while
- * guaranteeing it never rolls (tilts) in screen space.
- *
- * A surface normal that points diagonally up-and-to-the-side (e.g. the upper
- * chest near the collar) would otherwise introduce a roll, making text look
- * slanted. We drop the sideways (X) component of the normal before building the
- * basis: the decal still leans with the garment's up/down curvature, but its
- * up-vector always projects to true vertical — so text/numbers stay upright.
- * The per-artwork `twist` slider applies any intentional rotation on top.
- */
-function normalToRotation(normal: THREE.Vector3): [number, number, number] {
-  // Flatten the sideways component → no roll, pitch (lean) preserved.
-  const forward = new THREE.Vector3(0, normal.y, normal.z);
-  if (forward.lengthSq() < 1e-6) forward.set(0, 0, 1); // pure sideways normal → face forward
-  forward.normalize();
-
-  const worldUp = new THREE.Vector3(0, 1, 0);
-  let right = new THREE.Vector3().crossVectors(worldUp, forward);
-  if (right.lengthSq() < 1e-6) right.set(1, 0, 0); // surface faces straight up/down
-  right.normalize();
-
-  const up = new THREE.Vector3().crossVectors(forward, right).normalize();
-  const m  = new THREE.Matrix4().makeBasis(right, up, forward);
-  const e  = new THREE.Euler().setFromRotationMatrix(m);
-  return [e.x, e.y, e.z];
 }
 
 // ── Colour swatch / picker ────────────────────────────────────────────────────
@@ -292,7 +270,9 @@ function CameraFitter({
 function JerseyBuilderInner() {
   const router       = useRouter();
   const searchParams = useSearchParams();
+  const designId     = searchParams.get("designId");
   const orderId      = searchParams.get("orderId");
+  const activeId     = designId ?? orderId; // prefer designId; fall back to legacy orderId
   const sport        = (searchParams.get("sport") ?? "").toLowerCase();
   const hasModel     = sport === "" || sport === "basketball";
 
@@ -323,6 +303,28 @@ function JerseyBuilderInner() {
       } catch { router.replace("/login"); }
     })();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Restore saved zone colors when continuing a design ───────────────────
+  // Runs after ready so the builder is never blocked by the server fetch.
+  useEffect(() => {
+    if (!activeId) return;
+    (async () => {
+      try {
+        const controller = new AbortController();
+        const t = setTimeout(() => controller.abort(), 6000);
+        const res = await fetch(`/api/portal/design?order_id=${encodeURIComponent(activeId)}`, {
+          signal: controller.signal,
+        });
+        clearTimeout(t);
+        if (!res.ok) return;
+        const data = await res.json() as { zoneColors?: Record<string, string> | null };
+        if (data.zoneColors && typeof data.zoneColors === "object") {
+          setColors((prev) => ({ ...prev, ...(data.zoneColors as Record<string, string>) }));
+        }
+      } catch { /* non-critical */ }
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeId]);
 
   // ── Zone colours ────────────────────────────────────────────────────────
   const [colors, setColors] = useState<ZoneColors>(DEFAULT_COLORS);
@@ -365,6 +367,10 @@ function JerseyBuilderInner() {
       });
     };
   }, []);
+
+  // ── Builder step (design → roster → review) ────────────────────────────
+  const [builderStep, setBuilderStep] = useState<"design" | "roster">("design");
+  const [rosterPlayers, setRosterPlayers] = useState<RosterPlayer[]>([emptyRosterPlayer()]);
 
   // ── View toggle (JERSEY / SHORTS) + Front / Back side ───────────────────
   const [activeView,   setActiveView]   = useState<"jersey" | "shorts">("jersey");
@@ -495,6 +501,10 @@ function JerseyBuilderInner() {
    */
   const autoPlacePosition = useCallback(
     (heightFraction = 0.55): { position: [number, number, number]; rotation: [number, number, number] } => {
+      // Flat rotation — artwork always faces straight out from front or back of garment.
+      // Surface-normal-based rotation introduces roll that makes text appear slanted.
+      const flatRotation: [number, number, number] = activeSide === "back" ? [0, Math.PI, 0] : [0, 0, 0];
+
       const mesh = activeView === "jersey" ? jerseyTopMeshRef.current : shortsMeshRef.current;
       if (mesh) {
         try {
@@ -524,23 +534,21 @@ function JerseyBuilderInner() {
             if (group) {
               group.updateWorldMatrix(true, false);
               const localPt = group.worldToLocal(worldPt.clone());
-              const invMat  = group.matrixWorld.clone().invert();
-              const localN  = worldNormal.clone().applyMatrix4(invMat).normalize();
               return {
                 position: [0, localPt.y, localPt.z],  // X=0 keeps every artwork on the jersey centre line
-                rotation: normalToRotation(localN),
+                rotation: flatRotation,
               };
             }
             return {
               position: [0, worldPt.y, worldPt.z],
-              rotation: normalToRotation(worldNormal),
+              rotation: flatRotation,
             };
           }
         } catch { /* fallback below */ }
       }
-      return { position: [0, 0, 0.5], rotation: [0, 0, 0] };
+      return { position: [0, 0, 0.5], rotation: flatRotation };
     },
-    [activeView],
+    [activeView, activeSide],
   );
 
   // ── Logo upload ─────────────────────────────────────────────────────────
@@ -630,30 +638,27 @@ function JerseyBuilderInner() {
     (hit: SurfaceHit) => {
       if (!placingId) return;
 
+      const flatRotation: [number, number, number] = activeSide === "back" ? [0, Math.PI, 0] : [0, 0, 0];
+
       // Convert world-space hit → sceneGroup local space (same as autoPlacePosition)
       const group = sceneGroupRef.current;
       const worldPt = hit.point.clone().addScaledVector(hit.normal, 0.02);
       let position: [number, number, number];
-      let rotation: [number, number, number];
 
       if (group) {
         group.updateWorldMatrix(true, false);
         const localPt = group.worldToLocal(worldPt.clone());
-        const invMat  = group.matrixWorld.clone().invert();
-        const localN  = hit.normal.clone().applyMatrix4(invMat).normalize();
         position = [localPt.x, localPt.y, localPt.z];
-        rotation = normalToRotation(localN);
       } else {
         position = [worldPt.x, worldPt.y, worldPt.z];
-        rotation = normalToRotation(hit.normal);
       }
 
       setArtworkDrafts((prev) =>
-        prev.map((a) => (a.id === placingId ? { ...a, placed: true, position, rotation } : a)),
+        prev.map((a) => (a.id === placingId ? { ...a, placed: true, position, rotation: flatRotation } : a)),
       );
       setPlacingId(null);
     },
-    [placingId],
+    [placingId, activeSide],
   );
 
   /** Remove an artwork and dispose its texture. */
@@ -666,7 +671,7 @@ function JerseyBuilderInner() {
 
   /** Snap artwork to a preset position on the active garment. */
   const snapArtwork = useCallback(
-    (id: string, preset: "center" | "upper" | "mid" | "lower") => {
+    (id: string, preset: "center" | "collar" | "upper" | "mid" | "lower" | "hem") => {
       if (preset === "center") {
         setArtworkDrafts((prev) =>
           prev.map((a) =>
@@ -677,7 +682,11 @@ function JerseyBuilderInner() {
         );
         return;
       }
-      const fraction = preset === "upper" ? 0.72 : preset === "mid" ? 0.55 : 0.38;
+      const fraction =
+        preset === "collar" ? 0.90 :
+        preset === "upper"  ? 0.72 :
+        preset === "mid"    ? 0.55 :
+        preset === "lower"  ? 0.38 : 0.18; // hem
       const { position, rotation } = autoPlacePosition(fraction);
       setArtworkDrafts((prev) =>
         prev.map((a) => (a.id === id ? { ...a, position, rotation } : a)),
@@ -765,10 +774,7 @@ function JerseyBuilderInner() {
   const handleReviewMyDesign = useCallback(async () => {
     setIsReviewing(true);
 
-    // Capture current canvas render for the portal thumbnail
-    const canvasEl = canvasContainerRef.current?.querySelector("canvas");
-    const imageDataUrl = canvasEl?.toDataURL("image/jpeg", 0.8) ?? null;
-
+    const filledRoster = rosterPlayers.filter((p) => p.name || p.number);
     const designState = {
       zoneColors: {
         jerseyTop:         colors.jerseyTop,
@@ -780,25 +786,17 @@ function JerseyBuilderInner() {
         shortSidePanels:   colors.shortSidePanels,
       },
       logosToInclude: artworkDrafts.map((a) => a.label).filter(Boolean).join(", "),
-      // Store the data URL in localStorage so builder-review shows the image
-      // immediately without waiting for the server upload to complete.
-      renderUrl: imageDataUrl,
+      playerRoster: filledRoster.length > 0 ? filledRoster : [],
+      playerNames: filledRoster.length > 0,
     };
     saveBriefState(designState);
 
-    if (orderId) {
-      // Save render + full design state so the thumbnail and the builder both
-      // restore correctly on the next visit.
-      fetch(`/api/orders/${orderId}/save-builder-preview`, {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ imageDataUrl, sport: "Basketball", garmentType: "Basketball Jersey & Shorts", zoneColors: colors, artwork: artworkDrafts }),
-      }).catch(() => {});
-      router.push(`/brief/${orderId}/builder-review`);
+    if (activeId) {
+      router.push(`/brief/${activeId}/builder-review`);
       return;
     }
 
-    // No orderId yet — try to silently create an order for returning clients
+    // No id yet — try to silently create a design for returning clients
     try {
       const supabase = createClient();
       const { data: { session } } = await supabase.auth.getSession();
@@ -809,21 +807,14 @@ function JerseyBuilderInner() {
             client: { name: string; contact_name?: string; email: string; city?: string; is_prefill?: boolean } | null;
           };
           if (client && !client.is_prefill) {
-            const startRes = await fetch("/api/brief/start", {
+            const startRes = await fetch("/api/design/start", {
               method:  "POST",
               headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
-              body:    JSON.stringify({ teamName: client.name, contactName: client.contact_name ?? "", email: client.email, city: client.city ?? "", sport: "Basketball" }),
+              body:    JSON.stringify({ teamName: client.name, contactName: client.contact_name ?? "", email: client.email, city: client.city ?? "", sport: "Basketball", kind: "builder" }),
             });
             if (startRes.ok) {
-              const { orderId: newId, clientId } = await startRes.json() as { orderId: string; clientId: string };
-              const stateWithMeta = { ...designState, teamName: client.name, contactName: client.contact_name ?? "", email: client.email, city: client.city ?? "", sport: "Basketball", orderId: newId, clientId };
-              saveBriefState(stateWithMeta);
-              // Save render + full design state now that we have an orderId
-              fetch(`/api/orders/${newId}/save-builder-preview`, {
-                method:  "POST",
-                headers: { "Content-Type": "application/json" },
-                body:    JSON.stringify({ imageDataUrl, sport: "Basketball", garmentType: "Basketball Jersey & Shorts", zoneColors: colors, artwork: artworkDrafts }),
-              }).catch(() => {});
+              const { designId: newId, clientId } = await startRes.json() as { designId: string; clientId: string };
+              saveBriefState({ ...designState, teamName: client.name, contactName: client.contact_name ?? "", email: client.email, city: client.city ?? "", sport: "Basketball", designId: newId, clientId });
               router.push(`/brief/${newId}/builder-review`);
               return;
             }
@@ -834,7 +825,7 @@ function JerseyBuilderInner() {
 
     // New client or error: collect info first
     router.push("/brief/new?path=builder-review");
-  }, [orderId, colors, artworkDrafts, router]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeId, colors, artworkDrafts, rosterPlayers, router]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!ready) {
     return (
@@ -995,7 +986,7 @@ function JerseyBuilderInner() {
 
         {/* ── Controls panel ───────────────────────────────────────────────── */}
         <div className="flex-shrink-0 w-full lg:w-[340px] border-t lg:border-t-0 lg:border-l border-brand-border bg-brand-bg flex flex-col max-h-[42dvh] overflow-hidden lg:max-h-none lg:overflow-hidden">
-          <div className="flex-1 overflow-y-auto px-6 py-7 space-y-7">
+          <div className={`flex-1 overflow-y-auto px-6 py-7 space-y-7 ${builderStep === "roster" ? "hidden" : ""}`}>
 
             {/* ── Zone colours (tab-specific) ── */}
             <section className="space-y-4">
@@ -1215,10 +1206,12 @@ function JerseyBuilderInner() {
                             <p className="text-[9px] font-display uppercase tracking-[0.15em] text-brand-muted/70">Snap To</p>
                             <div className="grid grid-cols-4 gap-1">
                               {([
-                                { id: "center", label: "⊕ Ctr",  title: "Snap to horizontal centre" },
-                                { id: "upper",  label: "↑ Top",  title: "Snap to upper chest" },
-                                { id: "mid",    label: "· Mid",  title: "Snap to mid chest" },
-                                { id: "lower",  label: "↓ Bot",  title: "Snap to lower body" },
+                                { id: "center", label: "⊕ Ctr",    title: "Snap to horizontal centre" },
+                                { id: "collar", label: "↑↑ Collar", title: "Snap to collar / neck area" },
+                                { id: "upper",  label: "↑ Chest",  title: "Snap to upper chest" },
+                                { id: "mid",    label: "· Mid",    title: "Snap to mid chest" },
+                                { id: "lower",  label: "↓ Lower",  title: "Snap to lower body" },
+                                { id: "hem",    label: "↓↓ Hem",   title: "Snap to hem / waist" },
                               ] as const).map((p) => (
                                 <button
                                   key={p.id}
@@ -1268,7 +1261,7 @@ function JerseyBuilderInner() {
                               </span>
                             </div>
                             <input
-                              type="range" min={-450} max={450} step={5}
+                              type="range" min={-500} max={500} step={5}
                               value={Math.round((art.position?.[1] ?? 0) * 100)}
                               onChange={(e) =>
                                 setArtworkDrafts((prev) =>
@@ -1399,27 +1392,150 @@ function JerseyBuilderInner() {
 
           </div>
 
-          {/* ── CTA ── */}
-          <div className="border-t border-brand-border px-6 py-5 space-y-3">
-            <button
-              onClick={handleReviewMyDesign}
-              disabled={isReviewing}
-              className="flex items-center justify-center w-full py-3.5 rounded-lg bg-brand-primary text-white font-display font-bold text-xs uppercase tracking-widest hover:bg-brand-secondary transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              {isReviewing ? "Preparing…" : "Review My Design →"}
-            </button>
-            {orderId && (
+          {/* ── Roster panel (shown when builderStep === "roster") ── */}
+          {builderStep === "roster" && (
+            <div className="flex-1 overflow-y-auto px-6 py-6 space-y-5">
+              <div>
+                <p className="text-[9px] font-display font-bold uppercase tracking-[0.2em] text-brand-muted/60 mb-1">Player Roster</p>
+                <p className="text-[10px] font-barlow text-brand-muted/70 leading-relaxed">
+                  Optional — add player names, numbers, sizes, and cuts.
+                </p>
+              </div>
+
+              <div className="overflow-x-auto rounded-xl border border-brand-border">
+                <table className="w-full text-xs font-barlow">
+                  <thead>
+                    <tr className="border-b border-brand-border bg-brand-surface">
+                      <th className="w-6 py-2 px-2 text-left text-[8px] font-display uppercase tracking-wider text-brand-muted">#</th>
+                      <th className="py-2 px-2 text-left text-[8px] font-display uppercase tracking-wider text-brand-muted">Name</th>
+                      <th className="w-12 py-2 px-2 text-left text-[8px] font-display uppercase tracking-wider text-brand-muted">No.</th>
+                      <th className="w-16 py-2 px-2 text-left text-[8px] font-display uppercase tracking-wider text-brand-muted">Size</th>
+                      <th className="w-16 py-2 px-2 text-left text-[8px] font-display uppercase tracking-wider text-brand-muted">Cut</th>
+                      <th className="w-6 py-2 px-1" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rosterPlayers.map((player, i) => (
+                      <tr key={i} className="border-b border-brand-border last:border-b-0 hover:bg-brand-surface/50">
+                        <td className="py-1 px-2 text-brand-muted text-[9px]">{i + 1}</td>
+                        <td className="py-1 px-1">
+                          <input
+                            type="text"
+                            value={player.name}
+                            onChange={(e) => setRosterPlayers((prev) => {
+                              const next = [...prev];
+                              next[i] = { ...next[i], name: e.target.value };
+                              return next;
+                            })}
+                            placeholder="Name"
+                            className="w-full bg-transparent text-brand-text placeholder-brand-border focus:outline-none py-0.5 text-[10px]"
+                          />
+                        </td>
+                        <td className="py-1 px-1">
+                          <input
+                            type="text"
+                            value={player.number}
+                            maxLength={3}
+                            onChange={(e) => setRosterPlayers((prev) => {
+                              const next = [...prev];
+                              next[i] = { ...next[i], number: e.target.value };
+                              return next;
+                            })}
+                            placeholder="00"
+                            className="w-full bg-transparent text-brand-text placeholder-brand-border focus:outline-none py-0.5 text-[10px]"
+                          />
+                        </td>
+                        <td className="py-1 px-1">
+                          <select
+                            value={player.size}
+                            onChange={(e) => setRosterPlayers((prev) => {
+                              const next = [...prev];
+                              next[i] = { ...next[i], size: e.target.value };
+                              return next;
+                            })}
+                            className="w-full bg-transparent text-brand-text focus:outline-none py-0.5 text-[10px] cursor-pointer"
+                          >
+                            <option value="" className="bg-brand-surface">—</option>
+                            {ROSTER_SIZES.map((s) => <option key={s} value={s} className="bg-brand-surface">{s}</option>)}
+                          </select>
+                        </td>
+                        <td className="py-1 px-1">
+                          <select
+                            value={player.cut}
+                            onChange={(e) => setRosterPlayers((prev) => {
+                              const next = [...prev];
+                              next[i] = { ...next[i], cut: e.target.value };
+                              return next;
+                            })}
+                            className="w-full bg-transparent text-brand-text focus:outline-none py-0.5 text-[10px] cursor-pointer"
+                          >
+                            <option value="" className="bg-brand-surface">—</option>
+                            {ROSTER_CUTS.map((c) => <option key={c} value={c} className="bg-brand-surface">{c}</option>)}
+                          </select>
+                        </td>
+                        <td className="py-1 px-1">
+                          {rosterPlayers.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => setRosterPlayers((prev) => prev.filter((_, idx) => idx !== i))}
+                              className="text-brand-border hover:text-red-400 transition-colors"
+                            >
+                              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
               <button
                 type="button"
-                onClick={handleSave}
-                disabled={isSaving}
-                className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg border border-brand-border text-brand-muted font-display font-bold text-[11px] uppercase tracking-widest hover:border-brand-primary hover:text-brand-text transition-colors disabled:opacity-50"
+                onClick={() => setRosterPlayers((prev) => [...prev, emptyRosterPlayer()])}
+                className="text-brand-muted hover:text-brand-primary text-[10px] font-barlow flex items-center gap-1.5 transition-colors"
               >
-                {isSaving ? "Saving…" : savedOk ? "✓ Saved" : "Save Design"}
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                </svg>
+                Add player
               </button>
+            </div>
+          )}
+
+          {/* ── CTA ── */}
+          <div className="border-t border-brand-border px-6 py-5 space-y-3">
+            {builderStep === "design" ? (
+              <button
+                onClick={() => setBuilderStep("roster")}
+                className="flex items-center justify-center w-full py-3.5 rounded-lg bg-brand-primary text-white font-display font-bold text-xs uppercase tracking-widest hover:bg-brand-secondary transition-colors"
+              >
+                Continue to Roster →
+              </button>
+            ) : (
+              <>
+                <button
+                  onClick={handleReviewMyDesign}
+                  disabled={isReviewing}
+                  className="flex items-center justify-center w-full py-3.5 rounded-lg bg-brand-primary text-white font-display font-bold text-xs uppercase tracking-widest hover:bg-brand-secondary transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {isReviewing ? "Preparing…" : "Approve & Review →"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBuilderStep("design")}
+                  className="w-full py-2 text-[9px] font-display font-bold uppercase tracking-widest text-brand-muted hover:text-brand-text transition-colors"
+                >
+                  ← Back to Design
+                </button>
+              </>
             )}
             <p className="text-[9px] font-barlow text-brand-muted/70 text-center leading-relaxed">
-              Review your selections before submitting to Grace Studios.
+              {builderStep === "design"
+                ? "Add your player roster before submitting."
+                : "Review your selections before submitting to Grace Studios."}
             </p>
           </div>
         </div>

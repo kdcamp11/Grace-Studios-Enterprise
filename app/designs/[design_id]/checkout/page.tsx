@@ -5,50 +5,50 @@ import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import OrgLogo from "@/components/OrgLogo";
 
-interface OrderInfo {
-  order_number:    string;
-  team_name:       string;
-  sport:           string;
-  garment_type:    string;
-  design_system:   string;
-  preview_url:     string | null;
-  design_fee_paid: boolean;
-  concept_source:  "ai" | "client_provided";
+interface DesignInfo {
+  teamName:          string | null;
+  sport:             string | null;
+  clientConceptUrl:  string | null;
+  status:            string;
+  kind:              string | null;
 }
 
-// Creative Activation — $149.00 (matches DESIGN_DEPOSIT_CENTS in the API)
 const ACTIVATION_FEE_DISPLAY = "$149";
 
-export default function CheckoutPage() {
-  const { order_id } = useParams<{ order_id: string }>();
-  const router       = useRouter();
-  const supabaseRef  = useRef(createClient());
-  const supabase     = supabaseRef.current;
+export default function DesignCheckoutPage() {
+  const { design_id } = useParams<{ design_id: string }>();
+  const router        = useRouter();
+  const supabaseRef   = useRef(createClient());
+  const supabase      = supabaseRef.current;
 
-  const [info, setInfo]       = useState<OrderInfo | null>(null);
+  const [info, setInfo]       = useState<DesignInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [paying, setPaying]   = useState(false);
   const [error, setError]     = useState<string | null>(null);
-
-  const isClientProvided = info?.concept_source === "client_provided";
 
   useEffect(() => {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { router.replace("/login"); return; }
 
-      const res = await fetch(`/api/orders/info?orderId=${order_id}`);
+      const res = await fetch(`/api/designs/${design_id}/info`);
       if (!res.ok) { setLoading(false); return; }
 
-      const data = await res.json() as OrderInfo;
+      const data = await res.json() as DesignInfo;
 
-      // Already paid — skip to the right destination
-      if (data.design_fee_paid) {
-        if (data.concept_source === "client_provided") {
-          router.replace(`/orders/${order_id}/tracker`);
-        } else {
-          router.replace(`/orders/${order_id}/concepts`);
+      // Already converted — redirect to the minted order
+      if (data.status === "converted") {
+        const statusRes = await fetch(`/api/designs/${design_id}/status`);
+        if (statusRes.ok) {
+          const { orderId } = await statusRes.json() as { orderId: string | null };
+          if (orderId) {
+            router.replace(data.kind === "upload"
+              ? `/orders/${orderId}/tracker`
+              : `/orders/${orderId}/concepts`);
+            return;
+          }
         }
+        router.replace("/portal");
         return;
       }
 
@@ -56,30 +56,23 @@ export default function CheckoutPage() {
       setLoading(false);
     }
     load();
-  }, [order_id, supabase, router]);
+  }, [design_id, supabase, router]);
 
   async function handlePay() {
     setPaying(true);
     setError(null);
     try {
-      const res = await fetch(`/api/orders/${order_id}/design-deposit`, {
+      const res = await fetch(`/api/designs/${design_id}/design-deposit`, {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
       });
 
-      // Guard against empty body (e.g. a server crash returning 500 with no JSON)
       const text = await res.text();
-      if (!text) {
-        throw new Error("Server did not respond. Please try again in a moment.");
-      }
+      if (!text) throw new Error("Server did not respond. Please try again in a moment.");
 
       const data = JSON.parse(text) as { url?: string; error?: string };
+      if (!res.ok || !data.url) throw new Error(data.error ?? "Unable to start checkout.");
 
-      if (!res.ok || !data.url) {
-        throw new Error(data.error ?? "Unable to start checkout. Please try again.");
-      }
-
-      // Redirect to Stripe Checkout
       window.location.href = data.url;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
@@ -98,10 +91,12 @@ export default function CheckoutPage() {
   if (!info) {
     return (
       <div className="min-h-screen bg-brand-bg flex items-center justify-center">
-        <p className="text-brand-muted font-barlow">Order not found.</p>
+        <p className="text-brand-muted font-barlow">Design not found.</p>
       </div>
     );
   }
+
+  const isUpload = info.kind === "upload";
 
   return (
     <div className="min-h-screen bg-brand-bg flex flex-col">
@@ -109,7 +104,7 @@ export default function CheckoutPage() {
         <OrgLogo href="/portal" />
         <button
           type="button"
-          onClick={() => router.push(isClientProvided ? `/orders/${order_id}/tracker` : `/orders/${order_id}/concepts`)}
+          onClick={() => router.back()}
           className="text-xs font-display font-bold uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors"
         >
           ← Back
@@ -133,25 +128,7 @@ export default function CheckoutPage() {
             </p>
           </div>
 
-          {/* Preview thumbnail (AI path only) */}
-          {info.preview_url && !isClientProvided && (
-            <div className="relative rounded-2xl overflow-hidden border border-brand-border bg-gray-50 aspect-square max-w-[180px] mx-auto">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={info.preview_url}
-                alt="Concept preview"
-                className="w-full h-full object-contain"
-              />
-              {/* Lock overlay on the right half */}
-              <div className="absolute inset-y-0 right-0 w-1/2 backdrop-blur-md bg-brand-bg/60 flex items-center justify-center">
-                <svg className="w-6 h-6 text-brand-muted/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
-                </svg>
-              </div>
-            </div>
-          )}
-
-          {/* Brief ready confirmation */}
+          {/* Confirmation */}
           <div className="flex items-center gap-3 rounded-2xl border border-brand-primary/20 bg-brand-primary/5 px-5 py-4">
             <div className="w-8 h-8 rounded-full bg-brand-primary/15 border border-brand-primary/30 flex items-center justify-center flex-shrink-0">
               <svg className="w-4 h-4 text-brand-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -159,48 +136,38 @@ export default function CheckoutPage() {
               </svg>
             </div>
             <div>
-              <p className="text-xs font-display font-bold uppercase tracking-wider text-brand-primary">Brief Received</p>
+              <p className="text-xs font-display font-bold uppercase tracking-wider text-brand-primary">Design Ready</p>
               <p className="text-[10px] text-brand-muted font-barlow mt-0.5">
-                {isClientProvided
-                  ? "Your design direction is locked in. Activate to put a Grace Studios designer on it."
-                  : "Your concepts are ready. Activate to release the full set and move into production."}
+                {isUpload
+                  ? "Your file is uploaded. Activate to put a Grace Studios designer on it."
+                  : "Your design direction is set. Activate to move into production."}
               </p>
             </div>
           </div>
 
-          {/* Order summary card */}
+          {/* Order summary */}
           <div className="rounded-2xl border border-brand-border bg-brand-surface divide-y divide-brand-border">
-            <div className="px-6 py-4 flex items-center justify-between">
-              <span className="text-xs font-display uppercase tracking-wider text-brand-muted">Team</span>
-              <span className="text-sm font-bold text-brand-text font-display uppercase tracking-wide">
-                {info.team_name}
-              </span>
-            </div>
-            {!isClientProvided && (
+            {info.teamName && (
               <div className="px-6 py-4 flex items-center justify-between">
-                <span className="text-xs font-display uppercase tracking-wider text-brand-muted">Garment</span>
-                <span className="text-xs text-brand-text font-barlow">{info.garment_type}</span>
-              </div>
-            )}
-            {!isClientProvided && (
-              <div className="px-6 py-4 flex items-center justify-between">
-                <span className="text-xs font-display uppercase tracking-wider text-brand-muted">Design System</span>
-                <span className="inline-block px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-widest bg-gray-900 text-white border border-brand-border">
-                  {info.design_system.toUpperCase()}
+                <span className="text-xs font-display uppercase tracking-wider text-brand-muted">Team</span>
+                <span className="text-sm font-bold text-brand-text font-display uppercase tracking-wide">
+                  {info.teamName}
                 </span>
               </div>
             )}
-            <div className="px-6 py-4 flex items-center justify-between">
-              <span className="text-xs font-display uppercase tracking-wider text-brand-muted">Order</span>
-              <span className="text-xs font-mono text-brand-text">{info.order_number}</span>
-            </div>
+            {info.sport && (
+              <div className="px-6 py-4 flex items-center justify-between">
+                <span className="text-xs font-display uppercase tracking-wider text-brand-muted">Sport</span>
+                <span className="text-xs text-brand-text font-barlow">{info.sport}</span>
+              </div>
+            )}
             <div className="px-6 py-5 flex items-center justify-between bg-brand-surface rounded-b-2xl">
               <div>
                 <span className="text-sm font-display font-bold uppercase tracking-wider text-brand-text">
                   Creative Activation
                 </span>
                 <p className="text-[9px] text-brand-muted font-barlow mt-0.5">
-                  Applied toward your final order total.
+                  Applied toward your final order total
                 </p>
               </div>
               <span className="text-2xl font-display font-bold text-brand-primary tracking-wide">
@@ -209,29 +176,29 @@ export default function CheckoutPage() {
             </div>
           </div>
 
-          {/* What activation unlocks */}
+          {/* What's included */}
           <div className="rounded-2xl border border-brand-border bg-brand-surface px-5 py-4 space-y-2">
             <p className="text-[9px] font-display font-bold uppercase tracking-[0.28em] text-brand-muted mb-3">
               What&apos;s Included
             </p>
-            {isClientProvided ? (
+            {isUpload ? (
               <>
                 <IncludedItem text="Grace Studios designer assigned to your project" />
                 <IncludedItem text="Production-ready artwork prepared from your direction" />
-                <IncludedItem text="Two revision rounds included" />
+                <IncludedItem text="One revision round included" />
                 <IncludedItem text="Full production tracking from brief to delivery" />
               </>
             ) : (
               <>
                 <IncludedItem text="Full concept set released for your review" />
-                <IncludedItem text="Designer assigned and brief approved" />
+                <IncludedItem text="Designer assigned and brief confirmed" />
                 <IncludedItem text="Production-ready artwork prepared" />
                 <IncludedItem text="Full production tracking from brief to delivery" />
               </>
             )}
           </div>
 
-          {/* Activate button */}
+          {/* Pay button */}
           <div className="space-y-3">
             <button
               type="button"
@@ -251,8 +218,7 @@ export default function CheckoutPage() {
             )}
 
             <p className="text-[10px] text-brand-muted font-barlow text-center leading-relaxed">
-              Secure checkout via Stripe.{" "}
-              Your Creative Activation is applied toward your final order total.
+              Secure checkout via Stripe. Your Creative Activation is applied toward your final order total.
             </p>
           </div>
 
