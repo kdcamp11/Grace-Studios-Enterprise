@@ -257,7 +257,7 @@ export default function UploadProductionFilePage() {
               transition-all duration-200 shadow-[0_4px_24px_rgba(212,175,55,0.2)]
               hover:shadow-[0_4px_32px_rgba(212,175,55,0.35)]"
           >
-            {uploading ? "Uploading…" : file ? "Upload File → Proceed to Payment" : "Select a File to Continue"}
+            {uploading ? "Uploading…" : file ? "Proceed to Activation →" : "Select a File to Continue"}
           </button>
 
         </div>

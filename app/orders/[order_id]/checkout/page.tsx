@@ -243,7 +243,7 @@ export default function CheckoutPage() {
                 transition-all duration-200 shadow-[0_4px_24px_rgba(212,175,55,0.25)]
                 hover:shadow-[0_4px_32px_rgba(212,175,55,0.4)]"
             >
-              {paying ? "Redirecting…" : `Creative Activation — ${ACTIVATION_FEE_DISPLAY}`}
+              {paying ? "Redirecting…" : "Proceed to Activation →"}
             </button>
 
             {error && (
