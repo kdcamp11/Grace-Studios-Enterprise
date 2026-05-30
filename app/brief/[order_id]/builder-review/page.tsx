@@ -48,6 +48,7 @@ export default function BuilderReviewPage() {
   const [submitted, setSubmitted]     = useState(false);
   const [feePaid, setFeePaid]         = useState(false);
   const [ready, setReady]             = useState(false);
+  const [proceeding, setProceeding]   = useState(false);
   // True when the URL param is a pre-payment design_id (no order exists yet).
   const [isDesignFlow, setIsDesignFlow] = useState(false);
 
@@ -189,6 +190,20 @@ export default function BuilderReviewPage() {
     }
   }
 
+  // Commit the activated order to its managed-production path and follow it to
+  // the tracker. The production path is already in place — no re-selection.
+  async function proceedToProduction() {
+    setProceeding(true);
+    try {
+      await fetch("/api/orders/choose-production", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ order_id, choice: "production" }),
+      });
+    } catch { /* navigate regardless — tracker reflects current state */ }
+    router.push(`/orders/${order_id}/tracker`);
+  }
+
   if (!ready || !brief) {
     return (
       <BriefLayout currentStep={3} steps={BUILDER_STEPS} title="Review & Submit">
@@ -312,13 +327,15 @@ export default function BuilderReviewPage() {
                     Your project is active. A Grace Studios designer is working on your design.
                   </p>
                 </div>
-                <a
-                  href={`/orders/${order_id}/tracker`}
+                <button
+                  type="button"
+                  onClick={proceedToProduction}
+                  disabled={proceeding}
                   className="block w-full py-3.5 rounded-lg text-center font-display font-bold text-base uppercase tracking-widest
-                    bg-brand-primary text-brand-bg hover:bg-brand-secondary transition-all duration-200"
+                    bg-brand-primary text-brand-bg hover:bg-brand-secondary disabled:opacity-50 transition-all duration-200"
                 >
-                  Proceed to Production →
-                </a>
+                  {proceeding ? "Proceeding…" : "Proceed to Production →"}
+                </button>
               </>
             ) : (
               <>

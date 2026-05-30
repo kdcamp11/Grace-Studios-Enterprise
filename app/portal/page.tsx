@@ -311,9 +311,25 @@ function PortalContent() {
 }
 
 function CreativeCard({ order, index }: { order: Order; index: number }) {
+  const router       = useRouter();
   const orderLabel   = order.order_number || order.id.slice(0, 8).toUpperCase();
   const notSubmitted = isAwaitingConcepts(order.stage); // creative_started / legacy onboarding
   const approved     = !notSubmitted;
+  const [proceeding, setProceeding] = useState(false);
+
+  // Commit the activated order to its managed-production path (already in place)
+  // and follow it to the tracker. No path re-selection — production is the order.
+  async function proceedToProduction() {
+    setProceeding(true);
+    try {
+      await fetch("/api/orders/choose-production", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ order_id: order.id, choice: "production" }),
+      });
+    } catch { /* navigate regardless — tracker reflects current state */ }
+    router.push(`/orders/${order.id}/tracker`);
+  }
   // The order's creation path is the source of truth. There are three kinds:
   //
   //   1. AI design brief   — concept_source null/"ai"; we generate concepts.
@@ -434,14 +450,23 @@ function CreativeCard({ order, index }: { order: Order; index: number }) {
           </a>
         )}
         {approved ? (
-          <a
-            href={order.design_fee_paid
-              ? `/orders/${order.id}/tracker`
-              : `/orders/${order.id}/checkout`}
-            className="px-4 py-2 rounded-lg font-display font-bold text-[11px] uppercase tracking-widest bg-emerald-500 text-white hover:bg-emerald-600 transition-colors"
-          >
-            Proceed to Production
-          </a>
+          order.design_fee_paid ? (
+            <button
+              type="button"
+              onClick={proceedToProduction}
+              disabled={proceeding}
+              className="px-4 py-2 rounded-lg font-display font-bold text-[11px] uppercase tracking-widest bg-emerald-500 text-white hover:bg-emerald-600 disabled:opacity-50 transition-colors"
+            >
+              {proceeding ? "Proceeding…" : "Proceed to Production"}
+            </button>
+          ) : (
+            <a
+              href={`/orders/${order.id}/checkout`}
+              className="px-4 py-2 rounded-lg font-display font-bold text-[11px] uppercase tracking-widest bg-emerald-500 text-white hover:bg-emerald-600 transition-colors"
+            >
+              Proceed to Production
+            </a>
+          )
         ) : (
           <button
             type="button"
