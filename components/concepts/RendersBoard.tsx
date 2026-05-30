@@ -98,6 +98,46 @@ export function RendersBoard({ data, studioName, isBuilder }: { data: BoardData;
         <span className="text-[9px] font-mono text-gray-300 tracking-widest">{orderNumber}</span>
       </div>
 
+      {isBuilder ? (
+        /* ── Builder: single jersey preview ─────────────────────────────── */
+        <div className="flex flex-col md:flex-row" style={{ minHeight: 420 }}>
+          {/* Left — team info */}
+          <div
+            className="flex-shrink-0 border-b md:border-b-0 md:border-r border-gray-200 bg-white flex flex-col"
+            style={{ width: undefined, minWidth: undefined }}
+          >
+            <div className="px-5 pt-5 pb-4 md:w-48">
+              <p className="text-[7px] font-bold uppercase tracking-[0.32em] text-gray-400 mb-1">{studioName ?? "Custom Sportswear"}</p>
+              <p className="text-sm font-bold uppercase tracking-wide text-gray-900 leading-tight break-words">{teamName}</p>
+              <p className="text-[8px] uppercase tracking-[0.18em] text-gray-400 mt-1">{garmentType}</p>
+            </div>
+            {primaryLogo && (
+              <div className="px-5 py-3 border-t border-gray-100 md:w-48">
+                <p className="text-[7px] font-bold uppercase tracking-[0.28em] text-gray-400 mb-2">Team Logo</p>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={primaryLogo} alt={`${teamName} logo`} className="max-h-12 w-auto object-contain" style={{ maxWidth: "100%" }} />
+              </div>
+            )}
+            <div className="hidden md:block px-5 py-4 border-t border-gray-100 mt-auto md:w-48">
+              <p className="text-[7px] font-bold uppercase tracking-[0.28em] text-gray-400 mb-2">Design Preview</p>
+              <p className="text-[8px] text-gray-500 leading-relaxed">
+                Front colorway preview from your builder selections. Full views developed during production.
+              </p>
+            </div>
+          </div>
+
+          {/* Center — full-width jersey image */}
+          <div className="flex-1 flex items-center justify-center bg-gray-50" style={{ minHeight: 380 }}>
+            <RenderImage
+              url={renders?.frontJersey}
+              alt="Jersey front"
+              className="w-full h-full"
+              style={{ minHeight: 380 }}
+            />
+          </div>
+        </div>
+      ) : (
+        <>
       {/* ── Mobile layout — 2×2 image grid only ────────────────────────────── */}
       <div className="md:hidden" style={{ backgroundColor: "#f9f8f5" }}>
         {/* Team info strip */}
@@ -118,7 +158,7 @@ export function RendersBoard({ data, studioName, isBuilder }: { data: BoardData;
             <span className="absolute top-2 left-2.5 text-[8px] font-bold uppercase tracking-[0.22em] text-gray-400 z-10 bg-white/80 px-1.5 py-0.5 rounded">
               {col1Label} Front
             </span>
-            <RenderImage url={renders?.frontJersey} alt={`${col1Label} front`} className="absolute inset-0 w-full h-full" placeholder={isBuilder ? "Design Preview" : undefined} />
+            <RenderImage url={renders?.frontJersey} alt={`${col1Label} front`} className="absolute inset-0 w-full h-full" />
           </div>
 
           {/* Front shorts/pants */}
@@ -126,7 +166,7 @@ export function RendersBoard({ data, studioName, isBuilder }: { data: BoardData;
             <span className="absolute top-2 left-2.5 text-[8px] font-bold uppercase tracking-[0.22em] text-gray-400 z-10 bg-white/80 px-1.5 py-0.5 rounded">
               {col2Label} Front
             </span>
-            <RenderImage url={isBuilder ? undefined : renders?.frontShorts} alt={`${col2Label} front`} className="absolute inset-0 w-full h-full" placeholder={isBuilder ? "Developed in Production" : undefined} />
+            <RenderImage url={renders?.frontShorts} alt={`${col2Label} front`} className="absolute inset-0 w-full h-full" />
           </div>
 
           {/* Back jacket/jersey */}
@@ -134,7 +174,7 @@ export function RendersBoard({ data, studioName, isBuilder }: { data: BoardData;
             <span className="absolute top-2 left-2.5 text-[8px] font-bold uppercase tracking-[0.22em] text-gray-400 z-10 bg-white/80 px-1.5 py-0.5 rounded">
               {col1Label} Back
             </span>
-            <RenderImage url={isBuilder ? undefined : renders?.backJersey} alt={`${col1Label} back`} className="absolute inset-0 w-full h-full" placeholder={isBuilder ? "Developed in Production" : undefined} />
+            <RenderImage url={renders?.backJersey} alt={`${col1Label} back`} className="absolute inset-0 w-full h-full" />
           </div>
 
           {/* Back shorts/pants */}
@@ -142,7 +182,7 @@ export function RendersBoard({ data, studioName, isBuilder }: { data: BoardData;
             <span className="absolute top-2 left-2.5 text-[8px] font-bold uppercase tracking-[0.22em] text-gray-400 z-10 bg-white/80 px-1.5 py-0.5 rounded">
               {col2Label} Back
             </span>
-            <RenderImage url={isBuilder ? undefined : renders?.backShorts} alt={`${col2Label} back`} className="absolute inset-0 w-full h-full" placeholder={isBuilder ? "Developed in Production" : undefined} />
+            <RenderImage url={renders?.backShorts} alt={`${col2Label} back`} className="absolute inset-0 w-full h-full" />
           </div>
         </div>
       </div>
@@ -240,21 +280,21 @@ export function RendersBoard({ data, studioName, isBuilder }: { data: BoardData;
           <div className="flex-1 grid grid-cols-2 grid-rows-2">
             <div className="relative border-r border-b border-gray-200 overflow-hidden" style={{ minHeight: 240 }}>
               <span className="absolute top-2 left-2.5 text-[6px] font-bold uppercase tracking-[0.28em] text-gray-300 z-10">Front</span>
-              <RenderImage url={renders?.frontJersey} alt={`${col1Label} front`} className="w-full h-full" placeholder={isBuilder ? "Design Preview" : undefined} />
+              <RenderImage url={renders?.frontJersey} alt={`${col1Label} front`} className="w-full h-full" />
             </div>
 
             <div className="relative border-b border-gray-200 overflow-hidden" style={{ minHeight: 240 }}>
               <span className="absolute top-2 left-2.5 text-[6px] font-bold uppercase tracking-[0.28em] text-gray-300 z-10">Front</span>
-              <RenderImage url={isBuilder ? undefined : renders?.frontShorts} alt={`${col2Label} front`} className="w-full h-full" placeholder={isBuilder ? "Developed in Production" : undefined} />
+              <RenderImage url={renders?.frontShorts} alt={`${col2Label} front`} className="w-full h-full" />
             </div>
 
             <div className="relative border-r border-gray-200 overflow-hidden" style={{ minHeight: 240 }}>
               <span className="absolute top-2 left-2.5 text-[6px] font-bold uppercase tracking-[0.28em] text-gray-300 z-10">Back</span>
-              <RenderImage url={isBuilder ? undefined : renders?.backJersey} alt={`${col1Label} back`} className="w-full h-full" placeholder={isBuilder ? "Developed in Production" : undefined} />
+              <RenderImage url={renders?.backJersey} alt={`${col1Label} back`} className="w-full h-full" />
             </div>
             <div className="relative overflow-hidden" style={{ minHeight: 240 }}>
               <span className="absolute top-2 left-2.5 text-[6px] font-bold uppercase tracking-[0.28em] text-gray-300 z-10">Back</span>
-              <RenderImage url={isBuilder ? undefined : renders?.backShorts} alt={`${col2Label} back`} className="w-full h-full" placeholder={isBuilder ? "Developed in Production" : undefined} />
+              <RenderImage url={renders?.backShorts} alt={`${col2Label} back`} className="w-full h-full" />
             </div>
           </div>
         </div>
@@ -269,7 +309,6 @@ export function RendersBoard({ data, studioName, isBuilder }: { data: BoardData;
             <p className="text-[8px] text-gray-500 leading-relaxed">
               {(() => {
                 const desc = (metadata.description ?? "").trim();
-                // Don't show raw JSON blobs — only human-readable text
                 if (!desc || desc.startsWith("{") || desc.startsWith("[")) return null;
                 return desc.slice(0, 200);
               })()}
@@ -277,11 +316,9 @@ export function RendersBoard({ data, studioName, isBuilder }: { data: BoardData;
           </div>
 
           <div className="px-4 py-4">
-            <p className="text-[7px] font-bold uppercase tracking-[0.28em] text-gray-400 mb-2">{isBuilder ? "Design Preview" : "Render Quality"}</p>
+            <p className="text-[7px] font-bold uppercase tracking-[0.28em] text-gray-400 mb-2">Render Quality</p>
             <p className="text-[8px] text-gray-500 leading-relaxed">
-              {isBuilder
-                ? "Front colorway preview from your builder selections. Full views developed during production."
-                : "Semi-3D photorealistic. Typography sublimated into fabric by AI. Team logo composited from uploaded asset."}
+              Semi-3D photorealistic. Typography sublimated into fabric by AI. Team logo composited from uploaded asset.
             </p>
           </div>
 
@@ -292,12 +329,15 @@ export function RendersBoard({ data, studioName, isBuilder }: { data: BoardData;
           </div>
         </div>
       </div>{/* end desktop 3-col */}
+        </>
+      )}
 
       {/* ── Footer ─────────────────────────────────────────────────────────── */}
       <div className="border-t border-gray-200 bg-white px-5 py-2.5 flex items-center justify-between">
         <p className="text-[7px] text-gray-400 italic leading-relaxed max-w-lg">
-          AI concept renders are for visual direction only and may not exactly match final production.
-          Colors, proportions, and details are subject to refinement. Logos are composited separately.
+          {isBuilder
+            ? "Builder preview is for colorway reference only. Final garment views are developed by a Grace Studios designer during production."
+            : "AI concept renders are for visual direction only and may not exactly match final production. Colors, proportions, and details are subject to refinement. Logos are composited separately."}
         </p>
         <span className="text-[7px] font-mono text-gray-300 tracking-widest flex-shrink-0 ml-4">
           GRACE ATHLETICS: CONCEPT DRAFT
