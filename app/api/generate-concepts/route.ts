@@ -1045,7 +1045,7 @@ function buildGarmentPrompt(
     `Background: pure clean white (#ffffff). No cast shadows on background. No floor, no environment. Isolated garment only.`,
 
     // ── Output ──
-    `Output: single isolated garment render on a square canvas. The ENTIRE garment must be fully visible and centered within the frame with comfortable margin on all sides — do not crop, cut off, or let any edge of the garment touch or exceed the frame boundary. Full garment in view, photorealistic premium sportswear quality.`,
+    `Output: a full product packshot of ONE isolated garment, centered on a plain seamless studio background. Size the garment to occupy roughly 70-75% of the frame so there is clear empty margin on ALL FOUR sides — generous space above the top edge, below the bottom hem, and beyond the left and right edges. The COMPLETE garment must sit fully inside the frame: every sleeve, hem, shoulder, collar, and corner clearly within view with breathing room around it. Do NOT zoom in, do NOT crop, do NOT let any part of the garment touch or extend past the canvas edge. Square canvas, photorealistic premium sportswear catalog quality.`,
   ].filter(Boolean).join("\n\n");
 }
 
