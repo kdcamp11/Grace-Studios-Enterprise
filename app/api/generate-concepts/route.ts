@@ -47,6 +47,10 @@ export interface DesignMetadata {
   // Design spec fields
   garmentType:   string;
   designSystem?: string;
+  /** Sport the concept was rendered for — persisted so a regenerate reuses the
+   *  same garment type (e.g. tracksuit vs basketball) instead of re-deriving
+   *  from client.sport, which may be empty and default to basketball. */
+  sport?:        string;
   colorway:      { role: string; name: string; hex: string; pantone?: string }[];
   materials:     string[];
   features:      string[];
@@ -1096,6 +1100,12 @@ export async function POST(req: NextRequest) {
       .eq(bf.field, bf.id)
       .maybeSingle();
 
+    // On a regenerate, reuse the garment context (sport + design system) from the
+    // previously-rendered metadata so the new concept matches the original — never
+    // silently fall back to the basketball/bold defaults.
+    let priorSport:        string | null = null;
+    let priorDesignSystem: string | null = null;
+
     if (existingBrief?.ai_prompt) {
       try {
         const existing = JSON.parse(existingBrief.ai_prompt as string) as DesignMetadata;
@@ -1106,6 +1116,15 @@ export async function POST(req: NextRequest) {
         // new generation run can proceed even when a previous one finished.
         if (existing.status === "completed" && !force) {
           return NextResponse.json({ status: "already_completed" }, { status: 409 });
+        }
+        if (typeof existing.sport === "string" && existing.sport)               priorSport = existing.sport;
+        if (typeof existing.designSystem === "string" && existing.designSystem) priorDesignSystem = existing.designSystem;
+        // Back-compat: designs rendered before `sport` was persisted only have a
+        // garmentType label — infer the sport from it so a tracksuit regenerate
+        // doesn't silently default to basketball.
+        if (!priorSport && typeof existing.garmentType === "string") {
+          if (/tracksuit/i.test(existing.garmentType)) priorSport = "tracksuits";
+          else if (/basketball/i.test(existing.garmentType)) priorSport = "basketball";
         }
       } catch { /* not valid JSON — proceed */ }
     }
@@ -1149,8 +1168,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Client not found" }, { status: 404 });
     }
 
-    const sport        = (client.sport as string) ?? "basketball";
-    const designSystem = (brief.design_system as string) ?? "bold";
+    // Prefer the prior render's garment context on regenerate; otherwise derive
+    // from the client/brief, defaulting only when nothing else is available.
+    const sport        = priorSport        ?? (client.sport as string)       ?? "basketball";
+    const designSystem = priorDesignSystem ?? (brief.design_system as string) ?? "bold";
     const teamName     = (client.name as string) ?? "Team";
     const garmentLabel = getGarmentTypeLabel(sport);
 
@@ -1186,6 +1207,7 @@ export async function POST(req: NextRequest) {
       startedAt:   new Date().toISOString(),
       boardFormat: "renders",
       designSystem,
+      sport,
     });
     console.log(`[generate-concepts] Marked queued`);
 
@@ -1263,11 +1285,12 @@ export async function POST(req: NextRequest) {
       const cleaned = rawText.replace(/^```json\s*/i, "").replace(/```\s*$/i, "").trim();
       const parsed  = JSON.parse(cleaned) as DesignMetadata;
       if (typeof parsed.description !== "string") throw new Error("invalid shape");
-      metadata = { ...parsed, designSystem, boardFormat: "renders" };
+      metadata = { ...parsed, designSystem, sport, boardFormat: "renders" };
     } catch {
       metadata = {
         garmentType:   garmentLabel,
         designSystem,
+        sport,
         boardFormat:   "renders",
         colorway:      [],
         materials:     [],
