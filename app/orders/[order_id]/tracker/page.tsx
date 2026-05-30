@@ -68,16 +68,12 @@ const STAGE_CARDS: Partial<Record<OrderStage, StageCard>> = {
   },
   creative_approved: {
     title:       "Design Approved",
-    description: "Your design is approved. Choose how you'd like to move into production.",
-    cta:         "Continue to Production →",
-    ctaHref:     (id) => `/orders/${id}/production`,
+    description: "Your design is approved and moving into production. We'll keep you posted as your order progresses.",
     success:     true,
   },
   ready_for_production: {
     title:       "Ready for Production",
-    description: "Your design is locked and ready. Choose how you'd like to move into production.",
-    cta:         "Continue to Production →",
-    ctaHref:     (id) => `/orders/${id}/production`,
+    description: "Your design is locked and your order is moving into production. We'll notify you at each step.",
     success:     true,
   },
   files_sent: {

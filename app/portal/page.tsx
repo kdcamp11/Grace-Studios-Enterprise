@@ -436,7 +436,7 @@ function CreativeCard({ order, index }: { order: Order; index: number }) {
         {approved ? (
           <a
             href={order.design_fee_paid
-              ? `/orders/${order.id}/production`
+              ? `/orders/${order.id}/tracker`
               : `/orders/${order.id}/checkout`}
             className="px-4 py-2 rounded-lg font-display font-bold text-[11px] uppercase tracking-widest bg-emerald-500 text-white hover:bg-emerald-600 transition-colors"
           >

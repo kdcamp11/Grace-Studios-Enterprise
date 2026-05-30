@@ -313,7 +313,7 @@ export default function BuilderReviewPage() {
                   </p>
                 </div>
                 <a
-                  href={`/orders/${order_id}/production`}
+                  href={`/orders/${order_id}/tracker`}
                   className="block w-full py-3.5 rounded-lg text-center font-display font-bold text-base uppercase tracking-widest
                     bg-brand-primary text-brand-bg hover:bg-brand-secondary transition-all duration-200"
                 >
