@@ -304,25 +304,55 @@ function JerseyBuilderInner() {
     })();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Restore saved zone colors when continuing a design ───────────────────
-  // Runs after ready so the builder is never blocked by the server fetch.
+  // Restore the saved design (zone colors + artwork) when opened with a known
+  // design or order ID. Runs after mount so the builder is never blocked.
   useEffect(() => {
     if (!activeId) return;
+    let cancelled = false;
+
     (async () => {
       try {
-        const controller = new AbortController();
-        const t = setTimeout(() => controller.abort(), 6000);
-        const res = await fetch(`/api/portal/design?order_id=${encodeURIComponent(activeId)}`, {
-          signal: controller.signal,
-        });
-        clearTimeout(t);
-        if (!res.ok) return;
-        const data = await res.json() as { zoneColors?: Record<string, string> | null };
-        if (data.zoneColors && typeof data.zoneColors === "object") {
-          setColors((prev) => ({ ...prev, ...(data.zoneColors as Record<string, string>) }));
+        const r = await fetch(`/api/portal/design?order_id=${encodeURIComponent(activeId)}`);
+        if (!r.ok || cancelled) return;
+        const data = await r.json() as {
+          zoneColors?: Record<string, string> | null;
+          builderArtwork?: ArtworkDraft[];
+        };
+        if (cancelled) return;
+
+        if (data.zoneColors && !Array.isArray(data.zoneColors)) {
+          setColors((prev) => ({ ...prev, ...data.zoneColors as ZoneColors }));
+        }
+
+        // Rebuild artwork textures from the serialized drafts.
+        const saved = Array.isArray(data.builderArtwork) ? data.builderArtwork : [];
+        if (saved.length > 0) {
+          try { await document.fonts.ready; } catch { /* ignore */ }
+          const restored: ArtworkDraft[] = [];
+          for (const a of saved) {
+            try {
+              if (a.type === "logo" && a.imageDataUrl) {
+                textureMapRef.current[a.id] = await buildLogoTexture(a.imageDataUrl);
+              } else if (a.text) {
+                textureMapRef.current[a.id] = buildTextTexture(
+                  a.text,
+                  a.textColor,
+                  a.outlineColor,
+                  a.type === "number",
+                  a.fontFamily,
+                );
+              } else {
+                continue;
+              }
+              restored.push(a);
+            } catch { /* skip a broken artwork */ }
+          }
+          if (!cancelled && restored.length > 0) setArtworkDrafts(restored);
         }
       } catch { /* non-critical */ }
     })();
+
+    return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeId]);
 
@@ -345,6 +375,23 @@ function JerseyBuilderInner() {
     return () => { if (colorSaveTimerRef.current) clearTimeout(colorSaveTimerRef.current); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [designId, colors]);
+
+  // Auto-save artwork (text, numbers, logos) to the brief so returning to the
+  // builder restores the full design. Debounced 3 s; designId only.
+  const artworkSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!designId) return;
+    if (artworkSaveTimerRef.current) clearTimeout(artworkSaveTimerRef.current);
+    artworkSaveTimerRef.current = setTimeout(() => {
+      fetch("/api/brief/save-draft-colors", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ design_id: designId, artwork: artworkDrafts }),
+      }).catch(() => {});
+    }, 3000);
+    return () => { if (artworkSaveTimerRef.current) clearTimeout(artworkSaveTimerRef.current); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [designId, artworkDrafts]);
 
   // ── Artwork drafts ──────────────────────────────────────────────────────
   const [artworkDrafts, setArtworkDrafts] = useState<ArtworkDraft[]>([]);
@@ -457,59 +504,6 @@ function JerseyBuilderInner() {
     shortsMeshRef.current = mesh;
     if (mesh) setCameraFitTick((t) => t + 1);
   }, []);
-
-  // Restore the saved design (zone colors + artwork) when opened with an
-  // existing orderId so a continued session shows the user's prior work.
-  useEffect(() => {
-    if (!orderId) return;
-    let cancelled = false;
-
-    (async () => {
-      try {
-        const r = await fetch(`/api/portal/design?order_id=${encodeURIComponent(orderId)}`);
-        if (!r.ok) return;
-        const data = await r.json() as {
-          zoneColors?: Record<string, string> | null;
-          builderArtwork?: ArtworkDraft[];
-        };
-        if (cancelled) return;
-
-        if (data.zoneColors && !Array.isArray(data.zoneColors)) {
-          setColors((prev) => ({ ...prev, ...data.zoneColors as ZoneColors }));
-        }
-
-        // Rebuild artwork textures from the serialized drafts.
-        const saved = Array.isArray(data.builderArtwork) ? data.builderArtwork : [];
-        if (saved.length > 0) {
-          // Wait for web fonts so restored text renders in the right typeface.
-          try { await document.fonts.ready; } catch { /* ignore */ }
-          const restored: ArtworkDraft[] = [];
-          for (const a of saved) {
-            try {
-              if (a.type === "logo" && a.imageDataUrl) {
-                textureMapRef.current[a.id] = await buildLogoTexture(a.imageDataUrl);
-              } else if (a.text) {
-                textureMapRef.current[a.id] = buildTextTexture(
-                  a.text,
-                  a.textColor,
-                  a.outlineColor,
-                  a.type === "number",
-                  a.fontFamily,
-                );
-              } else {
-                continue; // nothing renderable
-              }
-              restored.push(a);
-            } catch { /* skip a broken artwork */ }
-          }
-          if (!cancelled && restored.length > 0) setArtworkDrafts(restored);
-        }
-      } catch { /* ignore */ }
-    })();
-
-    return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orderId]);
 
   /**
    * Raycast from the current viewing direction to auto-place artwork on the
