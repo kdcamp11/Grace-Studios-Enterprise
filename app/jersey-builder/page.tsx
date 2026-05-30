@@ -779,6 +779,35 @@ function JerseyBuilderInner() {
     setIsSaving(false);
   }, [orderId, isSaving, colors, artworkDrafts]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Manual save ──────────────────────────────────────────────────────────
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
+
+  const handleManualSave = useCallback(async () => {
+    if (saveStatus === "saving") return;
+    setSaveStatus("saving");
+    try {
+      if (designId) {
+        await fetch("/api/brief/save-draft-colors", {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          body:    JSON.stringify({ design_id: designId, zone_colors: colors, artwork: artworkDrafts, garmentType: "Basketball Jersey & Shorts", sport: "Basketball" }),
+        });
+      } else if (orderId) {
+        const canvasEl     = canvasContainerRef.current?.querySelector("canvas");
+        const imageDataUrl = canvasEl?.toDataURL("image/jpeg", 0.8) ?? null;
+        await fetch(`/api/orders/${orderId}/save-builder-preview`, {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          body:    JSON.stringify({ imageDataUrl, sport: "Basketball", garmentType: "Basketball Jersey & Shorts", zoneColors: colors, artwork: artworkDrafts }),
+        });
+      }
+      setSaveStatus("saved");
+      setTimeout(() => setSaveStatus("idle"), 2500);
+    } catch {
+      setSaveStatus("idle");
+    }
+  }, [designId, orderId, colors, artworkDrafts, saveStatus]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Review CTA — skips Team Info for returning clients ───────────────────
   const [isReviewing, setIsReviewing] = useState(false);
 
@@ -1550,12 +1579,34 @@ function JerseyBuilderInner() {
           {/* ── CTA ── */}
           <div className="border-t border-brand-border px-6 py-5 space-y-3">
             {builderStep === "design" ? (
-              <button
-                onClick={() => setBuilderStep("roster")}
-                className="flex items-center justify-center w-full py-3.5 rounded-lg bg-brand-primary text-white font-display font-bold text-xs uppercase tracking-widest hover:bg-brand-secondary transition-colors"
-              >
-                Continue to Roster →
-              </button>
+              <>
+                <button
+                  onClick={() => setBuilderStep("roster")}
+                  className="flex items-center justify-center w-full py-3.5 rounded-lg bg-brand-primary text-white font-display font-bold text-xs uppercase tracking-widest hover:bg-brand-secondary transition-colors"
+                >
+                  Continue to Roster →
+                </button>
+                {activeId && (
+                  <button
+                    type="button"
+                    onClick={handleManualSave}
+                    disabled={saveStatus === "saving"}
+                    className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg border border-brand-border font-display font-bold text-[10px] uppercase tracking-widest text-brand-muted hover:text-brand-text hover:border-brand-muted transition-colors disabled:opacity-50"
+                  >
+                    {saveStatus === "saving" ? (
+                      <>
+                        <span className="w-3 h-3 border border-brand-muted border-t-transparent rounded-full animate-spin" />
+                        Saving…
+                      </>
+                    ) : saveStatus === "saved" ? (
+                      <>
+                        <svg className="w-3 h-3 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                        <span className="text-emerald-400">Saved</span>
+                      </>
+                    ) : "Save Design"}
+                  </button>
+                )}
+              </>
             ) : (
               <>
                 <button
@@ -1565,6 +1616,26 @@ function JerseyBuilderInner() {
                 >
                   {isReviewing ? "Preparing…" : "Approve & Review →"}
                 </button>
+                {activeId && (
+                  <button
+                    type="button"
+                    onClick={handleManualSave}
+                    disabled={saveStatus === "saving"}
+                    className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg border border-brand-border font-display font-bold text-[10px] uppercase tracking-widest text-brand-muted hover:text-brand-text hover:border-brand-muted transition-colors disabled:opacity-50"
+                  >
+                    {saveStatus === "saving" ? (
+                      <>
+                        <span className="w-3 h-3 border border-brand-muted border-t-transparent rounded-full animate-spin" />
+                        Saving…
+                      </>
+                    ) : saveStatus === "saved" ? (
+                      <>
+                        <svg className="w-3 h-3 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                        <span className="text-emerald-400">Saved</span>
+                      </>
+                    ) : "Save Design"}
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => setBuilderStep("design")}
