@@ -85,6 +85,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: designError.message }, { status: 500 });
     }
 
+    // For builder designs, seed a draft brief with default colors immediately so the
+    // Saved Designs thumbnail shows a swatch before the user customizes anything.
+    if (kind === "builder") {
+      await admin.from("briefs").insert({
+        tenant_id:   tenant.id,
+        design_id:   design.id,
+        zone_colors: {
+          jerseyTop:         "#1d3557",
+          collar:            "#f4d03f",
+          jerseyShorts:      "#1d3557",
+          jerseySidePanels:  "#f4d03f",
+          jerseyLowerPanels: "#f4d03f",
+          sleevePanels:      "#f4d03f",
+          shortSidePanels:   "#f4d03f",
+        },
+      });
+    }
+
     return NextResponse.json({ designId: design.id, clientId: client.id });
 
   } catch (err: unknown) {

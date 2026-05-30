@@ -59,8 +59,22 @@ export async function GET() {
   const briefMap   = new Map(briefsRes.data?.map((b) => [b.design_id, b]) ?? []);
   const conceptMap = new Map(conceptsRes.data?.map((c) => [c.design_id, c.image_url]) ?? []);
 
+  const DEFAULT_BUILDER_COLORS = {
+    jerseyTop:         "#1d3557",
+    collar:            "#f4d03f",
+    jerseyShorts:      "#1d3557",
+    jerseySidePanels:  "#f4d03f",
+    jerseyLowerPanels: "#f4d03f",
+    sleevePanels:      "#f4d03f",
+    shortSidePanels:   "#f4d03f",
+  };
+
   const result = designs.map((d) => {
     const brief = briefMap.get(d.id);
+    // Fall back to default colors for builder designs with no brief yet so the
+    // swatch always renders rather than showing the placeholder icon.
+    const zoneColors = (brief?.zone_colors as Record<string, string> | null)
+      ?? (d.kind === "builder" ? DEFAULT_BUILDER_COLORS : null);
     return {
       id:           d.id,
       kind:         d.kind,
@@ -72,7 +86,7 @@ export async function GET() {
       hasBuilder:   !!(brief?.zone_colors),
       hasBrief:     !!(brief?.vision_prompt),
       thumbnailUrl: conceptMap.get(d.id) ?? null,
-      zoneColors:   (brief?.zone_colors as Record<string, string> | null) ?? null,
+      zoneColors,
     };
   });
 
