@@ -112,7 +112,7 @@ export default function ChoosePage() {
                 Elevated Apparel Development.<br />Concept Through Delivery.
               </p>
               <ul className="space-y-2.5 flex-1 mb-6">
-                {["Creative direction and program strategy", "Concepts built around your program identity", "Managed supplier coordination and fulfillment oversight", "Full-service production typically begins at $2,500."].map((item) => (
+                {["Creative direction and program strategy", "Concepts built around your program identity", "Managed supplier coordination and fulfillment oversight"].map((item) => (
                   <li key={item} className="flex items-start gap-2.5">
                     <span className="w-1 h-1 rounded-full bg-brand-primary flex-shrink-0 mt-1.5" />
                     <span className="text-[11px] font-barlow text-brand-muted leading-snug">{item}</span>

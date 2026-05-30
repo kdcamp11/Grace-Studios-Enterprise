@@ -41,28 +41,38 @@ export async function GET() {
 
   if (!designs?.length) return NextResponse.json({ designs: [] });
 
-  // Fetch the brief for each design to get file URL / builder data
   const designIds = designs.map((d) => d.id);
-  const { data: briefs } = await admin
-    .from("briefs")
-    .select("design_id, client_concept_url, zone_colors, vision_prompt")
-    .in("design_id", designIds);
 
-  const briefMap = new Map(briefs?.map((b) => [b.design_id, b]) ?? []);
+  // Fetch briefs + first concept image in parallel
+  const [briefsRes, conceptsRes] = await Promise.all([
+    admin
+      .from("briefs")
+      .select("design_id, client_concept_url, zone_colors, vision_prompt")
+      .in("design_id", designIds),
+    admin
+      .from("concepts")
+      .select("design_id, image_url")
+      .in("design_id", designIds)
+      .eq("concept_number", 1),
+  ]);
+
+  const briefMap   = new Map(briefsRes.data?.map((b) => [b.design_id, b]) ?? []);
+  const conceptMap = new Map(conceptsRes.data?.map((c) => [c.design_id, c.image_url]) ?? []);
 
   const result = designs.map((d) => {
     const brief = briefMap.get(d.id);
     return {
-      id:         d.id,
-      kind:       d.kind,
-      status:     d.status,
-      createdAt:  d.created_at,
-      teamName:   client.name,
-      sport:      client.sport,
-      // Used to determine "Continue" destination
-      hasFile:    !!brief?.client_concept_url,
-      hasBuilder: !!(brief?.zone_colors),
-      hasBrief:   !!(brief?.vision_prompt),
+      id:           d.id,
+      kind:         d.kind,
+      status:       d.status,
+      createdAt:    d.created_at,
+      teamName:     client.name,
+      sport:        client.sport,
+      hasFile:      !!brief?.client_concept_url,
+      hasBuilder:   !!(brief?.zone_colors),
+      hasBrief:     !!(brief?.vision_prompt),
+      thumbnailUrl: conceptMap.get(d.id) ?? null,
+      zoneColors:   (brief?.zone_colors as Record<string, string> | null) ?? null,
     };
   });
 

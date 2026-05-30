@@ -151,7 +151,6 @@ const PATH_CARDS = [
       "Creative direction and program strategy",
       "Concepts built around your program identity",
       "Managed supplier coordination and fulfillment oversight",
-      "Full-service production typically begins at $2,500.",
     ],
     cta: "Work with Grace Studios →",
   },
