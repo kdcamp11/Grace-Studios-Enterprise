@@ -329,6 +329,23 @@ function JerseyBuilderInner() {
   // ── Zone colours ────────────────────────────────────────────────────────
   const [colors, setColors] = useState<ZoneColors>(DEFAULT_COLORS);
 
+  // Auto-save zone colors to a draft brief so the Saved Designs thumbnail
+  // shows a swatch even before the user submits. Debounced 2 s; designId only.
+  const colorSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!designId) return;
+    if (colorSaveTimerRef.current) clearTimeout(colorSaveTimerRef.current);
+    colorSaveTimerRef.current = setTimeout(() => {
+      fetch("/api/brief/save-draft-colors", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ design_id: designId, zone_colors: colors }),
+      }).catch(() => {});
+    }, 2000);
+    return () => { if (colorSaveTimerRef.current) clearTimeout(colorSaveTimerRef.current); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [designId, colors]);
+
   // ── Artwork drafts ──────────────────────────────────────────────────────
   const [artworkDrafts, setArtworkDrafts] = useState<ArtworkDraft[]>([]);
   /**
@@ -792,6 +809,19 @@ function JerseyBuilderInner() {
     saveBriefState(designState);
 
     if (activeId) {
+      // For legacy order flow: snapshot canvas and persist the builder render URL
+      // so the Creative tab thumbnail shows immediately.
+      if (orderId) {
+        const canvasEl = canvasContainerRef.current?.querySelector("canvas");
+        const imageDataUrl = canvasEl?.toDataURL("image/jpeg", 0.8) ?? null;
+        if (imageDataUrl) {
+          fetch(`/api/orders/${orderId}/save-builder-preview`, {
+            method:  "POST",
+            headers: { "Content-Type": "application/json" },
+            body:    JSON.stringify({ imageDataUrl, sport: "Basketball", garmentType: "Basketball Jersey & Shorts", zoneColors: colors, artwork: artworkDrafts }),
+          }).catch(() => {});
+        }
+      }
       router.push(`/brief/${activeId}/builder-review`);
       return;
     }

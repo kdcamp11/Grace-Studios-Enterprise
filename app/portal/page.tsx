@@ -561,8 +561,10 @@ function SavedDesignCard({ design, index }: { design: SavedDesign; index: number
               <p className="font-display font-bold uppercase tracking-wide text-brand-text text-sm truncate">
                 {design.teamName ?? "Untitled Design"}
               </p>
-              {design.sport && (
-                <p className="text-[10px] uppercase tracking-wider text-brand-muted font-display">{design.sport}</p>
+              {(design.kind === "builder" || design.sport) && (
+                <p className="text-[10px] uppercase tracking-wider text-brand-muted font-display">
+                  {design.kind === "builder" ? "Basketball Jersey & Shorts" : design.sport}
+                </p>
               )}
             </div>
             <span className="flex-shrink-0 px-2 py-0.5 rounded-full font-display font-bold text-[9px] uppercase tracking-widest border border-brand-border text-brand-muted">
