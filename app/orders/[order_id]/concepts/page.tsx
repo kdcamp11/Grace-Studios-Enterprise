@@ -677,13 +677,17 @@ export default function ConceptsPage() {
 
           <div className="mb-7">
             <h1 className="font-display text-3xl font-bold uppercase tracking-wide text-brand-text">
-              Your Design Concept
+              {isBuilderOrder ? "Your Jersey Build" : "Your Creative Direction"}
             </h1>
             <p className="mt-1.5 text-sm text-brand-muted font-barlow">
               {isGenerating
-                ? "Our AI is building your spec board from your design brief. This takes 60–90 seconds."
+                ? isBuilderOrder
+                  ? "Processing your jersey build."
+                  : "Our AI is building your spec board from your design brief. This takes 60–90 seconds."
                 : hasBoard
-                ? "Review your concept board. Approve to move into production."
+                ? isBuilderOrder
+                  ? "Review your jersey build. Approve to move into production."
+                  : "Review your concept board. Approve to move into production."
                 : isFailed
                 ? "Generation encountered an issue."
                 : "Preparing your concept…"}
