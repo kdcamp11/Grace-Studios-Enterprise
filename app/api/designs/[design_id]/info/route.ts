@@ -27,7 +27,7 @@ export async function GET(
 
   const { data: brief } = await admin
     .from("briefs")
-    .select("client_concept_url, client_concept_notes")
+    .select("client_concept_url, client_photo_url, client_concept_notes")
     .eq("design_id", designId)
     .maybeSingle();
 
@@ -41,6 +41,7 @@ export async function GET(
     teamName:           client?.name ?? null,
     sport:              client?.sport ?? null,
     clientConceptUrl:   brief?.client_concept_url ?? null,
+    clientPhotoUrl:     brief?.client_photo_url ?? null,
     clientConceptNotes: brief?.client_concept_notes ?? null,
     status:             design?.status ?? "draft",
     kind:               design?.kind ?? null,
