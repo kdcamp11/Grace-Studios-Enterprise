@@ -501,6 +501,16 @@ export default function TrackerPage() {
             </div>
           )}
 
+          {/* ── Back to portal ────────────────────────────────────────────────── */}
+          <div className="pt-2">
+            <a
+              href="/portal"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-display font-bold text-sm uppercase tracking-widest border border-brand-border text-brand-muted hover:text-brand-text hover:border-brand-muted transition-colors"
+            >
+              ← Back to Portal
+            </a>
+          </div>
+
           {/* ── Full timeline ─────────────────────────────────────────────────── */}
           <div>
             <p className="text-xs font-display uppercase tracking-widest text-brand-muted mb-5">Full Timeline</p>

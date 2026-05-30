@@ -20,7 +20,6 @@ export async function POST(req: NextRequest) {
   const patch: Record<string, unknown> = { production_choice: choice };
 
   if (choice === "production") {
-    patch.production_deposit_paid = true;
     patch.stage = "first_piece_in_progress";
   }
 
