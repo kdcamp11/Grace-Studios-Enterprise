@@ -141,6 +141,20 @@ export default function BuilderReviewPage() {
         throw new Error(body.error ?? "Submission failed. Please try again.");
       }
 
+      // Save roster if collected in the builder flow
+      const currentBrief = loadBriefState();
+      if (currentBrief.playerRoster && currentBrief.playerRoster.length > 0) {
+        fetch("/api/brief/roster", {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          body:    JSON.stringify({
+            ...idField,
+            player_roster: currentBrief.playerRoster,
+            player_names:  true,
+          }),
+        }).catch(() => {});
+      }
+
       // Notify admin
       fetch("/api/notify", {
         method:  "POST",
