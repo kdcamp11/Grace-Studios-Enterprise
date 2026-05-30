@@ -809,19 +809,27 @@ function JerseyBuilderInner() {
     saveBriefState(designState);
 
     if (activeId) {
-      // For legacy order flow: snapshot canvas and persist the builder render URL
-      // so the Creative tab thumbnail shows immediately.
-      if (orderId) {
-        const canvasEl = canvasContainerRef.current?.querySelector("canvas");
-        const imageDataUrl = canvasEl?.toDataURL("image/jpeg", 0.8) ?? null;
-        if (imageDataUrl) {
-          fetch(`/api/orders/${orderId}/save-builder-preview`, {
-            method:  "POST",
-            headers: { "Content-Type": "application/json" },
-            body:    JSON.stringify({ imageDataUrl, sport: "Basketball", garmentType: "Basketball Jersey & Shorts", zoneColors: colors, artwork: artworkDrafts }),
-          }).catch(() => {});
-        }
+      // Snapshot the canvas and persist the render URL so the portal thumbnail
+      // and builder-review preview always reflect the current design.
+      const canvasEl    = canvasContainerRef.current?.querySelector("canvas");
+      const imageDataUrl = canvasEl?.toDataURL("image/jpeg", 0.8) ?? null;
+
+      if (orderId && imageDataUrl) {
+        fetch(`/api/orders/${orderId}/save-builder-preview`, {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          body:    JSON.stringify({ imageDataUrl, sport: "Basketball", garmentType: "Basketball Jersey & Shorts", zoneColors: colors, artwork: artworkDrafts }),
+        }).catch(() => {});
       }
+
+      if (designId && imageDataUrl) {
+        fetch("/api/brief/save-draft-colors", {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          body:    JSON.stringify({ design_id: designId, zone_colors: colors, imageDataUrl, sport: "Basketball", garmentType: "Basketball Jersey & Shorts", artwork: artworkDrafts }),
+        }).catch(() => {});
+      }
+
       router.push(`/brief/${activeId}/builder-review`);
       return;
     }
@@ -845,6 +853,16 @@ function JerseyBuilderInner() {
             if (startRes.ok) {
               const { designId: newId, clientId } = await startRes.json() as { designId: string; clientId: string };
               saveBriefState({ ...designState, teamName: client.name, contactName: client.contact_name ?? "", email: client.email, city: client.city ?? "", sport: "Basketball", designId: newId, clientId });
+              // Persist canvas screenshot now that we have a designId
+              const canvasEl2    = canvasContainerRef.current?.querySelector("canvas");
+              const imageDataUrl2 = canvasEl2?.toDataURL("image/jpeg", 0.8) ?? null;
+              if (imageDataUrl2) {
+                fetch("/api/brief/save-draft-colors", {
+                  method:  "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body:    JSON.stringify({ design_id: newId, zone_colors: colors, imageDataUrl: imageDataUrl2, sport: "Basketball", garmentType: "Basketball Jersey & Shorts", artwork: artworkDrafts }),
+                }).catch(() => {});
+              }
               router.push(`/brief/${newId}/builder-review`);
               return;
             }

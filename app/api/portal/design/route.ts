@@ -81,8 +81,8 @@ export async function GET(req: NextRequest) {
   // Load the brief (latest, if multiple) for the design preview — keyed by
   // design_id pre-payment, order_id post-payment.
   const { data: brief } = isDesign
-    ? await admin.from("briefs").select("id, zone_colors, logos_to_include, vision_prompt").eq("design_id", orderId).order("created_at", { ascending: false }).limit(1).maybeSingle()
-    : await admin.from("briefs").select("id, zone_colors, logos_to_include, vision_prompt").eq("order_id", orderId).order("created_at", { ascending: false }).limit(1).maybeSingle();
+    ? await admin.from("briefs").select("id, zone_colors, logos_to_include, vision_prompt, ai_prompt").eq("design_id", orderId).order("created_at", { ascending: false }).limit(1).maybeSingle()
+    : await admin.from("briefs").select("id, zone_colors, logos_to_include, vision_prompt, ai_prompt").eq("order_id", orderId).order("created_at", { ascending: false }).limit(1).maybeSingle();
 
   let renderUrl: string | null = null;
   let builderArtwork: unknown[] = [];

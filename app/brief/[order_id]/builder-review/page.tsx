@@ -46,6 +46,7 @@ export default function BuilderReviewPage() {
   const [privacyAgreed, setPrivacyAgreed] = useState(false);
   // Read-only when the design is already submitted/paid (set from the server).
   const [submitted, setSubmitted]     = useState(false);
+  const [feePaid, setFeePaid]         = useState(false);
   const [ready, setReady]             = useState(false);
   // True when the URL param is a pre-payment design_id (no order exists yet).
   const [isDesignFlow, setIsDesignFlow] = useState(false);
@@ -90,6 +91,7 @@ export default function BuilderReviewPage() {
           const isSubmitted =
             d.hasBrief || d.designFeePaid || (d.stage !== "creative_started" && d.stage !== "onboarding");
           if (active) setSubmitted(isSubmitted);
+          if (active) setFeePaid(d.designFeePaid ?? false);
           if (active && d.isDesign) setIsDesignFlow(true);
           if (active && d.visionPrompt) setNotes(d.visionPrompt);
           if (d.teamName || d.zoneColors) {
@@ -277,21 +279,41 @@ export default function BuilderReviewPage() {
         )}
 
         {submitted ? (
-          /* ── Read-only: design already submitted ──────────────────────────── */
+          /* ── Read-only: design submitted — show payment CTA if unpaid ─────── */
           <div className="space-y-4">
-            <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/5 px-5 py-4 flex items-center gap-3">
-              <span className="px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-400 font-display font-bold text-[10px] uppercase tracking-widest border border-emerald-500/30">
-                Submitted
-              </span>
-              <p className="text-sm font-barlow text-brand-muted">
-                This design has been submitted to Grace Studios. You can always view it here.
-              </p>
-            </div>
+            {feePaid ? (
+              <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/5 px-5 py-4 flex items-center gap-3">
+                <span className="px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-400 font-display font-bold text-[10px] uppercase tracking-widest border border-emerald-500/30">
+                  Active
+                </span>
+                <p className="text-sm font-barlow text-brand-muted">
+                  Your project is active. A Grace Studios designer is working on your design.
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="rounded-xl border border-brand-primary/30 bg-brand-primary/5 px-5 py-4">
+                  <p className="text-xs font-display font-bold uppercase tracking-wider text-brand-primary mb-1">
+                    Design Submitted — Activation Required
+                  </p>
+                  <p className="text-sm font-barlow text-brand-muted leading-relaxed">
+                    Your design has been submitted. Complete Creative Activation to assign a Grace Studios designer and move into production.
+                  </p>
+                </div>
+                <a
+                  href={`/designs/${order_id}/checkout`}
+                  className="block w-full py-3.5 rounded-lg text-center font-display font-bold text-sm uppercase tracking-widest
+                    bg-brand-primary text-brand-bg hover:bg-brand-secondary transition-all duration-200"
+                >
+                  Creative Activation — $149 →
+                </a>
+              </>
+            )}
             <a
               href="/portal"
               className="inline-block px-6 py-3 rounded-lg font-display font-bold text-sm uppercase tracking-widest border border-brand-border text-brand-muted hover:text-brand-text hover:border-brand-muted transition-colors"
             >
-              ← Back to Orders
+              ← Back to Portal
             </a>
           </div>
         ) : (
