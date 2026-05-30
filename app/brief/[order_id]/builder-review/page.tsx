@@ -83,6 +83,7 @@ export default function BuilderReviewPage() {
             logosToInclude: string | null;
             visionPrompt: string | null;
             renderUrl: string | null;
+            renderUrlShorts: string | null;
             hasBrief: boolean;
             stage: string;
             designFeePaid: boolean;
@@ -97,12 +98,13 @@ export default function BuilderReviewPage() {
           if (d.teamName || d.zoneColors) {
             serverBrief = {
               ...(local ?? ({} as BriefState)),
-              orderId:        order_id,
-              teamName:       d.teamName ?? local?.teamName ?? "",
-              sport:          d.sport ?? local?.sport ?? "",
-              zoneColors:     d.zoneColors ?? local?.zoneColors ?? null,
-              logosToInclude: d.logosToInclude ?? local?.logosToInclude ?? "",
-              renderUrl:      d.renderUrl ?? local?.renderUrl ?? null,
+              orderId:         order_id,
+              teamName:        d.teamName ?? local?.teamName ?? "",
+              sport:           d.sport ?? local?.sport ?? "",
+              zoneColors:      d.zoneColors ?? local?.zoneColors ?? null,
+              logosToInclude:  d.logosToInclude ?? local?.logosToInclude ?? "",
+              renderUrl:       d.renderUrl ?? local?.renderUrl ?? null,
+              renderUrlShorts: d.renderUrlShorts ?? local?.renderUrlShorts ?? null,
             } as BriefState;
           }
         }
@@ -130,7 +132,10 @@ export default function BuilderReviewPage() {
       const aiPrompt = JSON.stringify({
         garmentType: "Basketball Jersey & Shorts",
         sport:       brief?.sport || "Basketball",
-        renders:     { frontJersey: brief?.renderUrl ?? null },
+        renders:     {
+          frontJersey: brief?.renderUrl ?? null,
+          frontShorts: brief?.renderUrlShorts ?? null,
+        },
       });
 
       const res = await fetch("/api/brief/submit", {
@@ -209,15 +214,31 @@ export default function BuilderReviewPage() {
     >
       <div className="space-y-6">
 
-        {/* ── Builder Render Preview ─────────────────────────────────────────── */}
-        {brief.renderUrl && (
-          <div className="rounded-xl overflow-hidden border border-brand-border bg-white">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={brief.renderUrl}
-              alt="Your jersey design"
-              className="w-full object-contain max-h-64"
-            />
+        {/* ── Builder Render Preview — jersey + shorts ───────────────────────── */}
+        {(brief.renderUrl || brief.renderUrlShorts) && (
+          <div className={`grid gap-3 ${brief.renderUrl && brief.renderUrlShorts ? "grid-cols-2" : "grid-cols-1"}`}>
+            {brief.renderUrl && (
+              <div className="rounded-xl overflow-hidden border border-brand-border bg-white">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={brief.renderUrl}
+                  alt="Your jersey design"
+                  className="w-full object-contain max-h-64"
+                />
+                <p className="text-center text-[9px] font-display uppercase tracking-[0.28em] text-brand-muted py-2 border-t border-brand-border bg-brand-surface">Jersey</p>
+              </div>
+            )}
+            {brief.renderUrlShorts && (
+              <div className="rounded-xl overflow-hidden border border-brand-border bg-white">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={brief.renderUrlShorts}
+                  alt="Your shorts design"
+                  className="w-full object-contain max-h-64"
+                />
+                <p className="text-center text-[9px] font-display uppercase tracking-[0.28em] text-brand-muted py-2 border-t border-brand-border bg-brand-surface">Shorts</p>
+              </div>
+            )}
           </div>
         )}
 
