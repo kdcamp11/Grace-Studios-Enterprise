@@ -51,10 +51,14 @@ export async function GET(req: NextRequest) {
     } catch { /* ignore */ }
   }
 
-  // Detect builder orders: explicit concept_source OR brief has zone_colors (older orders
-  // that were created before concept_source was consistently set).
+  // Detect builder orders: explicit concept_source === "client_provided" is the primary
+  // signal. For older orders where concept_source is null (set before the field existed),
+  // fall back to zone_colors presence. Never override an explicit "ai" concept_source
+  // even if zone_colors happens to be set on the brief.
   const hasZoneColors = !!(brief?.zone_colors && !Array.isArray(brief.zone_colors));
-  const isBuilder = order.concept_source === "client_provided" || hasZoneColors;
+  const isBuilder =
+    order.concept_source === "client_provided" ||
+    (order.concept_source === null && hasZoneColors);
 
   return NextResponse.json({
     order_number:       order.order_number ?? orderId.slice(0, 8).toUpperCase(),
