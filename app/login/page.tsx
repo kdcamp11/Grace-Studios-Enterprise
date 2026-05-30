@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 import { getProfile, rolePortal } from "@/lib/profile";
 
@@ -420,8 +421,16 @@ export default function LoginPage() {
           HEADER
       ══════════════════════════════════════════════════════════════════ */}
       <header className="sticky top-0 z-50 bg-brand-bg/95 backdrop-blur border-b border-brand-border px-5 sm:px-8 lg:px-10 py-4 flex items-center justify-between gap-6">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/grace-enterprise-logo.jpeg" alt="Grace Enterprise" style={{ width: 200 }} className="h-auto object-contain" />
+        <div className="flex-shrink-0">
+          <Image
+            src="/grace-enterprise-logo.jpeg"
+            alt="Grace Enterprise"
+            width={200}
+            height={50}
+            priority
+            className="h-auto w-auto object-contain"
+          />
+        </div>
 
         {/* Desktop inline sign-in */}
         <form onSubmit={handleSubmit} className="hidden lg:flex items-center gap-3">
