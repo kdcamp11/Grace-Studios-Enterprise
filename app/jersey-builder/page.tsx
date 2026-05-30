@@ -440,11 +440,25 @@ function JerseyBuilderInner() {
   const [activeView,   setActiveView]   = useState<"jersey" | "shorts">("jersey");
   const [activeSide,   setActiveSide]   = useState<"front" | "back">("front");
   const [groupCenters, setGroupCenters] = useState<GroupCenters | null>(null);
+
+  // Auto-capture the shorts front canvas whenever the user views that tab so the
+  // preview is always ready at save/review time.
+  useEffect(() => {
+    if (activeView !== "shorts" || activeSide !== "front") return;
+    const t = setTimeout(() => {
+      const canvas = canvasContainerRef.current?.querySelector("canvas");
+      if (canvas) shortsPreviewRef.current = canvas.toDataURL("image/jpeg", 0.8);
+    }, 200);
+    return () => clearTimeout(t);
+  }, [activeView, activeSide]);
   const orbitRef           = useRef<any>(null);
   const sceneGroupRef      = useRef<THREE.Group>(null);
   const sceneYRotRef       = useRef(0);
   const sceneXTiltRef      = useRef(0);
   const canvasContainerRef = useRef<HTMLDivElement>(null);
+  // Stores the latest shorts front canvas screenshot so both views are always
+  // available at save/review time without requiring the user to visit the tab.
+  const shortsPreviewRef   = useRef<string | null>(null);
 
   const groupCentersRef = useRef<GroupCenters | null>(null);
   const handleGroupCenters = useCallback((centers: GroupCenters) => {
@@ -782,23 +796,46 @@ function JerseyBuilderInner() {
   // ── Manual save ──────────────────────────────────────────────────────────
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
 
+  // Captures both the jersey front and shorts front canvas screenshots. If the
+  // shorts haven't been viewed this session, temporarily switches to that view,
+  // waits one animation frame for Three.js to render, then restores.
+  const captureAllViews = useCallback(async (): Promise<{ jerseyUrl: string | null; shortsUrl: string | null }> => {
+    const canvas = canvasContainerRef.current?.querySelector("canvas");
+
+    // Capture jersey (current view assumed to be jersey front at call site)
+    const jerseyUrl = canvas?.toDataURL("image/jpeg", 0.8) ?? null;
+
+    // Capture shorts — use cached ref if available, otherwise switch briefly
+    let shortsUrl = shortsPreviewRef.current;
+    if (!shortsUrl && canvas) {
+      setActiveView("shorts");
+      setActiveSide("front");
+      await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      shortsUrl = canvas.toDataURL("image/jpeg", 0.8);
+      shortsPreviewRef.current = shortsUrl;
+      setActiveView("jersey");
+      setActiveSide("front");
+    }
+
+    return { jerseyUrl, shortsUrl };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleManualSave = useCallback(async () => {
     if (saveStatus === "saving") return;
     setSaveStatus("saving");
     try {
+      const { jerseyUrl, shortsUrl } = await captureAllViews();
       if (designId) {
         await fetch("/api/brief/save-draft-colors", {
           method:  "POST",
           headers: { "Content-Type": "application/json" },
-          body:    JSON.stringify({ design_id: designId, zone_colors: colors, artwork: artworkDrafts, garmentType: "Basketball Jersey & Shorts", sport: "Basketball" }),
+          body:    JSON.stringify({ design_id: designId, zone_colors: colors, imageDataUrl: jerseyUrl, imageDataUrlShorts: shortsUrl, artwork: artworkDrafts, garmentType: "Basketball Jersey & Shorts", sport: "Basketball" }),
         });
       } else if (orderId) {
-        const canvasEl     = canvasContainerRef.current?.querySelector("canvas");
-        const imageDataUrl = canvasEl?.toDataURL("image/jpeg", 0.8) ?? null;
         await fetch(`/api/orders/${orderId}/save-builder-preview`, {
           method:  "POST",
           headers: { "Content-Type": "application/json" },
-          body:    JSON.stringify({ imageDataUrl, sport: "Basketball", garmentType: "Basketball Jersey & Shorts", zoneColors: colors, artwork: artworkDrafts }),
+          body:    JSON.stringify({ imageDataUrl: jerseyUrl, imageDataUrlShorts: shortsUrl, sport: "Basketball", garmentType: "Basketball Jersey & Shorts", zoneColors: colors, artwork: artworkDrafts }),
         });
       }
       setSaveStatus("saved");
@@ -806,7 +843,7 @@ function JerseyBuilderInner() {
     } catch {
       setSaveStatus("idle");
     }
-  }, [designId, orderId, colors, artworkDrafts, saveStatus]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [designId, orderId, colors, artworkDrafts, saveStatus, captureAllViews]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Review CTA — skips Team Info for returning clients ───────────────────
   const [isReviewing, setIsReviewing] = useState(false);
@@ -832,24 +869,22 @@ function JerseyBuilderInner() {
     saveBriefState(designState);
 
     if (activeId) {
-      // Snapshot the canvas and persist the render URL so the portal thumbnail
-      // and builder-review preview always reflect the current design.
-      const canvasEl    = canvasContainerRef.current?.querySelector("canvas");
-      const imageDataUrl = canvasEl?.toDataURL("image/jpeg", 0.8) ?? null;
+      // Snapshot both jersey and shorts so the concept board shows both views.
+      const { jerseyUrl, shortsUrl } = await captureAllViews();
 
-      if (orderId && imageDataUrl) {
+      if (orderId) {
         fetch(`/api/orders/${orderId}/save-builder-preview`, {
           method:  "POST",
           headers: { "Content-Type": "application/json" },
-          body:    JSON.stringify({ imageDataUrl, sport: "Basketball", garmentType: "Basketball Jersey & Shorts", zoneColors: colors, artwork: artworkDrafts }),
+          body:    JSON.stringify({ imageDataUrl: jerseyUrl, imageDataUrlShorts: shortsUrl, sport: "Basketball", garmentType: "Basketball Jersey & Shorts", zoneColors: colors, artwork: artworkDrafts }),
         }).catch(() => {});
       }
 
-      if (designId && imageDataUrl) {
+      if (designId) {
         fetch("/api/brief/save-draft-colors", {
           method:  "POST",
           headers: { "Content-Type": "application/json" },
-          body:    JSON.stringify({ design_id: designId, zone_colors: colors, imageDataUrl, sport: "Basketball", garmentType: "Basketball Jersey & Shorts", artwork: artworkDrafts }),
+          body:    JSON.stringify({ design_id: designId, zone_colors: colors, imageDataUrl: jerseyUrl, imageDataUrlShorts: shortsUrl, sport: "Basketball", garmentType: "Basketball Jersey & Shorts", artwork: artworkDrafts }),
         }).catch(() => {});
       }
 
@@ -876,16 +911,13 @@ function JerseyBuilderInner() {
             if (startRes.ok) {
               const { designId: newId, clientId } = await startRes.json() as { designId: string; clientId: string };
               saveBriefState({ ...designState, teamName: client.name, contactName: client.contact_name ?? "", email: client.email, city: client.city ?? "", sport: "Basketball", designId: newId, clientId });
-              // Persist canvas screenshot now that we have a designId
-              const canvasEl2    = canvasContainerRef.current?.querySelector("canvas");
-              const imageDataUrl2 = canvasEl2?.toDataURL("image/jpeg", 0.8) ?? null;
-              if (imageDataUrl2) {
-                fetch("/api/brief/save-draft-colors", {
-                  method:  "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body:    JSON.stringify({ design_id: newId, zone_colors: colors, imageDataUrl: imageDataUrl2, sport: "Basketball", garmentType: "Basketball Jersey & Shorts", artwork: artworkDrafts }),
-                }).catch(() => {});
-              }
+              // Persist both canvas views now that we have a designId
+              const { jerseyUrl: jUrl, shortsUrl: sUrl } = await captureAllViews();
+              fetch("/api/brief/save-draft-colors", {
+                method:  "POST",
+                headers: { "Content-Type": "application/json" },
+                body:    JSON.stringify({ design_id: newId, zone_colors: colors, imageDataUrl: jUrl, imageDataUrlShorts: sUrl, sport: "Basketball", garmentType: "Basketball Jersey & Shorts", artwork: artworkDrafts }),
+              }).catch(() => {});
               router.push(`/brief/${newId}/builder-review`);
               return;
             }

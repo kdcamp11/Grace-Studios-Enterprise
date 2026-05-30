@@ -99,26 +99,26 @@ export function RendersBoard({ data, studioName, isBuilder }: { data: BoardData;
       </div>
 
       {isBuilder ? (
-        /* ── Builder: single jersey preview ─────────────────────────────── */
+        /* ── Builder: jersey + shorts side by side ───────────────────────── */
         <div className="flex flex-col md:flex-row" style={{ minHeight: 420 }}>
           {/* Left — team info */}
           <div
             className="flex-shrink-0 border-b md:border-b-0 md:border-r border-gray-200 bg-white flex flex-col"
-            style={{ width: undefined, minWidth: undefined }}
+            style={{ width: 168 }}
           >
-            <div className="px-5 pt-5 pb-4 md:w-48">
+            <div className="px-5 pt-5 pb-4">
               <p className="text-[7px] font-bold uppercase tracking-[0.32em] text-gray-400 mb-1">{studioName ?? "Custom Sportswear"}</p>
               <p className="text-sm font-bold uppercase tracking-wide text-gray-900 leading-tight break-words">{teamName}</p>
               <p className="text-[8px] uppercase tracking-[0.18em] text-gray-400 mt-1">{garmentType}</p>
             </div>
             {primaryLogo && (
-              <div className="px-5 py-3 border-t border-gray-100 md:w-48">
+              <div className="px-5 py-3 border-t border-gray-100">
                 <p className="text-[7px] font-bold uppercase tracking-[0.28em] text-gray-400 mb-2">Team Logo</p>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={primaryLogo} alt={`${teamName} logo`} className="max-h-12 w-auto object-contain" style={{ maxWidth: "100%" }} />
               </div>
             )}
-            <div className="hidden md:block px-5 py-4 border-t border-gray-100 mt-auto md:w-48">
+            <div className="hidden md:block px-5 py-4 border-t border-gray-100 mt-auto">
               <p className="text-[7px] font-bold uppercase tracking-[0.28em] text-gray-400 mb-2">Design Preview</p>
               <p className="text-[8px] text-gray-500 leading-relaxed">
                 Front colorway preview from your builder selections. Full views developed during production.
@@ -126,14 +126,26 @@ export function RendersBoard({ data, studioName, isBuilder }: { data: BoardData;
             </div>
           </div>
 
-          {/* Center — full-width jersey image */}
-          <div className="flex-1 flex items-center justify-center bg-gray-50" style={{ minHeight: 380 }}>
-            <RenderImage
-              url={renders?.frontJersey}
-              alt="Jersey front"
-              className="w-full h-full"
-              style={{ minHeight: 380 }}
-            />
+          {/* Center — jersey + shorts two-column grid */}
+          <div className="flex-1 flex flex-col" style={{ backgroundColor: "#f9f8f5" }}>
+            {/* Column headers */}
+            <div className="grid grid-cols-2 border-b border-gray-200">
+              <div className="border-r border-gray-200 py-2 text-center">
+                <span className="text-[7px] font-bold uppercase tracking-[0.28em] text-gray-400">Jersey</span>
+              </div>
+              <div className="py-2 text-center">
+                <span className="text-[7px] font-bold uppercase tracking-[0.28em] text-gray-400">Shorts</span>
+              </div>
+            </div>
+            {/* Images */}
+            <div className="flex-1 grid grid-cols-2" style={{ minHeight: 360 }}>
+              <div className="border-r border-gray-200 overflow-hidden">
+                <RenderImage url={renders?.frontJersey} alt="Jersey front" className="w-full h-full" style={{ minHeight: 360 }} />
+              </div>
+              <div className="overflow-hidden">
+                <RenderImage url={renders?.frontShorts} alt="Shorts front" className="w-full h-full" style={{ minHeight: 360 }} placeholder="Developed in Production" />
+              </div>
+            </div>
           </div>
         </div>
       ) : (

@@ -32,16 +32,18 @@ export async function POST(req: NextRequest) {
     design_id,
     zone_colors,
     imageDataUrl,
+    imageDataUrlShorts,
     garmentType,
     sport,
     artwork,
   } = await req.json() as {
-    design_id:    string;
-    zone_colors?: Record<string, string>;
-    imageDataUrl?: string;
-    garmentType?:  string;
-    sport?:        string;
-    artwork?:      unknown[];
+    design_id:           string;
+    zone_colors?:        Record<string, string>;
+    imageDataUrl?:       string;
+    imageDataUrlShorts?: string;
+    garmentType?:        string;
+    sport?:              string;
+    artwork?:            unknown[];
   };
 
   if (!design_id) {
@@ -69,24 +71,22 @@ export async function POST(req: NextRequest) {
 
   if (!client) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  // Upload canvas screenshot to Storage when provided
-  let renderUrl: string | null = null;
-  if (imageDataUrl) {
-    const base64Data  = imageDataUrl.replace(/^data:image\/\w+;base64,/, "");
+  // Upload canvas screenshots to Storage when provided
+  const uploadSnapshot = async (dataUrl: string, suffix: string): Promise<string | null> => {
+    const base64Data  = dataUrl.replace(/^data:image\/\w+;base64,/, "");
     const buffer      = Buffer.from(base64Data, "base64");
-    const storagePath = `builder-previews/${tenant.id}/designs/${design_id}/${Date.now()}.jpg`;
-
-    const { error: uploadError } = await admin.storage
+    const storagePath = `builder-previews/${tenant.id}/designs/${design_id}/${suffix}-${Date.now()}.jpg`;
+    const { error }   = await admin.storage
       .from("order-files")
       .upload(storagePath, buffer, { contentType: "image/jpeg", upsert: true });
+    if (error) { console.error("[save-draft-colors] upload error:", error); return null; }
+    return admin.storage.from("order-files").getPublicUrl(storagePath).data.publicUrl;
+  };
 
-    if (!uploadError) {
-      const { data: urlData } = admin.storage.from("order-files").getPublicUrl(storagePath);
-      renderUrl = urlData.publicUrl;
-    } else {
-      console.error("[save-draft-colors] upload error:", uploadError);
-    }
-  }
+  let renderUrl:       string | null = null;
+  let renderUrlShorts: string | null = null;
+  if (imageDataUrl)       renderUrl       = await uploadSnapshot(imageDataUrl,       "jersey");
+  if (imageDataUrlShorts) renderUrlShorts = await uploadSnapshot(imageDataUrlShorts, "shorts");
 
   // Load existing brief to preserve ai_prompt data we're not updating
   const { data: existing } = await admin
@@ -100,7 +100,7 @@ export async function POST(req: NextRequest) {
   if (zone_colors) briefUpdate.zone_colors = zone_colors;
 
   // Merge into ai_prompt when we have new image/metadata to save
-  if (renderUrl || garmentType || sport || artwork !== undefined) {
+  if (renderUrl || renderUrlShorts || garmentType || sport || artwork !== undefined) {
     let prev: Record<string, unknown> = {};
     if (existing?.ai_prompt) {
       try { prev = JSON.parse(existing.ai_prompt as string); } catch { /* ignore */ }
@@ -110,8 +110,11 @@ export async function POST(req: NextRequest) {
     briefUpdate.ai_prompt = JSON.stringify({
       garmentType: garmentType ?? prev.garmentType ?? "Basketball Jersey & Shorts",
       sport:       sport       ?? prev.sport       ?? "Basketball",
-      renders:     { frontJersey: renderUrl ?? prevRenders.frontJersey ?? null },
-      builder:     { artwork: artwork ?? prevBuilder.artwork ?? [] },
+      renders: {
+        frontJersey: renderUrl       ?? prevRenders.frontJersey ?? null,
+        frontShorts: renderUrlShorts ?? prevRenders.frontShorts ?? null,
+      },
+      builder: { artwork: artwork ?? prevBuilder.artwork ?? [] },
     });
   }
 
