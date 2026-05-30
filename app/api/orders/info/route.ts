@@ -40,24 +40,30 @@ export async function GET(req: NextRequest) {
     .eq("order_id", orderId)
     .single();
 
-  let garmentType  = "Sports Uniform";
+  let garmentType    = "Sports Uniform";
   let previewUrl: string | null = null;
+  let hasBuilderMeta = false;
 
   if (brief?.ai_prompt) {
     try {
       const meta = JSON.parse(brief.ai_prompt as string);
       if (meta.garmentType) garmentType = meta.garmentType;
       if (meta.renders?.frontJersey) previewUrl = meta.renders.frontJersey;
+      // Builder routes always write ai_prompt.builder; AI generation never does.
+      hasBuilderMeta = typeof meta.builder === "object" && meta.builder !== null;
     } catch { /* ignore */ }
   }
 
-  // Detect builder orders: explicit concept_source === "client_provided" is the primary
-  // signal. For older orders where concept_source is null (set before the field existed),
-  // fall back to zone_colors presence. Never override an explicit "ai" concept_source
-  // even if zone_colors happens to be set on the brief.
+  // Detect builder orders using three complementary signals:
+  // 1. concept_source = "client_provided" — set by Stripe webhook for design.kind="builder"
+  // 2. ai_prompt.builder key — written by every jersey-builder save route, never by AI gen
+  // 3. zone_colors on the brief — fallback for old orders before the above existed
+  // Do NOT use zone_colors alone to override an explicit non-"client_provided" concept_source
+  // because some AI orders may have zone_colors set by other means.
   const hasZoneColors = !!(brief?.zone_colors && !Array.isArray(brief.zone_colors));
   const isBuilder =
     order.concept_source === "client_provided" ||
+    hasBuilderMeta ||
     (order.concept_source === null && hasZoneColors);
 
   return NextResponse.json({
