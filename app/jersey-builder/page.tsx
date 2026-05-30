@@ -441,13 +441,23 @@ function JerseyBuilderInner() {
   const [activeSide,   setActiveSide]   = useState<"front" | "back">("front");
   const [groupCenters, setGroupCenters] = useState<GroupCenters | null>(null);
 
-  // Auto-capture the shorts front canvas whenever the user views that tab so the
-  // preview is always ready at save/review time.
+  // Mirror active view/side into refs so captureAllViews (stable callback) can
+  // read and restore the user's current position without stale closures.
+  const activeViewRef = useRef<"jersey" | "shorts">("jersey");
+  const activeSideRef = useRef<"front" | "back">("front");
+  useEffect(() => { activeViewRef.current = activeView; }, [activeView]);
+  useEffect(() => { activeSideRef.current = activeSide; }, [activeSide]);
+
+  // Auto-capture each front canvas whenever the user views that tab so previews
+  // are always ready at save/review time.
   useEffect(() => {
-    if (activeView !== "shorts" || activeSide !== "front") return;
+    if (activeSide !== "front") return;
     const t = setTimeout(() => {
       const canvas = canvasContainerRef.current?.querySelector("canvas");
-      if (canvas) shortsPreviewRef.current = canvas.toDataURL("image/jpeg", 0.8);
+      if (!canvas) return;
+      const snap = canvas.toDataURL("image/jpeg", 0.8);
+      if (activeView === "shorts") shortsPreviewRef.current = snap;
+      else                        jerseyPreviewRef.current = snap;
     }, 200);
     return () => clearTimeout(t);
   }, [activeView, activeSide]);
@@ -456,9 +466,10 @@ function JerseyBuilderInner() {
   const sceneYRotRef       = useRef(0);
   const sceneXTiltRef      = useRef(0);
   const canvasContainerRef = useRef<HTMLDivElement>(null);
-  // Stores the latest shorts front canvas screenshot so both views are always
+  // Stores the latest front canvas screenshot for each view so both are always
   // available at save/review time without requiring the user to visit the tab.
   const shortsPreviewRef   = useRef<string | null>(null);
+  const jerseyPreviewRef   = useRef<string | null>(null);
 
   const groupCentersRef = useRef<GroupCenters | null>(null);
   const handleGroupCenters = useCallback((centers: GroupCenters) => {
@@ -771,15 +782,15 @@ function JerseyBuilderInner() {
     setIsSaving(true);
     setSavedOk(false);
 
-    const canvasEl    = canvasContainerRef.current?.querySelector("canvas");
-    const imageDataUrl = canvasEl?.toDataURL("image/jpeg", 0.8) ?? null;
+    const { jerseyUrl, shortsUrl } = await captureAllViews();
 
     try {
       await fetch(`/api/orders/${orderId}/save-builder-preview`, {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({
-          imageDataUrl,
+          imageDataUrl: jerseyUrl,
+          imageDataUrlShorts: shortsUrl,
           sport: "Basketball",
           garmentType: "Basketball Jersey & Shorts",
           zoneColors: colors,
@@ -796,26 +807,33 @@ function JerseyBuilderInner() {
   // ── Manual save ──────────────────────────────────────────────────────────
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
 
-  // Captures both the jersey front and shorts front canvas screenshots. If the
-  // shorts haven't been viewed this session, temporarily switches to that view,
-  // waits one animation frame for Three.js to render, then restores.
+  // Captures the jersey-front and shorts-front canvas screenshots, regardless of
+  // which tab the user is currently on. Briefly switches to each front view to
+  // grab a fresh frame, then restores the user's original view/side.
   const captureAllViews = useCallback(async (): Promise<{ jerseyUrl: string | null; shortsUrl: string | null }> => {
     const canvas = canvasContainerRef.current?.querySelector("canvas");
+    if (!canvas) return { jerseyUrl: jerseyPreviewRef.current, shortsUrl: shortsPreviewRef.current };
 
-    // Capture jersey (current view assumed to be jersey front at call site)
-    const jerseyUrl = canvas?.toDataURL("image/jpeg", 0.8) ?? null;
+    const origView = activeViewRef.current;
+    const origSide = activeSideRef.current;
 
-    // Capture shorts — use cached ref if available, otherwise switch briefly
-    let shortsUrl = shortsPreviewRef.current;
-    if (!shortsUrl && canvas) {
-      setActiveView("shorts");
+    const snapFront = async (view: "jersey" | "shorts"): Promise<string | null> => {
+      setActiveView(view);
       setActiveSide("front");
+      // Two animation frames so Three.js renders the switched garment + camera.
       await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-      shortsUrl = canvas.toDataURL("image/jpeg", 0.8);
-      shortsPreviewRef.current = shortsUrl;
-      setActiveView("jersey");
-      setActiveSide("front");
-    }
+      const url = canvas.toDataURL("image/jpeg", 0.8);
+      if (view === "shorts") shortsPreviewRef.current = url;
+      else                   jerseyPreviewRef.current = url;
+      return url;
+    };
+
+    const jerseyUrl = await snapFront("jersey");
+    const shortsUrl = await snapFront("shorts");
+
+    // Restore the user's original position.
+    setActiveView(origView);
+    setActiveSide(origSide);
 
     return { jerseyUrl, shortsUrl };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
