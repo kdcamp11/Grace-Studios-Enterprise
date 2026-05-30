@@ -421,14 +421,14 @@ export default function LoginPage() {
           HEADER
       ══════════════════════════════════════════════════════════════════ */}
       <header className="sticky top-0 z-50 bg-brand-bg/95 backdrop-blur border-b border-brand-border px-5 sm:px-8 lg:px-10 py-4 flex items-center justify-between gap-6">
-        <div className="flex-shrink-0">
+        <div className="flex-shrink-0" style={{ width: 200 }}>
           <Image
             src="/grace-enterprise-logo.jpeg"
             alt="Grace Enterprise"
             width={200}
             height={50}
             priority
-            className="h-auto w-auto object-contain"
+            className="h-auto object-contain"
           />
         </div>
 
