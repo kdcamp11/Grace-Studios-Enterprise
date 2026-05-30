@@ -4,6 +4,7 @@ import { stripe } from "@/lib/payments/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveTenant } from "@/lib/tenant/resolve";
 import { rateLimit } from "@/lib/rate-limit";
+import { isTestBypassEmail, bypassDesignDeposit } from "@/lib/payments/test-bypass";
 
 // Creative Activation — $149.00
 const DESIGN_DEPOSIT_CENTS = 14_900;
@@ -69,6 +70,16 @@ export async function POST(
 
   if (design.status === "converted") {
     return NextResponse.json({ error: "Design already activated" }, { status: 400 });
+  }
+
+  // ── Test bypass — skip Stripe for approved test accounts ─────────────────
+  if (isTestBypassEmail(user.email)) {
+    const proto  = req.headers.get("x-forwarded-proto") ?? "https";
+    const host   = req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? "localhost:3000";
+    const appUrl = `${proto}://${host}`;
+    const redirectUrl = await bypassDesignDeposit(params.design_id, design.tenant_id, appUrl);
+    if (!redirectUrl) return NextResponse.json({ error: "Bypass failed" }, { status: 500 });
+    return NextResponse.json({ url: redirectUrl });
   }
 
   try {
