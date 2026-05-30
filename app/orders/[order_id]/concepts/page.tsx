@@ -278,6 +278,7 @@ export default function ConceptsPage() {
   const [regenerating, setRegenerating] = useState(false);
   const [isAdminView, setIsAdminView] = useState(false);
   const [feePaid, setFeePaid]         = useState<boolean | null>(null); // null = loading
+  const [isBuilderOrder, setIsBuilderOrder] = useState(false);
 
   const generationFiredRef = useRef(false);
   const pollIntervalRef    = useRef<NodeJS.Timeout | null>(null);
@@ -444,11 +445,12 @@ export default function ConceptsPage() {
         if (profile.role === "admin") setIsAdminView(true);
       }
 
-      // Check payment status via service-role API
+      // Check payment status and order kind via service-role API
       const infoRes  = await fetch(`/api/orders/info?orderId=${order_id}`);
       if (!cancelled && infoRes.ok) {
-        const info = await infoRes.json() as { design_fee_paid: boolean };
+        const info = await infoRes.json() as { design_fee_paid: boolean; concept_source?: string };
         setFeePaid(info.design_fee_paid);
+        setIsBuilderOrder(info.concept_source === "client_provided");
       } else if (!cancelled) {
         setFeePaid(false);
       }
@@ -809,7 +811,7 @@ export default function ConceptsPage() {
               {(!paymentGated || !isRenders) && (
                 <>
                   {isSpecBoard  ? <SpecBoardDisplay data={boardData!} />
-                   : isRenders   ? <RendersBoard     data={boardData!} studioName={tenant.name} />
+                   : isRenders   ? <RendersBoard     data={boardData!} studioName={tenant.name} isBuilder={isBuilderOrder} />
                    :               <LegacyBoard      data={boardData!} studioName={tenant.name} />
                   }
 
@@ -897,29 +899,44 @@ export default function ConceptsPage() {
                   {/* Step 1 — main action row (hidden while a confirm step is open) */}
                   {!confirmStep && !declineStep && (
                     <div className="flex items-center gap-3 pt-1 flex-wrap">
-                      {/* Regenerate */}
-                      <button
-                        type="button"
-                        onClick={handleRegenerate}
-                        disabled={regenerating || approving || declining}
-                        className="px-8 py-3.5 rounded-xl font-display font-bold text-sm uppercase tracking-[0.15em] transition-all duration-200
-                          border border-brand-border text-brand-muted hover:text-brand-text hover:border-brand-primary
-                          disabled:opacity-40 disabled:cursor-not-allowed"
-                      >
-                        {regenerating ? "Regenerating…" : "↺ Regenerate"}
-                      </button>
+                      {/* Regenerate — hidden for builder orders */}
+                      {!isBuilderOrder && (
+                        <button
+                          type="button"
+                          onClick={handleRegenerate}
+                          disabled={regenerating || approving || declining}
+                          className="px-8 py-3.5 rounded-xl font-display font-bold text-sm uppercase tracking-[0.15em] transition-all duration-200
+                            border border-brand-border text-brand-muted hover:text-brand-text hover:border-brand-primary
+                            disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          {regenerating ? "Regenerating…" : "↺ Regenerate"}
+                        </button>
+                      )}
 
-                      {/* Decline */}
-                      <button
-                        type="button"
-                        onClick={() => { setDeclineStep(true); setDeclineError(null); }}
-                        disabled={approving || declining || regenerating}
-                        className="px-8 py-3.5 rounded-xl font-display font-bold text-sm uppercase tracking-[0.15em] transition-all duration-200
-                          border border-red-800/50 text-red-400 hover:bg-red-900/20 hover:border-red-600
-                          disabled:opacity-40 disabled:cursor-not-allowed"
-                      >
-                        Decline This Design
-                      </button>
+                      {/* Decline — builder goes back to jersey builder; AI opens revision flow */}
+                      {isBuilderOrder ? (
+                        <button
+                          type="button"
+                          onClick={() => router.push(`/jersey-builder?orderId=${order_id}`)}
+                          disabled={approving}
+                          className="px-8 py-3.5 rounded-xl font-display font-bold text-sm uppercase tracking-[0.15em] transition-all duration-200
+                            border border-red-800/50 text-red-400 hover:bg-red-900/20 hover:border-red-600
+                            disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          Decline This Design
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => { setDeclineStep(true); setDeclineError(null); }}
+                          disabled={approving || declining || regenerating}
+                          className="px-8 py-3.5 rounded-xl font-display font-bold text-sm uppercase tracking-[0.15em] transition-all duration-200
+                            border border-red-800/50 text-red-400 hover:bg-red-900/20 hover:border-red-600
+                            disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          Decline This Design
+                        </button>
+                      )}
 
                       {/* Approve */}
                       <button

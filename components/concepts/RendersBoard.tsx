@@ -31,13 +31,13 @@ export function ColorSwatch({ role, name, hex, pantone }: { role: string; name: 
   );
 }
 
-export function RenderImage({ url, alt, className, style }: { url?: string; alt: string; className?: string; style?: React.CSSProperties }) {
+export function RenderImage({ url, alt, className, style, placeholder }: { url?: string; alt: string; className?: string; style?: React.CSSProperties; placeholder?: string }) {
   const [loaded, setLoaded] = useState(false);
   const [error,  setError]  = useState(false);
 
   if (!url) return (
     <div className={`bg-gray-50 flex items-center justify-center ${className ?? ""}`} style={style}>
-      <span className="text-gray-300 text-[10px] font-display uppercase tracking-wider">Rendering…</span>
+      <span className="text-gray-300 text-[10px] font-display uppercase tracking-wider">{placeholder ?? "Rendering…"}</span>
     </div>
   );
 
@@ -64,7 +64,7 @@ export function RenderImage({ url, alt, className, style }: { url?: string; alt:
 
 // ─── Full renders spec board (current format) ────────────────────────────────
 
-export function RendersBoard({ data, studioName }: { data: BoardData; studioName?: string }) {
+export function RendersBoard({ data, studioName, isBuilder }: { data: BoardData; studioName?: string; isBuilder?: boolean }) {
   const { teamName, orderNumber, metadata, logoUrls } = data;
   const renders       = metadata.renders;
   const colorway      = metadata.colorway      ?? [];
@@ -118,7 +118,7 @@ export function RendersBoard({ data, studioName }: { data: BoardData; studioName
             <span className="absolute top-2 left-2.5 text-[8px] font-bold uppercase tracking-[0.22em] text-gray-400 z-10 bg-white/80 px-1.5 py-0.5 rounded">
               {col1Label} Front
             </span>
-            <RenderImage url={renders?.frontJersey} alt={`${col1Label} front`} className="absolute inset-0 w-full h-full" />
+            <RenderImage url={renders?.frontJersey} alt={`${col1Label} front`} className="absolute inset-0 w-full h-full" placeholder={isBuilder ? "Design Preview" : undefined} />
           </div>
 
           {/* Front shorts/pants */}
@@ -126,7 +126,7 @@ export function RendersBoard({ data, studioName }: { data: BoardData; studioName
             <span className="absolute top-2 left-2.5 text-[8px] font-bold uppercase tracking-[0.22em] text-gray-400 z-10 bg-white/80 px-1.5 py-0.5 rounded">
               {col2Label} Front
             </span>
-            <RenderImage url={renders?.frontShorts} alt={`${col2Label} front`} className="absolute inset-0 w-full h-full" />
+            <RenderImage url={isBuilder ? undefined : renders?.frontShorts} alt={`${col2Label} front`} className="absolute inset-0 w-full h-full" placeholder={isBuilder ? "Developed in Production" : undefined} />
           </div>
 
           {/* Back jacket/jersey */}
@@ -134,7 +134,7 @@ export function RendersBoard({ data, studioName }: { data: BoardData; studioName
             <span className="absolute top-2 left-2.5 text-[8px] font-bold uppercase tracking-[0.22em] text-gray-400 z-10 bg-white/80 px-1.5 py-0.5 rounded">
               {col1Label} Back
             </span>
-            <RenderImage url={renders?.backJersey} alt={`${col1Label} back`} className="absolute inset-0 w-full h-full" />
+            <RenderImage url={isBuilder ? undefined : renders?.backJersey} alt={`${col1Label} back`} className="absolute inset-0 w-full h-full" placeholder={isBuilder ? "Developed in Production" : undefined} />
           </div>
 
           {/* Back shorts/pants */}
@@ -142,7 +142,7 @@ export function RendersBoard({ data, studioName }: { data: BoardData; studioName
             <span className="absolute top-2 left-2.5 text-[8px] font-bold uppercase tracking-[0.22em] text-gray-400 z-10 bg-white/80 px-1.5 py-0.5 rounded">
               {col2Label} Back
             </span>
-            <RenderImage url={renders?.backShorts} alt={`${col2Label} back`} className="absolute inset-0 w-full h-full" />
+            <RenderImage url={isBuilder ? undefined : renders?.backShorts} alt={`${col2Label} back`} className="absolute inset-0 w-full h-full" placeholder={isBuilder ? "Developed in Production" : undefined} />
           </div>
         </div>
       </div>
@@ -240,21 +240,21 @@ export function RendersBoard({ data, studioName }: { data: BoardData; studioName
           <div className="flex-1 grid grid-cols-2 grid-rows-2">
             <div className="relative border-r border-b border-gray-200 overflow-hidden" style={{ minHeight: 240 }}>
               <span className="absolute top-2 left-2.5 text-[6px] font-bold uppercase tracking-[0.28em] text-gray-300 z-10">Front</span>
-              <RenderImage url={renders?.frontJersey} alt={`${col1Label} front`} className="w-full h-full" />
+              <RenderImage url={renders?.frontJersey} alt={`${col1Label} front`} className="w-full h-full" placeholder={isBuilder ? "Design Preview" : undefined} />
             </div>
 
             <div className="relative border-b border-gray-200 overflow-hidden" style={{ minHeight: 240 }}>
               <span className="absolute top-2 left-2.5 text-[6px] font-bold uppercase tracking-[0.28em] text-gray-300 z-10">Front</span>
-              <RenderImage url={renders?.frontShorts} alt={`${col2Label} front`} className="w-full h-full" />
+              <RenderImage url={isBuilder ? undefined : renders?.frontShorts} alt={`${col2Label} front`} className="w-full h-full" placeholder={isBuilder ? "Developed in Production" : undefined} />
             </div>
 
             <div className="relative border-r border-gray-200 overflow-hidden" style={{ minHeight: 240 }}>
               <span className="absolute top-2 left-2.5 text-[6px] font-bold uppercase tracking-[0.28em] text-gray-300 z-10">Back</span>
-              <RenderImage url={renders?.backJersey} alt={`${col1Label} back`} className="w-full h-full" />
+              <RenderImage url={isBuilder ? undefined : renders?.backJersey} alt={`${col1Label} back`} className="w-full h-full" placeholder={isBuilder ? "Developed in Production" : undefined} />
             </div>
             <div className="relative overflow-hidden" style={{ minHeight: 240 }}>
               <span className="absolute top-2 left-2.5 text-[6px] font-bold uppercase tracking-[0.28em] text-gray-300 z-10">Back</span>
-              <RenderImage url={renders?.backShorts} alt={`${col2Label} back`} className="w-full h-full" />
+              <RenderImage url={isBuilder ? undefined : renders?.backShorts} alt={`${col2Label} back`} className="w-full h-full" placeholder={isBuilder ? "Developed in Production" : undefined} />
             </div>
           </div>
         </div>
@@ -277,9 +277,11 @@ export function RendersBoard({ data, studioName }: { data: BoardData; studioName
           </div>
 
           <div className="px-4 py-4">
-            <p className="text-[7px] font-bold uppercase tracking-[0.28em] text-gray-400 mb-2">Render Quality</p>
+            <p className="text-[7px] font-bold uppercase tracking-[0.28em] text-gray-400 mb-2">{isBuilder ? "Design Preview" : "Render Quality"}</p>
             <p className="text-[8px] text-gray-500 leading-relaxed">
-              Semi-3D photorealistic. Typography sublimated into fabric by AI. Team logo composited from uploaded asset.
+              {isBuilder
+                ? "Front colorway preview from your builder selections. Full views developed during production."
+                : "Semi-3D photorealistic. Typography sublimated into fabric by AI. Team logo composited from uploaded asset."}
             </p>
           </div>
 
