@@ -92,7 +92,7 @@ export function RendersBoard({ data, studioName, isBuilder }: { data: BoardData;
         <div className="flex items-center gap-3">
           <div className="w-px h-5 bg-gray-800" />
           <span className="text-[9px] font-bold uppercase tracking-[0.3em] text-gray-400">
-            AI Concept
+            {isBuilder ? "Jersey Build" : "Creative Direction"}
           </span>
         </div>
         <span className="text-[9px] font-mono text-gray-300 tracking-widest">{orderNumber}</span>
