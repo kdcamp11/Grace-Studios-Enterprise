@@ -112,6 +112,23 @@ export async function GET() {
     (briefRows ?? []).map((b) => [b.order_id as string, b])
   );
 
+  // Production pricing per order (migration 027 — graceful fallback)
+  const productionPricingMap: Record<string, { total: number | null; deposit: number | null; balance: number | null; quantity: number | null }> = {};
+  try {
+    const { data: pricingRows } = await admin
+      .from("orders")
+      .select("id, production_total_cents, production_deposit_cents, production_balance_cents, quantity")
+      .in("id", orderIds);
+    for (const row of pricingRows ?? []) {
+      productionPricingMap[row.id] = {
+        total:    (row as Record<string, unknown>).production_total_cents    as number | null ?? null,
+        deposit:  (row as Record<string, unknown>).production_deposit_cents  as number | null ?? null,
+        balance:  (row as Record<string, unknown>).production_balance_cents  as number | null ?? null,
+        quantity: (row as Record<string, unknown>).quantity                  as number | null ?? null,
+      };
+    }
+  } catch { /* migration 027 not yet applied */ }
+
   const orders = orderRows.map((o) => {
     const brief = briefByOrder.get(o.id);
 
@@ -163,6 +180,10 @@ export async function GET() {
       // Lets the portal distinguish uploaded-concept orders from jersey-builder
       // orders — both carry concept_source = "client_provided".
       client_concept_url: (brief?.client_concept_url as string | null) ?? null,
+      production_total_cents:   productionPricingMap[o.id]?.total    ?? null,
+      production_deposit_cents: productionPricingMap[o.id]?.deposit  ?? null,
+      production_balance_cents: productionPricingMap[o.id]?.balance  ?? null,
+      production_quantity:      productionPricingMap[o.id]?.quantity ?? null,
     };
   });
 

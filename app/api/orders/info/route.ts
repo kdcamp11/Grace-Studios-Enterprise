@@ -66,6 +66,25 @@ export async function GET(req: NextRequest) {
     hasBuilderMeta ||
     (order.concept_source === null && hasZoneColors);
 
+  // Production pricing (migration 027 — graceful fallback if not yet applied)
+  let productionTotalCents:   number | null = null;
+  let productionDepositCents: number | null = null;
+  let productionBalanceCents: number | null = null;
+  let productionQuantity:     number | null = null;
+  try {
+    const { data: pricing } = await adminSupabase
+      .from("orders")
+      .select("production_total_cents, production_deposit_cents, production_balance_cents, quantity")
+      .eq("id", orderId)
+      .single();
+    if (pricing) {
+      productionTotalCents   = (pricing as Record<string, unknown>).production_total_cents   as number | null ?? null;
+      productionDepositCents = (pricing as Record<string, unknown>).production_deposit_cents as number | null ?? null;
+      productionBalanceCents = (pricing as Record<string, unknown>).production_balance_cents as number | null ?? null;
+      productionQuantity     = (pricing as Record<string, unknown>).quantity                 as number | null ?? null;
+    }
+  } catch { /* migration 027 not yet applied */ }
+
   return NextResponse.json({
     order_number:       order.order_number ?? orderId.slice(0, 8).toUpperCase(),
     design_fee_paid:    order.design_fee_paid    ?? false,
@@ -77,5 +96,9 @@ export async function GET(req: NextRequest) {
     garment_type:       garmentType,
     design_system:      (brief?.design_system as string) ?? "bold",
     preview_url:        previewUrl,
+    production_total_cents:   productionTotalCents,
+    production_deposit_cents: productionDepositCents,
+    production_balance_cents: productionBalanceCents,
+    production_quantity:      productionQuantity,
   });
 }

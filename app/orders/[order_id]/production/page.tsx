@@ -58,13 +58,25 @@ const TIMELINE = [
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
+function fmt(cents: number | null | undefined): string {
+  if (!cents) return "—";
+  return new Intl.NumberFormat("en-US", {
+    style: "currency", currency: "USD",
+    minimumFractionDigits: 0, maximumFractionDigits: 0,
+  }).format(cents / 100);
+}
+
 interface OrderInfo {
-  order_number: string;
-  team_name: string;
-  garment_type: string;
-  design_system: string;
-  preview_url: string | null;
-  production_choice: string | null;
+  order_number:            string;
+  team_name:               string;
+  garment_type:            string;
+  design_system:           string;
+  preview_url:             string | null;
+  production_choice:       string | null;
+  production_total_cents:   number | null;
+  production_deposit_cents: number | null;
+  production_balance_cents: number | null;
+  production_quantity:      number | null;
 }
 
 export default function ProductionChoicePage() {
@@ -78,6 +90,8 @@ export default function ProductionChoicePage() {
   const [selected, setSelected]   = useState<"design_file" | "production" | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [error, setError]         = useState<string | null>(null);
+
+  const hasPricing = !!info?.production_total_cents;
 
   useEffect(() => {
     async function load() {
@@ -294,36 +308,76 @@ export default function ProductionChoicePage() {
                   </ul>
                 </div>
                 <div className="flex-shrink-0 text-right space-y-0.5">
-                  <p className="text-lg font-display font-bold text-brand-primary">{PRODUCTION_TOTAL}</p>
-                  <p className="text-[9px] text-brand-muted font-barlow">Split in two payments</p>
+                  {hasPricing ? (
+                    <>
+                      <p className="text-lg font-display font-bold text-brand-primary">{fmt(info!.production_total_cents)}</p>
+                      <p className="text-[9px] text-brand-muted font-barlow">Split in two payments</p>
+                    </>
+                  ) : (
+                    <p className="text-[10px] text-brand-muted font-barlow max-w-[100px] text-right leading-snug">Pricing confirmed by your team</p>
+                  )}
                 </div>
               </div>
 
-              {/* Payment structure — visible when production is selected */}
+              {/* Pricing summary — visible when Managed Production is selected */}
               {selected === "production" && (
-                <div className="mt-4 ml-6 rounded-xl border border-brand-border bg-brand-bg divide-y divide-brand-border">
-                  <div className="px-4 py-3 flex items-center justify-between">
-                    <div>
-                      <p className="text-xs font-display font-bold uppercase tracking-wider text-brand-text">
-                        Deposit: Pay Now
-                      </p>
-                      <p className="text-[10px] text-brand-muted font-barlow mt-0.5">
-                        Required to start production · 50% of order total
-                      </p>
+                <div className="mt-4 ml-6">
+                  {hasPricing ? (
+                    <div className="rounded-xl border border-brand-border bg-brand-bg overflow-hidden">
+                      {/* Per-set breakdown header */}
+                      {info!.production_quantity && (
+                        <div className="px-4 py-3 border-b border-brand-border bg-brand-surface flex items-center justify-between">
+                          <div>
+                            <p className="text-[10px] font-display uppercase tracking-widest text-brand-muted">Order Summary</p>
+                            <p className="text-sm font-barlow text-brand-text mt-0.5">
+                              {info!.production_quantity} uniform {info!.production_quantity === 1 ? "set" : "sets"}
+                            </p>
+                          </div>
+                          {info!.production_total_cents && info!.production_quantity && (
+                            <p className="text-xs font-barlow text-brand-muted">
+                              {fmt(Math.round(info!.production_total_cents / info!.production_quantity))} / set
+                            </p>
+                          )}
+                        </div>
+                      )}
+                      {/* Deposit row */}
+                      <div className="px-4 py-3 flex items-center justify-between border-b border-brand-border">
+                        <div>
+                          <p className="text-xs font-display font-bold uppercase tracking-wider text-brand-text">
+                            Deposit Due
+                          </p>
+                          <p className="text-[10px] text-brand-muted font-barlow mt-0.5">
+                            Required to begin production · 50% of total
+                          </p>
+                        </div>
+                        <p className="text-base font-display font-bold text-brand-primary">{fmt(info!.production_deposit_cents)}</p>
+                      </div>
+                      {/* Balance row */}
+                      <div className="px-4 py-3 flex items-center justify-between opacity-60">
+                        <div>
+                          <p className="text-xs font-display font-bold uppercase tracking-wider text-brand-text">
+                            Remaining Balance
+                          </p>
+                          <p className="text-[10px] text-brand-muted font-barlow mt-0.5">
+                            Due before your order ships · 50% of total
+                          </p>
+                        </div>
+                        <p className="text-base font-display font-bold text-brand-muted">{fmt(info!.production_balance_cents)}</p>
+                      </div>
                     </div>
-                    <p className="text-base font-display font-bold text-brand-primary">{PRODUCTION_DEPOSIT}</p>
-                  </div>
-                  <div className="px-4 py-3 flex items-center justify-between opacity-60">
-                    <div>
-                      <p className="text-xs font-display font-bold uppercase tracking-wider text-brand-text">
-                        Balance: On Delivery
+                  ) : (
+                    <div className="rounded-xl border border-brand-border bg-brand-bg px-4 py-4 space-y-1.5">
+                      <p className="text-xs font-display font-bold uppercase tracking-wider text-brand-text">Production Cost</p>
+                      <p className="text-xs font-barlow text-brand-muted leading-relaxed">
+                        Your Grace Studios production team will confirm the cost for your order within 24 hours of submission. A deposit invoice will follow.
                       </p>
-                      <p className="text-[10px] text-brand-muted font-barlow mt-0.5">
-                        Due when your order ships · 50% of order total
-                      </p>
+                      <div className="flex items-center gap-3 pt-1.5">
+                        <div className="h-px flex-1 bg-brand-border" />
+                        <p className="text-[9px] font-display uppercase tracking-wider text-brand-muted">50 / 50 split payment</p>
+                        <div className="h-px flex-1 bg-brand-border" />
+                      </div>
                     </div>
-                    <p className="text-base font-display font-bold text-brand-muted">{PRODUCTION_BALANCE}</p>
-                  </div>
+                  )}
                 </div>
               )}
             </button>
@@ -349,13 +403,13 @@ export default function ProductionChoicePage() {
                 {confirming
                   ? "Processing…"
                   : selected === "production"
-                  ? `Pay ${PRODUCTION_DEPOSIT} Deposit & Start Production →`
+                  ? "Confirm Managed Production →"
                   : "Get My Design Files →"
                 }
               </button>
               <p className="text-[10px] text-brand-muted font-barlow text-center leading-relaxed">
                 {selected === "production"
-                  ? "Production begins within 1 business day of payment confirmation."
+                  ? "Your Grace Studios production team will begin your order within 1 business day."
                   : "Your design files will be available in your order portal within 24 hours."
                 }
               </p>

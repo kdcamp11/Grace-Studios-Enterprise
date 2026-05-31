@@ -17,6 +17,14 @@ import {
   isAwaitingConcepts,
 } from "@/lib/order-stages";
 
+function fmt(cents: number | null | undefined): string {
+  if (!cents) return "—";
+  return new Intl.NumberFormat("en-US", {
+    style: "currency", currency: "USD",
+    minimumFractionDigits: 0, maximumFractionDigits: 0,
+  }).format(cents / 100);
+}
+
 interface Order {
   id: string;
   order_number: string;
@@ -40,6 +48,11 @@ interface Order {
   // Derived lifecycle phase (single source of truth) — present for production orders
   lifecycle_phase?: string | null;
   lifecycle_label?: string | null;
+  // Production pricing (set by admin, shown to client once available)
+  production_total_cents?:   number | null;
+  production_deposit_cents?: number | null;
+  production_balance_cents?: number | null;
+  production_quantity?:      number | null;
 }
 
 interface SavedDesign {
@@ -521,6 +534,17 @@ function ProductionCard({ order, index, onOpen }: { order: Order; index: number;
         {order.tracking_number && (
           <p className="text-[11px] text-brand-muted font-barlow">Tracking: {order.tracking_number}</p>
         )}
+        {order.production_total_cents ? (
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[10px] font-barlow text-brand-muted">
+              {fmt(order.production_total_cents)} total
+            </span>
+            <span className="text-[10px] text-brand-border">·</span>
+            <span className="text-[10px] font-barlow text-amber-400/80">
+              {fmt(order.production_deposit_cents)} deposit due
+            </span>
+          </div>
+        ) : null}
         <p className="text-[11px] text-brand-muted font-barlow">
           {new Date(order.created_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
         </p>
