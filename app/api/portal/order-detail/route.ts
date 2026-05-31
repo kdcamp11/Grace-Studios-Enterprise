@@ -5,9 +5,7 @@
  * Auth: Bearer token first, cookie fallback (same dual-auth as approve-order).
  * Ownership: user_id → email fallback → back-fill (same as portal/orders).
  * Resilient: production_file_url and approved concept are surfaced as files
- *   even if migration 016 hasn't been run yet. Migration-025 columns/tables
- *   (order_mockups, mockup_revision_used) are fetched in a separate try/catch
- *   so orders load correctly even if the migration hasn't been applied yet.
+ *   even if migration 016 hasn't been run yet.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -141,7 +139,7 @@ export async function GET(req: NextRequest) {
     // Column doesn't exist yet (migration 016 not run) — skip silently
   }
 
-  // ── 8. Build files list — always include the approved design image ─────────
+  // ── 7. Build files list — always include the approved design image ─────────
   const orderLabel = order.order_number ?? order_id.slice(0, 8).toUpperCase();
   let resolvedFiles = files ?? [];
 
