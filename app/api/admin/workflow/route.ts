@@ -1,33 +1,42 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { assertAdminTenant, isErrorResponse } from "@/lib/api/assert-admin-tenant";
-import type { OrderStage } from "@/lib/supabase/types";
 
-const WORKFLOW_STAGES: OrderStage[] = [
-  "onboarding",
-  "design_confirmed",
-  "files_sent",
-  "first_piece_in_progress",
-  "first_piece_review",
-  "bulk_production",
-  "qc_verified",
-  "shipped",
-  "delivered",
-];
+// All production stages — includes legacy (files_sent, first_piece_in_progress)
+// so pre-025 orders still surface in the correct column.
+const WORKFLOW_STAGES = [
+  "mockup_in_progress", "mockup_review", "mockup_revision",
+  "production_files_prep", "sent_to_supplier", "files_sent",
+  "first_piece_in_progress", "first_piece_revision",
+  "first_piece_review", "bulk_production", "qc_verified",
+  "shipped", "delivered", "complete",
+] as const;
 
 export interface WorkflowOrder {
-  id: string;
-  order_number: string | null;
-  stage: OrderStage;
-  created_at: string;
-  estimated_delivery: string | null;
-  deposit_paid: boolean;
-  balance_paid: boolean;
-  client: { name: string; sport: string | null };
+  id:                   string;
+  order_number:         string | null;
+  stage:                string;
+  created_at:           string;
+  estimated_delivery:   string | null;
+  tracking_number:      string | null;
+  deposit_paid:         boolean;
+  balance_paid:         boolean;
+  production_choice:    string | null;
+  on_hold:              boolean;
+  mockup_revision_used:       boolean;
+  first_piece_revision_used:  boolean;
+  notes:                string | null;
+  client:           { name: string; sport: string | null };
   assigned_designer: { id: string; full_name: string | null; email: string } | null;
   supplier_profile:  { id: string; full_name: string | null; company: string | null } | null;
-  concept_count: number;
-  invoice_status: string | null;
+  invoice_status:       string | null;
+  mockup_count:         number;
+  production_files_count: number;
+  first_piece_media: {
+    total:         number;
+    pending_admin: number; // supplier uploaded, awaiting GE internal review
+    client_approved: number;
+  };
 }
 
 export async function GET() {
@@ -36,78 +45,157 @@ export async function GET() {
 
   const admin = createAdminClient();
 
+  // ── 1. Fetch base order fields (stable columns) ───────────────────────────
   const { data: orders, error } = await admin
     .from("orders")
     .select(`
       id, order_number, stage, created_at, estimated_delivery,
-      deposit_paid, balance_paid, design_fee_paid,
-      client_id, assigned_designer_id, supplier_user_id
+      deposit_paid, balance_paid, tracking_number, production_choice,
+      client_id, assigned_designer_id, supplier_user_id, notes
     `)
     .eq("tenant_id", ctx.tenant.id)
     .in("stage", WORKFLOW_STAGES)
     .order("created_at", { ascending: true });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  if (!orders?.length) return NextResponse.json({ stages: {}, counts: {} });
+  if (!orders?.length) return NextResponse.json({ orders: [] });
 
-  // Parallel lookups
+  const orderIds    = orders.map((o) => o.id);
   const clientIds   = Array.from(new Set(orders.map((o) => o.client_id)));
   const designerIds = Array.from(new Set(orders.map((o) => o.assigned_designer_id).filter(Boolean))) as string[];
   const supplierIds = Array.from(new Set(orders.map((o) => o.supplier_user_id).filter(Boolean))) as string[];
-  const orderIds    = orders.map((o) => o.id);
 
+  // ── 2. Migration-025 fields (mockup_revision_used, first_piece_revision_used) ─
+  const revisionFlags = new Map<string, { mockup_revision_used: boolean; first_piece_revision_used: boolean }>();
+  try {
+    const { data: rf } = await admin
+      .from("orders")
+      .select("id, mockup_revision_used, first_piece_revision_used")
+      .in("id", orderIds);
+    for (const r of rf ?? []) {
+      revisionFlags.set(r.id, {
+        mockup_revision_used:      r.mockup_revision_used ?? false,
+        first_piece_revision_used: r.first_piece_revision_used ?? false,
+      });
+    }
+  } catch {
+    // Migration 025 not yet applied
+  }
+
+  // ── 3. Migration-026 field (on_hold) ─────────────────────────────────────
+  const onHoldMap = new Map<string, boolean>();
+  try {
+    const { data: oh } = await admin
+      .from("orders")
+      .select("id, on_hold")
+      .in("id", orderIds);
+    for (const r of oh ?? []) onHoldMap.set(r.id, r.on_hold ?? false);
+  } catch {
+    // Migration 026 not yet applied
+  }
+
+  // ── 4. Parallel lookups ───────────────────────────────────────────────────
   const [
     { data: clients },
     { data: designers },
     { data: suppliers },
-    { data: concepts },
     { data: invoices },
+    { data: files },
+    { data: fpMedia },
   ] = await Promise.all([
     admin.from("clients").select("id, name, sport").in("id", clientIds),
-    designerIds.length ? admin.from("profiles").select("id, full_name, email").in("id", designerIds) : Promise.resolve({ data: [] }),
-    supplierIds.length ? admin.from("profiles").select("id, full_name, company").in("id", supplierIds) : Promise.resolve({ data: [] }),
-    admin.from("concepts").select("order_id").in("order_id", orderIds),
-    admin.from("invoices").select("order_id, status").in("order_id", orderIds).order("created_at", { ascending: false }),
+    designerIds.length
+      ? admin.from("profiles").select("id, full_name, email").in("id", designerIds)
+      : Promise.resolve({ data: [] as { id: string; full_name: string | null; email: string }[] }),
+    supplierIds.length
+      ? admin.from("profiles").select("id, full_name, company").in("id", supplierIds)
+      : Promise.resolve({ data: [] as { id: string; full_name: string | null; company: string | null }[] }),
+    admin
+      .from("invoices")
+      .select("order_id, status")
+      .in("order_id", orderIds)
+      .order("created_at", { ascending: false }),
+    // order_files: count client-visible production-related files per order
+    admin
+      .from("order_files")
+      .select("order_id, label, client_visible")
+      .in("order_id", orderIds),
+    // first_piece_media: all rows so we can compute stats per order
+    admin
+      .from("first_piece_media")
+      .select("order_id, admin_approved, client_approved, client_visible")
+      .in("order_id", orderIds),
   ]);
 
+  // ── 5. Mockup counts (migration 025, graceful fallback) ────────────────────
+  const mockupCountMap = new Map<string, number>();
+  try {
+    const { data: mockups } = await admin
+      .from("order_mockups")
+      .select("order_id")
+      .in("order_id", orderIds);
+    for (const m of mockups ?? []) {
+      mockupCountMap.set(m.order_id, (mockupCountMap.get(m.order_id) ?? 0) + 1);
+    }
+  } catch {
+    // Migration 025 not yet applied
+  }
+
+  // ── 6. Build lookup maps ──────────────────────────────────────────────────
   const clientMap   = new Map((clients ?? []).map((c) => [c.id, c]));
   const designerMap = new Map((designers ?? []).map((d) => [d.id, d]));
   const supplierMap = new Map((suppliers ?? []).map((s) => [s.id, s]));
 
-  const conceptCounts = new Map<string, number>();
-  for (const c of concepts ?? []) {
-    conceptCounts.set(c.order_id, (conceptCounts.get(c.order_id) ?? 0) + 1);
-  }
-
-  // Latest invoice per order
   const latestInvoice = new Map<string, string>();
   for (const inv of invoices ?? []) {
     if (!latestInvoice.has(inv.order_id)) latestInvoice.set(inv.order_id, inv.status);
   }
 
-  const enriched: WorkflowOrder[] = (orders ?? []).map((o) => ({
-    id:               o.id,
-    order_number:     o.order_number,
-    stage:            o.stage as OrderStage,
-    created_at:       o.created_at,
-    estimated_delivery: o.estimated_delivery,
-    deposit_paid:     o.deposit_paid,
-    balance_paid:     o.balance_paid,
-    client:           clientMap.get(o.client_id) ?? { name: "—", sport: null },
-    assigned_designer: o.assigned_designer_id ? (designerMap.get(o.assigned_designer_id) ?? null) : null,
-    supplier_profile:  o.supplier_user_id ? (supplierMap.get(o.supplier_user_id) ?? null) : null,
-    concept_count:    conceptCounts.get(o.id) ?? 0,
-    invoice_status:   latestInvoice.get(o.id) ?? null,
-  }));
+  // production file counts (client-visible, or label contains "production")
+  const prodFilesCount = new Map<string, number>();
+  for (const f of files ?? []) {
+    const isProduction = f.client_visible || (f.label ?? "").toLowerCase().includes("production");
+    if (isProduction) {
+      prodFilesCount.set(f.order_id, (prodFilesCount.get(f.order_id) ?? 0) + 1);
+    }
+  }
 
-  // Group by stage
-  const stages = Object.fromEntries(
-    WORKFLOW_STAGES.map((s) => [s, enriched.filter((o) => o.stage === s)])
-  ) as Record<OrderStage, WorkflowOrder[]>;
+  // first_piece_media stats
+  const fpStats = new Map<string, { total: number; pending_admin: number; client_approved: number }>();
+  for (const m of fpMedia ?? []) {
+    const s = fpStats.get(m.order_id) ?? { total: 0, pending_admin: 0, client_approved: 0 };
+    s.total++;
+    if (m.admin_approved === null && !m.client_visible) s.pending_admin++;
+    if (m.client_approved === true) s.client_approved++;
+    fpStats.set(m.order_id, s);
+  }
 
-  const counts = Object.fromEntries(
-    WORKFLOW_STAGES.map((s) => [s, stages[s].length])
-  );
+  // ── 7. Enrich ─────────────────────────────────────────────────────────────
+  const enriched: WorkflowOrder[] = orders.map((o) => {
+    const rf = revisionFlags.get(o.id) ?? { mockup_revision_used: false, first_piece_revision_used: false };
+    return {
+      id:                   o.id,
+      order_number:         o.order_number,
+      stage:                o.stage,
+      created_at:           o.created_at,
+      estimated_delivery:   o.estimated_delivery,
+      tracking_number:      (o as Record<string, unknown>).tracking_number as string | null ?? null,
+      deposit_paid:         o.deposit_paid,
+      balance_paid:         o.balance_paid,
+      production_choice:    (o as Record<string, unknown>).production_choice as string | null ?? null,
+      on_hold:              onHoldMap.get(o.id) ?? false,
+      mockup_revision_used:      rf.mockup_revision_used,
+      first_piece_revision_used: rf.first_piece_revision_used,
+      notes:                (o as Record<string, unknown>).notes as string | null ?? null,
+      client:               clientMap.get(o.client_id) ?? { name: "—", sport: null },
+      assigned_designer:    o.assigned_designer_id ? (designerMap.get(o.assigned_designer_id) ?? null) : null,
+      supplier_profile:     o.supplier_user_id ? (supplierMap.get(o.supplier_user_id) ?? null) : null,
+      invoice_status:       latestInvoice.get(o.id) ?? null,
+      mockup_count:         mockupCountMap.get(o.id) ?? 0,
+      production_files_count: prodFilesCount.get(o.id) ?? 0,
+      first_piece_media:    fpStats.get(o.id) ?? { total: 0, pending_admin: 0, client_approved: 0 },
+    };
+  });
 
-  return NextResponse.json({ stages, counts });
+  return NextResponse.json({ orders: enriched });
 }

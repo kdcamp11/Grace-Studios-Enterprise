@@ -391,5 +391,30 @@ export async function PATCH(
     return NextResponse.json({ ok: true });
   }
 
+  // ── On-hold toggle ────────────────────────────────────────────────────────
+  if (action === "on_hold") {
+    const { on_hold } = body as { action: string; on_hold: boolean };
+    if (typeof on_hold !== "boolean") {
+      return NextResponse.json({ error: "on_hold (boolean) required" }, { status: 400 });
+    }
+    try {
+      const { error } = await serviceSupabase
+        .from("orders")
+        .update({ on_hold })
+        .eq("id", order_id);
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      await logActivity({
+        tenantId: ctx.tenant.id, orderId: order_id,
+        actorUserId: ctx.userId, actorRole: "admin",
+        eventType: "stage_changed",
+        eventMessage: on_hold ? "Order placed on hold" : "Order hold released",
+        metadata: { on_hold },
+      });
+    } catch {
+      // Migration 026 not yet applied
+    }
+    return NextResponse.json({ success: true });
+  }
+
   return NextResponse.json({ error: `Unknown action: ${action}` }, { status: 400 });
 }
