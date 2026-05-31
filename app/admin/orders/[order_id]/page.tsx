@@ -24,12 +24,26 @@ interface MediaItem {
   client_note: string | null;
 }
 
+interface MockupItem {
+  id: string;
+  created_at: string;
+  image_url: string;
+  label: string | null;
+  revision_round: number;
+}
+
 const PIPELINE: OrderStage[] = [
   "onboarding",
   "design_confirmed",
+  "mockup_in_progress",
+  "mockup_review",
+  "mockup_revision",
+  "production_files_prep",
+  "sent_to_supplier",
   "files_sent",
   "first_piece_in_progress",
   "first_piece_review",
+  "first_piece_revision",
   "bulk_production",
   "qc_verified",
   "shipped",
@@ -40,16 +54,22 @@ const PIPELINE: OrderStage[] = [
 // Partial: PIPELINE only renders these legacy/production stages; new creative
 // stages fall back to stageLabel() at the call site (see lib/order-stages.ts).
 const STAGE_LABELS: Partial<Record<OrderStage, string>> = {
-  onboarding: "Brief Submitted",
-  design_confirmed: "Concepts Generating",
-  files_sent: "Design Approved",
+  onboarding:              "Brief Submitted",
+  design_confirmed:        "Concepts",
+  mockup_in_progress:      "Mockup",
+  mockup_review:           "Mockup Review",
+  mockup_revision:         "Mockup Rev.",
+  production_files_prep:   "Prod. Prep",
+  sent_to_supplier:        "To Supplier",
+  files_sent:              "Design OK",
   first_piece_in_progress: "First Piece",
-  first_piece_review: "First Piece Review",
-  bulk_production: "Bulk Production",
-  qc_verified: "QC Verified",
-  shipped: "Shipped",
-  delivered: "Delivered",
-  complete: "Complete",
+  first_piece_review:      "1st Piece Review",
+  first_piece_revision:    "1st Piece Rev.",
+  bulk_production:         "Bulk",
+  qc_verified:             "QC",
+  shipped:                 "Shipped",
+  delivered:               "Delivered",
+  complete:                "Complete",
 };
 
 interface Brief {
@@ -150,6 +170,8 @@ interface OrderDetail {
   assigned_designer_id: string | null;
   notes: string | null;
   production_file_url: string | null;
+  mockup_revision_used: boolean;
+  first_piece_revision_used: boolean;
   client: { name: string; email: string; sport: string; city: string };
   brief: Brief | null;
   concepts: Concept[];
@@ -271,6 +293,12 @@ export default function AdminOrderPage() {
   const [fileSaved, setFileSaved] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Mockup state
+  const [mockups, setMockups] = useState<MockupItem[]>([]);
+  const [mockupLabel, setMockupLabel] = useState("Front");
+  const [mockupUploading, setMockupUploading] = useState(false);
+  const [mockupRevisionUsed, setMockupRevisionUsed] = useState(false);
+
   // Invoice state
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [showCreateInvoice, setShowCreateInvoice] = useState(false);
@@ -297,6 +325,7 @@ export default function AdminOrderPage() {
       const res = await fetch(`/api/admin/orders/${order_id}`);
       if (!res.ok) { setLoading(false); return; }
       const d = await res.json() as {
+        mockups?: MockupItem[];
         order: OrderDetail & { client: { name: string; email: string; sport: string; city: string } };
         brief: Brief | null;
         concepts: Concept[];
@@ -313,6 +342,8 @@ export default function AdminOrderPage() {
       setDesigners(d.designers ?? []);
       setOrderFiles(d.files);
       setInvoices(d.invoices ?? []);
+      setMockups(d.mockups ?? []);
+      setMockupRevisionUsed(d.order.mockup_revision_used ?? false);
       setTrackingInput(d.order.tracking_number ?? "");
       setDeliveryInput(d.order.estimated_delivery?.slice(0, 10) ?? "");
       setNotesInput(d.order.notes ?? "");
@@ -473,6 +504,55 @@ export default function AdminOrderPage() {
     setOrderFiles((prev) => prev.filter((f) => f.id !== fileId));
   }
 
+  async function uploadMockup(file: File) {
+    setMockupUploading(true);
+    const ext = file.name.split(".").pop() ?? "jpg";
+    const path = `mockups/${order_id}/${Date.now()}.${ext}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("order-files")
+      .upload(path, file);
+
+    if (uploadError) {
+      console.error("Mockup upload error:", uploadError.message);
+      setMockupUploading(false);
+      return;
+    }
+
+    const { data: { publicUrl } } = supabase.storage.from("order-files").getPublicUrl(path);
+    const { data: { user } } = await supabase.auth.getUser();
+
+    // Determine current revision round based on existing mockups
+    const maxRound = mockups.reduce((max, m) => Math.max(max, m.revision_round), 0);
+    const currentRound = maxRound > 0 ? maxRound : 1;
+
+    const res = await fetch(`/api/admin/orders/${order_id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action:         "mockup_insert",
+        uploaded_by:    user?.id,
+        image_url:      publicUrl,
+        label:          mockupLabel.trim() || null,
+        revision_round: currentRound,
+      }),
+    });
+    const { row } = await res.json() as { row?: MockupItem };
+    if (row) setMockups((prev) => [...prev, row]);
+    setMockupUploading(false);
+  }
+
+  async function deleteMockup(mockupId: string, imageUrl: string) {
+    await fetch(`/api/admin/orders/${order_id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "mockup_delete", mockup_id: mockupId }),
+    });
+    const storagePath = imageUrl.split("/order-files/")[1];
+    if (storagePath) await supabase.storage.from("order-files").remove([storagePath]);
+    setMockups((prev) => prev.filter((m) => m.id !== mockupId));
+  }
+
   async function createInvoice() {
     if (!invTotal || isNaN(Number(invTotal))) return;
     setInvSaving(true);
@@ -574,9 +654,15 @@ export default function AdminOrderPage() {
   const STAGE_NEXT: Partial<Record<OrderStage, string>> = {
     onboarding:              "Concepts are generating. Check back soon or trigger manually.",
     design_confirmed:        "Client is reviewing concepts and will select one.",
+    mockup_in_progress:      "Upload 2D mockup images below, then send to client for review.",
+    mockup_review:           "Client is reviewing the mockup. They will approve or request a revision.",
+    mockup_revision:         "Upload revised mockup images below, then re-send to client.",
+    production_files_prep:   "Upload supplier-ready production files below, then advance to Sent to Supplier.",
+    sent_to_supplier:        "Order has been sent to the supplier. Advance when supplier confirms.",
     files_sent:              "Assign a production partner and upload production files below.",
     first_piece_in_progress: "Waiting for supplier to submit first piece photos.",
     first_piece_review:      "Scroll down to review supplier uploads before sending to client.",
+    first_piece_revision:    "Supplier is revising the first piece. Advance when new photos arrive.",
     bulk_production:         "Bulk production underway. Supplier will mark complete when done.",
     qc_verified:             "Add a tracking number below, then advance to Shipped.",
     shipped:                 "Move to Delivered once the client confirms receipt.",
@@ -666,6 +752,96 @@ export default function AdminOrderPage() {
               </div>
             )}
           </div>
+
+          {/* ── Mockup Upload ────────────────────────────────────────────── */}
+          {(["mockup_in_progress","mockup_review","mockup_revision"].includes(order.stage) || mockups.length > 0) && (
+            <div className="bg-brand-surface border border-brand-border rounded-xl p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-display uppercase tracking-widest text-brand-primary">2D Mockup</p>
+                <div className="flex items-center gap-3">
+                  {mockupRevisionUsed && (
+                    <span className="text-[10px] font-display uppercase tracking-wider text-amber-400 border border-amber-400/30 rounded-full px-2 py-0.5">
+                      Revision Used
+                    </span>
+                  )}
+                  {mockupUploading && <span className="text-[10px] font-barlow text-brand-muted animate-pulse">Uploading…</span>}
+                </div>
+              </div>
+
+              {/* Uploaded mockups grid */}
+              {mockups.length > 0 && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {mockups.map((m) => (
+                    <div key={m.id} className="relative rounded-lg overflow-hidden border border-brand-border bg-white group">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={m.image_url} alt={m.label ?? "Mockup"} className="w-full object-contain max-h-48" />
+                      {m.label && (
+                        <p className="text-center text-[9px] font-display uppercase tracking-[0.28em] text-brand-muted py-1.5 border-t border-brand-border bg-brand-surface">
+                          {m.label}{m.revision_round > 1 ? ` · Rev ${m.revision_round}` : ""}
+                        </p>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => deleteMockup(m.id, m.image_url)}
+                        className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/60 text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                      >×</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Upload controls */}
+              <div className="flex gap-3 items-end">
+                <div className="flex-1">
+                  <label className="block text-[10px] font-display uppercase tracking-wider text-brand-muted mb-1.5">View Label</label>
+                  <select
+                    value={mockupLabel}
+                    onChange={(e) => setMockupLabel(e.target.value)}
+                    className="w-full bg-brand-bg border border-brand-border rounded-lg px-3 py-2.5 text-brand-text font-barlow text-sm focus:outline-none focus:border-brand-primary transition-colors"
+                  >
+                    {["Front","Back","Detail","Left Side","Right Side","Close-up"].map((l) => (
+                      <option key={l} value={l}>{l}</option>
+                    ))}
+                  </select>
+                </div>
+                <label className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-brand-primary text-brand-primary font-display font-bold text-xs uppercase tracking-widest cursor-pointer hover:bg-brand-primary/10 transition-colors">
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                  </svg>
+                  Upload Image
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="sr-only"
+                    disabled={mockupUploading}
+                    onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadMockup(f); e.target.value = ""; }}
+                  />
+                </label>
+              </div>
+
+              {/* Advance to mockup_review */}
+              {order.stage === "mockup_in_progress" && mockups.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => updateStage("mockup_review" as OrderStage)}
+                  disabled={stageSaving}
+                  className="w-full py-2.5 rounded-lg font-display font-bold text-xs uppercase tracking-widest bg-brand-primary text-white hover:bg-brand-secondary disabled:opacity-40 transition-all"
+                >
+                  Send Mockup to Client for Review →
+                </button>
+              )}
+              {order.stage === "mockup_revision" && mockups.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => updateStage("mockup_review" as OrderStage)}
+                  disabled={stageSaving}
+                  className="w-full py-2.5 rounded-lg font-display font-bold text-xs uppercase tracking-widest bg-brand-primary text-white hover:bg-brand-secondary disabled:opacity-40 transition-all"
+                >
+                  Send Revised Mockup to Client →
+                </button>
+              )}
+            </div>
+          )}
 
           {/* ── Invoice / Payment Panel ──────────────────────────────────── */}
           <div className="bg-brand-surface border border-brand-border rounded-xl p-5 space-y-4">
