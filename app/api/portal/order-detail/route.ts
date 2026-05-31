@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
   // ── 3. Fetch order (without production_file_url in case migration not run) ─
   const { data: order } = await admin
     .from("orders")
-    .select("id, order_number, stage, created_at, estimated_delivery, tracking_number, client_id, tenant_id")
+    .select("id, order_number, stage, created_at, estimated_delivery, tracking_number, client_id, tenant_id, production_choice, deposit_paid, balance_paid")
     .eq("id", order_id)
     .single();
 

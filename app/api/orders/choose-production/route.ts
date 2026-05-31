@@ -20,7 +20,9 @@ export async function POST(req: NextRequest) {
   const patch: Record<string, unknown> = { production_choice: choice };
 
   if (choice === "production") {
-    patch.stage = "first_piece_in_progress";
+    // Production begins at the FIRST real stage — the design team must create
+    // the 2D mockup before anything downstream. Never skip ahead to first piece.
+    patch.stage = "mockup_in_progress";
   }
 
   const { error } = await createAdminClient()
