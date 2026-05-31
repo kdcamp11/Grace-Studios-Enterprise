@@ -22,7 +22,7 @@ export async function GET(
   const { data: orderRow, error: orderError } = await serviceSupabase
     .from("orders")
     .select(
-      "id, order_number, stage, created_at, approved_at, estimated_delivery, tracking_number, supplier, supplier_user_id, assigned_designer_id, notes, design_fee_paid, production_choice, production_file_url, client_id",
+      "id, order_number, stage, created_at, approved_at, estimated_delivery, tracking_number, supplier, supplier_user_id, assigned_designer_id, notes, design_fee_paid, production_choice, production_file_url, client_id, mockup_revision_used, first_piece_revision_used",
     )
     .eq("id", order_id)
     .eq("tenant_id", ctx.tenant.id)
@@ -51,6 +51,7 @@ export async function GET(
     { data: designerProfiles },
     { data: files },
     { data: invoiceRows },
+    { data: mockups },
   ] = await Promise.all([
     serviceSupabase.from("briefs").select("*").eq("order_id", order_id).single(),
     serviceSupabase
@@ -83,6 +84,11 @@ export async function GET(
       .eq("order_id", order_id)
       .eq("tenant_id", ctx.tenant.id)
       .order("created_at", { ascending: false }),
+    serviceSupabase
+      .from("order_mockups")
+      .select("*")
+      .eq("order_id", order_id)
+      .order("created_at", { ascending: true }),
   ]);
 
   const order = {
@@ -100,6 +106,8 @@ export async function GET(
     design_fee_paid:      orderRow.design_fee_paid,
     production_choice:    orderRow.production_choice,
     production_file_url:  (orderRow as Record<string, unknown>).production_file_url as string | null ?? null,
+    mockup_revision_used:      orderRow.mockup_revision_used,
+    first_piece_revision_used: orderRow.first_piece_revision_used,
     client: clientRow ?? { name: "—", email: "—", sport: "—", city: "—" },
   };
 
@@ -112,6 +120,7 @@ export async function GET(
     designers: designerProfiles ?? [],
     files:     files      ?? [],
     invoices:  invoiceRows ?? [],
+    mockups:   mockups    ?? [],
   });
 }
 
@@ -335,6 +344,51 @@ export async function PATCH(
     const { error } = await serviceSupabase.from("order_files").delete().eq("id", file_id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ success: true });
+  }
+
+  // ── Mockup insert (after storage upload) ──────────────────────────────────
+  if (action === "mockup_insert") {
+    const { image_url, label, revision_round, uploaded_by } = body as {
+      action: string;
+      image_url: string;
+      label?: string;
+      revision_round?: number;
+      uploaded_by?: string;
+    };
+
+    if (!image_url) return NextResponse.json({ error: "image_url required" }, { status: 400 });
+
+    // Fetch tenant_id from verified order ownership
+    const { data: orderForTenant } = await serviceSupabase
+      .from("orders")
+      .select("tenant_id")
+      .eq("id", order_id)
+      .single();
+
+    const { data: mockupRow, error: mockupError } = await serviceSupabase
+      .from("order_mockups")
+      .insert({
+        tenant_id:      orderForTenant?.tenant_id ?? ctx.tenant.id,
+        order_id,
+        uploaded_by:    uploaded_by ?? null,
+        image_url,
+        label:          label ?? null,
+        revision_round: revision_round ?? 1,
+      })
+      .select()
+      .single();
+
+    if (mockupError) return NextResponse.json({ error: mockupError.message }, { status: 500 });
+    return NextResponse.json({ row: mockupRow });
+  }
+
+  // ── Mockup delete ──────────────────────────────────────────────────────────
+  if (action === "mockup_delete") {
+    const { mockup_id } = body as { action: string; mockup_id: string };
+    if (!mockup_id) return NextResponse.json({ error: "mockup_id required" }, { status: 400 });
+    const { error } = await serviceSupabase.from("order_mockups").delete().eq("id", mockup_id);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: true });
   }
 
   return NextResponse.json({ error: `Unknown action: ${action}` }, { status: 400 });

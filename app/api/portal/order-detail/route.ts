@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
   // ── 3. Fetch order (without production_file_url in case migration not run) ─
   const { data: order } = await admin
     .from("orders")
-    .select("id, order_number, stage, created_at, estimated_delivery, tracking_number, client_id, tenant_id")
+    .select("id, order_number, stage, created_at, estimated_delivery, tracking_number, client_id, tenant_id, mockup_revision_used")
     .eq("id", order_id)
     .single();
 
@@ -81,7 +81,7 @@ export async function GET(req: NextRequest) {
   }
 
   // ── 5. Fetch related data in parallel ─────────────────────────────────────
-  const [{ data: concepts }, { data: media }, { data: files }, { data: approvedConcept }] =
+  const [{ data: concepts }, { data: media }, { data: files }, { data: approvedConcept }, { data: mockups }] =
     await Promise.all([
       admin.from("concepts").select("id").eq("order_id", order_id).limit(1),
       admin
@@ -103,6 +103,12 @@ export async function GET(req: NextRequest) {
         .eq("order_id", order_id)
         .eq("selected", true)
         .single(),
+      // Fetch 2D mockup images for client review
+      admin
+        .from("order_mockups")
+        .select("id, image_url, label, revision_round, created_at")
+        .eq("order_id", order_id)
+        .order("created_at", { ascending: true }),
     ]);
 
   // ── 6. Try to get production_file_url separately (safe if column missing) ─
@@ -161,9 +167,11 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     order: {
       ...orderFields,
-      has_concepts: (concepts?.length ?? 0) > 0,
-      media:        media ?? [],
-      files:        resolvedFiles,
+      has_concepts:         (concepts?.length ?? 0) > 0,
+      media:                media ?? [],
+      files:                resolvedFiles,
+      mockups:              mockups ?? [],
+      mockup_revision_used: order.mockup_revision_used ?? false,
     },
   });
 }

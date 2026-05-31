@@ -48,6 +48,8 @@ export interface Database {
           account_lead: string | null;
           approved_at: string | null;
           notes: string | null;
+          mockup_revision_used: boolean;
+          first_piece_revision_used: boolean;
         };
         Insert: {
           id?: string;
@@ -68,8 +70,33 @@ export interface Database {
           account_lead?: string | null;
           approved_at?: string | null;
           notes?: string | null;
+          mockup_revision_used?: boolean;
+          first_piece_revision_used?: boolean;
         };
         Update: Partial<Database["public"]["Tables"]["orders"]["Insert"]>;
+      };
+      order_mockups: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          created_at: string;
+          order_id: string;
+          uploaded_by: string | null;
+          image_url: string;
+          label: string | null;
+          revision_round: number;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          created_at?: string;
+          order_id: string;
+          uploaded_by?: string | null;
+          image_url: string;
+          label?: string | null;
+          revision_round?: number;
+        };
+        Update: Partial<Database["public"]["Tables"]["order_mockups"]["Insert"]>;
       };
       briefs: {
         Row: {
@@ -258,15 +285,6 @@ export type OrderStage =
   // legacy stages (still written/read by older code paths)
   | "onboarding"
   | "design_confirmed"
-  // production stages
-  | "files_sent"
-  | "first_piece_in_progress"
-  | "first_piece_review"
-  | "bulk_production"
-  | "qc_verified"
-  | "shipped"
-  | "delivered"
-  | "complete"
   // new creative lifecycle stages
   | "creative_started"
   | "creative_submitted"
@@ -275,7 +293,24 @@ export type OrderStage =
   | "creative_in_review"
   | "revision_requested"
   | "creative_approved"
-  | "ready_for_production";
+  | "ready_for_production"
+  // production workflow: mockup
+  | "mockup_in_progress"
+  | "mockup_review"
+  | "mockup_revision"
+  // production workflow: files + supplier
+  | "production_files_prep"
+  | "sent_to_supplier"
+  // production stages
+  | "files_sent"
+  | "first_piece_in_progress"
+  | "first_piece_review"
+  | "first_piece_revision"
+  | "bulk_production"
+  | "qc_verified"
+  | "shipped"
+  | "delivered"
+  | "complete";
 
 export interface RosterPlayer {
   name: string;
