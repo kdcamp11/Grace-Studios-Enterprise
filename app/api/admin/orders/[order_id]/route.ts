@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { assertAdminTenant, isErrorResponse } from "@/lib/api/assert-admin-tenant";
 import { logActivity } from "@/lib/activity/log";
+import { calcProductionPricing, PRODUCTION_PRICING_TIERS } from "@/lib/payments/supplier-pricing";
+import type { ProductionPricingTier } from "@/lib/payments/supplier-pricing";
 
 const serviceSupabase = createAdminClient();
 
@@ -179,9 +181,37 @@ export async function PATCH(
       return NextResponse.json({ error: "stage and from_stage are required" }, { status: 400 });
     }
 
+    const stageUpdate: Record<string, unknown> = { stage };
+
+    // Auto-route to preferred supplier when GE releases production.
+    // Only applies when moving to sent_to_supplier and no supplier is already set.
+    if (stage === "sent_to_supplier") {
+      const { data: currentOrder } = await serviceSupabase
+        .from("orders")
+        .select("supplier_user_id")
+        .eq("id", order_id)
+        .single();
+
+      const alreadyAssigned = !!(currentOrder as Record<string, unknown> | null)?.supplier_user_id;
+
+      if (!alreadyAssigned) {
+        try {
+          const { data: tenantRow } = await serviceSupabase
+            .from("tenants")
+            .select("preferred_supplier_id")
+            .eq("id", ctx.tenant.id)
+            .single();
+          const preferredId = (tenantRow as { preferred_supplier_id?: string | null } | null)?.preferred_supplier_id;
+          if (preferredId) {
+            stageUpdate.supplier_user_id = preferredId;
+          }
+        } catch { /* migration 027 not yet applied — skip */ }
+      }
+    }
+
     const { error: updateError } = await serviceSupabase
       .from("orders")
-      .update({ stage })
+      .update(stageUpdate)
       .eq("id", order_id);
 
     if (updateError) {
@@ -206,15 +236,62 @@ export async function PATCH(
       first_piece_review: "First Piece Review", bulk_production: "Bulk Production",
       qc_verified: "QC Verified", shipped: "Shipped", delivered: "Delivered", complete: "Complete",
     };
+    const routingNote = stageUpdate.supplier_user_id ? " (preferred supplier auto-assigned)" : "";
     await logActivity({
       tenantId: ctx.tenant.id, orderId: order_id,
       actorUserId: ctx.userId, actorRole: "admin",
       eventType: "stage_changed",
-      eventMessage: `Stage moved from ${STAGE_LABELS[from_stage] ?? from_stage} → ${STAGE_LABELS[stage] ?? stage}`,
+      eventMessage: `Stage moved from ${STAGE_LABELS[from_stage] ?? from_stage} → ${STAGE_LABELS[stage] ?? stage}${routingNote}`,
       metadata: { from_stage, to_stage: stage },
     });
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, auto_assigned_supplier: !!stageUpdate.supplier_user_id });
+  }
+
+  // ── Production pricing ─────────────────────────────────────────────────
+  if (action === "pricing") {
+    const { tier, quantity: rawQty } = body as {
+      action: string;
+      tier: string;
+      quantity: number | string;
+    };
+
+    if (!tier || !(tier in PRODUCTION_PRICING_TIERS)) {
+      return NextResponse.json({ error: `Invalid pricing tier. Must be one of: ${Object.keys(PRODUCTION_PRICING_TIERS).join(", ")}` }, { status: 400 });
+    }
+    const qty = Number(rawQty);
+    if (!Number.isInteger(qty) || qty < 1) {
+      return NextResponse.json({ error: "quantity must be a positive integer" }, { status: 400 });
+    }
+
+    const calc = calcProductionPricing(tier as ProductionPricingTier, qty);
+
+    try {
+      const { error } = await serviceSupabase
+        .from("orders")
+        .update({
+          production_pricing_tier:  calc.tier,
+          quantity:                 calc.quantity,
+          production_total_cents:   calc.total_cents,
+          production_deposit_cents: calc.deposit_cents,
+          production_balance_cents: calc.balance_cents,
+        })
+        .eq("id", order_id);
+
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+      await logActivity({
+        tenantId: ctx.tenant.id, orderId: order_id,
+        actorUserId: ctx.userId, actorRole: "admin",
+        eventType: "stage_changed",
+        eventMessage: `Production pricing set: ${PRODUCTION_PRICING_TIERS[tier as ProductionPricingTier].label} × ${qty} sets = $${(calc.total_cents / 100).toFixed(2)}`,
+        metadata: { tier, quantity: qty, total_cents: calc.total_cents },
+      });
+
+      return NextResponse.json({ success: true, pricing: calc });
+    } catch {
+      return NextResponse.json({ error: "Production pricing columns not available. Apply migration 027." }, { status: 500 });
+    }
   }
 
   // ── Supplier assignment ────────────────────────────────────────────────

@@ -55,10 +55,10 @@ export async function GET() {
     .eq("id", client.id)
     .single();
 
-  // Fetch orders
+  // Fetch orders (supplier_user_id needed for supplierAssigned lifecycle gate)
   const { data: orderRows } = await admin
     .from("orders")
-    .select("id, order_number, stage, created_at, order_type, design_fee_paid, tracking_number, concept_source, production_choice, deposit_paid, balance_paid")
+    .select("id, order_number, stage, created_at, order_type, design_fee_paid, tracking_number, concept_source, production_choice, deposit_paid, balance_paid, supplier_user_id")
     .eq("client_id", client.id)
     .order("created_at", { ascending: false });
 
@@ -138,6 +138,7 @@ export async function GET() {
       tracking_number:   o.tracking_number,
       mockupUploaded:          mockupOrderIds.has(o.id),
       productionFilesUploaded: prodFilesOrderIds.has(o.id),
+      supplierAssigned:        !!((o as Record<string, unknown>).supplier_user_id),
       firstPieceUploaded:      mediaTotalIds.has(o.id),
       firstPieceApproved:      mediaApprovedIds.has(o.id),
     });

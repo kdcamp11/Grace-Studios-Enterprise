@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { getProfile } from "@/lib/profile";
 import AdminHeader from "@/components/AdminHeader";
 import type { WorkflowOrder } from "@/app/api/admin/workflow/route";
+import { PRODUCTION_PRICING_TIERS, formatCents } from "@/lib/payments/supplier-pricing";
 
 // ─── Column definitions ───────────────────────────────────────────────────────
 //
@@ -113,21 +114,23 @@ function getActionBadge(order: WorkflowOrder, colKey: ColumnKey): ActionBadge {
     case "production_files":
       if (order.production_files_count === 0) return { label: "Upload Production Files", variant: "urgent" };
       if (!order.deposit_paid) return { label: "Awaiting First Payment", variant: "warning" };
-      return { label: "Release to Supplier", variant: "success" };
+      if (!order.supplier_profile) return { label: "Release to Supplier →", variant: "success" };
+      return { label: "Production Released", variant: "success" };
 
     case "first_piece_in_production":
       if (!order.supplier_profile) return { label: "Assign Supplier", variant: "urgent" };
       if (order.stage === "first_piece_revision") return { label: "Supplier Revision", variant: "info" };
       return { label: "Supplier In Production", variant: "muted" };
 
+    case "bulk_production":
+      if (!order.supplier_profile) return { label: "Assign Supplier", variant: "urgent" };
+      if (!order.balance_paid) return { label: "Awaiting Final Payment", variant: "warning" };
+      return { label: "Supplier In Production", variant: "muted" };
+
     case "first_piece_review":
       if (order.first_piece_media.total === 0) return { label: "Awaiting Supplier Upload", variant: "muted" };
       if (order.first_piece_media.pending_admin > 0) return { label: "Review Uploads Internally", variant: "warning" };
       return { label: "Awaiting Client Approval", variant: "muted" };
-
-    case "bulk_production":
-      if (!order.supplier_profile) return { label: "Assign Supplier", variant: "urgent" };
-      return { label: "Supplier In Production", variant: "muted" };
 
     case "quality_check":
       if (!order.deposit_paid) return { label: "First Payment Missing", variant: "urgent" };
@@ -253,7 +256,46 @@ function StatusPills({ order, colKey }: { order: WorkflowOrder; colKey: ColumnKe
     } else if (order.deposit_paid) {
       pills.push({ label: "1st Payment ✓", style: "bg-green-400/10 text-green-400 border-green-400/30" });
     } else if (["production_files", "quality_check"].includes(colKey)) {
-      pills.push({ label: "No Payment", style: "bg-red-500/10 text-red-400 border-red-400/30" });
+      pills.push({ label: "Awaiting First Payment", style: "bg-red-500/10 text-red-400 border-red-400/30" });
+    }
+  }
+
+  // Supplier + pricing pills — shown in production_files and first_piece_in_production
+  if (["production_files", "first_piece_in_production", "bulk_production"].includes(colKey)) {
+    if (order.supplier_profile) {
+      const supplierName = order.supplier_profile.company ?? order.supplier_profile.full_name ?? "Supplier";
+      const isPreferred  = order.preferred_supplier_assigned;
+      pills.push({
+        label: isPreferred ? `Preferred · ${supplierName}` : supplierName,
+        style: isPreferred
+          ? "bg-brand-primary/10 text-brand-primary border-brand-primary/30"
+          : "bg-brand-surface text-brand-muted border-brand-border",
+      });
+    }
+
+    if (order.production_pricing_tier) {
+      const tierLabel = PRODUCTION_PRICING_TIERS[order.production_pricing_tier]?.label ?? order.production_pricing_tier;
+      pills.push({ label: `${tierLabel} Pricing`, style: "bg-brand-surface text-brand-muted border-brand-border" });
+    }
+
+    if (order.production_total_cents) {
+      pills.push({
+        label: `${formatCents(order.production_total_cents)} total${order.quantity ? ` · ${order.quantity} sets` : ""}`,
+        style: "bg-brand-surface text-brand-muted border-brand-border",
+      });
+    }
+
+    if (order.production_deposit_cents && !order.deposit_paid) {
+      pills.push({
+        label: `Deposit: ${formatCents(order.production_deposit_cents)}`,
+        style: "bg-amber-400/10 text-amber-400 border-amber-400/30",
+      });
+    }
+    if (order.production_balance_cents && order.deposit_paid && !order.balance_paid) {
+      pills.push({
+        label: `Balance: ${formatCents(order.production_balance_cents)}`,
+        style: "bg-amber-400/10 text-amber-400 border-amber-400/30",
+      });
     }
   }
 

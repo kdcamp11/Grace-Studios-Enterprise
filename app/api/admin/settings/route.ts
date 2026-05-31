@@ -32,6 +32,7 @@ export async function PATCH(req: NextRequest) {
     "brand_muted",
     "enabled_sports",
     "enabled_products",
+    "preferred_supplier_id", // migration 027 — auto-routing
   ];
 
   const updates = Object.fromEntries(

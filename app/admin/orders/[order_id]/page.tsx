@@ -10,6 +10,8 @@ import type { OrderStage } from "@/types/database";
 import { stageLabel } from "@/lib/order-stages";
 import type { SupplierWithPortfolio } from "@/app/api/admin/suppliers/route";
 import { formatCurrency, getPaymentThresholdInfo } from "@/lib/payments/thresholds";
+import { PRODUCTION_PRICING_TIERS, calcProductionPricing, formatCents } from "@/lib/payments/supplier-pricing";
+import type { ProductionPricingTier } from "@/lib/payments/supplier-pricing";
 
 interface MediaItem {
   id: string;
@@ -176,6 +178,12 @@ interface OrderDetail {
   brief: Brief | null;
   concepts: Concept[];
   media: MediaItem[];
+  // Production pricing (migration 027, null if not yet set)
+  production_pricing_tier:  string | null;
+  quantity:                 number | null;
+  production_total_cents:   number | null;
+  production_deposit_cents: number | null;
+  production_balance_cents: number | null;
 }
 
 function DetailRow({ label, value }: { label: string; value: string | null | undefined }) {
@@ -287,6 +295,12 @@ export default function AdminOrderPage() {
   const [supplierSaving, setSupplierSaving] = useState(false);
   const [supplierSaved, setSupplierSaved] = useState(false);
   const [showSupplierModal, setShowSupplierModal] = useState(false);
+
+  // Production pricing (migration 027)
+  const [pricingTier, setPricingTier] = useState<ProductionPricingTier>("standard");
+  const [pricingQty, setPricingQty]   = useState("");
+  const [pricingSaving, setPricingSaving] = useState(false);
+  const [pricingSaved, setPricingSaved]   = useState(false);
   const [orderFiles, setOrderFiles] = useState<OrderFile[]>([]);
   const [fileLabel, setFileLabel] = useState("Print-Ready Files");
   const [fileUploading, setFileUploading] = useState(false);
@@ -338,6 +352,8 @@ export default function AdminOrderPage() {
 
       if (!d.order) { setLoading(false); return; }
       setOrder({ ...d.order, brief: d.brief ?? null, concepts: d.concepts, media: d.media });
+      if (d.order.production_pricing_tier) setPricingTier(d.order.production_pricing_tier as ProductionPricingTier);
+      if (d.order.quantity) setPricingQty(String(d.order.quantity));
       setSuppliers(d.suppliers);
       setDesigners(d.designers ?? []);
       setOrderFiles(d.files);
@@ -452,6 +468,31 @@ export default function AdminOrderPage() {
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
+  }
+
+  async function savePricing() {
+    if (!pricingQty || isNaN(Number(pricingQty)) || Number(pricingQty) < 1) return;
+    setPricingSaving(true);
+    const res = await fetch(`/api/admin/orders/${order_id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "pricing", tier: pricingTier, quantity: Number(pricingQty) }),
+    });
+    if (res.ok) {
+      const qty = Number(pricingQty);
+      const calc = calcProductionPricing(pricingTier, qty);
+      setOrder((prev) => prev ? {
+        ...prev,
+        production_pricing_tier:  calc.tier,
+        quantity:                 calc.quantity,
+        production_total_cents:   calc.total_cents,
+        production_deposit_cents: calc.deposit_cents,
+        production_balance_cents: calc.balance_cents,
+      } : prev);
+    }
+    setPricingSaving(false);
+    setPricingSaved(true);
+    setTimeout(() => setPricingSaved(false), 2500);
   }
 
   async function uploadFile(file: File) {
@@ -842,6 +883,93 @@ export default function AdminOrderPage() {
               )}
             </div>
           )}
+
+          {/* ── Production Pricing ───────────────────────────────────────── */}
+          <div className="bg-brand-surface border border-brand-border rounded-xl p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-display uppercase tracking-widest text-brand-primary">Production Pricing</p>
+              {pricingSaved && <span className="text-[10px] font-barlow text-green-400">Saved ✓</span>}
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[10px] font-display uppercase tracking-wider text-brand-muted mb-1.5">Pricing Tier</label>
+                <select
+                  value={pricingTier}
+                  onChange={(e) => setPricingTier(e.target.value as ProductionPricingTier)}
+                  className="w-full bg-brand-bg border border-brand-border rounded-lg px-3 py-2.5 text-brand-text font-barlow text-sm focus:outline-none focus:border-brand-primary transition-colors"
+                >
+                  {Object.entries(PRODUCTION_PRICING_TIERS).map(([key, val]) => (
+                    <option key={key} value={key}>{val.label} — {formatCents(val.price_per_set_cents)}/set</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] font-display uppercase tracking-wider text-brand-muted mb-1.5">Quantity (sets)</label>
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={pricingQty}
+                  onChange={(e) => setPricingQty(e.target.value)}
+                  placeholder="e.g. 20"
+                  className="w-full bg-brand-bg border border-brand-border rounded-lg px-3 py-2.5 text-brand-text font-barlow text-sm placeholder-brand-muted focus:outline-none focus:border-brand-primary transition-colors"
+                />
+              </div>
+            </div>
+
+            {/* Live preview */}
+            {pricingQty && !isNaN(Number(pricingQty)) && Number(pricingQty) > 0 && (
+              <div className="bg-brand-bg border border-brand-border rounded-lg px-4 py-3 grid grid-cols-3 gap-3">
+                {(() => {
+                  const calc = calcProductionPricing(pricingTier, Number(pricingQty));
+                  return (
+                    <>
+                      <div>
+                        <p className="text-[10px] font-display uppercase tracking-wider text-brand-muted mb-0.5">Total</p>
+                        <p className="text-sm font-display font-bold text-brand-text">{formatCents(calc.total_cents)}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-display uppercase tracking-wider text-brand-muted mb-0.5">Deposit (50%)</p>
+                        <p className="text-sm font-display font-bold text-amber-400">{formatCents(calc.deposit_cents)}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-display uppercase tracking-wider text-brand-muted mb-0.5">Balance (50%)</p>
+                        <p className="text-sm font-display font-bold text-brand-text">{formatCents(calc.balance_cents)}</p>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            )}
+
+            {/* Saved state display */}
+            {order.production_total_cents && !pricingQty && (
+              <div className="bg-brand-bg border border-brand-border rounded-lg px-4 py-3 grid grid-cols-3 gap-3">
+                <div>
+                  <p className="text-[10px] font-display uppercase tracking-wider text-brand-muted mb-0.5">Total</p>
+                  <p className="text-sm font-display font-bold text-brand-text">{formatCents(order.production_total_cents)}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-display uppercase tracking-wider text-brand-muted mb-0.5">Deposit (50%)</p>
+                  <p className="text-sm font-display font-bold text-amber-400">{formatCents(order.production_deposit_cents!)}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-display uppercase tracking-wider text-brand-muted mb-0.5">Balance (50%)</p>
+                  <p className="text-sm font-display font-bold text-brand-text">{formatCents(order.production_balance_cents!)}</p>
+                </div>
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={savePricing}
+              disabled={pricingSaving || !pricingQty || isNaN(Number(pricingQty)) || Number(pricingQty) < 1}
+              className="w-full py-2.5 rounded-lg font-display font-bold text-xs uppercase tracking-widest bg-brand-primary text-white hover:bg-brand-secondary disabled:opacity-40 transition-all"
+            >
+              {pricingSaving ? "Saving…" : "Save Pricing"}
+            </button>
+          </div>
 
           {/* ── Invoice / Payment Panel ──────────────────────────────────── */}
           <div className="bg-brand-surface border border-brand-border rounded-xl p-5 space-y-4">

@@ -48,6 +48,7 @@ export interface MilestoneInput {
   balance_paid?:       boolean | null;   // final production payment
   tracking_number?:    string | null;
   production_file_url?: string | null;
+  supplier_user_id?:   string | null;    // preferred supplier gate
   mockups:             { id: string }[];
   media:               { client_approved: boolean | null }[];
   files:               { label: string | null }[];
@@ -110,6 +111,7 @@ export interface MilestoneSignals {
   tracking_number?:    string | null;
   mockupUploaded:          boolean;
   productionFilesUploaded: boolean;
+  supplierAssigned:        boolean;   // preferred supplier must be set before First Piece starts
   firstPieceUploaded:      boolean;
   firstPieceApproved:      boolean;
 }
@@ -152,16 +154,18 @@ export function resolveTimeline(s: MilestoneSignals): DerivedTimeline {
   };
 
   // Per-step completion predicates (index aligns with TIMELINE_STEPS).
+  // Step 2 now requires supplier assignment so "First Piece In Production"
+  // cannot become the current step until files, payment, AND supplier are all set.
   const complete: boolean[] = [
-    s.mockupUploaded,                                   // 1 Mockup In Progress
-    mockupApproved,                                     // 2 Mockup Review
-    s.productionFilesUploaded && firstPaymentPaid,      // 3 Production Files
-    s.firstPieceUploaded,                               // 4 First Piece In Production
-    s.firstPieceApproved,                               // 5 First Piece Review
-    bulkComplete,                                       // 6 Bulk Production
-    qcComplete && finalPaymentPaid,                     // 7 Quality Check (final 50% gates shipment)
-    delivered,                                          // 8 Shipped (done when delivered)
-    delivered,                                          // 9 Delivered
+    s.mockupUploaded,                                                    // 1 Mockup In Progress
+    mockupApproved,                                                      // 2 Mockup Review
+    s.productionFilesUploaded && firstPaymentPaid && s.supplierAssigned, // 3 Production Files
+    s.firstPieceUploaded,                                                // 4 First Piece In Production
+    s.firstPieceApproved,                                                // 5 First Piece Review
+    bulkComplete,                                                        // 6 Bulk Production
+    qcComplete && finalPaymentPaid,                                      // 7 Quality Check (final 50% gates shipment)
+    delivered,                                                           // 8 Shipped (done when delivered)
+    delivered,                                                           // 9 Delivered
   ];
 
   let doneThrough = -1;
@@ -210,6 +214,7 @@ export function deriveTimeline(o: MilestoneInput): DerivedTimeline {
     productionFilesUploaded:
       !!o.production_file_url ||
       o.files.some((f) => (f.label ?? "").toLowerCase().includes("production")),
+    supplierAssigned:        !!o.supplier_user_id,
     firstPieceUploaded:      o.media.length > 0,
     firstPieceApproved:      o.media.some((m) => m.client_approved === true),
   });

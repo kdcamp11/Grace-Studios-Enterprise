@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { assertAdminTenant, isErrorResponse } from "@/lib/api/assert-admin-tenant";
 import { resolveTimeline, stepForIndex } from "@/lib/order-milestones";
+import type { ProductionPricingTier } from "@/lib/payments/supplier-pricing";
 
 // All production stages — includes legacy (files_sent, first_piece_in_progress)
 // so pre-025 orders still surface in the correct column.
@@ -32,6 +33,8 @@ export interface WorkflowOrder {
   client:           { name: string; sport: string | null };
   assigned_designer: { id: string; full_name: string | null; email: string } | null;
   supplier_profile:  { id: string; full_name: string | null; company: string | null } | null;
+  /** Whether the preferred supplier has been auto-assigned to this order */
+  preferred_supplier_assigned: boolean;
   invoice_status:       string | null;
   mockup_count:         number;
   production_files_count: number;
@@ -40,6 +43,12 @@ export interface WorkflowOrder {
     pending_admin: number; // supplier uploaded, awaiting GE internal review
     client_approved: number;
   };
+  /** Production pricing (migration 027, graceful null if not yet set) */
+  production_pricing_tier:   ProductionPricingTier | null;
+  quantity:                  number | null;
+  production_total_cents:    number | null;
+  production_deposit_cents:  number | null;
+  production_balance_cents:  number | null;
 }
 
 export async function GET() {
@@ -47,6 +56,17 @@ export async function GET() {
   if (isErrorResponse(ctx)) return ctx;
 
   const admin = createAdminClient();
+
+  // ── 0. Preferred supplier from tenant (migration 027, graceful fallback) ──
+  let preferredSupplierId: string | null = null;
+  try {
+    const { data: tenantRow } = await admin
+      .from("tenants")
+      .select("preferred_supplier_id")
+      .eq("id", ctx.tenant.id)
+      .single();
+    preferredSupplierId = (tenantRow as { preferred_supplier_id?: string | null } | null)?.preferred_supplier_id ?? null;
+  } catch { /* migration 027 not yet applied */ }
 
   // ── 1. Fetch base order fields (stable columns) ───────────────────────────
   const { data: orders, error } = await admin
@@ -81,9 +101,7 @@ export async function GET() {
         first_piece_revision_used: r.first_piece_revision_used ?? false,
       });
     }
-  } catch {
-    // Migration 025 not yet applied
-  }
+  } catch { /* Migration 025 not yet applied */ }
 
   // ── 3. Migration-026 field (on_hold) ─────────────────────────────────────
   const onHoldMap = new Map<string, boolean>();
@@ -93,9 +111,31 @@ export async function GET() {
       .select("id, on_hold")
       .in("id", orderIds);
     for (const r of oh ?? []) onHoldMap.set(r.id, r.on_hold ?? false);
-  } catch {
-    // Migration 026 not yet applied
-  }
+  } catch { /* Migration 026 not yet applied */ }
+
+  // ── 3b. Migration-027 fields (production pricing) ────────────────────────
+  const pricingMap = new Map<string, {
+    production_pricing_tier: string | null;
+    quantity: number | null;
+    production_total_cents: number | null;
+    production_deposit_cents: number | null;
+    production_balance_cents: number | null;
+  }>();
+  try {
+    const { data: pr } = await admin
+      .from("orders")
+      .select("id, production_pricing_tier, quantity, production_total_cents, production_deposit_cents, production_balance_cents")
+      .in("id", orderIds);
+    for (const r of pr ?? []) {
+      pricingMap.set(r.id, {
+        production_pricing_tier:  (r as Record<string, unknown>).production_pricing_tier as string | null ?? null,
+        quantity:                 (r as Record<string, unknown>).quantity as number | null ?? null,
+        production_total_cents:   (r as Record<string, unknown>).production_total_cents as number | null ?? null,
+        production_deposit_cents: (r as Record<string, unknown>).production_deposit_cents as number | null ?? null,
+        production_balance_cents: (r as Record<string, unknown>).production_balance_cents as number | null ?? null,
+      });
+    }
+  } catch { /* Migration 027 not yet applied */ }
 
   // ── 4. Parallel lookups ───────────────────────────────────────────────────
   const [
@@ -140,9 +180,7 @@ export async function GET() {
     for (const m of mockups ?? []) {
       mockupCountMap.set(m.order_id, (mockupCountMap.get(m.order_id) ?? 0) + 1);
     }
-  } catch {
-    // Migration 025 not yet applied
-  }
+  } catch { /* Migration 025 not yet applied */ }
 
   // ── 6. Build lookup maps ──────────────────────────────────────────────────
   const clientMap   = new Map((clients ?? []).map((c) => [c.id, c]));
@@ -175,11 +213,17 @@ export async function GET() {
 
   // ── 7. Enrich ─────────────────────────────────────────────────────────────
   const enriched: WorkflowOrder[] = orders.map((o) => {
-    const rf = revisionFlags.get(o.id) ?? { mockup_revision_used: false, first_piece_revision_used: false };
+    const rf      = revisionFlags.get(o.id) ?? { mockup_revision_used: false, first_piece_revision_used: false };
+    const pricing = pricingMap.get(o.id) ?? {
+      production_pricing_tier: null, quantity: null,
+      production_total_cents: null, production_deposit_cents: null, production_balance_cents: null,
+    };
 
-    const mockupCount   = mockupCountMap.get(o.id) ?? 0;
-    const prodFiles     = prodFilesCount.get(o.id) ?? 0;
-    const fp            = fpStats.get(o.id) ?? { total: 0, pending_admin: 0, client_approved: 0 };
+    const mockupCount = mockupCountMap.get(o.id) ?? 0;
+    const prodFiles   = prodFilesCount.get(o.id) ?? 0;
+    const fp          = fpStats.get(o.id) ?? { total: 0, pending_admin: 0, client_approved: 0 };
+
+    const supplierUserId = o.supplier_user_id as string | null ?? null;
 
     // Derived lifecycle phase — same calculation as the client status page.
     const derived = resolveTimeline({
@@ -190,6 +234,7 @@ export async function GET() {
       tracking_number:   (o as Record<string, unknown>).tracking_number as string | null ?? null,
       mockupUploaded:          mockupCount > 0,
       productionFilesUploaded: prodFiles > 0,
+      supplierAssigned:        !!supplierUserId,
       firstPieceUploaded:      fp.total > 0,
       firstPieceApproved:      fp.client_approved > 0,
     });
@@ -212,11 +257,17 @@ export async function GET() {
       notes:                (o as Record<string, unknown>).notes as string | null ?? null,
       client:               clientMap.get(o.client_id) ?? { name: "—", sport: null },
       assigned_designer:    o.assigned_designer_id ? (designerMap.get(o.assigned_designer_id) ?? null) : null,
-      supplier_profile:     o.supplier_user_id ? (supplierMap.get(o.supplier_user_id) ?? null) : null,
+      supplier_profile:     supplierUserId ? (supplierMap.get(supplierUserId) ?? null) : null,
+      preferred_supplier_assigned: !!supplierUserId && supplierUserId === preferredSupplierId,
       invoice_status:       latestInvoice.get(o.id) ?? null,
       mockup_count:         mockupCount,
       production_files_count: prodFiles,
       first_piece_media:    fp,
+      production_pricing_tier:  pricing.production_pricing_tier as ProductionPricingTier | null,
+      quantity:                 pricing.quantity,
+      production_total_cents:   pricing.production_total_cents,
+      production_deposit_cents: pricing.production_deposit_cents,
+      production_balance_cents: pricing.production_balance_cents,
     };
   });
 

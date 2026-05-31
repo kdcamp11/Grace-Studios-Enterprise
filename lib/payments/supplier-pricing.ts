@@ -4,9 +4,51 @@
  * Grace Studios marks up all supplier base costs by a configurable
  * percentage (default 10%) before presenting prices to clients.
  *
+ * Also contains production pricing tiers for per-set uniform costing:
+ *   Standard: $25/set · Premium: $50/set
+ *   50% deposit on order, 50% balance before QC release.
+ *
  * Usage:
  *   const clientPrice = applyMarkup(supplierBasePrice, tenant.supplier_markup_percent);
+ *   const pricing = calcProductionPricing("standard", 25); // 25 sets × $25
  */
+
+// ── Production pricing tiers ──────────────────────────────────────────────────
+
+export const PRODUCTION_PRICING_TIERS = {
+  standard: { label: "Standard",  price_per_set_cents: 2500 }, // $25.00/set
+  premium:  { label: "Premium",   price_per_set_cents: 5000 }, // $50.00/set
+} as const;
+
+export type ProductionPricingTier = keyof typeof PRODUCTION_PRICING_TIERS;
+
+export interface ProductionPricingCalc {
+  tier:               ProductionPricingTier;
+  quantity:           number;
+  price_per_set_cents: number;
+  total_cents:         number;
+  deposit_cents:       number;
+  balance_cents:       number;
+}
+
+export function calcProductionPricing(
+  tier: ProductionPricingTier,
+  quantity: number,
+): ProductionPricingCalc {
+  const price_per_set_cents = PRODUCTION_PRICING_TIERS[tier].price_per_set_cents;
+  const total_cents         = price_per_set_cents * quantity;
+  const deposit_cents       = Math.ceil(total_cents / 2);
+  const balance_cents       = total_cents - deposit_cents;
+  return { tier, quantity, price_per_set_cents, total_cents, deposit_cents, balance_cents };
+}
+
+export function formatCents(cents: number): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency", currency: "USD", minimumFractionDigits: 2,
+  }).format(cents / 100);
+}
+
+
 
 export const SUPPLIER_MARKUP_DEFAULT = 10.0; // 10%
 
