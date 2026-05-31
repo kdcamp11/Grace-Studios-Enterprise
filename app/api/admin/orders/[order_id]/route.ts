@@ -18,11 +18,13 @@ export async function GET(
 
   const { order_id } = params;
 
-  // Fetch order row first — also verify it belongs to this tenant
+  // Fetch order row first — also verify it belongs to this tenant.
+  // Migration-025 columns (mockup_revision_used, first_piece_revision_used) are
+  // fetched separately below so a missing column can't 500 the whole request.
   const { data: orderRow, error: orderError } = await serviceSupabase
     .from("orders")
     .select(
-      "id, order_number, stage, created_at, approved_at, estimated_delivery, tracking_number, supplier, supplier_user_id, assigned_designer_id, notes, design_fee_paid, production_choice, production_file_url, client_id, mockup_revision_used, first_piece_revision_used",
+      "id, order_number, stage, created_at, approved_at, estimated_delivery, tracking_number, supplier, supplier_user_id, assigned_designer_id, notes, design_fee_paid, production_choice, production_file_url, client_id",
     )
     .eq("id", order_id)
     .eq("tenant_id", ctx.tenant.id)
@@ -33,6 +35,21 @@ export async function GET(
       { error: orderError?.message ?? "Order not found" },
       { status: orderError ? 500 : 404 },
     );
+  }
+
+  // Migration-025 revision flags — graceful fallback if not yet applied.
+  let mockupRevisionUsed = false;
+  let firstPieceRevisionUsed = false;
+  try {
+    const { data: rev } = await serviceSupabase
+      .from("orders")
+      .select("mockup_revision_used, first_piece_revision_used")
+      .eq("id", order_id)
+      .single();
+    mockupRevisionUsed     = (rev as { mockup_revision_used?: boolean } | null)?.mockup_revision_used ?? false;
+    firstPieceRevisionUsed = (rev as { first_piece_revision_used?: boolean } | null)?.first_piece_revision_used ?? false;
+  } catch {
+    // Migration 025 not yet applied — skip gracefully
   }
 
   // Fetch client by client_id separately
@@ -106,8 +123,8 @@ export async function GET(
     design_fee_paid:      orderRow.design_fee_paid,
     production_choice:    orderRow.production_choice,
     production_file_url:  (orderRow as Record<string, unknown>).production_file_url as string | null ?? null,
-    mockup_revision_used:      orderRow.mockup_revision_used,
-    first_piece_revision_used: orderRow.first_piece_revision_used,
+    mockup_revision_used:      mockupRevisionUsed,
+    first_piece_revision_used: firstPieceRevisionUsed,
     client: clientRow ?? { name: "—", email: "—", sport: "—", city: "—" },
   };
 

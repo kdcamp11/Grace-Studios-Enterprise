@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { assertAdminTenant, isErrorResponse } from "@/lib/api/assert-admin-tenant";
+import { resolveTimeline, stepForIndex } from "@/lib/order-milestones";
 
 // All production stages — includes legacy (files_sent, first_piece_in_progress)
 // so pre-025 orders still surface in the correct column.
@@ -16,6 +17,8 @@ export interface WorkflowOrder {
   id:                   string;
   order_number:         string | null;
   stage:                string;
+  /** Derived lifecycle phase — the SINGLE source of truth for board placement. */
+  phase:                string;
   created_at:           string;
   estimated_delivery:   string | null;
   tracking_number:      string | null;
@@ -173,10 +176,30 @@ export async function GET() {
   // ── 7. Enrich ─────────────────────────────────────────────────────────────
   const enriched: WorkflowOrder[] = orders.map((o) => {
     const rf = revisionFlags.get(o.id) ?? { mockup_revision_used: false, first_piece_revision_used: false };
+
+    const mockupCount   = mockupCountMap.get(o.id) ?? 0;
+    const prodFiles     = prodFilesCount.get(o.id) ?? 0;
+    const fp            = fpStats.get(o.id) ?? { total: 0, pending_admin: 0, client_approved: 0 };
+
+    // Derived lifecycle phase — same calculation as the client status page.
+    const derived = resolveTimeline({
+      stage:             o.stage,
+      production_choice: (o as Record<string, unknown>).production_choice as string | null ?? null,
+      deposit_paid:      o.deposit_paid,
+      balance_paid:      o.balance_paid,
+      tracking_number:   (o as Record<string, unknown>).tracking_number as string | null ?? null,
+      mockupUploaded:          mockupCount > 0,
+      productionFilesUploaded: prodFiles > 0,
+      firstPieceUploaded:      fp.total > 0,
+      firstPieceApproved:      fp.client_approved > 0,
+    });
+    const phase = stepForIndex(derived.currentIndex)?.key ?? "mockup_in_progress";
+
     return {
       id:                   o.id,
       order_number:         o.order_number,
       stage:                o.stage,
+      phase,
       created_at:           o.created_at,
       estimated_delivery:   o.estimated_delivery,
       tracking_number:      (o as Record<string, unknown>).tracking_number as string | null ?? null,
@@ -191,9 +214,9 @@ export async function GET() {
       assigned_designer:    o.assigned_designer_id ? (designerMap.get(o.assigned_designer_id) ?? null) : null,
       supplier_profile:     o.supplier_user_id ? (supplierMap.get(o.supplier_user_id) ?? null) : null,
       invoice_status:       latestInvoice.get(o.id) ?? null,
-      mockup_count:         mockupCountMap.get(o.id) ?? 0,
-      production_files_count: prodFilesCount.get(o.id) ?? 0,
-      first_piece_media:    fpStats.get(o.id) ?? { total: 0, pending_admin: 0, client_approved: 0 },
+      mockup_count:         mockupCount,
+      production_files_count: prodFiles,
+      first_piece_media:    fp,
     };
   });
 

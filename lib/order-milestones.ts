@@ -97,57 +97,73 @@ export interface DerivedTimeline {
 }
 
 /**
- * Derives the production timeline purely from real database conditions.
- * Monotonic: a step is `done` only when it and ALL prior steps are complete.
+ * The primitive signals every lifecycle view boils down to. The status page
+ * derives these from full record arrays; the workflow board and portal derive
+ * them from per-order counts. Both then call `resolveTimeline` so EVERY view
+ * computes the exact same lifecycle phase from the exact same logic.
  */
-export function deriveTimeline(o: MilestoneInput): DerivedTimeline {
-  // An order is "in production" once the client has proceeded to production or
-  // the stage itself is a production stage.
+export interface MilestoneSignals {
+  stage:               string;
+  production_choice?:  string | null;
+  deposit_paid?:       boolean | null;
+  balance_paid?:       boolean | null;
+  tracking_number?:    string | null;
+  mockupUploaded:          boolean;
+  productionFilesUploaded: boolean;
+  firstPieceUploaded:      boolean;
+  firstPieceApproved:      boolean;
+}
+
+/**
+ * SINGLE SOURCE OF TRUTH for the production lifecycle phase.
+ *
+ * Given the primitive milestone signals, returns the monotonic timeline — a
+ * step is only `done`/`current` when every prior dependency is satisfied, so a
+ * later phase can never display while an earlier requirement is still missing.
+ */
+export function resolveTimeline(s: MilestoneSignals): DerivedTimeline {
   const inProduction =
-    o.production_choice === "production" || stageType(o.stage) === "production";
+    s.production_choice === "production" || stageType(s.stage) === "production";
 
-  const rank = floorRank(o.stage);
-  const atOrPast = (s: OrderStage) => rank >= 0 && rank >= PROD_FLOOR.indexOf(s);
+  const rank = floorRank(s.stage);
+  const atOrPast = (st: OrderStage) => rank >= 0 && rank >= PROD_FLOOR.indexOf(st);
 
-  // ── Milestone signals from concrete data ──────────────────────────────────
-  const mockupUploaded = o.mockups.length > 0;
   // Mockup approval is recorded by the client's approve action, which advances
   // the stage past the mockup phase. Reaching production_files_prep+ requires a
   // real client approval (or explicit admin override) — choose-production no
-  // longer skips into it.
-  const mockupApproved = mockupUploaded && atOrPast("production_files_prep");
-  const productionFilesUploaded =
-    !!o.production_file_url ||
-    o.files.some((f) => (f.label ?? "").toLowerCase().includes("production"));
-  const firstPaymentPaid   = o.deposit_paid === true;
-  const firstPieceUploaded = o.media.length > 0;
-  const firstPieceApproved = o.media.some((m) => m.client_approved === true);
-  const bulkComplete       = atOrPast("qc_verified");   // bulk finished → moved to QC
-  const qcComplete         = atOrPast("shipped");        // QC passed → moved to shipping
-  const finalPaymentPaid   = o.balance_paid === true;
-  const trackingUploaded   = !!o.tracking_number;
-  const delivered          = atOrPast("delivered");
+  // longer skips into it. Gated by mockupUploaded so a jumped stage with no
+  // mockup artifact can never read as approved.
+  const mockupApproved = s.mockupUploaded && atOrPast("production_files_prep");
+  const firstPaymentPaid = s.deposit_paid === true;
+  const bulkComplete     = atOrPast("qc_verified");   // bulk finished → moved to QC
+  const qcComplete       = atOrPast("shipped");        // QC passed → moved to shipping
+  const finalPaymentPaid = s.balance_paid === true;
+  const trackingUploaded = !!s.tracking_number;
+  const delivered        = atOrPast("delivered");
 
   const milestones: Milestones = {
-    mockupUploaded, mockupApproved, productionFilesUploaded, firstPaymentPaid,
-    firstPieceUploaded, firstPieceApproved, bulkComplete, qcComplete,
-    finalPaymentPaid, trackingUploaded, delivered,
+    mockupUploaded:          s.mockupUploaded,
+    mockupApproved,
+    productionFilesUploaded: s.productionFilesUploaded,
+    firstPaymentPaid,
+    firstPieceUploaded:      s.firstPieceUploaded,
+    firstPieceApproved:      s.firstPieceApproved,
+    bulkComplete, qcComplete, finalPaymentPaid, trackingUploaded, delivered,
   };
 
-  // ── Per-step completion predicates (index aligns with TIMELINE_STEPS) ──────
+  // Per-step completion predicates (index aligns with TIMELINE_STEPS).
   const complete: boolean[] = [
-    mockupUploaded,                                  // 1 Mockup In Progress
-    mockupApproved,                                  // 2 Mockup Review
-    productionFilesUploaded && firstPaymentPaid,     // 3 Production Files
-    firstPieceUploaded,                              // 4 First Piece In Production
-    firstPieceApproved,                              // 5 First Piece Review
-    bulkComplete,                                    // 6 Bulk Production
-    qcComplete && finalPaymentPaid,                  // 7 Quality Check (final 50% gates shipment)
-    delivered,                                       // 8 Shipped (done when delivered)
-    delivered,                                       // 9 Delivered
+    s.mockupUploaded,                                   // 1 Mockup In Progress
+    mockupApproved,                                     // 2 Mockup Review
+    s.productionFilesUploaded && firstPaymentPaid,      // 3 Production Files
+    s.firstPieceUploaded,                               // 4 First Piece In Production
+    s.firstPieceApproved,                               // 5 First Piece Review
+    bulkComplete,                                       // 6 Bulk Production
+    qcComplete && finalPaymentPaid,                     // 7 Quality Check (final 50% gates shipment)
+    delivered,                                          // 8 Shipped (done when delivered)
+    delivered,                                          // 9 Delivered
   ];
 
-  // Monotonic resolution: count leading contiguous completed steps.
   let doneThrough = -1;
   for (let i = 0; i < complete.length; i++) {
     if (complete[i]) doneThrough = i;
@@ -156,14 +172,45 @@ export function deriveTimeline(o: MilestoneInput): DerivedTimeline {
 
   const currentIndex = inProduction ? doneThrough + 1 : -1;
 
-  const steps: TimelineStep[] = TIMELINE_STEPS.map((s, i) => {
+  const steps: TimelineStep[] = TIMELINE_STEPS.map((step, i) => {
     let status: StepStatus;
-    if (currentIndex === -1)            status = "upcoming";
-    else if (i <= doneThrough)          status = "done";
-    else if (i === doneThrough + 1)     status = "current";
-    else                                status = "upcoming";
-    return { key: s.key, label: s.label, status };
+    if (currentIndex === -1)        status = "upcoming";
+    else if (i <= doneThrough)      status = "done";
+    else if (i === doneThrough + 1) status = "current";
+    else                            status = "upcoming";
+    return { key: step.key, label: step.label, status };
   });
 
   return { steps, currentIndex, inProduction, milestones };
+}
+
+/**
+ * Maps a derived `currentIndex` to its column key + label. Clamps the
+ * fully-delivered sentinel (9) onto the Delivered column.
+ */
+export function stepForIndex(currentIndex: number): { key: string; label: string } | null {
+  if (currentIndex < 0) return null;
+  const i = Math.min(currentIndex, TIMELINE_STEPS.length - 1);
+  return TIMELINE_STEPS[i];
+}
+
+/**
+ * Derives the production timeline purely from real database conditions, from
+ * full record arrays (status page). Computes the primitive signals and
+ * delegates to `resolveTimeline` so it shares one lifecycle calculation.
+ */
+export function deriveTimeline(o: MilestoneInput): DerivedTimeline {
+  return resolveTimeline({
+    stage:             o.stage,
+    production_choice: o.production_choice,
+    deposit_paid:      o.deposit_paid,
+    balance_paid:      o.balance_paid,
+    tracking_number:   o.tracking_number,
+    mockupUploaded:          o.mockups.length > 0,
+    productionFilesUploaded:
+      !!o.production_file_url ||
+      o.files.some((f) => (f.label ?? "").toLowerCase().includes("production")),
+    firstPieceUploaded:      o.media.length > 0,
+    firstPieceApproved:      o.media.some((m) => m.client_approved === true),
+  });
 }

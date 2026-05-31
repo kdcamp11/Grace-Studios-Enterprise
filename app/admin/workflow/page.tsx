@@ -339,14 +339,14 @@ export default function WorkflowPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  // Bucket orders by column
-  const columnOrders = (colKey: ColumnKey): WorkflowOrder[] => {
-    const col = COLUMNS.find((c) => c.key === colKey)!;
-    return orders.filter((o) => col.stages.includes(o.stage as never));
-  };
+  // Bucket orders by their DERIVED lifecycle phase (single source of truth),
+  // not the raw stage column. This keeps the board in lockstep with the client
+  // status page and portal production tab.
+  const columnOrders = (colKey: ColumnKey): WorkflowOrder[] =>
+    orders.filter((o) => o.phase === colKey);
 
   const urgentCount = orders.filter((o) => {
-    const col = COLUMNS.find((c) => c.stages.includes(o.stage as never));
+    const col = COLUMNS.find((c) => c.key === o.phase);
     if (!col) return false;
     return getActionBadge(o, col.key).variant === "urgent";
   }).length;

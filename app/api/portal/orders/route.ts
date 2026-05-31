@@ -7,6 +7,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createServerClient } from "@/lib/supabase/server";
 import { getRequestTenant } from "@/lib/tenant/get-request-tenant";
+import { resolveTimeline, stepForIndex } from "@/lib/order-milestones";
 
 export async function GET() {
   const serverClient = createServerClient();
@@ -57,7 +58,7 @@ export async function GET() {
   // Fetch orders
   const { data: orderRows } = await admin
     .from("orders")
-    .select("id, order_number, stage, created_at, order_type, design_fee_paid, tracking_number, concept_source, production_choice")
+    .select("id, order_number, stage, created_at, order_type, design_fee_paid, tracking_number, concept_source, production_choice, deposit_paid, balance_paid")
     .eq("client_id", client.id)
     .order("created_at", { ascending: false });
 
@@ -67,8 +68,8 @@ export async function GET() {
 
   const orderIds = orderRows.map((o) => o.id);
 
-  // Fetch concepts, first-piece-media, and briefs (for design preview) in parallel
-  const [{ data: concepts }, { data: mediaRows }, { data: briefRows }] = await Promise.all([
+  // Fetch concepts, first-piece-media, briefs, mockups, and production files in parallel
+  const [{ data: concepts }, { data: mediaRows }, { data: briefRows }, { data: mockupRows }, { data: fileRows }] = await Promise.all([
     admin.from("concepts").select("order_id, image_url").in("order_id", orderIds),
     admin
       .from("first_piece_media")
@@ -79,7 +80,20 @@ export async function GET() {
       .from("briefs")
       .select("order_id, zone_colors, logos_to_include, ai_prompt, client_concept_url")
       .in("order_id", orderIds),
+    // order_mockups (migration 025) — returns [] gracefully if table absent
+    admin.from("order_mockups").select("order_id").in("order_id", orderIds),
+    admin.from("order_files").select("order_id, label, client_visible").in("order_id", orderIds),
   ]);
+
+  // Per-order milestone signal sets
+  const mockupOrderIds = new Set((mockupRows ?? []).map((m) => m.order_id));
+  const prodFilesOrderIds = new Set(
+    (fileRows ?? [])
+      .filter((f) => f.client_visible || (f.label ?? "").toLowerCase().includes("production"))
+      .map((f) => f.order_id),
+  );
+  const mediaTotalIds    = new Set((mediaRows ?? []).map((m) => m.order_id));
+  const mediaApprovedIds = new Set((mediaRows ?? []).filter((m) => m.client_approved === true).map((m) => m.order_id));
 
   const conceptOrderIds = new Set((concepts ?? []).map((c) => c.order_id));
   // First concept image per order (for locked preview thumbnail)
@@ -114,8 +128,25 @@ export async function GET() {
 
     const hasBrief = briefByOrder.has(o.id);
 
+    // Derived lifecycle phase — identical calculation to the client status page
+    // and the Grace Enterprise workflow board. One source of truth across views.
+    const derived = resolveTimeline({
+      stage:             o.stage,
+      production_choice: o.production_choice,
+      deposit_paid:      (o as Record<string, unknown>).deposit_paid as boolean | null ?? null,
+      balance_paid:      (o as Record<string, unknown>).balance_paid as boolean | null ?? null,
+      tracking_number:   o.tracking_number,
+      mockupUploaded:          mockupOrderIds.has(o.id),
+      productionFilesUploaded: prodFilesOrderIds.has(o.id),
+      firstPieceUploaded:      mediaTotalIds.has(o.id),
+      firstPieceApproved:      mediaApprovedIds.has(o.id),
+    });
+    const lifecycleStep = stepForIndex(derived.currentIndex);
+
     return {
       ...o,
+      lifecycle_phase:    lifecycleStep?.key ?? null,
+      lifecycle_label:    lifecycleStep?.label ?? null,
       has_concepts:       conceptOrderIds.has(o.id),
       has_pending_review: pendingReviewIds.has(o.id),
       preview_url:        previewByOrder.get(o.id) ?? null,
