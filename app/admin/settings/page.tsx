@@ -21,6 +21,7 @@ export default function AdminSettingsPage() {
   const [saved, setSaved]       = useState(false);
   const [error, setError]       = useState("");
   const [uploading, setUploading] = useState(false);
+  const [suppliers, setSuppliers] = useState<{ id: string; email: string; full_name: string | null; company: string | null }[]>([]);
 
   useEffect(() => {
     getProfile().then((profile) => {
@@ -35,6 +36,11 @@ export default function AdminSettingsPage() {
           setForm(tenant);
           setTenantId(tenant.id);
           setLoading(false);
+        });
+      fetch("/api/admin/suppliers")
+        .then((r) => r.json())
+        .then(({ suppliers: s }: { suppliers?: typeof suppliers }) => {
+          if (s) setSuppliers(s);
         });
     });
   }, [router]);
@@ -181,6 +187,42 @@ export default function AdminSettingsPage() {
                   </div>
                 )}
               </div>
+            </div>
+          </section>
+
+          {/* Production Routing */}
+          <section className={section}>
+            <h2 className="font-display font-bold uppercase tracking-widest text-xs text-brand-muted border-b border-brand-border pb-3">
+              Production Routing
+            </h2>
+            <div>
+              <label className={label}>Preferred Supplier</label>
+              <p className="text-xs font-barlow text-brand-muted mb-3 leading-relaxed">
+                When Grace Enterprise releases an order to production, it is automatically assigned to this supplier. Select from your registered suppliers.
+              </p>
+              {suppliers.length === 0 ? (
+                <p className="text-xs font-barlow text-brand-muted italic">
+                  No suppliers registered yet. Invite a supplier from the <a href="/admin/suppliers" className="text-brand-primary hover:underline">Suppliers</a> page.
+                </p>
+              ) : (
+                <select
+                  className={field}
+                  value={form.preferred_supplier_id ?? ""}
+                  onChange={(e) => set("preferred_supplier_id" as keyof Tenant, e.target.value || null)}
+                >
+                  <option value="">— No preferred supplier (assign manually per order) —</option>
+                  {suppliers.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.email}{s.company ? ` · ${s.company}` : ""}{s.full_name ? ` — ${s.full_name}` : ""}
+                    </option>
+                  ))}
+                </select>
+              )}
+              {form.preferred_supplier_id && (
+                <p className="text-[10px] font-barlow text-green-400 mt-2">
+                  ✓ Auto-routing active — new production releases will be assigned to this supplier.
+                </p>
+              )}
             </div>
           </section>
 

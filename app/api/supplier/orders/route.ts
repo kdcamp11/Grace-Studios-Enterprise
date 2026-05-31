@@ -35,13 +35,24 @@ export interface SupplierOrder {
   };
 }
 
+/**
+ * Compute which supplier board column an order belongs in.
+ * Gates: deposit must be paid AND production files must exist before
+ * moving past "awaiting_release" into active production columns.
+ */
 function computeSupplierPhase(
   stage: string,
   fpTotal: number,
   trackingNumber: string | null,
+  depositPaid: boolean,
+  hasProductionFiles: boolean,
 ): SupplierPhase {
-  if (stage === "sent_to_supplier" || stage === "files_sent") return "awaiting_release";
+  if (stage === "sent_to_supplier" || stage === "files_sent") {
+    return "awaiting_release";
+  }
   if (stage === "first_piece_in_progress") {
+    // Both deposit and production files must be present before supplier starts
+    if (!depositPaid || !hasProductionFiles) return "awaiting_release";
     return fpTotal === 0 ? "first_piece_production" : "first_piece_upload";
   }
   if (stage === "first_piece_revision" || stage === "first_piece_review") {
@@ -68,18 +79,18 @@ export async function GET() {
     .eq("id", user.id)
     .single();
 
-  if (!profile || (profile.role !== "supplier" && profile.role !== "admin")) {
+  if (!profile || (profile.role !== "supplier" && profile.role !== "admin" && profile.role !== "super_admin")) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const query = admin
+  let query = admin
     .from("orders")
-    .select("id, order_number, stage, created_at, estimated_delivery, tracking_number, deposit_paid, balance_paid, client_id, supplier_user_id")
+    .select("id, order_number, stage, created_at, estimated_delivery, tracking_number, deposit_paid, balance_paid, client_id, supplier_user_id, production_file_url")
     .in("stage", SUPPLIER_STAGES)
     .order("created_at", { ascending: true });
 
   if (profile.role === "supplier") {
-    query.eq("supplier_user_id", user.id);
+    query = query.eq("supplier_user_id", user.id);
   }
 
   const { data: orders, error } = await query;
@@ -89,15 +100,26 @@ export async function GET() {
   const orderIds = orders.map((o) => o.id);
   const clientIds = Array.from(new Set(orders.map((o) => o.client_id)));
 
-  const [{ data: clients }, { data: fpMedia }] = await Promise.all([
+  const [{ data: clients }, { data: fpMedia }, { data: orderFileRows }] = await Promise.all([
     admin.from("clients").select("id, name, sport, city").in("id", clientIds),
     admin
       .from("first_piece_media")
       .select("order_id, admin_approved, client_approved")
       .in("order_id", orderIds),
+    admin
+      .from("order_files")
+      .select("order_id, label, client_visible")
+      .in("order_id", orderIds),
   ]);
 
   const clientMap = new Map((clients ?? []).map((c) => [c.id, c]));
+
+  // Production files: labelled "production" or any client_visible file in order_files
+  const prodFileOrderIds = new Set(
+    (orderFileRows ?? [])
+      .filter((f) => (f.label ?? "").toLowerCase().includes("production") || f.client_visible)
+      .map((f) => f.order_id),
+  );
 
   const fpStats = new Map<string, { total: number; pending_review: number; changes_requested: number; client_approved: number }>();
   for (const m of fpMedia ?? []) {
@@ -112,7 +134,11 @@ export async function GET() {
   const enriched: SupplierOrder[] = orders.map((o) => {
     const fp = fpStats.get(o.id) ?? { total: 0, pending_review: 0, changes_requested: 0, client_approved: 0 };
     const tracking = (o as Record<string, unknown>).tracking_number as string | null ?? null;
-    const phase = computeSupplierPhase(o.stage, fp.total, tracking);
+    const depositPaid = (o as Record<string, unknown>).deposit_paid as boolean ?? false;
+    const hasProductionFiles =
+      !!((o as Record<string, unknown>).production_file_url) ||
+      prodFileOrderIds.has(o.id);
+    const phase = computeSupplierPhase(o.stage, fp.total, tracking, depositPaid, hasProductionFiles);
     const c = clientMap.get(o.client_id);
     return {
       id: o.id,
@@ -122,8 +148,8 @@ export async function GET() {
       created_at: o.created_at,
       estimated_delivery: o.estimated_delivery ?? null,
       tracking_number: tracking,
-      deposit_paid: o.deposit_paid ?? false,
-      balance_paid: o.balance_paid ?? false,
+      deposit_paid: depositPaid,
+      balance_paid: (o as Record<string, unknown>).balance_paid as boolean ?? false,
       client: {
         name: c?.name ?? "—",
         sport: c?.sport ?? null,

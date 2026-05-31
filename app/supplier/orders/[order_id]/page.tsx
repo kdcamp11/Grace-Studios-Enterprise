@@ -418,44 +418,25 @@ export default function SupplierOrderPage() {
 
       const profile = await getProfile();
       if (profile && profile.role !== "supplier" && profile.role !== "admin") { router.replace("/portal"); return; }
-      const adminViewing = profile?.role === "admin";
-      if (adminViewing) setIsAdminView(true);
+      if (profile?.role === "admin") setIsAdminView(true);
 
-      const orderQuery = supabase
-        .from("orders")
-        .select("id, order_number, stage, created_at, estimated_delivery, tracking_number, production_file_url, deposit_paid, balance_paid, clients(name, email, sport, city)")
-        .eq("id", order_id);
-      if (!adminViewing) orderQuery.eq("supplier_user_id", user.id);
+      // Use admin API to bypass RLS — supplier assignment enforced server-side
+      const res = await fetch(`/api/supplier/orders/${order_id}`);
+      if (!res.ok) { setLoading(false); return; }
 
-      const [{ data: o }, { data: brief }, { data: concepts }, { data: media }] =
-        await Promise.all([
-          orderQuery.single(),
-          supabase.from("briefs").select("*").eq("order_id", order_id).single(),
-          supabase.from("concepts").select("id, image_url, concept_number").eq("order_id", order_id).eq("selected", true),
-          supabase
-            .from("first_piece_media")
-            .select("id, created_at, media_url, media_type, caption, admin_approved, admin_note, client_visible, client_approved")
-            .eq("order_id", order_id)
-            .order("created_at", { ascending: false }),
-        ]);
+      const d = await res.json() as {
+        order: OrderDetail;
+        brief: OrderDetail["brief"] | null;
+        concepts: OrderDetail["concepts"];
+        media: MediaItem[];
+      };
 
-      if (!o) { setLoading(false); return; }
-
-      const client = Array.isArray(o.clients) ? o.clients[0] : o.clients;
+      if (!d.order) { setLoading(false); return; }
       setOrder({
-        id: o.id,
-        order_number: o.order_number,
-        stage: o.stage,
-        created_at: o.created_at,
-        estimated_delivery: o.estimated_delivery,
-        tracking_number: (o as Record<string, unknown>).tracking_number as string | null ?? null,
-        production_file_url: (o as Record<string, unknown>).production_file_url as string | null ?? null,
-        deposit_paid: (o as Record<string, unknown>).deposit_paid as boolean ?? false,
-        balance_paid: (o as Record<string, unknown>).balance_paid as boolean ?? false,
-        client: client as OrderDetail["client"],
-        brief: brief ?? null,
-        concepts: (concepts ?? []) as OrderDetail["concepts"],
-        media: (media ?? []) as MediaItem[],
+        ...d.order,
+        brief: d.brief ?? null,
+        concepts: d.concepts ?? [],
+        media: d.media ?? [],
       });
       setLoading(false);
     }

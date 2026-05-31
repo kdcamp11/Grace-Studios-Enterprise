@@ -2,6 +2,89 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createServerClient } from "@/lib/supabase/server";
 
+// ---------------------------------------------------------------------------
+// GET /api/supplier/orders/[order_id]
+// Returns order detail for a supplier — uses admin client to bypass RLS.
+// Supplier: verified by supplier_user_id match. Admin: unrestricted.
+// ---------------------------------------------------------------------------
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: { order_id: string } },
+) {
+  const { order_id } = params;
+
+  const serverClient = createServerClient();
+  const { data: { user } } = await serverClient.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const admin = createAdminClient();
+
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  const isSupplier = profile?.role === "supplier";
+  const isAdmin    = profile?.role === "admin" || profile?.role === "super_admin";
+
+  if (!isSupplier && !isAdmin) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  // Admin client bypasses RLS — supplier assignment enforced manually below
+  let orderQuery = admin
+    .from("orders")
+    .select("id, order_number, stage, created_at, estimated_delivery, tracking_number, production_file_url, deposit_paid, balance_paid, supplier_user_id, client_id")
+    .eq("id", order_id);
+
+  if (isSupplier) {
+    orderQuery = orderQuery.eq("supplier_user_id", user.id);
+  }
+
+  const { data: order } = await orderQuery.single();
+  if (!order) {
+    return NextResponse.json({ error: "Order not found or not assigned to you" }, { status: 404 });
+  }
+
+  const [{ data: brief }, { data: concepts }, { data: media }, { data: clientRow }] = await Promise.all([
+    admin.from("briefs").select("*").eq("order_id", order_id).single(),
+    admin
+      .from("concepts")
+      .select("id, image_url, concept_number")
+      .eq("order_id", order_id)
+      .eq("selected", true),
+    admin
+      .from("first_piece_media")
+      .select("id, created_at, media_url, media_type, caption, admin_approved, admin_note, client_visible, client_approved")
+      .eq("order_id", order_id)
+      .order("created_at", { ascending: false }),
+    admin
+      .from("clients")
+      .select("name, email, sport, city")
+      .eq("id", (order as Record<string, unknown>).client_id as string)
+      .single(),
+  ]);
+
+  return NextResponse.json({
+    order: {
+      id: order.id,
+      order_number: order.order_number,
+      stage: order.stage,
+      created_at: order.created_at,
+      estimated_delivery: order.estimated_delivery ?? null,
+      tracking_number:    (order as Record<string, unknown>).tracking_number    as string | null ?? null,
+      production_file_url: (order as Record<string, unknown>).production_file_url as string | null ?? null,
+      deposit_paid:  (order as Record<string, unknown>).deposit_paid  as boolean ?? false,
+      balance_paid:  (order as Record<string, unknown>).balance_paid  as boolean ?? false,
+      client: clientRow ?? { name: "—", email: "—", sport: "—", city: "—" },
+    },
+    brief:    brief    ?? null,
+    concepts: concepts ?? [],
+    media:    media    ?? [],
+  });
+}
+
 type SupplierAction =
   | "start_first_piece"    // files_sent → first_piece_in_progress
   | "submit_for_review"    // first_piece_in_progress → first_piece_review

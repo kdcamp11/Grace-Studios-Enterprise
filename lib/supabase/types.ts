@@ -67,6 +67,7 @@ export interface Tenant {
   stripe_customer_id: string | null;
   platform_fee_percent: number;
   onboarding_complete: boolean;
+  preferred_supplier_id?: string | null;
 }
 
 export interface TenantStats {
