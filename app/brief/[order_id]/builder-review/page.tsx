@@ -48,6 +48,7 @@ export default function BuilderReviewPage() {
   const [submitted, setSubmitted]     = useState(false);
   const [feePaid, setFeePaid]         = useState(false);
   const [ready, setReady]             = useState(false);
+  const [proceeding, setProceeding]   = useState(false);
   // True when the URL param is a pre-payment design_id (no order exists yet).
   const [isDesignFlow, setIsDesignFlow] = useState(false);
 
@@ -83,6 +84,7 @@ export default function BuilderReviewPage() {
             logosToInclude: string | null;
             visionPrompt: string | null;
             renderUrl: string | null;
+            renderUrlShorts: string | null;
             hasBrief: boolean;
             stage: string;
             designFeePaid: boolean;
@@ -97,12 +99,13 @@ export default function BuilderReviewPage() {
           if (d.teamName || d.zoneColors) {
             serverBrief = {
               ...(local ?? ({} as BriefState)),
-              orderId:        order_id,
-              teamName:       d.teamName ?? local?.teamName ?? "",
-              sport:          d.sport ?? local?.sport ?? "",
-              zoneColors:     d.zoneColors ?? local?.zoneColors ?? null,
-              logosToInclude: d.logosToInclude ?? local?.logosToInclude ?? "",
-              renderUrl:      d.renderUrl ?? local?.renderUrl ?? null,
+              orderId:         order_id,
+              teamName:        d.teamName ?? local?.teamName ?? "",
+              sport:           d.sport ?? local?.sport ?? "",
+              zoneColors:      d.zoneColors ?? local?.zoneColors ?? null,
+              logosToInclude:  d.logosToInclude ?? local?.logosToInclude ?? "",
+              renderUrl:       d.renderUrl ?? local?.renderUrl ?? null,
+              renderUrlShorts: d.renderUrlShorts ?? local?.renderUrlShorts ?? null,
             } as BriefState;
           }
         }
@@ -130,7 +133,10 @@ export default function BuilderReviewPage() {
       const aiPrompt = JSON.stringify({
         garmentType: "Basketball Jersey & Shorts",
         sport:       brief?.sport || "Basketball",
-        renders:     { frontJersey: brief?.renderUrl ?? null },
+        renders:     {
+          frontJersey: brief?.renderUrl ?? null,
+          frontShorts: brief?.renderUrlShorts ?? null,
+        },
       });
 
       const res = await fetch("/api/brief/submit", {
@@ -184,6 +190,20 @@ export default function BuilderReviewPage() {
     }
   }
 
+  // Commit the activated order to its managed-production path and follow it to
+  // the tracker. The production path is already in place — no re-selection.
+  async function proceedToProduction() {
+    setProceeding(true);
+    try {
+      await fetch("/api/orders/choose-production", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ order_id, choice: "production" }),
+      });
+    } catch { /* navigate regardless — tracker reflects current state */ }
+    router.push(`/orders/${order_id}/tracker`);
+  }
+
   if (!ready || !brief) {
     return (
       <BriefLayout currentStep={3} steps={BUILDER_STEPS} title="Review & Submit">
@@ -209,15 +229,31 @@ export default function BuilderReviewPage() {
     >
       <div className="space-y-6">
 
-        {/* ── Builder Render Preview ─────────────────────────────────────────── */}
-        {brief.renderUrl && (
-          <div className="rounded-xl overflow-hidden border border-brand-border bg-white">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={brief.renderUrl}
-              alt="Your jersey design"
-              className="w-full object-contain max-h-64"
-            />
+        {/* ── Builder Render Preview — jersey + shorts ───────────────────────── */}
+        {(brief.renderUrl || brief.renderUrlShorts) && (
+          <div className={`grid gap-3 ${brief.renderUrl && brief.renderUrlShorts ? "grid-cols-2" : "grid-cols-1"}`}>
+            {brief.renderUrl && (
+              <div className="rounded-xl overflow-hidden border border-brand-border bg-white">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={brief.renderUrl}
+                  alt="Your jersey design"
+                  className="w-full object-contain max-h-64"
+                />
+                <p className="text-center text-[9px] font-display uppercase tracking-[0.28em] text-brand-muted py-2 border-t border-brand-border bg-brand-surface">Jersey</p>
+              </div>
+            )}
+            {brief.renderUrlShorts && (
+              <div className="rounded-xl overflow-hidden border border-brand-border bg-white">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={brief.renderUrlShorts}
+                  alt="Your shorts design"
+                  className="w-full object-contain max-h-64"
+                />
+                <p className="text-center text-[9px] font-display uppercase tracking-[0.28em] text-brand-muted py-2 border-t border-brand-border bg-brand-surface">Shorts</p>
+              </div>
+            )}
           </div>
         )}
 
@@ -282,14 +318,25 @@ export default function BuilderReviewPage() {
           /* ── Read-only: design submitted — show payment CTA if unpaid ─────── */
           <div className="space-y-4">
             {feePaid ? (
-              <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/5 px-5 py-4 flex items-center gap-3">
-                <span className="px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-400 font-display font-bold text-[10px] uppercase tracking-widest border border-emerald-500/30">
-                  Active
-                </span>
-                <p className="text-sm font-barlow text-brand-muted">
-                  Your project is active. A Grace Studios designer is working on your design.
-                </p>
-              </div>
+              <>
+                <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/5 px-5 py-4 flex items-center gap-3">
+                  <span className="px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-400 font-display font-bold text-[10px] uppercase tracking-widest border border-emerald-500/30">
+                    Active
+                  </span>
+                  <p className="text-sm font-barlow text-brand-muted">
+                    Your project is active. A Grace Studios designer is working on your design.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={proceedToProduction}
+                  disabled={proceeding}
+                  className="block w-full py-3.5 rounded-lg text-center font-display font-bold text-base uppercase tracking-widest
+                    bg-brand-primary text-brand-bg hover:bg-brand-secondary disabled:opacity-50 transition-all duration-200"
+                >
+                  {proceeding ? "Proceeding…" : "Proceed to Production →"}
+                </button>
+              </>
             ) : (
               <>
                 <div className="rounded-xl border border-brand-primary/30 bg-brand-primary/5 px-5 py-4">

@@ -35,6 +35,7 @@ export async function POST(
 
   let body: {
     imageDataUrl?: string;
+    imageDataUrlShorts?: string;
     sport?: string;
     garmentType?: string;
     zoneColors?: Record<string, string>;
@@ -48,6 +49,7 @@ export async function POST(
 
   const {
     imageDataUrl,
+    imageDataUrlShorts,
     sport = "Basketball",
     garmentType = "Basketball Jersey & Shorts",
     zoneColors,
@@ -56,47 +58,55 @@ export async function POST(
 
   const admin = createAdminClient();
 
-  // Upload the canvas screenshot (when provided). A unique filename per save
-  // avoids stale CDN caching of the portal thumbnail.
-  let renderUrl: string | null = null;
-  if (imageDataUrl) {
-    const base64Data  = imageDataUrl.replace(/^data:image\/\w+;base64,/, "");
+  // Upload a base64 canvas screenshot to storage; returns its public URL or null.
+  async function uploadSnapshot(dataUrl: string, kind: "jersey" | "shorts"): Promise<string | null> {
+    const base64Data  = dataUrl.replace(/^data:image\/\w+;base64,/, "");
     const buffer      = Buffer.from(base64Data, "base64");
-    const storagePath = `builder-previews/${tenantId}/${orderId}/${Date.now()}.jpg`;
+    const storagePath = `builder-previews/${tenantId}/${orderId}/${kind}-${Date.now()}.jpg`;
 
     const { error: uploadError } = await admin.storage
       .from("order-files")
       .upload(storagePath, buffer, { contentType: "image/jpeg", upsert: true });
 
     if (uploadError) {
-      console.error("[save-builder-preview] upload error:", uploadError);
-    } else {
-      const { data: urlData } = admin.storage
-        .from("order-files")
-        .getPublicUrl(storagePath);
-      renderUrl = urlData.publicUrl;
+      console.error(`[save-builder-preview] ${kind} upload error:`, uploadError);
+      return null;
     }
+    const { data: urlData } = admin.storage.from("order-files").getPublicUrl(storagePath);
+    return urlData.publicUrl;
   }
 
-  // Preserve a previously saved render URL when this save had no screenshot.
+  // Upload the canvas screenshots (when provided). Unique filenames per save
+  // avoid stale CDN caching of the portal thumbnail.
+  let renderUrl:       string | null = null;
+  let renderUrlShorts: string | null = null;
+  if (imageDataUrl)       renderUrl       = await uploadSnapshot(imageDataUrl,       "jersey");
+  if (imageDataUrlShorts) renderUrlShorts = await uploadSnapshot(imageDataUrlShorts, "shorts");
+
+  // Preserve previously saved render URLs when this save had no screenshot.
   const { data: existing } = await admin
     .from("briefs")
     .select("id, ai_prompt")
     .eq("order_id", orderId)
     .single();
 
-  let prevRenderUrl: string | null = null;
+  let prevRenderUrl:       string | null = null;
+  let prevRenderUrlShorts: string | null = null;
   if (existing?.ai_prompt) {
     try {
       const prev = JSON.parse(existing.ai_prompt as string);
-      prevRenderUrl = prev?.renders?.frontJersey ?? null;
+      prevRenderUrl       = prev?.renders?.frontJersey ?? null;
+      prevRenderUrlShorts = prev?.renders?.frontShorts ?? null;
     } catch { /* ignore */ }
   }
 
   const aiPrompt = JSON.stringify({
     garmentType,
     sport,
-    renders: { frontJersey: renderUrl ?? prevRenderUrl },
+    renders: {
+      frontJersey: renderUrl       ?? prevRenderUrl,
+      frontShorts: renderUrlShorts ?? prevRenderUrlShorts,
+    },
     builder: { artwork: artwork ?? [] },
   });
 

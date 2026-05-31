@@ -265,6 +265,33 @@ function CameraFitter({
   return null;
 }
 
+// ── In-Canvas capturer ──────────────────────────────────────────────────────
+//
+// Exposes a capture() on the shared ref that forces a SYNCHRONOUS render of the
+// current scene + camera, then reads the WebGL buffer. Capturing from outside
+// the render loop (plain canvas.toDataURL) is unreliable because there is no
+// guarantee a frame for the just-switched garment was drawn yet — this draws
+// one on demand right before the read, so the buffer always matches the active
+// view. Requires gl preserveDrawingBuffer:true (set on the Canvas).
+
+type CaptureFn = () => string | null;
+
+function SceneCapturer({ captureRef }: { captureRef: React.MutableRefObject<CaptureFn | null> }) {
+  const { gl, scene, camera } = useThree();
+  useEffect(() => {
+    captureRef.current = () => {
+      try {
+        gl.render(scene, camera);
+        return gl.domElement.toDataURL("image/jpeg", 0.8);
+      } catch {
+        return null;
+      }
+    };
+    return () => { captureRef.current = null; };
+  }, [gl, scene, camera, captureRef]);
+  return null;
+}
+
 // ── Main builder ──────────────────────────────────────────────────────────────
 
 function JerseyBuilderInner() {
@@ -441,13 +468,23 @@ function JerseyBuilderInner() {
   const [activeSide,   setActiveSide]   = useState<"front" | "back">("front");
   const [groupCenters, setGroupCenters] = useState<GroupCenters | null>(null);
 
-  // Auto-capture the shorts front canvas whenever the user views that tab so the
-  // preview is always ready at save/review time.
+  // Mirror active view/side into refs so captureAllViews (stable callback) can
+  // read and restore the user's current position without stale closures.
+  const activeViewRef = useRef<"jersey" | "shorts">("jersey");
+  const activeSideRef = useRef<"front" | "back">("front");
+  useEffect(() => { activeViewRef.current = activeView; }, [activeView]);
+  useEffect(() => { activeSideRef.current = activeSide; }, [activeSide]);
+
+  // Auto-capture each front canvas whenever the user views that tab so previews
+  // are always ready at save/review time.
   useEffect(() => {
-    if (activeView !== "shorts" || activeSide !== "front") return;
+    if (activeSide !== "front") return;
     const t = setTimeout(() => {
       const canvas = canvasContainerRef.current?.querySelector("canvas");
-      if (canvas) shortsPreviewRef.current = canvas.toDataURL("image/jpeg", 0.8);
+      if (!canvas) return;
+      const snap = canvas.toDataURL("image/jpeg", 0.8);
+      if (activeView === "shorts") shortsPreviewRef.current = snap;
+      else                        jerseyPreviewRef.current = snap;
     }, 200);
     return () => clearTimeout(t);
   }, [activeView, activeSide]);
@@ -456,9 +493,13 @@ function JerseyBuilderInner() {
   const sceneYRotRef       = useRef(0);
   const sceneXTiltRef      = useRef(0);
   const canvasContainerRef = useRef<HTMLDivElement>(null);
-  // Stores the latest shorts front canvas screenshot so both views are always
+  // Stores the latest front canvas screenshot for each view so both are always
   // available at save/review time without requiring the user to visit the tab.
   const shortsPreviewRef   = useRef<string | null>(null);
+  const jerseyPreviewRef   = useRef<string | null>(null);
+  // Set by SceneCapturer (inside Canvas) — forces a synchronous render + buffer
+  // read so captures always reflect the currently active garment.
+  const captureRef         = useRef<CaptureFn | null>(null);
 
   const groupCentersRef = useRef<GroupCenters | null>(null);
   const handleGroupCenters = useCallback((centers: GroupCenters) => {
@@ -771,15 +812,15 @@ function JerseyBuilderInner() {
     setIsSaving(true);
     setSavedOk(false);
 
-    const canvasEl    = canvasContainerRef.current?.querySelector("canvas");
-    const imageDataUrl = canvasEl?.toDataURL("image/jpeg", 0.8) ?? null;
+    const { jerseyUrl, shortsUrl } = await captureAllViews();
 
     try {
       await fetch(`/api/orders/${orderId}/save-builder-preview`, {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({
-          imageDataUrl,
+          imageDataUrl: jerseyUrl,
+          imageDataUrlShorts: shortsUrl,
           sport: "Basketball",
           garmentType: "Basketball Jersey & Shorts",
           zoneColors: colors,
@@ -796,26 +837,57 @@ function JerseyBuilderInner() {
   // ── Manual save ──────────────────────────────────────────────────────────
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
 
-  // Captures both the jersey front and shorts front canvas screenshots. If the
-  // shorts haven't been viewed this session, temporarily switches to that view,
-  // waits one animation frame for Three.js to render, then restores.
+  // Captures the jersey-front and shorts-front canvas screenshots, regardless of
+  // which tab the user is currently on. Because separateGlbs mounts only the
+  // active garment's GLB (the other is unmounted and must lazily load on switch),
+  // we switch views, wait for that garment's mesh ref to populate, then let the
+  // camera settle and capture. Restores the user's original position.
   const captureAllViews = useCallback(async (): Promise<{ jerseyUrl: string | null; shortsUrl: string | null }> => {
     const canvas = canvasContainerRef.current?.querySelector("canvas");
+    if (!canvas) return { jerseyUrl: jerseyPreviewRef.current, shortsUrl: shortsPreviewRef.current };
 
-    // Capture jersey (current view assumed to be jersey front at call site)
-    const jerseyUrl = canvas?.toDataURL("image/jpeg", 0.8) ?? null;
+    const origView = activeViewRef.current;
+    const origSide = activeSideRef.current;
 
-    // Capture shorts — use cached ref if available, otherwise switch briefly
-    let shortsUrl = shortsPreviewRef.current;
-    if (!shortsUrl && canvas) {
-      setActiveView("shorts");
+    const wait = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
+
+    // Poll a mesh ref until the GLB has mounted (max ~3s), so we never capture
+    // an empty frame while Suspense is still loading the garment.
+    const waitForMesh = async (ref: React.RefObject<THREE.Mesh | null>) => {
+      for (let i = 0; i < 60; i++) {
+        if (ref.current) return;
+        await wait(50);
+      }
+    };
+
+    const snapFront = async (
+      view: "jersey" | "shorts",
+      meshRef: React.RefObject<THREE.Mesh | null>,
+    ): Promise<string | null> => {
+      setActiveView(view);
       setActiveSide("front");
+      await waitForMesh(meshRef);
+      // Mesh is mounted; let the camera-fit effect + OrbitControls settle.
+      await wait(400);
       await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-      shortsUrl = canvas.toDataURL("image/jpeg", 0.8);
-      shortsPreviewRef.current = shortsUrl;
-      setActiveView("jersey");
-      setActiveSide("front");
-    }
+      // Force a synchronous render of the active garment before reading the
+      // buffer — guarantees the capture matches the current view (fixes blank
+      // shorts when the GLB had just swapped in). Falls back to the raw canvas.
+      const url = captureRef.current?.() ?? canvas.toDataURL("image/jpeg", 0.8);
+      if (view === "shorts") shortsPreviewRef.current = url;
+      else                   jerseyPreviewRef.current = url;
+      return url;
+    };
+
+    const jerseyUrl = await snapFront("jersey", jerseyTopMeshRef);
+    // Switching to shorts unmounts the jersey GLB and mounts Shorts.glb — clear
+    // the stale ref so waitForMesh blocks until the new mesh actually mounts.
+    shortsMeshRef.current = null;
+    const shortsUrl = await snapFront("shorts", shortsMeshRef);
+
+    // Restore the user's original position.
+    setActiveView(origView);
+    setActiveSide(origSide);
 
     return { jerseyUrl, shortsUrl };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -1029,6 +1101,7 @@ function JerseyBuilderInner() {
               <pointLight       position={[0, 4, 3]}   intensity={0.6} />
 
               <SceneRotationController groupRef={sceneGroupRef} yRef={sceneYRotRef} xRef={sceneXTiltRef} />
+              <SceneCapturer captureRef={captureRef} />
               <CameraFitter
                 jerseyRef={jerseyTopMeshRef}
                 shortsRef={shortsMeshRef}

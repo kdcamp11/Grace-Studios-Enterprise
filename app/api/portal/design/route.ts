@@ -85,12 +85,14 @@ export async function GET(req: NextRequest) {
     ? await admin.from("briefs").select(briefCols).eq("design_id", orderId).order("created_at", { ascending: false }).limit(1).maybeSingle()
     : await admin.from("briefs").select(briefCols).eq("order_id", orderId).order("created_at", { ascending: false }).limit(1).maybeSingle();
 
-  let renderUrl: string | null = null;
+  let renderUrl:       string | null = null;
+  let renderUrlShorts: string | null = null;
   let builderArtwork: unknown[] = [];
   if (brief?.ai_prompt) {
     try {
       const meta = JSON.parse(brief.ai_prompt as string);
-      if (meta.renders?.frontJersey) renderUrl = meta.renders.frontJersey as string;
+      if (meta.renders?.frontJersey) renderUrl       = meta.renders.frontJersey as string;
+      if (meta.renders?.frontShorts) renderUrlShorts = meta.renders.frontShorts as string;
       if (Array.isArray(meta.builder?.artwork)) builderArtwork = meta.builder.artwork;
     } catch { /* ignore */ }
   }
@@ -102,6 +104,7 @@ export async function GET(req: NextRequest) {
     logosToInclude:  brief?.logos_to_include ?? null,
     visionPrompt:    brief?.vision_prompt ?? null,
     renderUrl,
+    renderUrlShorts,
     builderArtwork,
     clientConceptUrl:   brief?.client_concept_url ?? null,
     clientPhotoUrl:     brief?.client_photo_url ?? null,

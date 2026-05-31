@@ -11,18 +11,22 @@ import type { OrderStage } from "@/types/database";
 import { normalizeStage, stageLabel } from "@/lib/order-stages";
 
 // ─── Pipeline definition ──────────────────────────────────────────────────────
+//
+// Each step groups the canonical (and legacy) stages that belong to it, so any
+// order — AI brief, jersey builder, or uploaded concept — resolves onto a step.
+// Stage strings are normalized before matching, so legacy aliases (onboarding,
+// design_confirmed) and the new creative lifecycle stages both land correctly.
 
-const PIPELINE: { stage: OrderStage; label: string }[] = [
-  { stage: "onboarding",              label: "Brief Submitted"      },
-  { stage: "design_confirmed",        label: "Concepts Generating"  },
-  { stage: "files_sent",              label: "Design Approved"      },
-  { stage: "first_piece_in_progress", label: "First Piece"          },
-  { stage: "first_piece_review",      label: "First Piece Review"   },
-  { stage: "bulk_production",         label: "Bulk Production"      },
-  { stage: "qc_verified",             label: "Quality Check"        },
-  { stage: "shipped",                 label: "Shipped"              },
-  { stage: "delivered",               label: "Delivered"            },
-  { stage: "complete",                label: "Complete"             },
+const PIPELINE: { label: string; stages: OrderStage[] }[] = [
+  { label: "Brief Submitted",    stages: ["onboarding", "creative_started", "creative_submitted", "design_confirmed", "payment_pending"] },
+  { label: "In Creative Review", stages: ["paid", "creative_in_review", "revision_requested"] },
+  { label: "Design Approved",    stages: ["creative_approved", "ready_for_production", "files_sent"] },
+  { label: "First Piece",        stages: ["first_piece_in_progress"] },
+  { label: "First Piece Review", stages: ["first_piece_review"] },
+  { label: "Bulk Production",    stages: ["bulk_production"] },
+  { label: "Quality Check",      stages: ["qc_verified"] },
+  { label: "Shipped",            stages: ["shipped"] },
+  { label: "Delivered",          stages: ["delivered", "complete"] },
 ];
 
 // Per-stage action card config
@@ -47,6 +51,30 @@ const STAGE_CARDS: Partial<Record<OrderStage, StageCard>> = {
     description: "Your design concepts are being built. Open the board to watch the progress live.",
     cta:         "Open Concept Board →",
     ctaHref:     (id) => `/orders/${id}/concepts`,
+  },
+  paid: {
+    title:       "Project Activated",
+    description: "Your project is activated and assigned to a Grace Studios designer. We're preparing your design now.",
+    success:     true,
+  },
+  creative_in_review: {
+    title:       "In Creative Review",
+    description: "A Grace Studios designer is preparing your design. You'll be notified as soon as it's ready for your approval.",
+  },
+  revision_requested: {
+    title:       "Revisions In Progress",
+    description: "Your requested changes are being applied. We'll send the updated design for your approval shortly.",
+    urgent:      true,
+  },
+  creative_approved: {
+    title:       "Design Approved",
+    description: "Your design is approved and moving into production. We'll keep you posted as your order progresses.",
+    success:     true,
+  },
+  ready_for_production: {
+    title:       "Ready for Production",
+    description: "Your design is locked and your order is moving into production. We'll notify you at each step.",
+    success:     true,
   },
   files_sent: {
     title:       "Design Approved",
@@ -202,10 +230,12 @@ export default function TrackerPage() {
     );
   }
 
-  // Match by normalized stage so new creative stages (creative_started, etc.)
-  // resolve onto their legacy pipeline entries (onboarding/design_confirmed).
-  const currentIndex  = PIPELINE.findIndex(
-    (p) => normalizeStage(p.stage) === normalizeStage(order.stage)
+  // Match by normalized stage so both legacy aliases (onboarding,
+  // design_confirmed) and the new creative lifecycle stages resolve onto a step.
+  const normalized    = normalizeStage(order.stage);
+  const currentIndex  = Math.max(
+    0,
+    PIPELINE.findIndex((p) => p.stages.some((s) => normalizeStage(s) === normalized)),
   );
   const pendingMedia  = order.media.filter((m) => m.client_approved === null);
   const reviewedMedia = order.media.filter((m) => m.client_approved !== null);
@@ -471,6 +501,16 @@ export default function TrackerPage() {
             </div>
           )}
 
+          {/* ── Back to portal ────────────────────────────────────────────────── */}
+          <div className="pt-2">
+            <a
+              href="/portal"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-display font-bold text-sm uppercase tracking-widest border border-brand-border text-brand-muted hover:text-brand-text hover:border-brand-muted transition-colors"
+            >
+              ← Back to Portal
+            </a>
+          </div>
+
           {/* ── Full timeline ─────────────────────────────────────────────────── */}
           <div>
             <p className="text-xs font-display uppercase tracking-widest text-brand-muted mb-5">Full Timeline</p>
@@ -480,7 +520,7 @@ export default function TrackerPage() {
                 const isCurrent  = i === currentIndex;
                 const isUpcoming = i > currentIndex;
                 return (
-                  <div key={step.stage} className="flex gap-4">
+                  <div key={step.label} className="flex gap-4">
                     <div className="flex flex-col items-center">
                       <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 border-2 transition-colors
                         ${isDone    ? "bg-brand-primary border-brand-primary" : ""}

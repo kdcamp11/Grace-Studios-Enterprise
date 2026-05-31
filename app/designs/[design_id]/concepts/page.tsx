@@ -97,7 +97,6 @@ export default function DesignConceptsPage() {
   const [regenerating, setRegenerating] = useState(false);
   const [confirmStep, setConfirmStep]   = useState(false);
   const [declineStep, setDeclineStep]   = useState(false);
-  const [declineNote, setDeclineNote]   = useState("");
   const [declining, setDeclining]       = useState(false);
   const [actionError, setActionError]   = useState<string | null>(null);
 
@@ -126,7 +125,8 @@ export default function DesignConceptsPage() {
     if (briefRow?.ai_prompt) {
       try {
         const parsed = JSON.parse(briefRow.ai_prompt as string) as DesignMetadata;
-        if (parsed.status === "completed") metadata = parsed;
+        const hasRenders = !!parsed.renders?.frontJersey;
+        if (parsed.status === "completed" || hasRenders) metadata = parsed;
       } catch { /* ignore */ }
     }
 
@@ -183,34 +183,43 @@ export default function DesignConceptsPage() {
   }, [design_id]);
 
   // ── Trigger generation ────────────────────────────────────────────────────
-  const triggerGeneration = useCallback(async (force = false) => {
+  const triggerGeneration = useCallback((force = false) => {
     if (generationFiredRef.current) return;
     generationFiredRef.current = true;
     setGen({ status: "queued", progress: 0, total: 4, error: null });
 
-    const res = await fetch("/api/generate-concepts", {
+    if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+
+    // Fire the generation request without blocking — it can take 2–3 min.
+    // Polling starts immediately so progress updates appear during generation.
+    fetch("/api/generate-concepts", {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
       body:    JSON.stringify({ design_id, ...(force ? { force: true } : {}) }),
+    }).then(async (res) => {
+      if (res.status === 409) {
+        const body = await res.json() as { status?: string };
+        if (body.status === "already_completed") {
+          if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+          await loadBoard();
+        }
+        // already_running: polling already handles it
+      } else if (!res.ok) {
+        if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+        let errMsg = "Concept generation failed. Please try again.";
+        try {
+          const body = await res.json() as { error?: string };
+          if (body.error) errMsg = body.error;
+        } catch { /* ignore */ }
+        if (res.status === 429) errMsg = "Too many requests. Please wait a few minutes and try again.";
+        setGen({ status: "failed", progress: 0, total: 4, error: errMsg });
+        generationFiredRef.current = false;
+      }
+    }).catch(() => {
+      // Network error — polling will see failed status or keep retrying
     });
 
-    if (res.status === 409) {
-      const body = await res.json();
-      if (body.status === "already_completed") { await loadBoard(); return; }
-      // already_running — fall through to polling
-    } else if (!res.ok) {
-      let errMsg = "Concept generation failed. Please try again.";
-      try {
-        const body = await res.json() as { error?: string };
-        if (body.error) errMsg = body.error;
-      } catch { /* ignore */ }
-      if (res.status === 429) errMsg = "Too many requests. Please wait a few minutes and try again.";
-      setGen({ status: "failed", progress: 0, total: 4, error: errMsg });
-      generationFiredRef.current = false;
-      return;
-    }
-
-    if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+    // Polling detects queued → generating → completed and loads the board.
     pollIntervalRef.current = setInterval(pollStatus, 5000);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [design_id, pollStatus, loadBoard]);
@@ -254,64 +263,43 @@ export default function DesignConceptsPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [design_id]);
 
+  // Clear regenerating flag once generation resolves
+  useEffect(() => {
+    if (gen.status === "completed" || gen.status === "failed") {
+      setRegenerating(false);
+    }
+  }, [gen.status]);
+
   async function signOut() {
     await supabase.auth.signOut();
     router.replace("/login");
   }
 
   // ── Regenerate — force a fresh concept from the same brief ────────────────
-  async function handleRegenerate() {
+  function handleRegenerate() {
     if (regenerating || declining) return;
     setRegenerating(true);
     setActionError(null);
     setBoardData(null);
     setGen({ status: "not_started", progress: 0, total: 4, error: null });
     generationFiredRef.current = false;
-    if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
-    await triggerGeneration(true);
-    setRegenerating(false);
+    triggerGeneration(true);
+    // regenerating cleared when polling detects completion or failure via useEffect below
   }
 
-  // ── Decline — capture a revision note, fold it into the brief vision, then
-  //    regenerate so the new concept reflects the requested changes ──────────
+  // ── Decline — marks the design as declined (removes it from the portal) ──
   async function handleConfirmDecline() {
     setDeclining(true);
     setActionError(null);
     try {
-      const note = declineNote.trim();
-      if (note) {
-        // Merge the revision note into the brief's vision so regeneration uses it.
-        let existingVision = "";
-        try {
-          const dRes = await fetch(`/api/portal/design?order_id=${encodeURIComponent(design_id)}`);
-          if (dRes.ok) {
-            const d = await dRes.json() as { visionPrompt?: string | null };
-            existingVision = (d.visionPrompt ?? "").trim();
-          }
-        } catch { /* best effort */ }
-
-        const combinedVision = [existingVision, `Revision request: ${note}`]
-          .filter(Boolean)
-          .join("\n\n");
-
-        await fetch("/api/brief/submit", {
-          method:  "POST",
-          headers: { "Content-Type": "application/json" },
-          body:    JSON.stringify({ design_id, vision_prompt: combinedVision }),
-        });
+      const res = await fetch(`/api/designs/${design_id}/decline`, { method: "POST" });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(body.error ?? "Failed to decline design");
       }
-
-      setDeclineStep(false);
-      setDeclineNote("");
-      // Regenerate with the updated brief
-      setBoardData(null);
-      setGen({ status: "not_started", progress: 0, total: 4, error: null });
-      generationFiredRef.current = false;
-      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
-      await triggerGeneration(true);
-    } catch {
-      setActionError("Couldn't request changes. Please try again.");
-    } finally {
+      router.replace("/portal");
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Couldn't remove design. Please try again.");
       setDeclining(false);
     }
   }
@@ -363,7 +351,7 @@ export default function DesignConceptsPage() {
               {isGenerating
                 ? "Our AI is building your concept board from your design brief. This takes 2–3 minutes."
                 : hasBoard
-                ? "Review your concept. Approve to move into activation, regenerate for a fresh take, or decline to request changes."
+                ? "Review your concept. Approve to move into activation, regenerate for a fresh take, or remove this design and start over."
                 : isFailed
                 ? "Generation encountered an issue."
                 : "Preparing your concept…"}
@@ -463,23 +451,23 @@ export default function DesignConceptsPage() {
               {/* Decline confirmation */}
               {declineStep && (
                 <div className="rounded-xl border border-red-800/40 bg-red-950/10 px-5 py-4 flex flex-col gap-3">
-                  <p className="text-sm font-barlow text-brand-text font-medium">
-                    Request changes to this concept?
-                  </p>
-                  <p className="text-xs font-barlow text-brand-muted leading-relaxed">
-                    Tell us what to change and we&apos;ll generate a fresh concept that reflects your notes.
-                  </p>
-                  <textarea
-                    value={declineNote}
-                    onChange={(e) => setDeclineNote(e.target.value)}
-                    rows={2}
-                    placeholder="Describe what you'd like changed (optional)…"
-                    className="w-full bg-brand-bg border border-brand-border rounded-lg px-3 py-2.5 text-brand-text font-barlow text-sm placeholder-brand-muted/50 focus:outline-none focus:border-red-600 transition-colors resize-none"
-                  />
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-red-900/20 border border-red-800/40 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <svg className="w-4 h-4 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-sm font-barlow text-brand-text font-medium">Remove this design?</p>
+                      <p className="text-xs font-barlow text-brand-muted leading-relaxed mt-1">
+                        This concept will be permanently removed from your account. You can start a fresh design from your portal at any time.
+                      </p>
+                    </div>
+                  </div>
                   <div className="flex gap-3 pt-1">
                     <button
                       type="button"
-                      onClick={() => { setDeclineStep(false); setDeclineNote(""); }}
+                      onClick={() => { setDeclineStep(false); setActionError(null); }}
                       disabled={declining}
                       className="px-8 py-3.5 rounded-xl font-display font-bold text-sm uppercase tracking-[0.15em] transition-all duration-200 border border-brand-border text-brand-muted hover:text-brand-text hover:border-brand-muted disabled:opacity-40"
                     >
@@ -491,7 +479,7 @@ export default function DesignConceptsPage() {
                       disabled={declining}
                       className="flex-1 py-3.5 rounded-xl font-display font-bold text-sm uppercase tracking-[0.15em] transition-all duration-200 bg-red-700 text-white hover:bg-red-600 disabled:opacity-40 disabled:cursor-not-allowed"
                     >
-                      {declining ? "Regenerating…" : "Request Changes & Regenerate →"}
+                      {declining ? "Removing…" : "Remove Design"}
                     </button>
                   </div>
                 </div>
@@ -518,7 +506,7 @@ export default function DesignConceptsPage() {
                       border border-red-800/50 text-red-400 hover:bg-red-900/20 hover:border-red-600
                       disabled:opacity-40 disabled:cursor-not-allowed"
                   >
-                    Decline This Design
+                    Remove This Design
                   </button>
                   <button
                     type="button"

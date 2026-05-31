@@ -5,12 +5,21 @@ import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import OrgLogo from "@/components/OrgLogo";
 
+interface ConceptRenders {
+  frontJersey?: string | null;
+  backJersey?:  string | null;
+  frontShorts?: string | null;
+  backShorts?:  string | null;
+}
+
 interface DesignInfo {
-  teamName:          string | null;
-  sport:             string | null;
-  clientConceptUrl:  string | null;
-  status:            string;
-  kind:              string | null;
+  teamName:           string | null;
+  sport:              string | null;
+  clientConceptUrl:   string | null;
+  clientConceptNotes: string | null;
+  renders:            ConceptRenders | null;
+  status:             string;
+  kind:               string | null;
 }
 
 const ACTIVATION_FEE_DISPLAY = "$149";
@@ -25,6 +34,7 @@ export default function DesignCheckoutPage() {
   const [loading, setLoading] = useState(true);
   const [paying, setPaying]   = useState(false);
   const [error, setError]     = useState<string | null>(null);
+  const [notes, setNotes]     = useState("");
 
   useEffect(() => {
     async function load() {
@@ -53,6 +63,7 @@ export default function DesignCheckoutPage() {
       }
 
       setInfo(data);
+      setNotes(data.clientConceptNotes ?? "");
       setLoading(false);
     }
     load();
@@ -62,6 +73,16 @@ export default function DesignCheckoutPage() {
     setPaying(true);
     setError(null);
     try {
+      // Persist the client's concept note before handing off to Stripe so the
+      // assigned designer sees which direction the client is activating.
+      try {
+        await fetch(`/api/designs/${design_id}/info`, {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          body:    JSON.stringify({ notes: notes.trim() }),
+        });
+      } catch { /* non-fatal — proceed to checkout regardless */ }
+
       const res = await fetch(`/api/designs/${design_id}/design-deposit`, {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
@@ -97,6 +118,15 @@ export default function DesignCheckoutPage() {
   }
 
   const isUpload = info.kind === "upload";
+  const renders  = info.renders;
+  const renderItems = renders
+    ? ([
+        ["Front Jersey", renders.frontJersey],
+        ["Back Jersey",  renders.backJersey],
+        ["Front Shorts", renders.frontShorts],
+        ["Back Shorts",  renders.backShorts],
+      ] as const).filter(([, url]) => !!url)
+    : [];
 
   return (
     <div className="min-h-screen bg-brand-bg flex flex-col">
@@ -127,6 +157,48 @@ export default function DesignCheckoutPage() {
               access, and production preparation.
             </p>
           </div>
+
+          {/* Generated concept — the design the client is activating */}
+          {!isUpload && renderItems.length > 0 && (
+            <div className="rounded-2xl border border-brand-border bg-brand-surface p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <p className="text-[9px] font-display font-bold uppercase tracking-[0.28em] text-brand-muted">
+                  Your Concept
+                </p>
+                <span className="text-[9px] font-display uppercase tracking-widest text-brand-primary">
+                  Activating
+                </span>
+              </div>
+              <div className={`grid gap-3 ${renderItems.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
+                {renderItems.map(([label, url]) => (
+                  <div key={label} className="rounded-xl overflow-hidden border border-brand-border bg-white">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={url as string} alt={label} className="w-full object-contain max-h-56" />
+                    <p className="text-center text-[9px] font-display uppercase tracking-[0.28em] text-brand-muted py-2 border-t border-brand-border bg-brand-surface">
+                      {label}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Concept notes — let the client describe the direction they're activating */}
+          {!isUpload && (
+            <div className="space-y-2">
+              <label className="block text-[9px] font-display font-bold uppercase tracking-[0.28em] text-brand-muted">
+                Notes for your designer <span className="normal-case tracking-normal text-brand-muted/60">(optional)</span>
+              </label>
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={3}
+                placeholder="Tell us what you love about this concept, any tweaks you'd like, colors, placement, sponsor text…"
+                className="w-full bg-brand-surface border border-brand-border rounded-xl px-4 py-3 text-brand-text font-barlow text-sm
+                  placeholder-brand-muted/50 focus:outline-none focus:border-brand-primary transition-colors resize-none"
+              />
+            </div>
+          )}
 
           {/* Confirmation */}
           <div className="flex items-center gap-3 rounded-2xl border border-brand-primary/20 bg-brand-primary/5 px-5 py-4">
