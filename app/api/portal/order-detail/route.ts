@@ -5,7 +5,9 @@
  * Auth: Bearer token first, cookie fallback (same dual-auth as approve-order).
  * Ownership: user_id → email fallback → back-fill (same as portal/orders).
  * Resilient: production_file_url and approved concept are surfaced as files
- *   even if migration 016 hasn't been run yet.
+ *   even if migration 016 hasn't been run yet. Migration-025 columns/tables
+ *   (order_mockups, mockup_revision_used) are fetched in a separate try/catch
+ *   so orders load correctly even if the migration hasn't been applied yet.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -42,7 +44,7 @@ export async function GET(req: NextRequest) {
 
   const isAdminRole = profile?.role === "admin" || profile?.role === "super_admin";
 
-  // ── 3. Fetch order (without production_file_url in case migration not run) ─
+  // ── 3. Fetch order — base columns only, no migration-025 fields ───────────
   const { data: order } = await admin
     .from("orders")
     .select("id, order_number, stage, created_at, estimated_delivery, tracking_number, client_id, tenant_id")
@@ -105,7 +107,28 @@ export async function GET(req: NextRequest) {
         .single(),
     ]);
 
-  // ── 6. Try to get production_file_url separately (safe if column missing) ─
+  // ── 6. Migration-025 data — graceful fallback if table/columns don't exist ─
+  let mockups: { id: string; image_url: string; label: string | null; revision_round: number; created_at: string }[] = [];
+  let mockupRevisionUsed = false;
+  try {
+    const { data: mockupRows } = await admin
+      .from("order_mockups")
+      .select("id, image_url, label, revision_round, created_at")
+      .eq("order_id", order_id)
+      .order("created_at", { ascending: true });
+    mockups = mockupRows ?? [];
+
+    const { data: orderExtra } = await admin
+      .from("orders")
+      .select("mockup_revision_used")
+      .eq("id", order_id)
+      .single();
+    mockupRevisionUsed = (orderExtra as { mockup_revision_used?: boolean } | null)?.mockup_revision_used ?? false;
+  } catch {
+    // Migration 025 not yet applied — skip gracefully
+  }
+
+  // ── 7. Try to get production_file_url separately (safe if column missing) ─
   let productionFileUrl: string | null = null;
   try {
     const { data: orderExtra } = await admin
@@ -118,7 +141,7 @@ export async function GET(req: NextRequest) {
     // Column doesn't exist yet (migration 016 not run) — skip silently
   }
 
-  // ── 7. Build files list — always include the approved design image ─────────
+  // ── 8. Build files list — always include the approved design image ─────────
   const orderLabel = order.order_number ?? order_id.slice(0, 8).toUpperCase();
   let resolvedFiles = files ?? [];
 
@@ -161,9 +184,11 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     order: {
       ...orderFields,
-      has_concepts: (concepts?.length ?? 0) > 0,
-      media:        media ?? [],
-      files:        resolvedFiles,
+      has_concepts:         (concepts?.length ?? 0) > 0,
+      media:                media ?? [],
+      files:                resolvedFiles,
+      mockups,
+      mockup_revision_used: mockupRevisionUsed,
     },
   });
 }
