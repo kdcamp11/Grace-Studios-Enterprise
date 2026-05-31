@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
   // ── 3. Fetch order (without production_file_url in case migration not run) ─
   const { data: order } = await admin
     .from("orders")
-    .select("id, order_number, stage, created_at, estimated_delivery, tracking_number, client_id, tenant_id, mockup_revision_used")
+    .select("id, order_number, stage, created_at, estimated_delivery, tracking_number, client_id, tenant_id")
     .eq("id", order_id)
     .single();
 
@@ -81,7 +81,7 @@ export async function GET(req: NextRequest) {
   }
 
   // ── 5. Fetch related data in parallel ─────────────────────────────────────
-  const [{ data: concepts }, { data: media }, { data: files }, { data: approvedConcept }, { data: mockups }] =
+  const [{ data: concepts }, { data: media }, { data: files }, { data: approvedConcept }] =
     await Promise.all([
       admin.from("concepts").select("id").eq("order_id", order_id).limit(1),
       admin
@@ -103,13 +103,27 @@ export async function GET(req: NextRequest) {
         .eq("order_id", order_id)
         .eq("selected", true)
         .single(),
-      // Fetch 2D mockup images for client review
-      admin
-        .from("order_mockups")
-        .select("id, image_url, label, revision_round, created_at")
-        .eq("order_id", order_id)
-        .order("created_at", { ascending: true }),
     ]);
+
+  // ── 5b. Fetch mockups + revision flag (safe if migration 025 not yet applied) ─
+  let mockups: { id: string; image_url: string; label: string | null; revision_round: number; created_at: string }[] = [];
+  let mockupRevisionUsed = false;
+  try {
+    const { data: mockupRows } = await admin
+      .from("order_mockups")
+      .select("id, image_url, label, revision_round, created_at")
+      .eq("order_id", order_id)
+      .order("created_at", { ascending: true });
+    mockups = mockupRows ?? [];
+    const { data: orderExtra2 } = await admin
+      .from("orders")
+      .select("mockup_revision_used")
+      .eq("id", order_id)
+      .single();
+    mockupRevisionUsed = (orderExtra2 as { mockup_revision_used?: boolean } | null)?.mockup_revision_used ?? false;
+  } catch {
+    // Migration 025 not yet applied — skip gracefully
+  }
 
   // ── 6. Try to get production_file_url separately (safe if column missing) ─
   let productionFileUrl: string | null = null;
@@ -170,8 +184,8 @@ export async function GET(req: NextRequest) {
       has_concepts:         (concepts?.length ?? 0) > 0,
       media:                media ?? [],
       files:                resolvedFiles,
-      mockups:              mockups ?? [],
-      mockup_revision_used: order.mockup_revision_used ?? false,
+      mockups,
+      mockup_revision_used: mockupRevisionUsed,
     },
   });
 }
