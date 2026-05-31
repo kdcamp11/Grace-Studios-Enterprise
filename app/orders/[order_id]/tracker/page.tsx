@@ -20,8 +20,10 @@ import { normalizeStage, stageLabel } from "@/lib/order-stages";
 const PIPELINE: { label: string; stages: OrderStage[] }[] = [
   { label: "Brief Submitted",    stages: ["onboarding", "creative_started", "creative_submitted", "design_confirmed", "payment_pending"] },
   { label: "In Creative Review", stages: ["paid", "creative_in_review", "revision_requested"] },
-  { label: "Design Approved",    stages: ["creative_approved", "ready_for_production", "files_sent"] },
-  { label: "First Piece",        stages: ["first_piece_in_progress"] },
+  { label: "Design Approved",    stages: ["creative_approved", "ready_for_production"] },
+  { label: "Mockup Review",      stages: ["mockup_in_progress", "mockup_review", "mockup_revision"] },
+  { label: "Production Prep",    stages: ["production_files_prep", "sent_to_supplier", "files_sent"] },
+  { label: "First Piece",        stages: ["first_piece_in_progress", "first_piece_revision"] },
   { label: "First Piece Review", stages: ["first_piece_review"] },
   { label: "Bulk Production",    stages: ["bulk_production"] },
   { label: "Quality Check",      stages: ["qc_verified"] },
@@ -81,6 +83,34 @@ const STAGE_CARDS: Partial<Record<OrderStage, StageCard>> = {
     description: "Your design has been approved and production files are ready. Your studio is preparing your first sample.",
     success:     true,
   },
+  mockup_in_progress: {
+    title:       "2D Mockup In Progress",
+    description: "Your Grace Studios designer is creating your official mockup. You'll be notified as soon as it's ready for your review.",
+  },
+  mockup_review: {
+    title:       "Action Required: Review Your Mockup",
+    description: "Your official 2D mockup is ready. Review the designs below and approve or request a revision.",
+    urgent:      true,
+  },
+  mockup_revision: {
+    title:       "Mockup Revision In Progress",
+    description: "Your revision request has been received. The design team is updating your mockup. You'll be notified when it's ready.",
+    urgent:      true,
+  },
+  production_files_prep: {
+    title:       "Preparing Production Package",
+    description: "Your design is approved. The Grace Studios team is preparing supplier-ready production files.",
+    success:     true,
+  },
+  sent_to_supplier: {
+    title:       "Sent To Supplier",
+    description: "Your production package has been sent to the supplier. Your first sample piece is now being crafted.",
+  },
+  first_piece_revision: {
+    title:       "First Piece Revision In Progress",
+    description: "Your revision request has been received. The supplier is updating your first piece sample.",
+    urgent:      true,
+  },
   first_piece_in_progress: {
     title:       "First Sample In Production",
     description: "Your studio is crafting your first sample piece. You'll be notified as soon as it's ready to review.",
@@ -127,6 +157,14 @@ interface MediaItem {
   client_note: string | null;
 }
 
+interface MockupItem {
+  id: string;
+  image_url: string;
+  label: string | null;
+  revision_round: number;
+  created_at: string;
+}
+
 interface OrderFile {
   id: string;
   file_url: string;
@@ -146,6 +184,8 @@ interface OrderData {
   has_concepts: boolean;
   media: MediaItem[];
   files: OrderFile[];
+  mockups: MockupItem[];
+  mockup_revision_used: boolean;
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -166,6 +206,11 @@ export default function TrackerPage() {
   const [submitting, setSubmitting]   = useState(false);
   const [reviewDone, setReviewDone]   = useState(false);
 
+  // Mockup review state
+  const [mockupAction, setMockupAction]   = useState<"approve" | "request_revision" | null>(null);
+  const [mockupSubmitting, setMockupSubmitting] = useState(false);
+  const [mockupReviewDone, setMockupReviewDone] = useState(false);
+
   useEffect(() => {
     async function load() {
       await sessionReady();
@@ -182,7 +227,7 @@ export default function TrackerPage() {
 
       const { order: o } = await res.json() as { order: OrderData };
       if (!o) { setLoading(false); return; }
-      setOrder({ ...o, stage: o.stage as OrderStage });
+      setOrder({ ...o, stage: o.stage as OrderStage, mockups: o.mockups ?? [], mockup_revision_used: o.mockup_revision_used ?? false });
       setLoading(false);
     }
     load();
@@ -210,6 +255,22 @@ export default function TrackerPage() {
     setClientNote("");
     setSubmitting(false);
     setReviewDone(true);
+  }
+
+  async function submitMockupReview(action: "approve" | "request_revision") {
+    setMockupSubmitting(true);
+    const res = await fetch(`/api/orders/${order_id}/review-mockup`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action }),
+    });
+    if (res.ok) {
+      const { stage } = await res.json() as { stage: OrderStage };
+      setOrder((prev) => prev ? { ...prev, stage } : prev);
+      setMockupAction(null);
+      setMockupReviewDone(true);
+    }
+    setMockupSubmitting(false);
   }
 
   // ─── Loading / error states ────────────────────────────────────────────────
@@ -240,7 +301,8 @@ export default function TrackerPage() {
   const pendingMedia  = order.media.filter((m) => m.client_approved === null);
   const reviewedMedia = order.media.filter((m) => m.client_approved !== null);
 
-  // Override card if first piece media is pending
+  // Override card if first piece media is pending, then check mockup review,
+  // then fall back to stage-based card
   const card: StageCard = pendingMedia.length > 0
     ? STAGE_CARDS.first_piece_review!
     : (STAGE_CARDS[order.stage] ?? STAGE_CARDS[normalizeStage(order.stage)] ?? { title: PIPELINE[currentIndex]?.label ?? stageLabel(order.stage), description: "" });
@@ -420,6 +482,94 @@ export default function TrackerPage() {
                       </div>
                     </div>
                   ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── Mockup Review ────────────────────────────────────────────────── */}
+          {order.mockups && order.mockups.length > 0 && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-display uppercase tracking-widest text-brand-primary">2D Mockup</p>
+                {mockupReviewDone && (
+                  <span className="text-[10px] font-display uppercase tracking-wider text-green-400">Review Submitted ✓</span>
+                )}
+              </div>
+
+              {/* Mockup image grid */}
+              <div className="grid grid-cols-2 gap-3">
+                {order.mockups.map((m) => (
+                  <div key={m.id} className="rounded-xl overflow-hidden border border-brand-border bg-brand-surface">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={m.image_url} alt={m.label ?? "Mockup"} className="w-full object-contain max-h-64 bg-white" />
+                    {m.label && (
+                      <p className="text-center text-[9px] font-display uppercase tracking-[0.28em] text-brand-muted py-2 border-t border-brand-border">
+                        {m.label}{m.revision_round > 1 ? ` · Rev ${m.revision_round}` : ""}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Action buttons — only shown when stage is mockup_review and not yet reviewed */}
+              {order.stage === "mockup_review" && !mockupReviewDone && (
+                <div className="border border-amber-400/30 rounded-xl p-4 bg-brand-surface space-y-3">
+                  <p className="text-xs font-display uppercase tracking-wider text-amber-400">Your Review Required</p>
+                  {mockupAction === null ? (
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setMockupAction("approve")}
+                        className="flex-1 py-3 rounded-lg font-display font-bold text-xs uppercase tracking-widest border border-green-400/40 text-green-400 hover:bg-green-400/10 transition-all"
+                      >
+                        Approve Mockup ✓
+                      </button>
+                      {!order.mockup_revision_used && (
+                        <button
+                          type="button"
+                          onClick={() => setMockupAction("request_revision")}
+                          className="flex-1 py-3 rounded-lg font-display font-bold text-xs uppercase tracking-widest border border-amber-400/40 text-amber-400 hover:bg-amber-400/10 transition-all"
+                        >
+                          Request Revision
+                        </button>
+                      )}
+                      {order.mockup_revision_used && (
+                        <div className="flex-1 py-3 rounded-lg text-center text-[10px] font-display uppercase tracking-wider text-brand-muted border border-brand-border">
+                          1 Revision Used
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <p className="text-xs font-barlow text-brand-muted">
+                        {mockupAction === "approve"
+                          ? "Approve this mockup and move into production?"
+                          : "Request a revision — your designer will update the mockup."}
+                      </p>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => submitMockupReview(mockupAction)}
+                          disabled={mockupSubmitting}
+                          className={`flex-1 py-3 rounded-lg font-display font-bold text-xs uppercase tracking-widest disabled:opacity-40 transition-all ${
+                            mockupAction === "approve"
+                              ? "bg-green-600 text-white hover:bg-green-500"
+                              : "bg-amber-500/20 text-amber-400 border border-amber-400/40 hover:bg-amber-500/30"
+                          }`}
+                        >
+                          {mockupSubmitting ? "Submitting…" : mockupAction === "approve" ? "Confirm Approval" : "Confirm Revision Request"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setMockupAction(null)}
+                          className="px-4 py-3 rounded-lg border border-brand-border text-brand-muted hover:text-brand-text font-barlow text-xs transition-all"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
