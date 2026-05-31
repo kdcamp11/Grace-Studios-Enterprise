@@ -8,117 +8,127 @@ import OrgLogo from "@/components/OrgLogo";
 import MobileDropdown from "@/components/MobileDropdown";
 import { useTenant } from "@/lib/tenant/context";
 import type { OrderStage } from "@/types/database";
-import { normalizeStage, stageLabel } from "@/lib/order-stages";
+import { normalizeStage } from "@/lib/order-stages";
+import { deriveTimeline, type Milestones } from "@/lib/order-milestones";
 
-// ─── Pipeline definition ──────────────────────────────────────────────────────
+// ─── Action card config ─────────────────────────────────────────────────────
 //
-// Each step groups the canonical (and legacy) stages that belong to it, so any
-// order — AI brief, jersey builder, or uploaded concept — resolves onto a step.
-// Stage strings are normalized before matching, so legacy aliases (onboarding,
-// design_confirmed) and the new creative lifecycle stages both land correctly.
+// The timeline itself is derived from real workflow conditions (see
+// lib/order-milestones.ts). The headline card describes the CURRENT step, keyed
+// by its index in TIMELINE_STEPS so the card and the timeline can never disagree.
 
-const PIPELINE: { label: string; stages: OrderStage[] }[] = [
-  { label: "Mockup In Progress",        stages: ["mockup_in_progress"] },
-  { label: "Mockup Review",             stages: ["mockup_review", "mockup_revision"] },
-  { label: "Production Files",          stages: ["production_files_prep", "sent_to_supplier", "files_sent"] },
-  { label: "First Piece In Production", stages: ["first_piece_in_progress", "first_piece_revision"] },
-  { label: "First Piece Review",        stages: ["first_piece_review"] },
-  { label: "Bulk Production",           stages: ["bulk_production"] },
-  { label: "Quality Check",             stages: ["qc_verified"] },
-  { label: "Shipped",                   stages: ["shipped"] },
-  { label: "Delivered",                 stages: ["delivered", "complete"] },
-];
-
-// Per-stage action card config
 interface StageCard {
   title:       string;
   description: string;
-  cta?:        string;
-  ctaHref?:    (order_id: string) => string;
   urgent?:     boolean;   // amber highlight
   success?:    boolean;   // green highlight
 }
 
-const STAGE_CARDS: Partial<Record<OrderStage, StageCard>> = {
-  // Pre-production fallback (order not yet in production pipeline)
-  onboarding:          { title: "Order In Progress",    description: "Your order is being prepared for production. You'll be notified when your mockup is ready." },
-  creative_started:    { title: "Order In Progress",    description: "Your order is being prepared for production. You'll be notified when your mockup is ready." },
-  creative_submitted:  { title: "Order In Progress",    description: "Your order is being prepared for production. You'll be notified when your mockup is ready." },
-  design_confirmed:    { title: "Order In Progress",    description: "Your order is being prepared for production. You'll be notified when your mockup is ready." },
-  payment_pending:     { title: "Order In Progress",    description: "Your order is being prepared for production. You'll be notified when your mockup is ready." },
-  paid:                { title: "Order In Progress",    description: "Your project is active. The Grace Studios design team is preparing your mockup." },
-  creative_in_review:  { title: "Order In Progress",    description: "Your project is active. The Grace Studios design team is preparing your mockup." },
-  revision_requested:  { title: "Order In Progress",    description: "Your project is active. The Grace Studios design team is preparing your mockup." },
-  creative_approved:   { title: "Order In Progress",    description: "Your design is approved. Production is being prepared — your mockup is coming soon." },
-  ready_for_production:{ title: "Order In Progress",    description: "Your design is approved. Production is being prepared — your mockup is coming soon." },
-
-  // ── Production stages ──────────────────────────────────────────────────────
-  mockup_in_progress: {
+// One card per production step (index aligns with TIMELINE_STEPS / currentIndex).
+const STEP_CARDS: StageCard[] = [
+  { // 0 Mockup In Progress
     title:       "Mockup In Progress",
     description: "The Grace Studios design team is creating your official 2D mockup based on your brief, design selections, and references. You'll be notified as soon as it's ready for your review.",
   },
-  mockup_review: {
+  { // 1 Mockup Review
     title:       "Action Required: Review Your Mockup",
     description: "Your official 2D mockup is ready. Review the designs below and approve to move to production, or request one revision.",
     urgent:      true,
   },
-  mockup_revision: {
-    title:       "Mockup Revision In Progress",
-    description: "Your revision request has been received. The design team is applying updates to your mockup. Revision scope is limited to minor adjustments. You'll be notified when it's ready.",
-    urgent:      true,
-  },
-  production_files_prep: {
+  { // 2 Production Files
     title:       "Production Files Being Prepared",
-    description: "Your mockup is approved. Grace Studios is preparing all supplier-ready production assets and specifications. These files undergo internal QC before supplier access.",
+    description: "Your mockup is approved. Grace Studios is preparing supplier-ready production files. The first 50% production payment is required before supplier production can begin.",
     success:     true,
   },
-  sent_to_supplier: {
-    title:       "Production Files Ready",
-    description: "Your production package has passed internal QC. Your first 50% production payment is required before supplier production can begin.",
-  },
-  files_sent: {
-    title:       "Files Sent to Supplier",
-    description: "Your production package is with the supplier. Your first sample piece is now being crafted to your locked production specifications.",
-  },
-  first_piece_in_progress: {
+  { // 3 First Piece In Production
     title:       "First Piece In Production",
     description: "Your supplier is creating the first physical sample using your finalized production files. You'll be notified as soon as it's ready for your review.",
   },
-  first_piece_review: {
+  { // 4 First Piece Review
     title:       "Action Required: Review Your First Piece",
     description: "Your first piece sample is ready. Review the photos or video below and approve to begin bulk production, or request one adjustment.",
     urgent:      true,
   },
-  first_piece_revision: {
-    title:       "First Piece Adjustment In Progress",
-    description: "Your adjustment request has been received. The supplier is correcting your first piece sample. Revision scope is limited to production corrections and small adjustments.",
-    urgent:      true,
-  },
-  bulk_production: {
+  { // 5 Bulk Production
     title:       "Bulk Production Underway",
     description: "First piece approved. Your supplier is now manufacturing your full bulk order to your locked production specifications. No major changes can be made at this stage.",
   },
-  qc_verified: {
-    title:       "Quality Check Complete",
-    description: "Your full order has passed quality inspection — print quality, sizing, stitching, quantities, and packaging all verified. Your final 50% production payment is required before shipment is released.",
-    success:     true,
+  { // 6 Quality Check
+    title:       "Quality Check",
+    description: "Your full order is undergoing final quality inspection — print quality, sizing, stitching, quantities, and packaging. Your final 50% production payment is required before shipment is released.",
   },
-  shipped: {
+  { // 7 Shipped
     title:       "Order Shipped",
     description: "Your order is on its way. Tracking information is below. You'll receive a shipping confirmation with full details.",
     success:     true,
   },
-  delivered: {
+  { // 8 Delivered
     title:       "Order Delivered",
     description: "Your order has been delivered. All order assets, files, and history remain accessible in your account.",
     success:     true,
   },
-  complete: {
-    title:       "Order Complete",
-    description: "Your order is complete. All order assets, files, and history remain accessible in your account.",
-    success:     true,
-  },
+];
+
+// Holding card shown before an order has entered production.
+const PRE_PRODUCTION_CARD: StageCard = {
+  title:       "Order In Progress",
+  description: "Your project is being prepared for production. You'll be notified as soon as your mockup is ready for review.",
 };
+
+const COMPLETE_CARD: StageCard = {
+  title:       "Order Complete",
+  description: "Your order is complete and delivered. All order assets, files, and history remain accessible in your account.",
+  success:     true,
+};
+
+/**
+ * Resolves the headline card from the current step index, applying sub-state
+ * overrides (revision-in-progress, awaiting payment) based on real signals.
+ */
+function resolveCard(currentIndex: number, stage: string, m: Milestones): StageCard {
+  if (currentIndex < 0) return PRE_PRODUCTION_CARD;
+  if (currentIndex >= STEP_CARDS.length) return COMPLETE_CARD;
+
+  const norm = normalizeStage(stage);
+
+  // Mockup Review — distinguish "awaiting your review" vs "revision in progress"
+  if (currentIndex === 1 && norm === "mockup_revision") {
+    return {
+      title:       "Mockup Revision In Progress",
+      description: "Your revision request has been received. The design team is applying updates to your mockup. Revision scope is limited to minor adjustments. You'll be notified when it's ready.",
+      urgent:      true,
+    };
+  }
+
+  // Production Files — clarify whether the first payment is the blocker
+  if (currentIndex === 2 && m.productionFilesUploaded && !m.firstPaymentPaid) {
+    return {
+      title:       "Action Required: First Production Payment",
+      description: "Your supplier-ready production files are prepared. Your first 50% production payment is required before supplier production can begin.",
+      urgent:      true,
+    };
+  }
+
+  // First Piece Review — distinguish "awaiting your review" vs "adjustment in progress"
+  if (currentIndex === 4 && norm === "first_piece_revision") {
+    return {
+      title:       "First Piece Adjustment In Progress",
+      description: "Your adjustment request has been received. The supplier is correcting your first piece sample. Revision scope is limited to production corrections and small adjustments.",
+      urgent:      true,
+    };
+  }
+
+  // Quality Check — clarify whether the final payment is the blocker
+  if (currentIndex === 6 && m.qcComplete && !m.finalPaymentPaid) {
+    return {
+      title:       "Action Required: Final Production Payment",
+      description: "Your order has passed quality inspection. Your final 50% production payment is required before your shipment is released.",
+      urgent:      true,
+    };
+  }
+
+  return STEP_CARDS[currentIndex];
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -160,6 +170,9 @@ interface OrderData {
   files: OrderFile[];
   mockups: MockupItem[];
   mockup_revision_used: boolean;
+  production_choice: string | null;
+  deposit_paid: boolean | null;
+  balance_paid: boolean | null;
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -265,18 +278,25 @@ export default function TrackerPage() {
     );
   }
 
-  // Match by normalized stage against the production pipeline.
-  // Returns -1 for pre-production stages (all steps show as upcoming).
-  const normalized   = normalizeStage(order.stage);
-  const currentIndex = PIPELINE.findIndex((p) => p.stages.some((s) => normalizeStage(s) === normalized));
+  // Derive the timeline from REAL workflow conditions, not the raw stage enum.
+  // A step can only be complete when every prior dependency is satisfied, so the
+  // timeline can never show a later stage done while an earlier one is missing.
+  const timeline = deriveTimeline({
+    stage:               order.stage,
+    production_choice:   order.production_choice,
+    deposit_paid:        order.deposit_paid,
+    balance_paid:        order.balance_paid,
+    tracking_number:     order.tracking_number,
+    mockups:             order.mockups,
+    media:               order.media,
+    files:               order.files,
+  });
+  const { steps, currentIndex, milestones } = timeline;
+
   const pendingMedia  = order.media.filter((m) => m.client_approved === null);
   const reviewedMedia = order.media.filter((m) => m.client_approved !== null);
 
-  // Override card if first piece media is pending, then check mockup review,
-  // then fall back to stage-based card
-  const card: StageCard = pendingMedia.length > 0
-    ? STAGE_CARDS.first_piece_review!
-    : (STAGE_CARDS[order.stage] ?? STAGE_CARDS[normalizeStage(order.stage)] ?? { title: currentIndex >= 0 ? PIPELINE[currentIndex].label : stageLabel(order.stage), description: "" });
+  const card: StageCard = resolveCard(currentIndex, order.stage, milestones);
 
   const cardBorder = card.urgent  ? "border-amber-400/50 bg-amber-400/5"
     : card.success ? "border-green-500/40 bg-green-500/5"
@@ -360,17 +380,6 @@ export default function TrackerPage() {
               </div>
             </div>
 
-            {/* CTA button — always shown for stages that need client action */}
-            {card.cta && card.ctaHref && (
-              <a
-                href={card.ctaHref(order_id as string)}
-                className="block w-full py-3.5 rounded-xl text-center font-display font-bold text-sm uppercase tracking-[0.15em]
-                  bg-brand-primary text-white hover:bg-brand-secondary transition-all duration-200
-                  shadow-[0_4px_20px_rgba(201,168,76,0.2)]"
-              >
-                {card.cta}
-              </a>
-            )}
           </div>
 
           {/* ── First Piece Review ───────────────────────────────────────────── */}
@@ -638,12 +647,12 @@ export default function TrackerPage() {
           <div>
             <p className="text-xs font-display uppercase tracking-widest text-brand-muted mb-5">Order Timeline</p>
             <div className="space-y-0">
-              {PIPELINE.map((step, i) => {
-                const isDone     = currentIndex >= 0 && i < currentIndex;
-                const isCurrent  = i === currentIndex;
-                const isUpcoming = !isDone && !isCurrent;
+              {steps.map((step, i) => {
+                const isDone     = step.status === "done";
+                const isCurrent  = step.status === "current";
+                const isUpcoming = step.status === "upcoming";
                 return (
-                  <div key={step.label} className="flex gap-4">
+                  <div key={step.key} className="flex gap-4">
                     <div className="flex flex-col items-center">
                       <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 border-2 transition-colors
                         ${isDone    ? "bg-brand-primary border-brand-primary" : ""}
@@ -657,7 +666,7 @@ export default function TrackerPage() {
                           <div className={`w-2 h-2 rounded-full ${isCurrent ? "bg-brand-primary" : "bg-brand-border"}`} />
                         )}
                       </div>
-                      {i < PIPELINE.length - 1 && (
+                      {i < steps.length - 1 && (
                         <div className={`w-0.5 flex-1 my-1 min-h-[24px] ${isDone ? "bg-brand-primary" : "bg-brand-border"}`} />
                       )}
                     </div>
