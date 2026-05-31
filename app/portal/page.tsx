@@ -37,6 +37,9 @@ interface Order {
   tracking_number?: string | null;
   concept_source?: string | null;
   production_choice?: "design_file" | "production" | null;
+  // Derived lifecycle phase (single source of truth) — present for production orders
+  lifecycle_phase?: string | null;
+  lifecycle_label?: string | null;
 }
 
 interface SavedDesign {
@@ -511,8 +514,9 @@ function ProductionCard({ order, index, onOpen }: { order: Order; index: number;
             </span>
           )}
         </div>
+        {/* Derived lifecycle phase — matches the order status page exactly */}
         <p className={`text-xs font-barlow ${STAGE_COLOR[order.stage] ?? "text-brand-muted"}`}>
-          {stageLabel(order.stage)}
+          {order.lifecycle_label ?? stageLabel(order.stage)}
         </p>
         {order.tracking_number && (
           <p className="text-[11px] text-brand-muted font-barlow">Tracking: {order.tracking_number}</p>
