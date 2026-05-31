@@ -27,9 +27,15 @@ export type CreativeStage =
   | 'ready_for_production';
 
 export type ProductionStage =
+  | 'mockup_in_progress'
+  | 'mockup_review'
+  | 'mockup_revision'
+  | 'production_files_prep'
+  | 'sent_to_supplier'
   | 'files_sent'
   | 'first_piece_in_progress'
   | 'first_piece_review'
+  | 'first_piece_revision'
   | 'bulk_production'
   | 'qc_verified'
   | 'shipped'
@@ -68,9 +74,15 @@ export const STAGE_LABELS: Record<string, string> = {
   creative_approved:       'Creative Approved',
   ready_for_production:    'Ready for Production',
   // production lifecycle
+  mockup_in_progress:      'Mockup In Progress',
+  mockup_review:           'Design Ready For Review',
+  mockup_revision:         'Mockup Revision In Progress',
+  production_files_prep:   'Preparing Production Package',
+  sent_to_supplier:        'Sent To Supplier Production',
   files_sent:              'In Production',
   first_piece_in_progress: 'First Piece In Progress',
   first_piece_review:      'First Piece Ready for Review',
+  first_piece_revision:    'First Piece Revision In Progress',
   bulk_production:         'Bulk Production',
   qc_verified:             'QC Verified',
   shipped:                 'Shipped',
@@ -90,9 +102,15 @@ export const STAGE_COLOR: Record<string, string> = {
   revision_requested:      'text-amber-400 font-semibold',
   creative_approved:       'text-emerald-400 font-semibold',
   ready_for_production:    'text-blue-400 font-semibold',
+  mockup_in_progress:      'text-blue-400',
+  mockup_review:           'text-amber-400 font-semibold',
+  mockup_revision:         'text-amber-400',
+  production_files_prep:   'text-blue-400',
+  sent_to_supplier:        'text-blue-400',
   files_sent:              'text-blue-400',
   first_piece_in_progress: 'text-blue-400',
   first_piece_review:      'text-amber-400 font-semibold',
+  first_piece_revision:    'text-amber-400',
   bulk_production:         'text-blue-400',
   qc_verified:             'text-emerald-400',
   shipped:                 'text-emerald-400',
@@ -101,9 +119,15 @@ export const STAGE_COLOR: Record<string, string> = {
 };
 
 const PRODUCTION_STAGES: ReadonlySet<string> = new Set<ProductionStage>([
+  'mockup_in_progress',
+  'mockup_review',
+  'mockup_revision',
+  'production_files_prep',
+  'sent_to_supplier',
   'files_sent',
   'first_piece_in_progress',
   'first_piece_review',
+  'first_piece_revision',
   'bulk_production',
   'qc_verified',
   'shipped',
@@ -152,9 +176,15 @@ export const CREATIVE_STAGE_ORDER: CreativeStage[] = [
 ];
 
 export const PRODUCTION_STAGE_ORDER: ProductionStage[] = [
+  'mockup_in_progress',
+  'mockup_review',
+  'mockup_revision',
+  'production_files_prep',
+  'sent_to_supplier',
   'files_sent',
   'first_piece_in_progress',
   'first_piece_review',
+  'first_piece_revision',
   'bulk_production',
   'qc_verified',
   'shipped',
