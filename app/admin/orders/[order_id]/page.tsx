@@ -694,7 +694,20 @@ export default function AdminOrderPage() {
     );
   }
 
-  const currentStageIndex = PIPELINE.indexOf(order.stage);
+  // Maps derived TIMELINE_STEPS phase key → the closest PIPELINE stage, so the
+  // pipeline breadcrumb highlights the actual current milestone rather than a raw
+  // DB stage that may have been manually advanced ahead of completed work.
+  const PHASE_TO_PIPELINE_STAGE: Partial<Record<string, OrderStage>> = {
+    mockup_in_progress:        "mockup_in_progress",
+    mockup_review:             "mockup_review",
+    production_files:          "production_files_prep",
+    first_piece_in_production: "first_piece_in_progress",
+    first_piece_review:        "first_piece_review",
+    bulk_production:           "bulk_production",
+    quality_check:             "qc_verified",
+    shipped:                   "shipped",
+    delivered:                 "delivered",
+  };
 
   // Derive actual milestone completion so green checkmarks reflect real work done,
   // not just the raw DB stage array position (which can be jumped without completing
@@ -719,6 +732,14 @@ export default function AdminOrderPage() {
   // Used to gate workspace sections and the "Next" hint so they reflect the
   // actual milestone state rather than a raw DB stage that may have been jumped.
   const derivedPhaseKey = stepForIndex(derived.currentIndex)?.key ?? null;
+
+  // The PIPELINE stage that the derived phase maps to — used for isCurrent and
+  // the counter display. Falls back to order.stage if the phase has no mapping
+  // (e.g., early creative stages before mockup).
+  const derivedCurrentStage: OrderStage =
+    (derivedPhaseKey ? PHASE_TO_PIPELINE_STAGE[derivedPhaseKey] : undefined) ?? order.stage;
+
+  const currentStageIndex = PIPELINE.indexOf(derivedCurrentStage);
 
   const stageDone = (s: OrderStage): boolean => {
     switch (s) {
@@ -814,7 +835,7 @@ export default function AdminOrderPage() {
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
               {PIPELINE.map((stage, i) => {
-                const isCurrent = stage === order.stage;
+                const isCurrent = stage === derivedCurrentStage;
                 const isDone    = !isCurrent && stageDone(stage);
                 return (
                   <button
