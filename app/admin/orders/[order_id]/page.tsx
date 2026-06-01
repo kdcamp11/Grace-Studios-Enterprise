@@ -315,6 +315,7 @@ export default function AdminOrderPage() {
   const [mockups, setMockups] = useState<MockupItem[]>([]);
   const [mockupLabel, setMockupLabel] = useState("Front");
   const [mockupUploading, setMockupUploading] = useState(false);
+  const [mockupUploadError, setMockupUploadError] = useState<string | null>(null);
   const [mockupRevisionUsed, setMockupRevisionUsed] = useState(false);
 
   // Invoice state
@@ -551,8 +552,9 @@ export default function AdminOrderPage() {
 
   async function uploadMockup(file: File) {
     setMockupUploading(true);
+    setMockupUploadError(null);
     const ext = file.name.split(".").pop() ?? "jpg";
-    const path = `mockups/${order_id}/${Date.now()}.${ext}`;
+    const path = `${order_id}/mockups/${Date.now()}.${ext}`;
 
     const { error: uploadError } = await supabase.storage
       .from("order-files")
@@ -560,6 +562,7 @@ export default function AdminOrderPage() {
 
     if (uploadError) {
       console.error("Mockup upload error:", uploadError.message);
+      setMockupUploadError(`Upload failed: ${uploadError.message}`);
       setMockupUploading(false);
       return;
     }
@@ -1064,17 +1067,37 @@ export default function AdminOrderPage() {
                 </label>
               </div>
 
+              {/* Upload error */}
+              {mockupUploadError && (
+                <p className="text-xs font-barlow text-red-400">{mockupUploadError}</p>
+              )}
+
               {/* Advance to mockup_review — shown whenever the derived phase is mockup_in_progress,
                   regardless of the raw DB stage (handles jumped stages gracefully). */}
-              {derivedPhaseKey === "mockup_in_progress" && mockups.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => updateStage("mockup_review" as OrderStage)}
-                  disabled={stageSaving}
-                  className="w-full py-2.5 rounded-lg font-display font-bold text-xs uppercase tracking-widest bg-brand-primary text-white hover:bg-brand-secondary disabled:opacity-40 transition-all"
-                >
-                  {stageSaving ? "Saving…" : mockupRevisionUsed ? "Send Revised Mockup to Client →" : "Send Mockup to Client for Review →"}
-                </button>
+              {derivedPhaseKey === "mockup_in_progress" && (
+                mockups.length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => updateStage("mockup_review" as OrderStage)}
+                    disabled={stageSaving}
+                    className="w-full py-2.5 rounded-lg font-display font-bold text-xs uppercase tracking-widest bg-brand-primary text-white hover:bg-brand-secondary disabled:opacity-40 transition-all"
+                  >
+                    {stageSaving ? "Saving…" : mockupRevisionUsed ? "Send Revised Mockup to Client →" : "Send Mockup to Client for Review →"}
+                  </button>
+                ) : (
+                  <div className="space-y-1.5">
+                    <button
+                      type="button"
+                      disabled
+                      className="w-full py-2.5 rounded-lg font-display font-bold text-xs uppercase tracking-widest bg-brand-primary text-white disabled:opacity-30 transition-all cursor-not-allowed"
+                    >
+                      Send Mockup to Client for Review →
+                    </button>
+                    <p className="text-[10px] font-barlow text-amber-400/80 text-center">
+                      Upload at least one mockup image before sending to client.
+                    </p>
+                  </div>
+                )
               )}
             </div>
           )}
