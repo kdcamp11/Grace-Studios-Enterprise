@@ -73,7 +73,7 @@ export async function GET() {
     .from("orders")
     .select(`
       id, order_number, stage, created_at, estimated_delivery,
-      deposit_paid, balance_paid, tracking_number, production_choice,
+      deposit_paid, balance_paid, tracking_number, production_choice, production_file_url,
       client_id, assigned_designer_id, supplier_user_id, notes
     `)
     .eq("tenant_id", ctx.tenant.id)
@@ -192,11 +192,14 @@ export async function GET() {
     if (!latestInvoice.has(inv.order_id)) latestInvoice.set(inv.order_id, inv.status);
   }
 
-  // production file counts (client-visible, or label contains "production")
+  // production file counts — only files whose label contains "production".
+  // Matches deriveTimeline's productionFilesUploaded check exactly so the board
+  // phase agrees with the client tracker. Counting all client-visible files was
+  // too broad: concept images / "Approved Design" files would falsely advance
+  // an order into the First Piece column before production prep is complete.
   const prodFilesCount = new Map<string, number>();
   for (const f of files ?? []) {
-    const isProduction = f.client_visible || (f.label ?? "").toLowerCase().includes("production");
-    if (isProduction) {
+    if ((f.label ?? "").toLowerCase().includes("production")) {
       prodFilesCount.set(f.order_id, (prodFilesCount.get(f.order_id) ?? 0) + 1);
     }
   }
@@ -240,7 +243,7 @@ export async function GET() {
       balance_paid:      o.balance_paid,
       tracking_number:   (o as Record<string, unknown>).tracking_number as string | null ?? null,
       mockupUploaded:          mockupCount > 0,
-      productionFilesUploaded: prodFiles > 0,
+      productionFilesUploaded: prodFiles > 0 || !!((o as Record<string, unknown>).production_file_url),
       supplierAssigned:        !!supplierUserId,
       firstPieceUploaded:      fp.total > 0,      // client_visible only — matches portal
       firstPieceApproved:      fp.client_approved > 0,

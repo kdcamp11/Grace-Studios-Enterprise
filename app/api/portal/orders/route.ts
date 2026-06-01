@@ -87,9 +87,12 @@ export async function GET() {
 
   // Per-order milestone signal sets
   const mockupOrderIds = new Set((mockupRows ?? []).map((m) => m.order_id));
+  // Only count files whose label contains "production" — matches deriveTimeline exactly.
+  // Counting all client-visible files was too broad and would advance orders into
+  // the production-files step before actual spec files have been uploaded.
   const prodFilesOrderIds = new Set(
     (fileRows ?? [])
-      .filter((f) => f.client_visible || (f.label ?? "").toLowerCase().includes("production"))
+      .filter((f) => (f.label ?? "").toLowerCase().includes("production"))
       .map((f) => f.order_id),
   );
   const mediaTotalIds    = new Set((mediaRows ?? []).map((m) => m.order_id));
