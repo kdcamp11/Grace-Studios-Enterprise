@@ -905,27 +905,95 @@ export default function AdminOrderPage() {
 
             {/* ── Per-phase submit / advance button ────────────────────────────
                 Mockup phase has its own CTA inside the Mockup workspace section.
-                All other phases get a prominent advance button here. */}
+                All other phases get a prominent advance button here, gated on
+                the prerequisite work for that phase actually being complete. */}
             {derivedPhaseKey && (() => {
-              const advanceMap: Partial<Record<string, { label: string; stage: OrderStage; disabled?: boolean }>> = {
-                production_files:          { label: "Files Ready — Advance to First Piece →",      stage: "first_piece_in_progress" },
-                first_piece_in_production: { label: "First Piece Ready — Advance to Review →",     stage: "first_piece_review" },
-                bulk_production:           { label: "Bulk Complete — Advance to QC →",             stage: "qc_verified" },
-                quality_check:             { label: "QC Passed — Mark as Shipped →",              stage: "shipped", disabled: !order.tracking_number && !trackingInput },
-                shipped:                   { label: "Confirm Delivered →",                         stage: "delivered" },
-                delivered:                 { label: "Close Order →",                              stage: "complete" },
+              const hasProductionFiles =
+                orderFiles.some((f) => (f.label ?? "").toLowerCase().includes("production")) ||
+                !!order.production_file_url;
+              const hasPricing         = !!order.production_total_cents;
+              const hasSupplier        = !!order.supplier_user_id;
+              const hasFirstPieceMedia = order.media.length > 0;
+              const hasClientApproval  = order.media.some((m) => m.client_approved === true);
+              const hasTracking        = !!(order.tracking_number || trackingInput.trim());
+
+              const advanceMap: Partial<Record<string, {
+                label:     string;
+                stage:     OrderStage;
+                disabled:  boolean;
+                reason?:   string;
+              }>> = {
+                production_files: {
+                  label:    "Files Ready — Advance to First Piece →",
+                  stage:    "first_piece_in_progress",
+                  disabled: !hasProductionFiles || !hasPricing || !hasSupplier,
+                  reason:   !hasProductionFiles
+                    ? "Upload at least one production file before advancing."
+                    : !hasPricing
+                      ? "Save production pricing before advancing."
+                      : !hasSupplier
+                        ? "Assign a production partner before advancing."
+                        : undefined,
+                },
+                first_piece_in_production: {
+                  label:    "First Piece Submitted — Advance to Review →",
+                  stage:    "first_piece_review",
+                  disabled: !hasFirstPieceMedia,
+                  reason:   !hasFirstPieceMedia
+                    ? "No first piece photos uploaded yet."
+                    : undefined,
+                },
+                first_piece_review: {
+                  label:    "First Piece Approved — Advance to Bulk →",
+                  stage:    "bulk_production",
+                  disabled: !hasClientApproval,
+                  reason:   !hasClientApproval
+                    ? "Awaiting client approval of the first piece."
+                    : undefined,
+                },
+                bulk_production: {
+                  label:    "Bulk Complete — Advance to QC →",
+                  stage:    "qc_verified",
+                  disabled: false,
+                },
+                quality_check: {
+                  label:    "QC Passed — Mark as Shipped →",
+                  stage:    "shipped",
+                  disabled: !hasTracking,
+                  reason:   !hasTracking
+                    ? "Enter a tracking number before marking shipped."
+                    : undefined,
+                },
+                shipped: {
+                  label:    "Confirm Delivered →",
+                  stage:    "delivered",
+                  disabled: false,
+                },
+                delivered: {
+                  label:    "Close Order →",
+                  stage:    "complete",
+                  disabled: false,
+                },
               };
+
               const action = advanceMap[derivedPhaseKey];
               if (!action) return null;
               return (
-                <button
-                  type="button"
-                  onClick={() => updateStage(action.stage)}
-                  disabled={stageSaving || !!action.disabled}
-                  className="mt-3 w-full py-2.5 rounded-lg font-display font-bold text-xs uppercase tracking-widest bg-brand-primary text-white hover:bg-brand-secondary disabled:opacity-40 transition-all"
-                >
-                  {stageSaving ? "Saving…" : action.label}
-                </button>
+                <div className="mt-3 space-y-1.5">
+                  <button
+                    type="button"
+                    onClick={() => updateStage(action.stage)}
+                    disabled={stageSaving || action.disabled}
+                    className="w-full py-2.5 rounded-lg font-display font-bold text-xs uppercase tracking-widest bg-brand-primary text-white hover:bg-brand-secondary disabled:opacity-40 transition-all"
+                  >
+                    {stageSaving ? "Saving…" : action.label}
+                  </button>
+                  {action.disabled && action.reason && (
+                    <p className="text-[10px] font-barlow text-amber-400/80 text-center leading-snug">
+                      {action.reason}
+                    </p>
+                  )}
+                </div>
               );
             })()}
           </div>
