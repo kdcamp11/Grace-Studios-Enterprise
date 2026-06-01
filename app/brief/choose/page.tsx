@@ -12,49 +12,6 @@ import { createClient } from "@/lib/supabase/client";
 // choose step after creating the order.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const PATHS = [
-  {
-    id: "consultation",
-    badge: "Full Service",
-    sub: "Fully Managed",
-    headline: "Creative Direction.\nManaged to Delivery.",
-    bullets: [
-      "Creative direction and strategic partnership",
-      "Concepts developed around your program and identity",
-      "Supplier coordination and production management",
-      "Full-service production typically begins at $2,500",
-    ],
-    cta: "Work with Grace Studios →",
-    href: "/contact",
-  },
-  {
-    id: "self-service",
-    badge: "Self-Directed",
-    sub: "Flexible Workflow",
-    headline: "Structured Development.\nReady When You Are.",
-    body: "$149 Creative Activation applied toward your final order.",
-    subPaths: [
-      { label: "Design Brief", desc: "Define your direction. We develop the concept.", href: "/brief/new?path=ai" },
-      { label: "Jersey Builder", desc: "Select your colorway. Your choices build the production brief.", href: "/brief/new?path=builder" },
-    ],
-  },
-  {
-    id: "upload",
-    badge: "Production Files",
-    sub: "Your Artwork",
-    headline: "Your Files.\nOur Production Network.",
-    bullets: [
-      "Adobe Illustrator, EPS, PDF or SVG",
-      "Your artwork. Your IP. Always.",
-      "Managed production and fulfillment",
-      "Fulfillment, QC, and delivery tracking",
-    ],
-    cta: "Upload Production Files →",
-    note: "Have a sketch or concept? Creative Direction is the right starting point.",
-    href: "/brief/new?path=upload",
-  },
-] as const;
-
 export default function ChoosePage() {
   const router = useRouter();
   const supabaseRef = useRef(createClient());
@@ -112,7 +69,7 @@ export default function ChoosePage() {
                 Elevated Apparel Development.<br />Concept Through Delivery.
               </p>
               <ul className="space-y-2.5 flex-1 mb-6">
-                {["Creative direction and program strategy", "Concepts built around your program identity", "Managed supplier coordination and fulfillment oversight"].map((item) => (
+                {["Creative direction and program strategy", "Concepts built around your program identity", "Managed supplier coordination and fulfillment oversight", "Full-service production typically begins at $2,500"].map((item) => (
                   <li key={item} className="flex items-start gap-2.5">
                     <span className="w-1 h-1 rounded-full bg-brand-primary flex-shrink-0 mt-1.5" />
                     <span className="text-[11px] font-barlow text-brand-muted leading-snug">{item}</span>
