@@ -26,7 +26,7 @@ export async function GET(
   const { data: orderRow, error: orderError } = await serviceSupabase
     .from("orders")
     .select(
-      "id, order_number, stage, created_at, approved_at, estimated_delivery, tracking_number, supplier, supplier_user_id, assigned_designer_id, notes, design_fee_paid, production_choice, production_file_url, client_id",
+      "id, order_number, stage, created_at, approved_at, estimated_delivery, tracking_number, supplier, supplier_user_id, assigned_designer_id, notes, design_fee_paid, production_choice, production_file_url, client_id, deposit_paid, balance_paid",
     )
     .eq("id", order_id)
     .eq("tenant_id", ctx.tenant.id)
@@ -125,6 +125,8 @@ export async function GET(
     design_fee_paid:      orderRow.design_fee_paid,
     production_choice:    orderRow.production_choice,
     production_file_url:  (orderRow as Record<string, unknown>).production_file_url as string | null ?? null,
+    deposit_paid:         (orderRow as Record<string, unknown>).deposit_paid as boolean | null ?? null,
+    balance_paid:         (orderRow as Record<string, unknown>).balance_paid as boolean | null ?? null,
     mockup_revision_used:      mockupRevisionUsed,
     first_piece_revision_used: firstPieceRevisionUsed,
     client: clientRow ?? { name: "—", email: "—", sport: "—", city: "—" },

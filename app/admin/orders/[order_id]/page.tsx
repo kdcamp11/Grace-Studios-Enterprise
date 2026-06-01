@@ -8,6 +8,7 @@ import AdminHeader from "@/components/AdminHeader";
 import type { RosterPlayer } from "@/types/database";
 import type { OrderStage } from "@/types/database";
 import { stageLabel } from "@/lib/order-stages";
+import { resolveTimeline } from "@/lib/order-milestones";
 import type { SupplierWithPortfolio } from "@/app/api/admin/suppliers/route";
 import { formatCurrency, getPaymentThresholdInfo } from "@/lib/payments/thresholds";
 import { PRODUCTION_PRICING_TIERS, calcProductionPricing, formatCents } from "@/lib/payments/supplier-pricing";
@@ -171,7 +172,10 @@ interface OrderDetail {
   supplier_user_id: string | null;
   assigned_designer_id: string | null;
   notes: string | null;
+  production_choice?: string | null;
   production_file_url: string | null;
+  deposit_paid?: boolean | null;
+  balance_paid?: boolean | null;
   mockup_revision_used: boolean;
   first_piece_revision_used: boolean;
   client: { name: string; email: string; sport: string; city: string };
@@ -692,6 +696,47 @@ export default function AdminOrderPage() {
 
   const currentStageIndex = PIPELINE.indexOf(order.stage);
 
+  // Derive actual milestone completion so green checkmarks reflect real work done,
+  // not just the raw DB stage array position (which can be jumped without completing
+  // prerequisite artifacts like mockups or production files).
+  const derived = resolveTimeline({
+    stage:             order.stage,
+    production_choice: order.production_choice ?? null,
+    deposit_paid:      order.deposit_paid,
+    balance_paid:      order.balance_paid,
+    tracking_number:   order.tracking_number,
+    mockupUploaded:          mockups.length > 0,
+    productionFilesUploaded:
+      !!order.production_file_url ||
+      orderFiles.some((f) => (f.label ?? "").toLowerCase().includes("production")),
+    supplierAssigned:        !!order.supplier_user_id,
+    firstPieceUploaded:      order.media.filter((m) => m.client_visible).length > 0,
+    firstPieceApproved:      order.media.some((m) => m.client_approved === true),
+  });
+  const { milestones } = derived;
+
+  const stageDone = (s: OrderStage): boolean => {
+    switch (s) {
+      case "onboarding":
+      case "design_confirmed":   return derived.inProduction;
+      case "mockup_in_progress": return milestones.mockupUploaded;
+      case "mockup_review":
+      case "mockup_revision":    return milestones.mockupApproved;
+      case "production_files_prep":
+      case "sent_to_supplier":   return milestones.productionFilesUploaded;
+      case "files_sent":         return milestones.productionFilesUploaded && milestones.firstPaymentPaid;
+      case "first_piece_in_progress": return milestones.firstPieceUploaded;
+      case "first_piece_review":
+      case "first_piece_revision":    return milestones.firstPieceApproved;
+      case "bulk_production":    return milestones.bulkComplete;
+      case "qc_verified":        return milestones.qcComplete && milestones.finalPaymentPaid;
+      case "shipped":            return milestones.trackingUploaded;
+      case "delivered":
+      case "complete":           return milestones.delivered;
+      default:                   return false;
+    }
+  };
+
   const STAGE_NEXT: Partial<Record<OrderStage, string>> = {
     onboarding:              "Concepts are generating. Check back soon or trigger manually.",
     design_confirmed:        "Client is reviewing concepts and will select one.",
@@ -750,8 +795,8 @@ export default function AdminOrderPage() {
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
               {PIPELINE.map((stage, i) => {
-                const isDone    = i < currentStageIndex;
-                const isCurrent = i === currentStageIndex;
+                const isCurrent = stage === order.stage;
+                const isDone    = !isCurrent && stageDone(stage);
                 return (
                   <button
                     key={stage}
