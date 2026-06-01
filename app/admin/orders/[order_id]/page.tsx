@@ -877,6 +877,32 @@ export default function AdminOrderPage() {
                 </p>
               </div>
             )}
+
+            {/* ── Per-phase submit / advance button ────────────────────────────
+                Mockup phase has its own CTA inside the Mockup workspace section.
+                All other phases get a prominent advance button here. */}
+            {derivedPhaseKey && (() => {
+              const advanceMap: Partial<Record<string, { label: string; stage: OrderStage; disabled?: boolean }>> = {
+                production_files:          { label: "Files Ready — Advance to First Piece →",      stage: "first_piece_in_progress" },
+                first_piece_in_production: { label: "First Piece Ready — Advance to Review →",     stage: "first_piece_review" },
+                bulk_production:           { label: "Bulk Complete — Advance to QC →",             stage: "qc_verified" },
+                quality_check:             { label: "QC Passed — Mark as Shipped →",              stage: "shipped", disabled: !order.tracking_number && !trackingInput },
+                shipped:                   { label: "Confirm Delivered →",                         stage: "delivered" },
+                delivered:                 { label: "Close Order →",                              stage: "complete" },
+              };
+              const action = advanceMap[derivedPhaseKey];
+              if (!action) return null;
+              return (
+                <button
+                  type="button"
+                  onClick={() => updateStage(action.stage)}
+                  disabled={stageSaving || !!action.disabled}
+                  className="mt-3 w-full py-2.5 rounded-lg font-display font-bold text-xs uppercase tracking-widest bg-brand-primary text-white hover:bg-brand-secondary disabled:opacity-40 transition-all"
+                >
+                  {stageSaving ? "Saving…" : action.label}
+                </button>
+              );
+            })()}
           </div>
 
           {/* ── Mockup Upload ────────────────────────────────────────────── */}
@@ -948,25 +974,16 @@ export default function AdminOrderPage() {
                 </label>
               </div>
 
-              {/* Advance to mockup_review */}
-              {order.stage === "mockup_in_progress" && mockups.length > 0 && (
+              {/* Advance to mockup_review — shown whenever the derived phase is mockup_in_progress,
+                  regardless of the raw DB stage (handles jumped stages gracefully). */}
+              {derivedPhaseKey === "mockup_in_progress" && mockups.length > 0 && (
                 <button
                   type="button"
                   onClick={() => updateStage("mockup_review" as OrderStage)}
                   disabled={stageSaving}
                   className="w-full py-2.5 rounded-lg font-display font-bold text-xs uppercase tracking-widest bg-brand-primary text-white hover:bg-brand-secondary disabled:opacity-40 transition-all"
                 >
-                  Send Mockup to Client for Review →
-                </button>
-              )}
-              {order.stage === "mockup_revision" && mockups.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => updateStage("mockup_review" as OrderStage)}
-                  disabled={stageSaving}
-                  className="w-full py-2.5 rounded-lg font-display font-bold text-xs uppercase tracking-widest bg-brand-primary text-white hover:bg-brand-secondary disabled:opacity-40 transition-all"
-                >
-                  Send Revised Mockup to Client →
+                  {stageSaving ? "Saving…" : mockupRevisionUsed ? "Send Revised Mockup to Client →" : "Send Mockup to Client for Review →"}
                 </button>
               )}
             </div>
