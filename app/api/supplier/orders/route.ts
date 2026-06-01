@@ -1,20 +1,15 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createServerClient } from "@/lib/supabase/server";
+import { getStageDefinition } from "@/lib/workflow/stage-map";
+export type { SupplierPhase } from "@/lib/workflow/stage-map";
+import type { SupplierPhase } from "@/lib/workflow/stage-map";
 
 const SUPPLIER_STAGES = [
   "sent_to_supplier", "files_sent",
   "first_piece_in_progress", "first_piece_revision", "first_piece_review",
   "bulk_production", "qc_verified", "shipped", "delivered",
 ] as const;
-
-export type SupplierPhase =
-  | "awaiting_release"
-  | "first_piece_production"
-  | "first_piece_upload"
-  | "bulk_production"
-  | "supplier_qc"
-  | "shipment_upload";
 
 export interface SupplierOrder {
   id: string;
@@ -35,36 +30,6 @@ export interface SupplierOrder {
   };
 }
 
-/**
- * Compute which supplier board column an order belongs in.
- * Gates: deposit must be paid AND production files must exist before
- * moving past "awaiting_release" into active production columns.
- */
-function computeSupplierPhase(
-  stage: string,
-  fpTotal: number,
-  trackingNumber: string | null,
-  depositPaid: boolean,
-  hasProductionFiles: boolean,
-): SupplierPhase {
-  if (stage === "sent_to_supplier" || stage === "files_sent") {
-    return "awaiting_release";
-  }
-  if (stage === "first_piece_in_progress") {
-    // Both deposit and production files must be present before supplier starts
-    if (!depositPaid || !hasProductionFiles) return "awaiting_release";
-    return fpTotal === 0 ? "first_piece_production" : "first_piece_upload";
-  }
-  if (stage === "first_piece_revision" || stage === "first_piece_review") {
-    return "first_piece_upload";
-  }
-  if (stage === "bulk_production") return "bulk_production";
-  if (stage === "qc_verified") {
-    return trackingNumber ? "shipment_upload" : "supplier_qc";
-  }
-  if (stage === "shipped" || stage === "delivered") return "shipment_upload";
-  return "awaiting_release";
-}
 
 export async function GET() {
   const serverClient = createServerClient();
@@ -85,7 +50,7 @@ export async function GET() {
 
   let query = admin
     .from("orders")
-    .select("id, order_number, stage, created_at, estimated_delivery, tracking_number, deposit_paid, balance_paid, client_id, supplier_user_id, production_file_url")
+    .select("id, order_number, stage, created_at, estimated_delivery, tracking_number, deposit_paid, balance_paid, client_id, supplier_user_id")
     .in("stage", SUPPLIER_STAGES)
     .order("created_at", { ascending: true });
 
@@ -100,26 +65,15 @@ export async function GET() {
   const orderIds = orders.map((o) => o.id);
   const clientIds = Array.from(new Set(orders.map((o) => o.client_id)));
 
-  const [{ data: clients }, { data: fpMedia }, { data: orderFileRows }] = await Promise.all([
+  const [{ data: clients }, { data: fpMedia }] = await Promise.all([
     admin.from("clients").select("id, name, sport, city").in("id", clientIds),
     admin
       .from("first_piece_media")
       .select("order_id, admin_approved, client_approved")
       .in("order_id", orderIds),
-    admin
-      .from("order_files")
-      .select("order_id, label, client_visible")
-      .in("order_id", orderIds),
   ]);
 
   const clientMap = new Map((clients ?? []).map((c) => [c.id, c]));
-
-  // Production files: labelled "production" or any client_visible file in order_files
-  const prodFileOrderIds = new Set(
-    (orderFileRows ?? [])
-      .filter((f) => (f.label ?? "").toLowerCase().includes("production") || f.client_visible)
-      .map((f) => f.order_id),
-  );
 
   const fpStats = new Map<string, { total: number; pending_review: number; changes_requested: number; client_approved: number }>();
   for (const m of fpMedia ?? []) {
@@ -135,10 +89,7 @@ export async function GET() {
     const fp = fpStats.get(o.id) ?? { total: 0, pending_review: 0, changes_requested: 0, client_approved: 0 };
     const tracking = (o as Record<string, unknown>).tracking_number as string | null ?? null;
     const depositPaid = (o as Record<string, unknown>).deposit_paid as boolean ?? false;
-    const hasProductionFiles =
-      !!((o as Record<string, unknown>).production_file_url) ||
-      prodFileOrderIds.has(o.id);
-    const phase = computeSupplierPhase(o.stage, fp.total, tracking, depositPaid, hasProductionFiles);
+    const phase: SupplierPhase = getStageDefinition(o.stage).supplierPhase ?? "awaiting_release";
     const c = clientMap.get(o.client_id);
     return {
       id: o.id,
