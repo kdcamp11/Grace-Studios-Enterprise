@@ -741,6 +741,31 @@ export default function AdminOrderPage() {
 
   const currentStageIndex = PIPELINE.indexOf(derivedCurrentStage);
 
+  // Derive which admin workspace is active from the derived phase key so each
+  // phase section is only shown when the order is actually in that phase.
+  type AdminWorkspace = "creative" | "mockup" | "production_files" | "first_piece" | "bulk" | "fulfillment";
+  const WORKSPACE_RANK: Record<AdminWorkspace, number> = {
+    creative: 0, mockup: 1, production_files: 2, first_piece: 3, bulk: 4, fulfillment: 5,
+  };
+  const currentWorkspace = ((): AdminWorkspace => {
+    switch (derivedPhaseKey) {
+      case "mockup_in_progress":
+      case "mockup_review":             return "mockup";
+      case "production_files":          return "production_files";
+      case "first_piece_in_production":
+      case "first_piece_review":        return "first_piece";
+      case "bulk_production":           return "bulk";
+      case "quality_check":
+      case "shipped":
+      case "delivered":                 return "fulfillment";
+      default:                          return "creative";
+    }
+  })();
+  const wsRank = WORKSPACE_RANK[currentWorkspace];
+  // Returns true when the current phase is at or past the given workspace —
+  // used to gate sections so only relevant phase content is shown.
+  const atOrPastWs = (ws: AdminWorkspace) => wsRank >= WORKSPACE_RANK[ws];
+
   const stageDone = (s: OrderStage): boolean => {
     switch (s) {
       case "onboarding":
@@ -905,11 +930,8 @@ export default function AdminOrderPage() {
             })()}
           </div>
 
-          {/* ── Mockup Upload ────────────────────────────────────────────── */}
-          {(["mockup_in_progress","mockup_review","mockup_revision"].includes(order.stage) ||
-            derivedPhaseKey === "mockup_in_progress" ||
-            derivedPhaseKey === "mockup_review" ||
-            mockups.length > 0) && (
+          {/* ── Mockup Upload — visible in mockup phase, or if mockups already exist */}
+          {(atOrPastWs("mockup") && !atOrPastWs("production_files") || mockups.length > 0) && (
             <div className="bg-brand-surface border border-brand-border rounded-xl p-5 space-y-4">
               <div className="flex items-center justify-between">
                 <p className="text-xs font-display uppercase tracking-widest text-brand-primary">2D Mockup</p>
@@ -989,7 +1011,8 @@ export default function AdminOrderPage() {
             </div>
           )}
 
-          {/* ── Production Pricing ───────────────────────────────────────── */}
+          {/* ── Production Pricing — visible from production_files phase onwards */}
+          {(atOrPastWs("production_files") || !!order.production_total_cents) && (
           <div className="bg-brand-surface border border-brand-border rounded-xl p-5 space-y-4">
             <div className="flex items-center justify-between">
               <p className="text-xs font-display uppercase tracking-widest text-brand-primary">Production Pricing</p>
@@ -1075,8 +1098,10 @@ export default function AdminOrderPage() {
               {pricingSaving ? "Saving…" : "Save Pricing"}
             </button>
           </div>
+          )}
 
-          {/* ── Invoice / Payment Panel ──────────────────────────────────── */}
+          {/* ── Invoice / Payment Panel — visible from production_files phase onwards */}
+          {(atOrPastWs("production_files") || invoices.length > 0) && (
           <div className="bg-brand-surface border border-brand-border rounded-xl p-5 space-y-4">
             <div className="flex items-center justify-between">
               <p className="text-xs font-display uppercase tracking-widest text-brand-primary">Invoice & Payment</p>
@@ -1309,6 +1334,7 @@ export default function AdminOrderPage() {
               );
             })}
           </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Brief details */}
@@ -1345,7 +1371,8 @@ export default function AdminOrderPage() {
               <div className="bg-brand-surface border border-brand-border rounded-xl p-5 space-y-4">
                 <p className="text-xs font-display uppercase tracking-widest text-brand-primary">Order Details</p>
 
-                {/* Supplier assignment */}
+                {/* Supplier assignment — visible from production_files phase */}
+                {(atOrPastWs("production_files") || !!order.supplier_user_id) && (
                 <div>
                   <label className="block text-xs font-display uppercase tracking-wider text-brand-muted mb-1.5">
                     Production Partner
@@ -1381,6 +1408,7 @@ export default function AdminOrderPage() {
                     </button>
                   )}
                 </div>
+                )}
 
                 {/* Designer assignment */}
                 <div>
@@ -1445,6 +1473,7 @@ export default function AdminOrderPage() {
                   )}
                 </div>
 
+                {(atOrPastWs("fulfillment") || !!order.tracking_number) && (
                 <div>
                   <label className="block text-xs font-display uppercase tracking-wider text-brand-muted mb-1.5">Tracking Number</label>
                   <input
@@ -1455,6 +1484,8 @@ export default function AdminOrderPage() {
                     className="w-full bg-brand-bg border border-brand-border rounded-lg px-3 py-2.5 text-brand-text font-barlow text-sm placeholder-brand-muted focus:outline-none focus:border-brand-primary transition-colors"
                   />
                 </div>
+                )}
+                {(atOrPastWs("fulfillment") || !!order.estimated_delivery) && (
                 <div>
                   <label className="block text-xs font-display uppercase tracking-wider text-brand-muted mb-1.5">Estimated Delivery</label>
                   <input
@@ -1464,6 +1495,7 @@ export default function AdminOrderPage() {
                     className="w-full bg-brand-bg border border-brand-border rounded-lg px-3 py-2.5 text-brand-text font-barlow text-sm focus:outline-none focus:border-brand-primary transition-colors"
                   />
                 </div>
+                )}
                 <div>
                   <label className="block text-xs font-display uppercase tracking-wider text-brand-muted mb-1.5">Internal Notes</label>
                   <textarea
@@ -1600,8 +1632,8 @@ export default function AdminOrderPage() {
             </div>
           )}
 
-          {/* ── First Piece Review — only shown once the derived phase reaches first piece or beyond, or media already exists */}
-          {(order.media.length > 0 || (derivedPhaseKey && ["first_piece_in_production","first_piece_review","bulk_production","quality_check","shipped","delivered"].includes(derivedPhaseKey))) && (
+          {/* ── First Piece Review — visible in first_piece phase or beyond, or if media already exists */}
+          {(atOrPastWs("first_piece") || order.media.length > 0) && (
           <div className="bg-brand-surface border border-brand-border rounded-xl p-5">
             <div className="flex items-center justify-between mb-4">
               <p className="text-xs font-display uppercase tracking-widest text-brand-primary">First Piece Review</p>
@@ -1748,7 +1780,8 @@ export default function AdminOrderPage() {
           </div>
           )}
 
-          {/* ── Final Files ─────────────────────────────────────────────────── */}
+          {/* ── Final Files — visible from production_files phase onwards */}
+          {(atOrPastWs("production_files") || orderFiles.length > 0) && (
           <div className="bg-brand-surface border border-brand-border rounded-xl p-5 space-y-4">
             <p className="text-xs font-display uppercase tracking-widest text-brand-primary">Final Production Files</p>
             <p className="text-[11px] font-barlow text-brand-muted">
@@ -1827,6 +1860,7 @@ export default function AdminOrderPage() {
               </button>
             </div>
           </div>
+          )}
 
         </div>
 
