@@ -4,6 +4,7 @@ import { assertAdminTenant, isErrorResponse } from "@/lib/api/assert-admin-tenan
 import { logActivity } from "@/lib/activity/log";
 import { calcProductionPricing, PRODUCTION_PRICING_TIERS } from "@/lib/payments/supplier-pricing";
 import type { ProductionPricingTier } from "@/lib/payments/supplier-pricing";
+import { isAllowedTransition } from "@/lib/workflow/stage-map";
 
 const serviceSupabase = createAdminClient();
 
@@ -178,9 +179,16 @@ export async function PATCH(
 
   // ── Stage advancement ──────────────────────────────────────────────────
   if (action === "stage") {
-    const { stage, from_stage } = body as { action: string; stage: string; from_stage: string };
+    const { stage, from_stage, force } = body as { action: string; stage: string; from_stage: string; force?: boolean };
     if (!stage || !from_stage) {
       return NextResponse.json({ error: "stage and from_stage are required" }, { status: 400 });
+    }
+
+    if (!isAllowedTransition(from_stage, stage) && !force) {
+      return NextResponse.json(
+        { warning: true, message: "This transition skips expected workflow steps. Send { force: true } to override." },
+        { status: 409 },
+      );
     }
 
     const stageUpdate: Record<string, unknown> = { stage };
@@ -226,6 +234,7 @@ export async function PATCH(
       from_stage,
       to_stage:   stage,
       changed_by: "admin",
+      note:       force ? "Forced override — skipped expected workflow steps" : null,
     });
 
     if (logError) {

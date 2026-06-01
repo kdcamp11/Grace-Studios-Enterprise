@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { assertAdminTenant, isErrorResponse } from "@/lib/api/assert-admin-tenant";
 import { resolveTimeline, stepForIndex } from "@/lib/order-milestones";
 import type { ProductionPricingTier } from "@/lib/payments/supplier-pricing";
+import { getStageDefinition } from "@/lib/workflow/stage-map";
 
 // All production stages — includes legacy (files_sent, first_piece_in_progress)
 // so pre-025 orders still surface in the correct column.
@@ -49,6 +50,8 @@ export interface WorkflowOrder {
   production_total_cents:    number | null;
   production_deposit_cents:  number | null;
   production_balance_cents:  number | null;
+  /** Valid forward stage transitions for this order's current stage */
+  allowed_next_stages:       string[];
 }
 
 export async function GET() {
@@ -278,6 +281,7 @@ export async function GET() {
       production_total_cents:   pricing.production_total_cents,
       production_deposit_cents: pricing.production_deposit_cents,
       production_balance_cents: pricing.production_balance_cents,
+      allowed_next_stages:      getStageDefinition(o.stage).allowedNext,
     };
   });
 

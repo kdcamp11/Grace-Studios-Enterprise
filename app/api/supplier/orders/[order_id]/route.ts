@@ -98,18 +98,7 @@ interface PatchBody {
   action: SupplierAction;
   tracking_number?: string;
   qc_notes?: string;
-  /** Legacy: direct stage update (deprecated, use action) */
-  stage?: string;
 }
-
-const VALID_LEGACY_STAGES = [
-  "first_piece_in_progress",
-  "first_piece_review",
-  "bulk_production",
-  "qc_verified",
-  "shipped",
-  "delivered",
-] as const;
 
 export async function PATCH(
   req: NextRequest,
@@ -148,16 +137,6 @@ export async function PATCH(
   }
   if (!isSupplier && !isAdmin) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-
-  // ── Legacy stage update ──────────────────────────────────────────────────
-  if (body.stage && !body.action) {
-    if (!VALID_LEGACY_STAGES.includes(body.stage as typeof VALID_LEGACY_STAGES[number])) {
-      return NextResponse.json({ error: "Invalid stage for supplier" }, { status: 400 });
-    }
-    const { error } = await admin.from("orders").update({ stage: body.stage }).eq("id", order_id);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json({ success: true });
   }
 
   // ── Action-based updates ─────────────────────────────────────────────────
