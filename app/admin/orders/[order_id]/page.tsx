@@ -8,7 +8,7 @@ import AdminHeader from "@/components/AdminHeader";
 import type { RosterPlayer } from "@/types/database";
 import type { OrderStage } from "@/types/database";
 import { stageLabel } from "@/lib/order-stages";
-import { resolveTimeline } from "@/lib/order-milestones";
+import { resolveTimeline, stepForIndex } from "@/lib/order-milestones";
 import type { SupplierWithPortfolio } from "@/app/api/admin/suppliers/route";
 import { formatCurrency, getPaymentThresholdInfo } from "@/lib/payments/thresholds";
 import { PRODUCTION_PRICING_TIERS, calcProductionPricing, formatCents } from "@/lib/payments/supplier-pricing";
@@ -715,6 +715,11 @@ export default function AdminOrderPage() {
   });
   const { milestones } = derived;
 
+  // Derived phase key — matches the workflow board column keys (TIMELINE_STEPS).
+  // Used to gate workspace sections and the "Next" hint so they reflect the
+  // actual milestone state rather than a raw DB stage that may have been jumped.
+  const derivedPhaseKey = stepForIndex(derived.currentIndex)?.key ?? null;
+
   const stageDone = (s: OrderStage): boolean => {
     switch (s) {
       case "onboarding":
@@ -755,7 +760,21 @@ export default function AdminOrderPage() {
     delivered:               "Mark as Complete to close out this order.",
     complete:                "This order is complete.",
   };
-  const nextHint = STAGE_NEXT[order.stage];
+  // Hints keyed by derived TIMELINE_STEPS phase key. These take precedence over
+  // STAGE_NEXT so the correct action is shown when a DB stage was jumped ahead
+  // of actual completed work (e.g., stage=first_piece_in_progress, no mockups yet).
+  const PHASE_NEXT: Record<string, string> = {
+    mockup_in_progress:        "Upload 2D mockup images below, then send to client for review.",
+    mockup_review:             "Client is reviewing the mockup. They will approve or request a revision.",
+    production_files:          "Upload production files, set pricing, and advance to Supplier when payment is confirmed.",
+    first_piece_in_production: "Waiting for supplier to submit first piece photos.",
+    first_piece_review:        "Scroll down to review supplier uploads before sending to client.",
+    bulk_production:           "Bulk production underway. Supplier will mark complete when done.",
+    quality_check:             "Add a tracking number below, then advance to Shipped.",
+    shipped:                   "Move to Delivered once the client confirms receipt.",
+    delivered:                 "Mark as Complete to close out this order.",
+  };
+  const nextHint = (derivedPhaseKey ? PHASE_NEXT[derivedPhaseKey] : null) ?? STAGE_NEXT[order.stage];
 
   return (
     <div className="min-h-screen bg-brand-bg flex flex-col">
@@ -840,7 +859,10 @@ export default function AdminOrderPage() {
           </div>
 
           {/* ── Mockup Upload ────────────────────────────────────────────── */}
-          {(["mockup_in_progress","mockup_review","mockup_revision"].includes(order.stage) || mockups.length > 0) && (
+          {(["mockup_in_progress","mockup_review","mockup_revision"].includes(order.stage) ||
+            derivedPhaseKey === "mockup_in_progress" ||
+            derivedPhaseKey === "mockup_review" ||
+            mockups.length > 0) && (
             <div className="bg-brand-surface border border-brand-border rounded-xl p-5 space-y-4">
               <div className="flex items-center justify-between">
                 <p className="text-xs font-display uppercase tracking-widest text-brand-primary">2D Mockup</p>
@@ -1540,7 +1562,8 @@ export default function AdminOrderPage() {
             </div>
           )}
 
-          {/* ── First Piece Review ──────────────────────────────────────────── */}
+          {/* ── First Piece Review — only shown once the derived phase reaches first piece or beyond, or media already exists */}
+          {(order.media.length > 0 || (derivedPhaseKey && ["first_piece_in_production","first_piece_review","bulk_production","quality_check","shipped","delivered"].includes(derivedPhaseKey))) && (
           <div className="bg-brand-surface border border-brand-border rounded-xl p-5">
             <div className="flex items-center justify-between mb-4">
               <p className="text-xs font-display uppercase tracking-widest text-brand-primary">First Piece Review</p>
@@ -1685,6 +1708,7 @@ export default function AdminOrderPage() {
               </div>
             )}
           </div>
+          )}
 
           {/* ── Final Files ─────────────────────────────────────────────────── */}
           <div className="bg-brand-surface border border-brand-border rounded-xl p-5 space-y-4">
