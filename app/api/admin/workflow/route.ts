@@ -1,39 +1,8 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { assertAdminTenant, isErrorResponse } from "@/lib/api/assert-admin-tenant";
+import { resolveTimeline, stepForIndex } from "@/lib/order-milestones";
 import type { ProductionPricingTier } from "@/lib/payments/supplier-pricing";
-
-/**
- * Maps the raw DB `orders.stage` value directly to an admin board column key.
- * This is the SINGLE source of truth for admin board placement — the column an
- * order appears in is always determined by its actual stage in the database, not
- * by inferred conditions (supplier assignment, payment status, media counts, etc.).
- *
- * Previously this used `resolveTimeline()` which could advance an order into
- * "First Piece Review" or later columns because first_piece_media rows,
- * supplier assignment, or deposit payments existed — even when the DB stage
- * was still `mockup_in_progress`. That made the admin board diverge from the
- * client tracker, which correctly gates progress on actual completed work.
- */
-function stageToPhase(stage: string): string {
-  const map: Record<string, string> = {
-    "mockup_in_progress":      "mockup_in_progress",
-    "mockup_review":           "mockup_review",
-    "mockup_revision":         "mockup_review",
-    "production_files_prep":   "production_files",
-    "sent_to_supplier":        "production_files",
-    "files_sent":              "production_files",
-    "first_piece_in_progress": "first_piece_in_production",
-    "first_piece_revision":    "first_piece_in_production",
-    "first_piece_review":      "first_piece_review",
-    "bulk_production":         "bulk_production",
-    "qc_verified":             "quality_check",
-    "shipped":                 "shipped",
-    "delivered":               "delivered",
-    "complete":                "delivered",
-  };
-  return map[stage] ?? "mockup_in_progress";
-}
 
 // All production stages — includes legacy (files_sent, first_piece_in_progress)
 // so pre-025 orders still surface in the correct column.
@@ -233,10 +202,14 @@ export async function GET() {
   }
 
   // first_piece_media stats
+  // `total` counts only client_visible=true rows — this is the signal fed to
+  // resolveTimeline so the admin board phase matches the client portal exactly.
+  // `pending_admin` counts internally-uploaded rows not yet released to client
+  // (used only for action-badge display, not for phase computation).
   const fpStats = new Map<string, { total: number; pending_admin: number; client_approved: number }>();
   for (const m of fpMedia ?? []) {
     const s = fpStats.get(m.order_id) ?? { total: 0, pending_admin: 0, client_approved: 0 };
-    s.total++;
+    if (m.client_visible) s.total++;                              // mirrors client portal
     if (m.admin_approved === null && !m.client_visible) s.pending_admin++;
     if (m.client_approved === true) s.client_approved++;
     fpStats.set(m.order_id, s);
@@ -256,9 +229,23 @@ export async function GET() {
 
     const supplierUserId = o.supplier_user_id as string | null ?? null;
 
-    // Phase = direct DB stage → column mapping.
-    // Never inferred from payment status, supplier assignment, or media counts.
-    const phase = stageToPhase(o.stage);
+    // Derived lifecycle phase — same calculation and same signals as the client
+    // portal (/api/portal/orders) so both views always agree.
+    // Key: firstPieceUploaded uses fp.total which is client_visible=true only,
+    // matching the client portal's filter on first_piece_media.
+    const derived = resolveTimeline({
+      stage:             o.stage,
+      production_choice: (o as Record<string, unknown>).production_choice as string | null ?? null,
+      deposit_paid:      o.deposit_paid,
+      balance_paid:      o.balance_paid,
+      tracking_number:   (o as Record<string, unknown>).tracking_number as string | null ?? null,
+      mockupUploaded:          mockupCount > 0,
+      productionFilesUploaded: prodFiles > 0,
+      supplierAssigned:        !!supplierUserId,
+      firstPieceUploaded:      fp.total > 0,      // client_visible only — matches portal
+      firstPieceApproved:      fp.client_approved > 0,
+    });
+    const phase = stepForIndex(derived.currentIndex)?.key ?? "mockup_in_progress";
 
     return {
       id:                   o.id,
