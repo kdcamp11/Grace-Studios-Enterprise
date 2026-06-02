@@ -897,100 +897,6 @@ export default function AdminOrderPage() {
               </div>
             )}
 
-            {/* ── Per-phase submit / advance button ────────────────────────────
-                Mockup phase has its own CTA inside the Mockup workspace section.
-                All other phases get a prominent advance button here, gated on
-                the prerequisite work for that phase actually being complete. */}
-            {derivedPhaseKey && (() => {
-              const hasProductionFiles = orderFiles.length > 0 || !!order.production_file_url;
-              const hasPricing         = !!order.production_total_cents;
-              const hasSupplier        = !!order.supplier_user_id;
-              const hasFirstPieceMedia = order.media.length > 0;
-              const hasClientApproval  = order.media.some((m) => m.client_approved === true);
-              const hasTracking        = !!(order.tracking_number || trackingInput.trim());
-
-              // Collect ALL unmet prerequisites so nothing is hidden behind others
-              const prodFilesReasons = [
-                !hasProductionFiles && "Upload at least one production file.",
-                !hasPricing         && "Save production pricing.",
-                !hasSupplier        && "Assign a production partner.",
-              ].filter(Boolean) as string[];
-
-              const advanceMap: Partial<Record<string, {
-                label:     string;
-                stage:     OrderStage;
-                disabled:  boolean;
-                reason?:   string;
-              }>> = {
-                production_files: {
-                  label:    "Files Ready — Advance to First Piece →",
-                  stage:    "first_piece_in_progress",
-                  disabled: prodFilesReasons.length > 0,
-                  reason:   prodFilesReasons.length > 0
-                    ? prodFilesReasons.join("  ·  ")
-                    : undefined,
-                },
-                first_piece_in_production: {
-                  label:    "First Piece Submitted — Advance to Review →",
-                  stage:    "first_piece_review",
-                  disabled: !hasFirstPieceMedia,
-                  reason:   !hasFirstPieceMedia
-                    ? "No first piece photos uploaded yet."
-                    : undefined,
-                },
-                first_piece_review: {
-                  label:    "First Piece Approved — Advance to Bulk →",
-                  stage:    "bulk_production",
-                  disabled: !hasClientApproval,
-                  reason:   !hasClientApproval
-                    ? "Awaiting client approval of the first piece."
-                    : undefined,
-                },
-                bulk_production: {
-                  label:    "Bulk Complete — Advance to QC →",
-                  stage:    "qc_verified",
-                  disabled: false,
-                },
-                quality_check: {
-                  label:    "QC Passed — Mark as Shipped →",
-                  stage:    "shipped",
-                  disabled: !hasTracking,
-                  reason:   !hasTracking
-                    ? "Enter a tracking number before marking shipped."
-                    : undefined,
-                },
-                shipped: {
-                  label:    "Confirm Delivered →",
-                  stage:    "delivered",
-                  disabled: false,
-                },
-                delivered: {
-                  label:    "Close Order →",
-                  stage:    "complete",
-                  disabled: false,
-                },
-              };
-
-              const action = advanceMap[derivedPhaseKey];
-              if (!action) return null;
-              return (
-                <div className="mt-3 space-y-1.5">
-                  <button
-                    type="button"
-                    onClick={() => updateStage(action.stage)}
-                    disabled={stageSaving || action.disabled}
-                    className="w-full py-2.5 rounded-lg font-display font-bold text-xs uppercase tracking-widest bg-brand-primary text-white hover:bg-brand-secondary disabled:opacity-40 transition-all"
-                  >
-                    {stageSaving ? "Saving…" : action.label}
-                  </button>
-                  {action.disabled && action.reason && (
-                    <p className="text-[10px] font-barlow text-amber-400/80 text-center leading-snug">
-                      {action.reason}
-                    </p>
-                  )}
-                </div>
-              );
-            })()}
           </div>
 
           {/* ── Mockup Upload — visible in mockup phase only */}
@@ -1062,34 +968,6 @@ export default function AdminOrderPage() {
               {/* Upload error */}
               {mockupUploadError && (
                 <p className="text-xs font-barlow text-red-400">{mockupUploadError}</p>
-              )}
-
-              {/* Advance to mockup_review — shown whenever the derived phase is mockup_in_progress,
-                  regardless of the raw DB stage (handles jumped stages gracefully). */}
-              {derivedPhaseKey === "mockup_in_progress" && (
-                mockups.length > 0 ? (
-                  <button
-                    type="button"
-                    onClick={() => updateStage("mockup_review" as OrderStage)}
-                    disabled={stageSaving}
-                    className="w-full py-2.5 rounded-lg font-display font-bold text-xs uppercase tracking-widest bg-brand-primary text-white hover:bg-brand-secondary disabled:opacity-40 transition-all"
-                  >
-                    {stageSaving ? "Saving…" : mockupRevisionUsed ? "Send Revised Mockup to Client →" : "Send Mockup to Client for Review →"}
-                  </button>
-                ) : (
-                  <div className="space-y-1.5">
-                    <button
-                      type="button"
-                      disabled
-                      className="w-full py-2.5 rounded-lg font-display font-bold text-xs uppercase tracking-widest bg-brand-primary text-white disabled:opacity-30 transition-all cursor-not-allowed"
-                    >
-                      Send Mockup to Client for Review →
-                    </button>
-                    <p className="text-[10px] font-barlow text-amber-400/80 text-center">
-                      Upload at least one mockup image before sending to client.
-                    </p>
-                  </div>
-                )
               )}
             </div>
           )}
@@ -1987,6 +1865,106 @@ export default function AdminOrderPage() {
           </div>
 
       </main>
+
+      {/* ── Sticky phase-advance action bar ───────────────────────────────────
+          Always visible at bottom of screen when an actionable phase is active.
+          Shows the next stage label, all unmet prerequisites, and the CTA. */}
+      {derivedPhaseKey && (() => {
+        const hasProductionFiles = orderFiles.length > 0 || !!order.production_file_url;
+        const hasPricing         = !!order.production_total_cents;
+        const hasSupplier        = !!order.supplier_user_id;
+        const hasFirstPieceMedia = order.media.length > 0;
+        const hasClientApproval  = order.media.some((m) => m.client_approved === true);
+        const hasTracking        = !!(order.tracking_number || trackingInput.trim());
+        const hasMockup          = mockups.length > 0;
+
+        type AdvanceEntry = { label: string; stage: OrderStage; reasons: string[] };
+        const advanceMap: Partial<Record<string, AdvanceEntry>> = {
+          mockup_in_progress: {
+            label:   mockupRevisionUsed ? "Send Revised Mockup to Client →" : "Send Mockup to Client for Review →",
+            stage:   "mockup_review" as OrderStage,
+            reasons: !hasMockup ? ["Upload at least one mockup image first."] : [],
+          },
+          production_files: {
+            label:   "Submit to Supplier — Advance to First Piece →",
+            stage:   "first_piece_in_progress" as OrderStage,
+            reasons: [
+              !hasProductionFiles && "Upload a production file.",
+              !hasPricing         && "Save production pricing.",
+              !hasSupplier        && "Assign a production partner.",
+            ].filter(Boolean) as string[],
+          },
+          first_piece_in_production: {
+            label:   "First Piece Submitted — Advance to Review →",
+            stage:   "first_piece_review" as OrderStage,
+            reasons: !hasFirstPieceMedia ? ["Upload first piece photos first."] : [],
+          },
+          first_piece_review: {
+            label:   "First Piece Approved — Advance to Bulk →",
+            stage:   "bulk_production" as OrderStage,
+            reasons: !hasClientApproval ? ["Awaiting client approval of the first piece."] : [],
+          },
+          bulk_production: {
+            label:   "Bulk Complete — Advance to QC →",
+            stage:   "qc_verified" as OrderStage,
+            reasons: [],
+          },
+          quality_check: {
+            label:   "QC Passed — Mark as Shipped →",
+            stage:   "shipped" as OrderStage,
+            reasons: !hasTracking ? ["Enter a tracking number first."] : [],
+          },
+          shipped: {
+            label:   "Confirm Delivered →",
+            stage:   "delivered" as OrderStage,
+            reasons: [],
+          },
+          delivered: {
+            label:   "Close Order →",
+            stage:   "complete" as OrderStage,
+            reasons: [],
+          },
+        };
+
+        const action = advanceMap[derivedPhaseKey];
+        if (!action) return null;
+        const blocked = action.reasons.length > 0;
+
+        return (
+          <div className="sticky bottom-0 z-40 bg-brand-bg border-t border-brand-border shadow-[0_-4px_24px_rgba(0,0,0,0.35)]">
+            <div className="max-w-3xl mx-auto px-4 py-3 flex flex-col sm:flex-row items-center gap-3">
+              {/* Prerequisite reasons */}
+              <div className="flex-1 min-w-0">
+                {blocked ? (
+                  <div className="flex flex-wrap gap-x-3 gap-y-1">
+                    {action.reasons.map((r, i) => (
+                      <span key={i} className="flex items-center gap-1.5 text-[11px] font-barlow text-amber-400/90">
+                        <span className="w-1 h-1 rounded-full bg-amber-400 flex-shrink-0" />
+                        {r}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[11px] font-barlow text-green-400/80">All requirements met — ready to advance.</p>
+                )}
+              </div>
+              {/* CTA */}
+              <button
+                type="button"
+                onClick={() => updateStage(action.stage)}
+                disabled={stageSaving || blocked}
+                className={`flex-shrink-0 px-6 py-3 rounded-xl font-display font-bold text-sm uppercase tracking-widest transition-all ${
+                  blocked
+                    ? "bg-brand-surface border border-brand-border text-brand-muted cursor-not-allowed opacity-60"
+                    : "bg-brand-primary text-white hover:bg-brand-secondary shadow-[0_0_16px_rgba(196,160,30,0.3)]"
+                }`}
+              >
+                {stageSaving ? "Saving…" : action.label}
+              </button>
+            </div>
+          </div>
+        );
+      })()}
 
       {showSupplierModal && (
         <SupplierPickerModal
