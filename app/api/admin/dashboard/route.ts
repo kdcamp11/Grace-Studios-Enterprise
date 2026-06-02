@@ -24,7 +24,7 @@ export async function GET() {
       .eq("tenant_id", tenantId),
     admin
       .from("invoices")
-      .select("amount_cents, status, created_at")
+      .select("total_amount, status, created_at")
       .eq("tenant_id", tenantId)
       .eq("status", "paid"),
     admin
@@ -41,7 +41,8 @@ export async function GET() {
   // ── KPIs ──────────────────────────────────────────────────
   const totalOrders  = orders.length;
   const activeOrders = orders.filter((o) => !TERMINAL_STAGES.includes(o.stage as OrderStage)).length;
-  const totalRevenue = invoices.reduce((n, i) => n + (i.amount_cents ?? 0), 0);
+  // total_amount is stored in dollars; multiply ×100 for cent-based display helpers
+  const totalRevenue = invoices.reduce((n, i) => n + Math.round((i.total_amount ?? 0) * 100), 0);
   const totalClients = clients.length;
 
   const ordersWithConcepts = new Set(concepts.map((c) => c.order_id)).size;
@@ -69,7 +70,7 @@ export async function GET() {
         const t = new Date(inv.created_at);
         return t.getFullYear() === d.getFullYear() && t.getMonth() === d.getMonth();
       })
-      .reduce((n, inv) => n + (inv.amount_cents ?? 0), 0);
+      .reduce((n, inv) => n + Math.round((inv.total_amount ?? 0) * 100), 0);
     months.push({ label, amount });
   }
 
