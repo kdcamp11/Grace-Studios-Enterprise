@@ -1947,7 +1947,7 @@ export default function AdminOrderPage() {
         </div>
 
           {/* ── Activity Feed ──────────────────────────────────────────── */}
-          <div className="bg-brand-surface border border-brand-border rounded-xl p-5 space-y-3">
+          <div className="mt-6 bg-brand-surface border border-brand-border rounded-xl p-5 space-y-3">
             <p className="text-xs font-display uppercase tracking-widest text-brand-primary">Activity</p>
             {activityLoading ? (
               <div className="flex items-center justify-center py-6">
