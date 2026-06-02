@@ -5,6 +5,15 @@ import type { OrderStage } from "@/lib/supabase/types";
 
 const TERMINAL_STAGES: OrderStage[] = ["complete", "delivered"];
 
+// Stages that belong to production phase or later — if an order hasn't reached
+// one of these but has production_choice="production", it's logically in Mockup.
+const PRODUCTION_STAGE_NAMES = new Set([
+  "mockup_in_progress", "mockup_review", "mockup_revision",
+  "production_files_prep", "sent_to_supplier",
+  "files_sent", "first_piece_in_progress", "first_piece_revision", "first_piece_review",
+  "bulk_production", "qc_verified", "shipped", "delivered", "complete",
+]);
+
 export async function GET() {
   const ctx = await assertAdminTenant();
   if (isErrorResponse(ctx)) return ctx;
@@ -16,7 +25,7 @@ export async function GET() {
   const [ordersRes, clientsRes, invoicesRes, conceptsRes] = await Promise.all([
     admin
       .from("orders")
-      .select("id, stage, created_at, client_id, deposit_paid, balance_paid")
+      .select("id, stage, created_at, client_id, deposit_paid, balance_paid, production_choice")
       .eq("tenant_id", tenantId),
     admin
       .from("clients")
@@ -52,10 +61,18 @@ export async function GET() {
     : null;
 
   // ── Pipeline funnel (active only) ────────────────────────
+  // Orders where production_choice="production" but DB stage is still a creative
+  // stage are logically in Mockup — count them as mockup_in_progress so the
+  // dashboard pipeline groups match the admin order detail view.
   const stageCounts = new Map<string, number>();
   for (const o of orders) {
     if (!TERMINAL_STAGES.includes(o.stage as OrderStage)) {
-      stageCounts.set(o.stage, (stageCounts.get(o.stage) ?? 0) + 1);
+      const productionChoice = (o as Record<string, unknown>).production_choice;
+      const effectiveStage =
+        productionChoice === "production" && !PRODUCTION_STAGE_NAMES.has(o.stage)
+          ? "mockup_in_progress"
+          : o.stage;
+      stageCounts.set(effectiveStage, (stageCounts.get(effectiveStage) ?? 0) + 1);
     }
   }
 
@@ -91,13 +108,20 @@ export async function GET() {
   const recentOrders = [...orders]
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     .slice(0, 8)
-    .map((o) => ({
-      id:          o.id,
-      stage:       o.stage,
-      created_at:  o.created_at,
-      client_name: clientMap.get(o.client_id)?.name ?? "—",
-      sport:       clientMap.get(o.client_id)?.sport ?? null,
-    }));
+    .map((o) => {
+      const productionChoice = (o as Record<string, unknown>).production_choice;
+      const effectiveStage =
+        productionChoice === "production" && !PRODUCTION_STAGE_NAMES.has(o.stage)
+          ? "mockup_in_progress"
+          : o.stage;
+      return {
+        id:          o.id,
+        stage:       effectiveStage,
+        created_at:  o.created_at,
+        client_name: clientMap.get(o.client_id)?.name ?? "—",
+        sport:       clientMap.get(o.client_id)?.sport ?? null,
+      };
+    });
 
   return NextResponse.json({
     kpis: { totalOrders, activeOrders, totalRevenue, totalClients, approvalRate },
