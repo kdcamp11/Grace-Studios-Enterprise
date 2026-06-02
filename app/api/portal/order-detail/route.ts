@@ -81,7 +81,7 @@ export async function GET(req: NextRequest) {
   }
 
   // ── 5. Fetch related data in parallel ─────────────────────────────────────
-  const [{ data: concepts }, { data: media }, { data: files }, { data: approvedConcept }] =
+  const [{ data: concepts }, { data: media }, { data: files }, { data: approvedConcept }, { data: invoiceRow }] =
     await Promise.all([
       admin.from("concepts").select("id").eq("order_id", order_id).limit(1),
       admin
@@ -102,6 +102,15 @@ export async function GET(req: NextRequest) {
         .select("image_url, concept_number")
         .eq("order_id", order_id)
         .eq("selected", true)
+        .single(),
+      // Fetch the most recent non-canceled invoice so the tracker can link to it
+      admin
+        .from("invoices")
+        .select("id, status, total_amount, deposit_amount")
+        .eq("order_id", order_id)
+        .not("status", "eq", "canceled")
+        .order("created_at", { ascending: false })
+        .limit(1)
         .single(),
     ]);
 
@@ -186,6 +195,7 @@ export async function GET(req: NextRequest) {
       files:                resolvedFiles,
       mockups,
       mockup_revision_used: mockupRevisionUsed,
+      invoice:              invoiceRow ?? null,
     },
   });
 }
