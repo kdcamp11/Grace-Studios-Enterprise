@@ -10,6 +10,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createServerClient } from "@/lib/supabase/server";
+import { getPaymentThresholdInfo, generateInvoiceNumber } from "@/lib/payments/thresholds";
 
 export async function GET(req: NextRequest) {
   const order_id = req.nextUrl.searchParams.get("order_id");
@@ -147,6 +148,45 @@ export async function GET(req: NextRequest) {
     // Column doesn't exist yet (migration 016 not run) — skip silently
   }
 
+  // ── 6b. Auto-create production invoice if pricing is set but no invoice exists ─
+  // Handles orders where pricing was saved before the auto-create logic was added.
+  let resolvedInvoice = invoiceRow ?? null;
+  if (!resolvedInvoice) {
+    try {
+      const { data: pricingRow } = await admin
+        .from("orders")
+        .select("production_total_cents, production_deposit_cents, tenant_id")
+        .eq("id", order_id)
+        .single();
+
+      const totalCents   = (pricingRow as { production_total_cents?: number | null } | null)?.production_total_cents ?? null;
+      const depositCents = (pricingRow as { production_deposit_cents?: number | null } | null)?.production_deposit_cents ?? null;
+      const tenantId     = (pricingRow as { tenant_id?: string | null } | null)?.tenant_id ?? null;
+
+      if (totalCents && totalCents > 0 && tenantId) {
+        const totalDollars   = totalCents / 100;
+        const depositDollars = (depositCents ?? 0) / 100;
+        const threshold = getPaymentThresholdInfo(totalDollars);
+
+        const { data: newInvoice } = await admin.from("invoices").insert({
+          tenant_id:                  tenantId,
+          order_id,
+          invoice_number:             generateInvoiceNumber("PROD"),
+          total_amount:               totalDollars,
+          deposit_amount:             depositDollars,
+          status:                     "sent",
+          recommended_payment_method: threshold.recommended,
+          payment_threshold_band:     threshold.band,
+          card_enabled:               threshold.cardEnabled,
+        }).select("id, status, total_amount, deposit_amount").single();
+
+        resolvedInvoice = newInvoice ?? null;
+      }
+    } catch {
+      // Migration 027 not applied or invoice creation failed — skip gracefully
+    }
+  }
+
   // ── 7. Build files list — always include the approved design image ─────────
   const orderLabel = order.order_number ?? order_id.slice(0, 8).toUpperCase();
   let resolvedFiles = files ?? [];
@@ -195,7 +235,7 @@ export async function GET(req: NextRequest) {
       files:                resolvedFiles,
       mockups,
       mockup_revision_used: mockupRevisionUsed,
-      invoice:              invoiceRow ?? null,
+      invoice:              resolvedInvoice,
     },
   });
 }
