@@ -305,6 +305,7 @@ export default function AdminOrderPage() {
   const [pricingQty, setPricingQty]   = useState("");
   const [pricingSaving, setPricingSaving] = useState(false);
   const [pricingSaved, setPricingSaved]   = useState(false);
+  const [pricingError, setPricingError]   = useState<string | null>(null);
   const [orderFiles, setOrderFiles] = useState<OrderFile[]>([]);
   const [fileLabel, setFileLabel] = useState("Print-Ready Files");
   const [fileUploading, setFileUploading] = useState(false);
@@ -478,26 +479,35 @@ export default function AdminOrderPage() {
   async function savePricing() {
     if (!pricingQty || isNaN(Number(pricingQty)) || Number(pricingQty) < 1) return;
     setPricingSaving(true);
-    const res = await fetch(`/api/admin/orders/${order_id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "pricing", tier: pricingTier, quantity: Number(pricingQty) }),
-    });
-    if (res.ok) {
-      const qty = Number(pricingQty);
-      const calc = calcProductionPricing(pricingTier, qty);
-      setOrder((prev) => prev ? {
-        ...prev,
-        production_pricing_tier:  calc.tier,
-        quantity:                 calc.quantity,
-        production_total_cents:   calc.total_cents,
-        production_deposit_cents: calc.deposit_cents,
-        production_balance_cents: calc.balance_cents,
-      } : prev);
+    setPricingError(null);
+    try {
+      const res = await fetch(`/api/admin/orders/${order_id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "pricing", tier: pricingTier, quantity: Number(pricingQty) }),
+      });
+      const json = await res.json() as { success?: boolean; error?: string };
+      if (!res.ok || json.error) {
+        setPricingError(json.error ?? `Save failed (${res.status})`);
+      } else {
+        const qty = Number(pricingQty);
+        const calc = calcProductionPricing(pricingTier, qty);
+        setOrder((prev) => prev ? {
+          ...prev,
+          production_pricing_tier:  calc.tier,
+          quantity:                 calc.quantity,
+          production_total_cents:   calc.total_cents,
+          production_deposit_cents: calc.deposit_cents,
+          production_balance_cents: calc.balance_cents,
+        } : prev);
+        setPricingSaved(true);
+        setTimeout(() => setPricingSaved(false), 2500);
+      }
+    } catch (e) {
+      setPricingError(e instanceof Error ? e.message : "Network error");
+    } finally {
+      setPricingSaving(false);
     }
-    setPricingSaving(false);
-    setPricingSaved(true);
-    setTimeout(() => setPricingSaved(false), 2500);
   }
 
   async function uploadFile(file: File) {
@@ -1058,6 +1068,9 @@ export default function AdminOrderPage() {
             >
               {pricingSaving ? "Saving…" : "Save Pricing"}
             </button>
+            {pricingError && (
+              <p className="text-xs font-barlow text-red-400 text-center leading-snug">{pricingError}</p>
+            )}
           </div>
           )}
 
