@@ -416,7 +416,7 @@ export default function TrackerPage() {
                     <p className="text-xs text-brand-muted font-barlow mt-1 leading-relaxed">{sub}</p>
                     {amount > 0 && (
                       <p className="text-lg font-display font-bold text-brand-text mt-2">
-                        ${(amount / 100).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                        ${amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}
                       </p>
                     )}
                   </div>

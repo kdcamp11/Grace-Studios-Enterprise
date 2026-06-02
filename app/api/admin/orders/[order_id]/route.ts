@@ -5,6 +5,7 @@ import { logActivity } from "@/lib/activity/log";
 import { calcProductionPricing, PRODUCTION_PRICING_TIERS } from "@/lib/payments/supplier-pricing";
 import type { ProductionPricingTier } from "@/lib/payments/supplier-pricing";
 import { isAllowedTransition } from "@/lib/workflow/stage-map";
+import { getPaymentThresholdInfo, generateInvoiceNumber } from "@/lib/payments/thresholds";
 
 const serviceSupabase = createAdminClient();
 
@@ -133,8 +134,35 @@ export async function GET(
     client: clientRow ?? { name: "—", email: "—", sport: "—", city: "—" },
   };
 
+  // Migration 027: production pricing columns — graceful fallback.
+  let productionPricing: {
+    production_pricing_tier:  string | null;
+    quantity:                 number | null;
+    production_total_cents:   number | null;
+    production_deposit_cents: number | null;
+    production_balance_cents: number | null;
+  } = {
+    production_pricing_tier:  null,
+    quantity:                 null,
+    production_total_cents:   null,
+    production_deposit_cents: null,
+    production_balance_cents: null,
+  };
+  try {
+    const { data: pricingRow } = await serviceSupabase
+      .from("orders")
+      .select("production_pricing_tier, quantity, production_total_cents, production_deposit_cents, production_balance_cents")
+      .eq("id", order_id)
+      .single();
+    if (pricingRow) {
+      productionPricing = pricingRow as typeof productionPricing;
+    }
+  } catch {
+    // Migration 027 not yet applied — skip gracefully
+  }
+
   return NextResponse.json({
-    order,
+    order: { ...order, ...productionPricing },
     brief:     briefRow   ?? null,
     concepts:  concepts   ?? [],
     media:     media      ?? [],
@@ -290,6 +318,48 @@ export async function PATCH(
         .eq("id", order_id);
 
       if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+      // Upsert production invoice so the client portal can display a payment CTA.
+      // Amounts stored in dollars to match the invoices table convention.
+      const totalDollars   = calc.total_cents / 100;
+      const depositDollars = calc.deposit_cents / 100;
+      const threshold = getPaymentThresholdInfo(totalDollars);
+
+      try {
+        // Find any existing non-canceled production invoice for this order.
+        const { data: existingInvoice } = await serviceSupabase
+          .from("invoices")
+          .select("id")
+          .eq("order_id", order_id)
+          .not("status", "eq", "canceled")
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .single();
+
+        if (existingInvoice?.id) {
+          // Update amounts on the existing invoice (don't change status so partial payments are preserved).
+          await serviceSupabase
+            .from("invoices")
+            .update({ total_amount: totalDollars, deposit_amount: depositDollars })
+            .eq("id", existingInvoice.id);
+        } else {
+          // Create a new invoice.
+          await serviceSupabase.from("invoices").insert({
+            tenant_id:                  ctx.tenant.id,
+            order_id,
+            invoice_number:             generateInvoiceNumber("PROD"),
+            total_amount:               totalDollars,
+            deposit_amount:             depositDollars,
+            status:                     "sent",
+            recommended_payment_method: threshold.recommended,
+            payment_threshold_band:     threshold.band,
+            card_enabled:               threshold.cardEnabled,
+          });
+        }
+      } catch {
+        // Non-fatal — log but don't block the pricing save response.
+        console.error("[admin orders] invoice upsert failed for production pricing");
+      }
 
       await logActivity({
         tenantId: ctx.tenant.id, orderId: order_id,
