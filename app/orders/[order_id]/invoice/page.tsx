@@ -179,7 +179,9 @@ function InvoicePageContent() {
   const isPaid      = invoice.status === "paid";
   const isPending   = invoice.status === "pending_verification";
   const isPartial   = invoice.status === "partially_paid";
-  const payableAmt  = payDeposit && invoice.deposit_amount > 0 ? invoice.deposit_amount : invoice.balance_due ?? invoice.total_amount;
+  // "Pay Full" pays the entire invoice total; "Deposit Only" pays just the deposit.
+  // balance_due is the remainder after the deposit, NOT the full amount.
+  const payableAmt  = payDeposit && invoice.deposit_amount > 0 ? invoice.deposit_amount : invoice.total_amount;
 
   const hasBankDetails = !!(invoice.bank_routing || invoice.bank_account || invoice.bank_name);
 
