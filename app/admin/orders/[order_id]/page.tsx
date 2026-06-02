@@ -553,41 +553,32 @@ export default function AdminOrderPage() {
   async function uploadMockup(file: File) {
     setMockupUploading(true);
     setMockupUploadError(null);
-    const ext = file.name.split(".").pop() ?? "jpg";
-    const path = `${order_id}/mockups/${Date.now()}.${ext}`;
 
-    const { error: uploadError } = await supabase.storage
-      .from("order-files")
-      .upload(path, file);
-
-    if (uploadError) {
-      console.error("Mockup upload error:", uploadError.message);
-      setMockupUploadError(`Upload failed: ${uploadError.message}`);
-      setMockupUploading(false);
-      return;
-    }
-
-    const { data: { publicUrl } } = supabase.storage.from("order-files").getPublicUrl(path);
-    const { data: { user } } = await supabase.auth.getUser();
-
-    // Determine current revision round based on existing mockups
-    const maxRound = mockups.reduce((max, m) => Math.max(max, m.revision_round), 0);
+    const maxRound   = mockups.reduce((max, m) => Math.max(max, m.revision_round), 0);
     const currentRound = maxRound > 0 ? maxRound : 1;
 
-    const res = await fetch(`/api/admin/orders/${order_id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action:         "mockup_insert",
-        uploaded_by:    user?.id,
-        image_url:      publicUrl,
-        label:          mockupLabel.trim() || null,
-        revision_round: currentRound,
-      }),
-    });
-    const { row } = await res.json() as { row?: MockupItem };
-    if (row) setMockups((prev) => [...prev, row]);
-    setMockupUploading(false);
+    const form = new FormData();
+    form.append("action", "mockup_upload");
+    form.append("file", file);
+    form.append("label", mockupLabel.trim() || "Front");
+    form.append("revision_round", String(currentRound));
+
+    try {
+      const res = await fetch(`/api/admin/orders/${order_id}`, {
+        method: "POST",
+        body: form,
+      });
+      const json = await res.json() as { row?: MockupItem; error?: string };
+      if (!res.ok || json.error) {
+        setMockupUploadError(json.error ?? `Upload failed (${res.status})`);
+      } else if (json.row) {
+        setMockups((prev) => [...prev, json.row!]);
+      }
+    } catch (e) {
+      setMockupUploadError(`Upload failed: ${e instanceof Error ? e.message : "network error"}`);
+    } finally {
+      setMockupUploading(false);
+    }
   }
 
   async function deleteMockup(mockupId: string, imageUrl: string) {
