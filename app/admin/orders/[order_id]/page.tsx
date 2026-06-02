@@ -273,6 +273,7 @@ export default function AdminOrderPage() {
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [stageSaving, setStageSaving] = useState(false);
+  const [stageError, setStageError] = useState<string | null>(null);
   const [trackingInput, setTrackingInput] = useState("");
   const [deliveryInput, setDeliveryInput] = useState("");
   const [notesInput, setNotesInput] = useState("");
@@ -383,13 +384,24 @@ export default function AdminOrderPage() {
   async function updateStage(newStage: OrderStage) {
     if (!order || newStage === order.stage) return;
     setStageSaving(true);
-    await fetch(`/api/admin/orders/${order_id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "stage", stage: newStage, from_stage: order.stage }),
-    });
-    setOrder((prev) => prev ? { ...prev, stage: newStage } : prev);
-    setStageSaving(false);
+    setStageError(null);
+    try {
+      const res = await fetch(`/api/admin/orders/${order_id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "stage", stage: newStage, from_stage: order.stage }),
+      });
+      const json = await res.json() as { error?: string; message?: string };
+      if (!res.ok) {
+        setStageError(json.error ?? json.message ?? `Stage update failed (${res.status})`);
+      } else {
+        setOrder((prev) => prev ? { ...prev, stage: newStage } : prev);
+      }
+    } catch (e) {
+      setStageError(e instanceof Error ? e.message : "Stage update failed");
+    } finally {
+      setStageSaving(false);
+    }
   }
 
   async function assignSupplier(supplierUserId: string | null) {
@@ -1948,7 +1960,9 @@ export default function AdminOrderPage() {
             <div className="max-w-3xl mx-auto px-4 py-3 flex flex-col sm:flex-row items-center gap-3">
               {/* Prerequisite reasons */}
               <div className="flex-1 min-w-0">
-                {blocked ? (
+                {stageError ? (
+                  <p className="text-[11px] font-barlow text-red-400">{stageError}</p>
+                ) : blocked ? (
                   <div className="flex flex-wrap gap-x-3 gap-y-1">
                     {action.reasons.map((r, i) => (
                       <span key={i} className="flex items-center gap-1.5 text-[11px] font-barlow text-amber-400/90">

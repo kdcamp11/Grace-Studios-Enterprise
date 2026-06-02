@@ -194,7 +194,7 @@ export const WORKFLOW_STAGE_MAP: Record<string, WorkflowStageDef> = {
     isSupplierVisible: false,
     adminWorkspace: "production_files",
     supplierPhase: null,
-    allowedNext: ["sent_to_supplier"],
+    allowedNext: ["sent_to_supplier", "first_piece_in_progress"],
   },
   sent_to_supplier: {
     adminLabel: "Sent to Supplier",
