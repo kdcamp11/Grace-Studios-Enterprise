@@ -902,14 +902,19 @@ export default function AdminOrderPage() {
                 All other phases get a prominent advance button here, gated on
                 the prerequisite work for that phase actually being complete. */}
             {derivedPhaseKey && (() => {
-              const hasProductionFiles =
-                orderFiles.some((f) => (f.label ?? "").toLowerCase().includes("production")) ||
-                !!order.production_file_url;
+              const hasProductionFiles = orderFiles.length > 0 || !!order.production_file_url;
               const hasPricing         = !!order.production_total_cents;
               const hasSupplier        = !!order.supplier_user_id;
               const hasFirstPieceMedia = order.media.length > 0;
               const hasClientApproval  = order.media.some((m) => m.client_approved === true);
               const hasTracking        = !!(order.tracking_number || trackingInput.trim());
+
+              // Collect ALL unmet prerequisites so nothing is hidden behind others
+              const prodFilesReasons = [
+                !hasProductionFiles && "Upload at least one production file.",
+                !hasPricing         && "Save production pricing.",
+                !hasSupplier        && "Assign a production partner.",
+              ].filter(Boolean) as string[];
 
               const advanceMap: Partial<Record<string, {
                 label:     string;
@@ -920,14 +925,10 @@ export default function AdminOrderPage() {
                 production_files: {
                   label:    "Files Ready — Advance to First Piece →",
                   stage:    "first_piece_in_progress",
-                  disabled: !hasProductionFiles || !hasPricing || !hasSupplier,
-                  reason:   !hasProductionFiles
-                    ? "Upload at least one production file before advancing."
-                    : !hasPricing
-                      ? "Save production pricing before advancing."
-                      : !hasSupplier
-                        ? "Assign a production partner before advancing."
-                        : undefined,
+                  disabled: prodFilesReasons.length > 0,
+                  reason:   prodFilesReasons.length > 0
+                    ? prodFilesReasons.join("  ·  ")
+                    : undefined,
                 },
                 first_piece_in_production: {
                   label:    "First Piece Submitted — Advance to Review →",
