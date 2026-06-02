@@ -43,35 +43,79 @@ interface AdminOrder {
 // ── Constants ─────────────────────────────────────────────────
 
 const STAGE_LABELS: Record<string, string> = {
+  // Creative
   onboarding:              "Brief Submitted",
   design_confirmed:        "Concepts Generating",
-  files_sent:              "Design Approved",
+  creative_started:        "Creative Started",
+  creative_submitted:      "Creative Submitted",
+  payment_pending:         "Payment Pending",
+  paid:                    "Paid",
+  creative_in_review:      "Creative In Review",
+  revision_requested:      "Revision Requested",
+  creative_approved:       "Creative Approved",
+  ready_for_production:    "Ready for Production",
+  // Mockup
+  mockup_in_progress:      "Mockup In Progress",
+  mockup_review:           "Mockup Review",
+  mockup_revision:         "Mockup Revision",
+  // Production Files
+  production_files_prep:   "Production Files Prep",
+  sent_to_supplier:        "Sent to Supplier",
+  // First Piece
+  files_sent:              "Files Sent",
   first_piece_in_progress: "First Piece",
+  first_piece_revision:    "First Piece Revision",
   first_piece_review:      "First Piece Review",
+  // Bulk & QC
   bulk_production:         "Bulk Production",
   qc_verified:             "QC Verified",
+  // Fulfillment
   shipped:                 "Shipped",
   delivered:               "Delivered",
   complete:                "Complete",
 };
 
 const STAGE_COLOR: Record<string, string> = {
-  onboarding:              "bg-gray-100 text-gray-600 border border-gray-200",
+  // Creative — amber
+  onboarding:              "bg-amber-50 text-amber-700 border border-amber-200",
   design_confirmed:        "bg-amber-50 text-amber-700 border border-amber-200",
-  files_sent:              "bg-blue-50 text-blue-700 border border-blue-200",
+  creative_started:        "bg-amber-50 text-amber-700 border border-amber-200",
+  creative_submitted:      "bg-amber-50 text-amber-700 border border-amber-200",
+  payment_pending:         "bg-orange-50 text-orange-700 border border-orange-200",
+  paid:                    "bg-amber-50 text-amber-700 border border-amber-200",
+  creative_in_review:      "bg-amber-50 text-amber-700 border border-amber-200",
+  revision_requested:      "bg-orange-50 text-orange-700 border border-orange-200",
+  creative_approved:       "bg-amber-50 text-amber-700 border border-amber-200",
+  ready_for_production:    "bg-amber-50 text-amber-700 border border-amber-200",
+  // Mockup — blue
+  mockup_in_progress:      "bg-blue-50 text-blue-700 border border-blue-200",
+  mockup_review:           "bg-blue-50 text-blue-700 border border-blue-200",
+  mockup_revision:         "bg-blue-50 text-blue-700 border border-blue-200",
+  // Production Files — indigo
+  production_files_prep:   "bg-indigo-50 text-indigo-700 border border-indigo-200",
+  sent_to_supplier:        "bg-indigo-50 text-indigo-700 border border-indigo-200",
+  // First Piece — purple
+  files_sent:              "bg-purple-50 text-purple-700 border border-purple-200",
   first_piece_in_progress: "bg-purple-50 text-purple-700 border border-purple-200",
+  first_piece_revision:    "bg-purple-50 text-purple-700 border border-purple-200",
   first_piece_review:      "bg-purple-50 text-purple-800 border border-purple-300",
-  bulk_production:         "bg-indigo-50 text-indigo-700 border border-indigo-200",
+  // Bulk & QC — teal
+  bulk_production:         "bg-teal-50 text-teal-700 border border-teal-200",
   qc_verified:             "bg-teal-50 text-teal-700 border border-teal-200",
+  // Fulfillment — green
   shipped:                 "bg-cyan-50 text-cyan-700 border border-cyan-200",
   delivered:               "bg-green-50 text-green-700 border border-green-200",
   complete:                "bg-green-100 text-green-800 border border-green-300",
 };
 
-const PIPELINE_STAGE_ORDER: OrderStage[] = [
-  "onboarding", "design_confirmed", "files_sent",
-  "first_piece_in_progress", "first_piece_review",
-  "bulk_production", "qc_verified", "shipped", "delivered",
+// Pipeline groups — each group maps to one funnel row showing the combined count.
+const PIPELINE_GROUPS: { label: string; stages: string[] }[] = [
+  { label: "Creative",         stages: ["onboarding", "design_confirmed", "creative_started", "creative_submitted", "payment_pending", "paid", "creative_in_review", "revision_requested", "creative_approved", "ready_for_production"] },
+  { label: "Mockup",           stages: ["mockup_in_progress", "mockup_review", "mockup_revision"] },
+  { label: "Production Prep",  stages: ["production_files_prep", "sent_to_supplier"] },
+  { label: "First Piece",      stages: ["files_sent", "first_piece_in_progress", "first_piece_revision", "first_piece_review"] },
+  { label: "Bulk Production",  stages: ["bulk_production"] },
+  { label: "QC & Shipping",    stages: ["qc_verified", "shipped", "delivered"] },
 ];
 
 // ── Helpers ───────────────────────────────────────────────────
@@ -192,7 +236,8 @@ export default function AdminPage() {
     return matchesStage && matchesSearch;
   });
 
-  const pipelineMax = Math.max(...PIPELINE_STAGE_ORDER.map((s) => stageCounts[s] ?? 0), 1);
+  const groupCounts = PIPELINE_GROUPS.map((g) => g.stages.reduce((n, s) => n + (stageCounts[s] ?? 0), 0));
+  const pipelineMax = Math.max(...groupCounts, 1);
 
   if (loading) {
     return (
@@ -238,22 +283,22 @@ export default function AdminPage() {
             {/* Pipeline funnel */}
             <div className="md:col-span-2 rounded-xl border border-brand-border bg-brand-surface p-5 space-y-3">
               <p className="text-[10px] font-display uppercase tracking-widest text-brand-muted">Active Pipeline</p>
-              {PIPELINE_STAGE_ORDER.every((s) => !stageCounts[s]) ? (
+              {groupCounts.every((c) => c === 0) ? (
                 <p className="text-sm font-barlow text-brand-muted py-4 text-center">No active orders</p>
               ) : (
                 <div className="space-y-2">
-                  {PIPELINE_STAGE_ORDER.map((stage) => {
-                    const count = stageCounts[stage] ?? 0;
+                  {PIPELINE_GROUPS.map((group, i) => {
+                    const count = groupCounts[i];
                     if (!count) return null;
                     const pct = Math.max(4, Math.round((count / pipelineMax) * 100));
                     return (
-                      <div key={stage} className="flex items-center gap-3">
+                      <div key={group.label} className="flex items-center gap-3">
                         <p className="text-[10px] font-display uppercase tracking-wider text-brand-muted w-36 flex-shrink-0 truncate">
-                          {STAGE_LABELS[stage] ?? stageLabel(stage)}
+                          {group.label}
                         </p>
                         <div className="flex-1 bg-brand-bg rounded-full h-5 overflow-hidden border border-brand-border">
                           <div
-                            className="h-full rounded-full flex items-center justify-end pr-2 transition-all duration-500"
+                            className="h-full rounded-full transition-all duration-500"
                             style={{ width: `${pct}%`, background: "var(--brand-primary)", opacity: 0.85 }}
                           />
                         </div>

@@ -418,85 +418,47 @@ export default function LoginPage() {
     <div className="min-h-screen bg-brand-bg flex flex-col">
 
       {/* ══════════════════════════════════════════════════════════════════
-          HEADER — logo · Who Are You? · sign-in, all on one row
+          HEADER — mobile: stacked column; desktop: one row
       ══════════════════════════════════════════════════════════════════ */}
       <header className="sticky top-0 z-50 bg-brand-bg/95 backdrop-blur border-b border-brand-border px-5 sm:px-8 lg:px-10 py-4">
-        <div className="flex items-center gap-4">
 
-          {/* Logo — left */}
+        {/* ── Desktop (lg+): one horizontal row ─────────────────────────── */}
+        <div className="hidden lg:flex items-center gap-4">
           <div className="flex-shrink-0" style={{ width: 200 }}>
-            <Image
-              src="/grace-enterprise-logo.jpeg"
-              alt="Grace Enterprise"
-              width={200}
-              height={50}
-              priority
-              className="h-auto object-contain"
-            />
+            <Image src="/grace-enterprise-logo.jpeg" alt="Grace Enterprise" width={200} height={50} priority className="h-auto object-contain" />
           </div>
-
-          {/* Role toggle — centered in remaining space */}
           <div className="flex-1 flex flex-col items-center gap-2 min-w-0">
             <p className="font-display font-bold uppercase text-brand-text" style={{ fontSize: "clamp(0.75rem, 1.2vw, 1rem)", letterSpacing: "0.2em" }}>
               Who Are You?
             </p>
             <div className="flex items-center gap-2 p-1 rounded-xl bg-brand-surface border border-brand-border shadow-sm">
-              <button
-                type="button"
-                onClick={() => setView("client")}
-                className={`px-5 py-2 rounded-lg font-display font-bold uppercase tracking-widest transition-all duration-200 ${
-                  view === "client"
-                    ? "bg-brand-primary text-white shadow-sm"
-                    : "text-brand-muted hover:text-brand-text"
-                }`}
-                style={{ fontSize: "clamp(0.65rem, 1vw, 0.8rem)" }}
-              >
+              <button type="button" onClick={() => setView("client")}
+                className={`px-5 py-2 rounded-lg font-display font-bold uppercase tracking-widest transition-all duration-200 ${view === "client" ? "bg-brand-primary text-white shadow-sm" : "text-brand-muted hover:text-brand-text"}`}
+                style={{ fontSize: "clamp(0.65rem, 1vw, 0.8rem)" }}>
                 Client / Program
               </button>
-              <button
-                type="button"
-                onClick={() => setView("supplier")}
-                className={`px-5 py-2 rounded-lg font-display font-bold uppercase tracking-widest transition-all duration-200 ${
-                  view === "supplier"
-                    ? "bg-brand-primary text-white shadow-sm"
-                    : "text-brand-muted hover:text-brand-text"
-                }`}
-                style={{ fontSize: "clamp(0.65rem, 1vw, 0.8rem)" }}
-              >
+              <button type="button" onClick={() => setView("supplier")}
+                className={`px-5 py-2 rounded-lg font-display font-bold uppercase tracking-widest transition-all duration-200 ${view === "supplier" ? "bg-brand-primary text-white shadow-sm" : "text-brand-muted hover:text-brand-text"}`}
+                style={{ fontSize: "clamp(0.65rem, 1vw, 0.8rem)" }}>
                 Supplier / Manufacturer
               </button>
             </div>
           </div>
-
-          {/* Sign-in — desktop inline form, mobile buttons — pinned to right */}
           <div className="flex-shrink-0">
-            {/* Desktop */}
             <form onSubmit={handleSubmit} className="hidden xl:flex items-center gap-2.5">
-              <input
-                type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-                placeholder="Email" required
-                className="w-40 bg-brand-surface border border-brand-border rounded-lg px-3 py-2 text-brand-text font-barlow text-sm placeholder-brand-muted/50 focus:outline-none focus:border-brand-primary transition-colors"
-              />
-              <input
-                type="password" value={password} onChange={(e) => setPassword(e.target.value)}
-                placeholder="Password" required
-                className="w-32 bg-brand-surface border border-brand-border rounded-lg px-3 py-2 text-brand-text font-barlow text-sm placeholder-brand-muted/50 focus:outline-none focus:border-brand-primary transition-colors"
-              />
-              <button
-                type="submit"
-                disabled={submitting || !email || !password}
-                className="px-4 py-2 rounded-lg bg-brand-primary text-white font-display font-bold text-xs uppercase tracking-widest hover:bg-brand-secondary disabled:opacity-40 transition-colors whitespace-nowrap"
-              >
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" required
+                className="w-40 bg-brand-surface border border-brand-border rounded-lg px-3 py-2 text-brand-text font-barlow text-sm placeholder-brand-muted/50 focus:outline-none focus:border-brand-primary transition-colors" />
+              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" required
+                className="w-32 bg-brand-surface border border-brand-border rounded-lg px-3 py-2 text-brand-text font-barlow text-sm placeholder-brand-muted/50 focus:outline-none focus:border-brand-primary transition-colors" />
+              <button type="submit" disabled={submitting || !email || !password}
+                className="px-4 py-2 rounded-lg bg-brand-primary text-white font-display font-bold text-xs uppercase tracking-widest hover:bg-brand-secondary disabled:opacity-40 transition-colors whitespace-nowrap">
                 {submitting ? "…" : "Sign In →"}
               </button>
-              <Link
-                href="/signup"
-                className="px-4 py-2 rounded-lg border border-brand-border text-brand-muted font-display font-bold text-xs uppercase tracking-widest hover:border-brand-primary hover:text-brand-primary transition-colors whitespace-nowrap"
-              >
+              <Link href="/signup"
+                className="px-4 py-2 rounded-lg border border-brand-border text-brand-muted font-display font-bold text-xs uppercase tracking-widest hover:border-brand-primary hover:text-brand-primary transition-colors whitespace-nowrap">
                 Create Account
               </Link>
             </form>
-            {/* Compact (lg/below xl) + mobile buttons */}
             <div className="flex xl:hidden items-center gap-3">
               <Link href="/signup" className="text-xs font-display font-bold uppercase tracking-widest text-brand-muted hover:text-brand-primary transition-colors whitespace-nowrap">
                 Sign Up
@@ -506,9 +468,46 @@ export default function LoginPage() {
               </a>
             </div>
           </div>
+        </div>
+
+        {/* ── Mobile (below lg): clean stacked column ─────────────────────── */}
+        <div className="flex flex-col items-center gap-3 lg:hidden w-full max-w-sm mx-auto">
+
+          {/* 1. Logo — centered */}
+          <Image src="/grace-enterprise-logo.jpeg" alt="Grace Enterprise" width={160} height={40} priority className="h-10 w-auto object-contain" />
+
+          {/* 2. "Who Are You?" heading */}
+          <p className="font-display font-bold uppercase text-brand-text text-xs tracking-[0.22em]">
+            Who Are You?
+          </p>
+
+          {/* 3. Sign Up / Sign In toggle */}
+          <div className="flex w-full gap-2">
+            <Link href="/signup"
+              className="flex-1 text-center py-2.5 rounded-lg border border-brand-border text-brand-muted font-display font-bold text-xs uppercase tracking-widest hover:border-brand-primary hover:text-brand-primary transition-colors">
+              Sign Up
+            </Link>
+            <a href="#sign-in"
+              className="flex-1 text-center py-2.5 rounded-lg bg-brand-primary text-white font-display font-bold text-xs uppercase tracking-widest">
+              Sign In
+            </a>
+          </div>
+
+          {/* 4. Client / Supplier role selector */}
+          <div className="flex w-full gap-2 p-1 rounded-xl bg-brand-surface border border-brand-border shadow-sm">
+            <button type="button" onClick={() => setView("client")}
+              className={`flex-1 py-2 rounded-lg font-display font-bold uppercase text-[10px] tracking-widest transition-all duration-200 ${view === "client" ? "bg-brand-primary text-white shadow-sm" : "text-brand-muted"}`}>
+              Client / Program
+            </button>
+            <button type="button" onClick={() => setView("supplier")}
+              className={`flex-1 py-2 rounded-lg font-display font-bold uppercase text-[10px] tracking-widest transition-all duration-200 ${view === "supplier" ? "bg-brand-primary text-white shadow-sm" : "text-brand-muted"}`}>
+              Supplier / Mfr
+            </button>
+          </div>
 
         </div>
-        {error && <p className="text-[#C41E1E] text-xs font-barlow text-right mt-2">{error}</p>}
+
+        {error && <p className="text-[#C41E1E] text-xs font-barlow text-center lg:text-right mt-2">{error}</p>}
       </header>
 
       {/* ══════════════════════════════════════════════════════════════════

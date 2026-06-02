@@ -273,6 +273,7 @@ export default function AdminOrderPage() {
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [stageSaving, setStageSaving] = useState(false);
+  const [stageError, setStageError] = useState<string | null>(null);
   const [trackingInput, setTrackingInput] = useState("");
   const [deliveryInput, setDeliveryInput] = useState("");
   const [notesInput, setNotesInput] = useState("");
@@ -305,6 +306,7 @@ export default function AdminOrderPage() {
   const [pricingQty, setPricingQty]   = useState("");
   const [pricingSaving, setPricingSaving] = useState(false);
   const [pricingSaved, setPricingSaved]   = useState(false);
+  const [pricingError, setPricingError]   = useState<string | null>(null);
   const [orderFiles, setOrderFiles] = useState<OrderFile[]>([]);
   const [fileLabel, setFileLabel] = useState("Print-Ready Files");
   const [fileUploading, setFileUploading] = useState(false);
@@ -315,6 +317,7 @@ export default function AdminOrderPage() {
   const [mockups, setMockups] = useState<MockupItem[]>([]);
   const [mockupLabel, setMockupLabel] = useState("Front");
   const [mockupUploading, setMockupUploading] = useState(false);
+  const [mockupUploadError, setMockupUploadError] = useState<string | null>(null);
   const [mockupRevisionUsed, setMockupRevisionUsed] = useState(false);
 
   // Invoice state
@@ -381,13 +384,24 @@ export default function AdminOrderPage() {
   async function updateStage(newStage: OrderStage) {
     if (!order || newStage === order.stage) return;
     setStageSaving(true);
-    await fetch(`/api/admin/orders/${order_id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "stage", stage: newStage, from_stage: order.stage }),
-    });
-    setOrder((prev) => prev ? { ...prev, stage: newStage } : prev);
-    setStageSaving(false);
+    setStageError(null);
+    try {
+      const res = await fetch(`/api/admin/orders/${order_id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "stage", stage: newStage, from_stage: order.stage }),
+      });
+      const json = await res.json() as { error?: string; message?: string };
+      if (!res.ok) {
+        setStageError(json.error ?? json.message ?? `Stage update failed (${res.status})`);
+      } else {
+        setOrder((prev) => prev ? { ...prev, stage: newStage } : prev);
+      }
+    } catch (e) {
+      setStageError(e instanceof Error ? e.message : "Stage update failed");
+    } finally {
+      setStageSaving(false);
+    }
   }
 
   async function assignSupplier(supplierUserId: string | null) {
@@ -477,26 +491,35 @@ export default function AdminOrderPage() {
   async function savePricing() {
     if (!pricingQty || isNaN(Number(pricingQty)) || Number(pricingQty) < 1) return;
     setPricingSaving(true);
-    const res = await fetch(`/api/admin/orders/${order_id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "pricing", tier: pricingTier, quantity: Number(pricingQty) }),
-    });
-    if (res.ok) {
-      const qty = Number(pricingQty);
-      const calc = calcProductionPricing(pricingTier, qty);
-      setOrder((prev) => prev ? {
-        ...prev,
-        production_pricing_tier:  calc.tier,
-        quantity:                 calc.quantity,
-        production_total_cents:   calc.total_cents,
-        production_deposit_cents: calc.deposit_cents,
-        production_balance_cents: calc.balance_cents,
-      } : prev);
+    setPricingError(null);
+    try {
+      const res = await fetch(`/api/admin/orders/${order_id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "pricing", tier: pricingTier, quantity: Number(pricingQty) }),
+      });
+      const json = await res.json() as { success?: boolean; error?: string };
+      if (!res.ok || json.error) {
+        setPricingError(json.error ?? `Save failed (${res.status})`);
+      } else {
+        const qty = Number(pricingQty);
+        const calc = calcProductionPricing(pricingTier, qty);
+        setOrder((prev) => prev ? {
+          ...prev,
+          production_pricing_tier:  calc.tier,
+          quantity:                 calc.quantity,
+          production_total_cents:   calc.total_cents,
+          production_deposit_cents: calc.deposit_cents,
+          production_balance_cents: calc.balance_cents,
+        } : prev);
+        setPricingSaved(true);
+        setTimeout(() => setPricingSaved(false), 2500);
+      }
+    } catch (e) {
+      setPricingError(e instanceof Error ? e.message : "Network error");
+    } finally {
+      setPricingSaving(false);
     }
-    setPricingSaving(false);
-    setPricingSaved(true);
-    setTimeout(() => setPricingSaved(false), 2500);
   }
 
   async function uploadFile(file: File) {
@@ -551,40 +574,33 @@ export default function AdminOrderPage() {
 
   async function uploadMockup(file: File) {
     setMockupUploading(true);
-    const ext = file.name.split(".").pop() ?? "jpg";
-    const path = `mockups/${order_id}/${Date.now()}.${ext}`;
+    setMockupUploadError(null);
 
-    const { error: uploadError } = await supabase.storage
-      .from("order-files")
-      .upload(path, file);
-
-    if (uploadError) {
-      console.error("Mockup upload error:", uploadError.message);
-      setMockupUploading(false);
-      return;
-    }
-
-    const { data: { publicUrl } } = supabase.storage.from("order-files").getPublicUrl(path);
-    const { data: { user } } = await supabase.auth.getUser();
-
-    // Determine current revision round based on existing mockups
-    const maxRound = mockups.reduce((max, m) => Math.max(max, m.revision_round), 0);
+    const maxRound   = mockups.reduce((max, m) => Math.max(max, m.revision_round), 0);
     const currentRound = maxRound > 0 ? maxRound : 1;
 
-    const res = await fetch(`/api/admin/orders/${order_id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action:         "mockup_insert",
-        uploaded_by:    user?.id,
-        image_url:      publicUrl,
-        label:          mockupLabel.trim() || null,
-        revision_round: currentRound,
-      }),
-    });
-    const { row } = await res.json() as { row?: MockupItem };
-    if (row) setMockups((prev) => [...prev, row]);
-    setMockupUploading(false);
+    const form = new FormData();
+    form.append("action", "mockup_upload");
+    form.append("file", file);
+    form.append("label", mockupLabel.trim() || "Front");
+    form.append("revision_round", String(currentRound));
+
+    try {
+      const res = await fetch(`/api/admin/orders/${order_id}`, {
+        method: "POST",
+        body: form,
+      });
+      const json = await res.json() as { row?: MockupItem; error?: string };
+      if (!res.ok || json.error) {
+        setMockupUploadError(json.error ?? `Upload failed (${res.status})`);
+      } else if (json.row) {
+        setMockups((prev) => [...prev, json.row!]);
+      }
+    } catch (e) {
+      setMockupUploadError(`Upload failed: ${e instanceof Error ? e.message : "network error"}`);
+    } finally {
+      setMockupUploading(false);
+    }
   }
 
   async function deleteMockup(mockupId: string, imageUrl: string) {
@@ -741,6 +757,31 @@ export default function AdminOrderPage() {
 
   const currentStageIndex = PIPELINE.indexOf(derivedCurrentStage);
 
+  // Derive which admin workspace is active from the derived phase key so each
+  // phase section is only shown when the order is actually in that phase.
+  type AdminWorkspace = "creative" | "mockup" | "production_files" | "first_piece" | "bulk" | "fulfillment";
+  const WORKSPACE_RANK: Record<AdminWorkspace, number> = {
+    creative: 0, mockup: 1, production_files: 2, first_piece: 3, bulk: 4, fulfillment: 5,
+  };
+  const currentWorkspace = ((): AdminWorkspace => {
+    switch (derivedPhaseKey) {
+      case "mockup_in_progress":
+      case "mockup_review":             return "mockup";
+      case "production_files":          return "production_files";
+      case "first_piece_in_production":
+      case "first_piece_review":        return "first_piece";
+      case "bulk_production":           return "bulk";
+      case "quality_check":
+      case "shipped":
+      case "delivered":                 return "fulfillment";
+      default:                          return "creative";
+    }
+  })();
+  const wsRank = WORKSPACE_RANK[currentWorkspace];
+  // Returns true when the current phase is at or past the given workspace —
+  // used to gate sections so only relevant phase content is shown.
+  const atOrPastWs = (ws: AdminWorkspace) => wsRank >= WORKSPACE_RANK[ws];
+
   const stageDone = (s: OrderStage): boolean => {
     switch (s) {
       case "onboarding":
@@ -878,38 +919,10 @@ export default function AdminOrderPage() {
               </div>
             )}
 
-            {/* ── Per-phase submit / advance button ────────────────────────────
-                Mockup phase has its own CTA inside the Mockup workspace section.
-                All other phases get a prominent advance button here. */}
-            {derivedPhaseKey && (() => {
-              const advanceMap: Partial<Record<string, { label: string; stage: OrderStage; disabled?: boolean }>> = {
-                production_files:          { label: "Files Ready — Advance to First Piece →",      stage: "first_piece_in_progress" },
-                first_piece_in_production: { label: "First Piece Ready — Advance to Review →",     stage: "first_piece_review" },
-                bulk_production:           { label: "Bulk Complete — Advance to QC →",             stage: "qc_verified" },
-                quality_check:             { label: "QC Passed — Mark as Shipped →",              stage: "shipped", disabled: !order.tracking_number && !trackingInput },
-                shipped:                   { label: "Confirm Delivered →",                         stage: "delivered" },
-                delivered:                 { label: "Close Order →",                              stage: "complete" },
-              };
-              const action = advanceMap[derivedPhaseKey];
-              if (!action) return null;
-              return (
-                <button
-                  type="button"
-                  onClick={() => updateStage(action.stage)}
-                  disabled={stageSaving || !!action.disabled}
-                  className="mt-3 w-full py-2.5 rounded-lg font-display font-bold text-xs uppercase tracking-widest bg-brand-primary text-white hover:bg-brand-secondary disabled:opacity-40 transition-all"
-                >
-                  {stageSaving ? "Saving…" : action.label}
-                </button>
-              );
-            })()}
           </div>
 
-          {/* ── Mockup Upload ────────────────────────────────────────────── */}
-          {(["mockup_in_progress","mockup_review","mockup_revision"].includes(order.stage) ||
-            derivedPhaseKey === "mockup_in_progress" ||
-            derivedPhaseKey === "mockup_review" ||
-            mockups.length > 0) && (
+          {/* ── Mockup Upload — visible in mockup phase only */}
+          {atOrPastWs("mockup") && !atOrPastWs("production_files") && (
             <div className="bg-brand-surface border border-brand-border rounded-xl p-5 space-y-4">
               <div className="flex items-center justify-between">
                 <p className="text-xs font-display uppercase tracking-widest text-brand-primary">2D Mockup</p>
@@ -974,22 +987,15 @@ export default function AdminOrderPage() {
                 </label>
               </div>
 
-              {/* Advance to mockup_review — shown whenever the derived phase is mockup_in_progress,
-                  regardless of the raw DB stage (handles jumped stages gracefully). */}
-              {derivedPhaseKey === "mockup_in_progress" && mockups.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => updateStage("mockup_review" as OrderStage)}
-                  disabled={stageSaving}
-                  className="w-full py-2.5 rounded-lg font-display font-bold text-xs uppercase tracking-widest bg-brand-primary text-white hover:bg-brand-secondary disabled:opacity-40 transition-all"
-                >
-                  {stageSaving ? "Saving…" : mockupRevisionUsed ? "Send Revised Mockup to Client →" : "Send Mockup to Client for Review →"}
-                </button>
+              {/* Upload error */}
+              {mockupUploadError && (
+                <p className="text-xs font-barlow text-red-400">{mockupUploadError}</p>
               )}
             </div>
           )}
 
-          {/* ── Production Pricing ───────────────────────────────────────── */}
+          {/* ── Production Pricing — visible from production_files phase onwards */}
+          {atOrPastWs("production_files") && (
           <div className="bg-brand-surface border border-brand-border rounded-xl p-5 space-y-4">
             <div className="flex items-center justify-between">
               <p className="text-xs font-display uppercase tracking-widest text-brand-primary">Production Pricing</p>
@@ -1074,9 +1080,14 @@ export default function AdminOrderPage() {
             >
               {pricingSaving ? "Saving…" : "Save Pricing"}
             </button>
+            {pricingError && (
+              <p className="text-xs font-barlow text-red-400 text-center leading-snug">{pricingError}</p>
+            )}
           </div>
+          )}
 
-          {/* ── Invoice / Payment Panel ──────────────────────────────────── */}
+          {/* ── Invoice / Payment Panel — visible from production_files phase onwards */}
+          {atOrPastWs("production_files") && (
           <div className="bg-brand-surface border border-brand-border rounded-xl p-5 space-y-4">
             <div className="flex items-center justify-between">
               <p className="text-xs font-display uppercase tracking-widest text-brand-primary">Invoice & Payment</p>
@@ -1309,6 +1320,7 @@ export default function AdminOrderPage() {
               );
             })}
           </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Brief details */}
@@ -1345,7 +1357,8 @@ export default function AdminOrderPage() {
               <div className="bg-brand-surface border border-brand-border rounded-xl p-5 space-y-4">
                 <p className="text-xs font-display uppercase tracking-widest text-brand-primary">Order Details</p>
 
-                {/* Supplier assignment */}
+                {/* Supplier assignment — visible from production_files phase */}
+                {atOrPastWs("production_files") && (
                 <div>
                   <label className="block text-xs font-display uppercase tracking-wider text-brand-muted mb-1.5">
                     Production Partner
@@ -1381,6 +1394,7 @@ export default function AdminOrderPage() {
                     </button>
                   )}
                 </div>
+                )}
 
                 {/* Designer assignment */}
                 <div>
@@ -1445,6 +1459,7 @@ export default function AdminOrderPage() {
                   )}
                 </div>
 
+                {atOrPastWs("fulfillment") && (
                 <div>
                   <label className="block text-xs font-display uppercase tracking-wider text-brand-muted mb-1.5">Tracking Number</label>
                   <input
@@ -1455,6 +1470,8 @@ export default function AdminOrderPage() {
                     className="w-full bg-brand-bg border border-brand-border rounded-lg px-3 py-2.5 text-brand-text font-barlow text-sm placeholder-brand-muted focus:outline-none focus:border-brand-primary transition-colors"
                   />
                 </div>
+                )}
+                {atOrPastWs("fulfillment") && (
                 <div>
                   <label className="block text-xs font-display uppercase tracking-wider text-brand-muted mb-1.5">Estimated Delivery</label>
                   <input
@@ -1464,6 +1481,7 @@ export default function AdminOrderPage() {
                     className="w-full bg-brand-bg border border-brand-border rounded-lg px-3 py-2.5 text-brand-text font-barlow text-sm focus:outline-none focus:border-brand-primary transition-colors"
                   />
                 </div>
+                )}
                 <div>
                   <label className="block text-xs font-display uppercase tracking-wider text-brand-muted mb-1.5">Internal Notes</label>
                   <textarea
@@ -1600,8 +1618,8 @@ export default function AdminOrderPage() {
             </div>
           )}
 
-          {/* ── First Piece Review — only shown once the derived phase reaches first piece or beyond, or media already exists */}
-          {(order.media.length > 0 || (derivedPhaseKey && ["first_piece_in_production","first_piece_review","bulk_production","quality_check","shipped","delivered"].includes(derivedPhaseKey))) && (
+          {/* ── First Piece Review — visible in first_piece phase or beyond, or if media already exists */}
+          {atOrPastWs("first_piece") && (
           <div className="bg-brand-surface border border-brand-border rounded-xl p-5">
             <div className="flex items-center justify-between mb-4">
               <p className="text-xs font-display uppercase tracking-widest text-brand-primary">First Piece Review</p>
@@ -1748,7 +1766,8 @@ export default function AdminOrderPage() {
           </div>
           )}
 
-          {/* ── Final Files ─────────────────────────────────────────────────── */}
+          {/* ── Final Files — visible from production_files phase onwards */}
+          {atOrPastWs("production_files") && (
           <div className="bg-brand-surface border border-brand-border rounded-xl p-5 space-y-4">
             <p className="text-xs font-display uppercase tracking-widest text-brand-primary">Final Production Files</p>
             <p className="text-[11px] font-barlow text-brand-muted">
@@ -1827,11 +1846,12 @@ export default function AdminOrderPage() {
               </button>
             </div>
           </div>
+          )}
 
         </div>
 
           {/* ── Activity Feed ──────────────────────────────────────────── */}
-          <div className="bg-brand-surface border border-brand-border rounded-xl p-5 space-y-3">
+          <div className="mt-6 bg-brand-surface border border-brand-border rounded-xl p-5 space-y-3">
             <p className="text-xs font-display uppercase tracking-widest text-brand-primary">Activity</p>
             {activityLoading ? (
               <div className="flex items-center justify-center py-6">
@@ -1870,6 +1890,108 @@ export default function AdminOrderPage() {
           </div>
 
       </main>
+
+      {/* ── Sticky phase-advance action bar ───────────────────────────────────
+          Always visible at bottom of screen when an actionable phase is active.
+          Shows the next stage label, all unmet prerequisites, and the CTA. */}
+      {derivedPhaseKey && (() => {
+        const hasProductionFiles = orderFiles.length > 0 || !!order.production_file_url;
+        const hasPricing         = !!order.production_total_cents;
+        const hasSupplier        = !!order.supplier_user_id;
+        const hasFirstPieceMedia = order.media.length > 0;
+        const hasClientApproval  = order.media.some((m) => m.client_approved === true);
+        const hasTracking        = !!(order.tracking_number || trackingInput.trim());
+        const hasMockup          = mockups.length > 0;
+
+        type AdvanceEntry = { label: string; stage: OrderStage; reasons: string[] };
+        const advanceMap: Partial<Record<string, AdvanceEntry>> = {
+          mockup_in_progress: {
+            label:   mockupRevisionUsed ? "Send Revised Mockup to Client →" : "Send Mockup to Client for Review →",
+            stage:   "mockup_review" as OrderStage,
+            reasons: !hasMockup ? ["Upload at least one mockup image first."] : [],
+          },
+          production_files: {
+            label:   "Submit to Supplier — Advance to First Piece →",
+            stage:   "first_piece_in_progress" as OrderStage,
+            reasons: [
+              !hasProductionFiles && "Upload a production file.",
+              !hasPricing         && "Save production pricing.",
+              !hasSupplier        && "Assign a production partner.",
+            ].filter(Boolean) as string[],
+          },
+          first_piece_in_production: {
+            label:   "First Piece Submitted — Advance to Review →",
+            stage:   "first_piece_review" as OrderStage,
+            reasons: !hasFirstPieceMedia ? ["Upload first piece photos first."] : [],
+          },
+          first_piece_review: {
+            label:   "First Piece Approved — Advance to Bulk →",
+            stage:   "bulk_production" as OrderStage,
+            reasons: !hasClientApproval ? ["Awaiting client approval of the first piece."] : [],
+          },
+          bulk_production: {
+            label:   "Bulk Complete — Advance to QC →",
+            stage:   "qc_verified" as OrderStage,
+            reasons: [],
+          },
+          quality_check: {
+            label:   "QC Passed — Mark as Shipped →",
+            stage:   "shipped" as OrderStage,
+            reasons: !hasTracking ? ["Enter a tracking number first."] : [],
+          },
+          shipped: {
+            label:   "Confirm Delivered →",
+            stage:   "delivered" as OrderStage,
+            reasons: [],
+          },
+          delivered: {
+            label:   "Close Order →",
+            stage:   "complete" as OrderStage,
+            reasons: [],
+          },
+        };
+
+        const action = advanceMap[derivedPhaseKey];
+        if (!action) return null;
+        const blocked = action.reasons.length > 0;
+
+        return (
+          <div className="sticky bottom-0 z-40 bg-brand-bg border-t border-brand-border shadow-[0_-4px_24px_rgba(0,0,0,0.35)]">
+            <div className="max-w-3xl mx-auto px-4 py-3 flex flex-col sm:flex-row items-center gap-3">
+              {/* Prerequisite reasons */}
+              <div className="flex-1 min-w-0">
+                {stageError ? (
+                  <p className="text-[11px] font-barlow text-red-400">{stageError}</p>
+                ) : blocked ? (
+                  <div className="flex flex-wrap gap-x-3 gap-y-1">
+                    {action.reasons.map((r, i) => (
+                      <span key={i} className="flex items-center gap-1.5 text-[11px] font-barlow text-amber-400/90">
+                        <span className="w-1 h-1 rounded-full bg-amber-400 flex-shrink-0" />
+                        {r}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[11px] font-barlow text-green-400/80">All requirements met — ready to advance.</p>
+                )}
+              </div>
+              {/* CTA */}
+              <button
+                type="button"
+                onClick={() => updateStage(action.stage)}
+                disabled={stageSaving || blocked}
+                className={`flex-shrink-0 px-6 py-3 rounded-xl font-display font-bold text-sm uppercase tracking-widest transition-all ${
+                  blocked
+                    ? "bg-brand-surface border border-brand-border text-brand-muted cursor-not-allowed opacity-60"
+                    : "bg-brand-primary text-white hover:bg-brand-secondary shadow-[0_0_16px_rgba(196,160,30,0.3)]"
+                }`}
+              >
+                {stageSaving ? "Saving…" : action.label}
+              </button>
+            </div>
+          </div>
+        );
+      })()}
 
       {showSupplierModal && (
         <SupplierPickerModal

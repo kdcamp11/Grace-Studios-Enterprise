@@ -51,7 +51,7 @@ create policy "admin_all_order_mockups" on public.order_mockups
   for all using (
     exists (
       select 1 from public.profiles
-      where user_id = auth.uid()
+      where id = auth.uid()
         and role in ('admin','super_admin')
     )
   );
@@ -64,7 +64,7 @@ create policy "client_select_own_mockups" on public.order_mockups
       select 1 from public.orders o
       join public.clients c on c.id = o.client_id
       where o.id = order_id
-        and (lower(c.email) = lower(auth.email()) or c.user_id = auth.uid())
+        and lower(c.email) = lower(auth.jwt() ->> 'email')
     )
   );
 

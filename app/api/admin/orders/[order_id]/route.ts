@@ -5,6 +5,7 @@ import { logActivity } from "@/lib/activity/log";
 import { calcProductionPricing, PRODUCTION_PRICING_TIERS } from "@/lib/payments/supplier-pricing";
 import type { ProductionPricingTier } from "@/lib/payments/supplier-pricing";
 import { isAllowedTransition } from "@/lib/workflow/stage-map";
+import { getPaymentThresholdInfo, generateInvoiceNumber } from "@/lib/payments/thresholds";
 
 const serviceSupabase = createAdminClient();
 
@@ -133,8 +134,35 @@ export async function GET(
     client: clientRow ?? { name: "—", email: "—", sport: "—", city: "—" },
   };
 
+  // Migration 027: production pricing columns — graceful fallback.
+  let productionPricing: {
+    production_pricing_tier:  string | null;
+    quantity:                 number | null;
+    production_total_cents:   number | null;
+    production_deposit_cents: number | null;
+    production_balance_cents: number | null;
+  } = {
+    production_pricing_tier:  null,
+    quantity:                 null,
+    production_total_cents:   null,
+    production_deposit_cents: null,
+    production_balance_cents: null,
+  };
+  try {
+    const { data: pricingRow } = await serviceSupabase
+      .from("orders")
+      .select("production_pricing_tier, quantity, production_total_cents, production_deposit_cents, production_balance_cents")
+      .eq("id", order_id)
+      .single();
+    if (pricingRow) {
+      productionPricing = pricingRow as typeof productionPricing;
+    }
+  } catch {
+    // Migration 027 not yet applied — skip gracefully
+  }
+
   return NextResponse.json({
-    order,
+    order: { ...order, ...productionPricing },
     brief:     briefRow   ?? null,
     concepts:  concepts   ?? [],
     media:     media      ?? [],
@@ -290,6 +318,48 @@ export async function PATCH(
         .eq("id", order_id);
 
       if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+      // Upsert production invoice so the client portal can display a payment CTA.
+      // Amounts stored in dollars to match the invoices table convention.
+      const totalDollars   = calc.total_cents / 100;
+      const depositDollars = calc.deposit_cents / 100;
+      const threshold = getPaymentThresholdInfo(totalDollars);
+
+      try {
+        // Find any existing non-canceled production invoice for this order.
+        const { data: existingInvoice } = await serviceSupabase
+          .from("invoices")
+          .select("id")
+          .eq("order_id", order_id)
+          .not("status", "eq", "canceled")
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .single();
+
+        if (existingInvoice?.id) {
+          // Update amounts on the existing invoice (don't change status so partial payments are preserved).
+          await serviceSupabase
+            .from("invoices")
+            .update({ total_amount: totalDollars, deposit_amount: depositDollars })
+            .eq("id", existingInvoice.id);
+        } else {
+          // Create a new invoice.
+          await serviceSupabase.from("invoices").insert({
+            tenant_id:                  ctx.tenant.id,
+            order_id,
+            invoice_number:             generateInvoiceNumber("PROD"),
+            total_amount:               totalDollars,
+            deposit_amount:             depositDollars,
+            status:                     "sent",
+            recommended_payment_method: threshold.recommended,
+            payment_threshold_band:     threshold.band,
+            card_enabled:               threshold.cardEnabled,
+          });
+        }
+      } catch {
+        // Non-fatal — log but don't block the pricing save response.
+        console.error("[admin orders] invoice upsert failed for production pricing");
+      }
 
       await logActivity({
         tenantId: ctx.tenant.id, orderId: order_id,
@@ -519,6 +589,73 @@ export async function PATCH(
       // Migration 026 not yet applied
     }
     return NextResponse.json({ success: true });
+  }
+
+  return NextResponse.json({ error: `Unknown action: ${action}` }, { status: 400 });
+}
+
+// ---------------------------------------------------------------------------
+// POST /api/admin/orders/[order_id]
+// Accepts multipart/form-data for server-side storage uploads (bypasses
+// browser-client storage auth). Supports:
+//   action=mockup_upload  — field: file, label, revision_round
+// ---------------------------------------------------------------------------
+export async function POST(
+  req: NextRequest,
+  { params }: { params: { order_id: string } },
+) {
+  const ctx = await assertAdminTenant();
+  if (isErrorResponse(ctx)) return ctx;
+
+  const { order_id } = params;
+
+  const { data: ownership } = await serviceSupabase
+    .from("orders")
+    .select("id, tenant_id")
+    .eq("id", order_id)
+    .eq("tenant_id", ctx.tenant.id)
+    .single();
+  if (!ownership) return NextResponse.json({ error: "Order not found" }, { status: 404 });
+
+  const formData = await req.formData();
+  const action   = formData.get("action") as string | null;
+
+  if (action === "mockup_upload") {
+    const file          = formData.get("file") as Blob | null;
+    const label         = (formData.get("label") as string | null) ?? null;
+    const revisionRound = parseInt((formData.get("revision_round") as string | null) ?? "1", 10);
+
+    if (!file) return NextResponse.json({ error: "file is required" }, { status: 400 });
+
+    const ext  = (file instanceof File ? file.name.split(".").pop() : null) ?? "jpg";
+    const path = `${order_id}/mockups/${Date.now()}.${ext}`;
+
+    const buffer  = Buffer.from(await file.arrayBuffer());
+    const { error: storageError } = await serviceSupabase.storage
+      .from("order-files")
+      .upload(path, buffer, { contentType: file.type || "image/jpeg", upsert: false });
+
+    if (storageError) {
+      return NextResponse.json({ error: `Storage upload failed: ${storageError.message}` }, { status: 500 });
+    }
+
+    const { data: { publicUrl } } = serviceSupabase.storage.from("order-files").getPublicUrl(path);
+
+    const { data: mockupRow, error: dbError } = await serviceSupabase
+      .from("order_mockups")
+      .insert({
+        tenant_id:      ownership.tenant_id,
+        order_id,
+        uploaded_by:    ctx.userId,
+        image_url:      publicUrl,
+        label,
+        revision_round: isNaN(revisionRound) ? 1 : revisionRound,
+      })
+      .select()
+      .single();
+
+    if (dbError) return NextResponse.json({ error: dbError.message }, { status: 500 });
+    return NextResponse.json({ row: mockupRow });
   }
 
   return NextResponse.json({ error: `Unknown action: ${action}` }, { status: 400 });

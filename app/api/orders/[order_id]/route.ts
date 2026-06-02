@@ -47,6 +47,39 @@ export async function PATCH(
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+    // Auto-advance order stage based on approval decision
+    if (!approved) {
+      // Client rejected: move to revision unless already there
+      const { data: currentOrder } = await admin
+        .from("orders")
+        .select("stage")
+        .eq("id", order_id)
+        .single();
+      if (currentOrder && currentOrder.stage !== "first_piece_revision") {
+        await admin
+          .from("orders")
+          .update({ stage: "first_piece_revision" })
+          .eq("id", order_id);
+      }
+    } else {
+      // Client approved this item — check if ALL client_visible media are now approved
+      const { data: allVisible } = await admin
+        .from("first_piece_media")
+        .select("client_approved")
+        .eq("order_id", order_id)
+        .eq("client_visible", true);
+      const allApproved =
+        Array.isArray(allVisible) &&
+        allVisible.length > 0 &&
+        allVisible.every((m) => m.client_approved === true);
+      if (allApproved) {
+        await admin
+          .from("orders")
+          .update({ stage: "bulk_production" })
+          .eq("id", order_id);
+      }
+    }
+
     // Fire notification email to studio (non-blocking)
     Promise.resolve(
       admin

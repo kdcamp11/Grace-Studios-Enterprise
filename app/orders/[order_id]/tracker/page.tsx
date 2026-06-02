@@ -158,6 +158,13 @@ interface OrderFile {
   label: string | null;
 }
 
+interface InvoiceSummary {
+  id: string;
+  status: string;
+  total_amount: number;
+  deposit_amount: number;
+}
+
 interface OrderData {
   id: string;
   order_number: string;
@@ -173,6 +180,7 @@ interface OrderData {
   production_choice: string | null;
   deposit_paid: boolean | null;
   balance_paid: boolean | null;
+  invoice: InvoiceSummary | null;
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -381,6 +389,47 @@ export default function TrackerPage() {
             </div>
 
           </div>
+
+          {/* ── Payment CTA — deposit (step 2) or final balance (step 6) ──────── */}
+          {order.invoice && (() => {
+            const inv = order.invoice!;
+            const needsDeposit = currentIndex === 2 && !milestones.firstPaymentPaid;
+            const needsBalance = currentIndex === 6 && milestones.qcComplete && !milestones.finalPaymentPaid;
+            if (!needsDeposit && !needsBalance) return null;
+            const isPaid = inv.status === "paid";
+            if (isPaid) return null;
+            const amount = needsDeposit ? inv.deposit_amount : (inv.total_amount - inv.deposit_amount);
+            const label  = needsDeposit ? "First Production Payment Due" : "Final Production Payment Due";
+            const sub    = needsDeposit
+              ? "50% deposit required to begin supplier production."
+              : "Final 50% balance required to release your shipment.";
+            return (
+              <div className="border border-amber-400/50 bg-amber-400/5 rounded-xl p-5 space-y-4">
+                <div className="flex items-start gap-4">
+                  <div className="w-9 h-9 rounded-full bg-amber-400 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                    </svg>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-display font-bold uppercase tracking-wide text-sm text-amber-400">{label}</p>
+                    <p className="text-xs text-brand-muted font-barlow mt-1 leading-relaxed">{sub}</p>
+                    {amount > 0 && (
+                      <p className="text-lg font-display font-bold text-brand-text mt-2">
+                        ${amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <a
+                  href={`/orders/${order_id}/invoice`}
+                  className="block w-full text-center py-3 rounded-lg font-display font-bold text-sm uppercase tracking-widest bg-amber-400 text-black hover:bg-amber-300 transition-all"
+                >
+                  Pay Now →
+                </a>
+              </div>
+            );
+          })()}
 
           {/* ── First Piece Review ───────────────────────────────────────────── */}
           {order.media.length > 0 && (
