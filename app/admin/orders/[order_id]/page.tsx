@@ -992,8 +992,8 @@ export default function AdminOrderPage() {
             })()}
           </div>
 
-          {/* ── Mockup Upload — visible in mockup phase, or if mockups already exist */}
-          {(atOrPastWs("mockup") && !atOrPastWs("production_files") || mockups.length > 0) && (
+          {/* ── Mockup Upload — visible in mockup phase only */}
+          {atOrPastWs("mockup") && !atOrPastWs("production_files") && (
             <div className="bg-brand-surface border border-brand-border rounded-xl p-5 space-y-4">
               <div className="flex items-center justify-between">
                 <p className="text-xs font-display uppercase tracking-widest text-brand-primary">2D Mockup</p>
@@ -1094,7 +1094,7 @@ export default function AdminOrderPage() {
           )}
 
           {/* ── Production Pricing — visible from production_files phase onwards */}
-          {(atOrPastWs("production_files") || !!order.production_total_cents) && (
+          {atOrPastWs("production_files") && (
           <div className="bg-brand-surface border border-brand-border rounded-xl p-5 space-y-4">
             <div className="flex items-center justify-between">
               <p className="text-xs font-display uppercase tracking-widest text-brand-primary">Production Pricing</p>
@@ -1183,7 +1183,7 @@ export default function AdminOrderPage() {
           )}
 
           {/* ── Invoice / Payment Panel — visible from production_files phase onwards */}
-          {(atOrPastWs("production_files") || invoices.length > 0) && (
+          {atOrPastWs("production_files") && (
           <div className="bg-brand-surface border border-brand-border rounded-xl p-5 space-y-4">
             <div className="flex items-center justify-between">
               <p className="text-xs font-display uppercase tracking-widest text-brand-primary">Invoice & Payment</p>
@@ -1454,7 +1454,7 @@ export default function AdminOrderPage() {
                 <p className="text-xs font-display uppercase tracking-widest text-brand-primary">Order Details</p>
 
                 {/* Supplier assignment — visible from production_files phase */}
-                {(atOrPastWs("production_files") || !!order.supplier_user_id) && (
+                {atOrPastWs("production_files") && (
                 <div>
                   <label className="block text-xs font-display uppercase tracking-wider text-brand-muted mb-1.5">
                     Production Partner
@@ -1555,7 +1555,7 @@ export default function AdminOrderPage() {
                   )}
                 </div>
 
-                {(atOrPastWs("fulfillment") || !!order.tracking_number) && (
+                {atOrPastWs("fulfillment") && (
                 <div>
                   <label className="block text-xs font-display uppercase tracking-wider text-brand-muted mb-1.5">Tracking Number</label>
                   <input
@@ -1567,7 +1567,7 @@ export default function AdminOrderPage() {
                   />
                 </div>
                 )}
-                {(atOrPastWs("fulfillment") || !!order.estimated_delivery) && (
+                {atOrPastWs("fulfillment") && (
                 <div>
                   <label className="block text-xs font-display uppercase tracking-wider text-brand-muted mb-1.5">Estimated Delivery</label>
                   <input
@@ -1715,7 +1715,7 @@ export default function AdminOrderPage() {
           )}
 
           {/* ── First Piece Review — visible in first_piece phase or beyond, or if media already exists */}
-          {(atOrPastWs("first_piece") || order.media.length > 0) && (
+          {atOrPastWs("first_piece") && (
           <div className="bg-brand-surface border border-brand-border rounded-xl p-5">
             <div className="flex items-center justify-between mb-4">
               <p className="text-xs font-display uppercase tracking-widest text-brand-primary">First Piece Review</p>
@@ -1863,7 +1863,7 @@ export default function AdminOrderPage() {
           )}
 
           {/* ── Final Files — visible from production_files phase onwards */}
-          {(atOrPastWs("production_files") || orderFiles.length > 0) && (
+          {atOrPastWs("production_files") && (
           <div className="bg-brand-surface border border-brand-border rounded-xl p-5 space-y-4">
             <p className="text-xs font-display uppercase tracking-widest text-brand-primary">Final Production Files</p>
             <p className="text-[11px] font-barlow text-brand-muted">
