@@ -85,7 +85,7 @@ function ActionPanel({
   const [caption, setCaption] = useState("");
   const [trackingInput, setTrackingInput] = useState(order.tracking_number ?? "");
   const [uploadError, setUploadError] = useState("");
-  const [uploadDone, setUploadDone] = useState(false);
+  const [uploadDone, setUploadDone] = useState(0);
 
   const { stage, deposit_paid, balance_paid } = order;
 
@@ -96,7 +96,7 @@ function ActionPanel({
 
     setBusy(true);
     setUploadError("");
-    setUploadDone(false);
+    setUploadDone(0);
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setBusy(false); return; }
@@ -145,8 +145,8 @@ function ActionPanel({
     setCaption("");
     if (fileRef.current) fileRef.current.value = "";
     setBusy(false);
-    setUploadDone(true);
-    setTimeout(() => setUploadDone(false), 5000);
+    setUploadDone(inserted.length);
+    setTimeout(() => setUploadDone(0), 5000);
   }
 
   // ── Awaiting Release ──
@@ -183,25 +183,27 @@ function ActionPanel({
   // ── First Piece In Progress / Revision ──
   if (stage === "first_piece_in_progress" || stage === "first_piece_revision") {
     const isRevision = stage === "first_piece_revision";
-    const hasUploads = order.media.length > 0;
+    const uploadCount = order.media.length;
+    const hasUploads  = uploadCount > 0;
     return (
       <div className="bg-brand-surface border border-brand-border rounded-xl p-6 space-y-5">
+        {/* Step header */}
         <div>
           <p className="text-xs font-display uppercase tracking-widest text-brand-primary">
-            {isRevision ? "Revision Requested" : "First Piece Production"}
+            {isRevision ? "Step 1 of 2 — Upload Revised Photos" : "Step 1 of 2 — Upload First Piece Photos"}
           </p>
-          {isRevision && (
-            <p className="text-sm font-barlow text-amber-400 mt-1">
-              {tenant.name} has requested changes. Review the notes below, then upload new media and resubmit.
+          {isRevision ? (
+            <p className="text-xs font-barlow text-amber-400 mt-1">
+              {tenant.name} has requested changes. Review the notes below, upload new photos, then submit.
             </p>
-          )}
-          {!isRevision && (
+          ) : (
             <p className="text-xs font-barlow text-brand-muted mt-1">
-              Upload photos or video of the completed first piece. {tenant.name} will review before the client sees them. Upload up to 5 files.
+              Upload photos or video of the completed first piece. {tenant.name} reviews before the client sees them. Upload up to 5 files.
             </p>
           )}
         </div>
 
+        {/* Upload form */}
         <form onSubmit={handleUpload} className="space-y-4">
           <div>
             <label className="block text-[10px] font-display uppercase tracking-wider text-brand-muted mb-2">
@@ -237,7 +239,7 @@ function ActionPanel({
           )}
           {uploadDone && (
             <p className="text-green-400 text-sm font-barlow bg-green-400/10 border border-green-400/30 rounded-lg px-4 py-3">
-              ✓ Uploaded. Add more or submit for review below.
+              ✓ {uploadDone} file{uploadDone !== 1 ? "s" : ""} uploaded. Add more or submit for review below.
             </p>
           )}
           <button
@@ -249,21 +251,34 @@ function ActionPanel({
           </button>
         </form>
 
-        {hasUploads && (
+        {/* Divider */}
+        <div className="border-t border-brand-border" />
+
+        {/* Step 2 — always visible, disabled until uploaded */}
+        <div className="space-y-3">
+          <p className="text-xs font-display uppercase tracking-widest text-brand-primary">
+            Step 2 of 2 — Submit for Review
+          </p>
+          {hasUploads ? (
+            <p className="text-xs font-barlow text-brand-muted">
+              {uploadCount} file{uploadCount !== 1 ? "s" : ""} uploaded. When ready, submit to {tenant.name} for review.
+            </p>
+          ) : (
+            <p className="text-xs font-barlow text-brand-muted/60">
+              Complete Step 1 first — upload at least one photo or video.
+            </p>
+          )}
           <button
             type="button"
-            disabled={busy}
+            disabled={busy || !hasUploads}
             onClick={async () => { setBusy(true); await onAction(isRevision ? "resubmit_for_review" : "submit_for_review"); setBusy(false); }}
             className="w-full py-3.5 rounded-lg font-display font-bold text-sm uppercase tracking-widest bg-brand-primary text-white hover:bg-brand-secondary disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-[0_2px_12px_rgba(196,160,30,0.25)]"
           >
-            {busy ? "Submitting…" : `Submit ${order.media.length} Upload${order.media.length !== 1 ? "s" : ""} for Review →`}
+            {busy ? "Submitting…" : isRevision
+              ? `Submit Revised Photos for Review →`
+              : `Submit ${uploadCount > 0 ? `${uploadCount} ` : ""}First Piece for Review →`}
           </button>
-        )}
-        {!hasUploads && (
-          <p className="text-[10px] font-barlow text-brand-muted text-center">
-            Upload at least one photo or video to submit for review.
-          </p>
-        )}
+        </div>
       </div>
     );
   }

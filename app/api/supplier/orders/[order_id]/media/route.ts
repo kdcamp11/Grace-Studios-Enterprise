@@ -34,16 +34,19 @@ export async function POST(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Suppliers can only upload to orders assigned to them
-    if (isSupplier) {
-      const { data: order } = await admin
-        .from("orders")
-        .select("supplier_user_id")
-        .eq("id", params.order_id)
-        .single();
-      if (!order || order.supplier_user_id !== user.id) {
-        return NextResponse.json({ error: "Not assigned to this order" }, { status: 403 });
-      }
+    // Always look up the order — needed for tenant_id and supplier verification
+    const { data: order } = await admin
+      .from("orders")
+      .select("tenant_id, supplier_user_id")
+      .eq("id", params.order_id)
+      .single();
+
+    if (!order) {
+      return NextResponse.json({ error: "Order not found" }, { status: 404 });
+    }
+
+    if (isSupplier && order.supplier_user_id !== user.id) {
+      return NextResponse.json({ error: "Not assigned to this order" }, { status: 403 });
     }
 
     const body = await req.json() as {
@@ -60,6 +63,7 @@ export async function POST(
       .from("first_piece_media")
       .insert({
         order_id:    params.order_id,
+        tenant_id:   order.tenant_id,
         uploaded_by: user.id,
         media_url:   body.media_url,
         media_type:  body.media_type,
