@@ -240,8 +240,9 @@ function TrackerPageContent() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [order_id]);
 
-  // After a Stripe payment redirect, poll until the webhook has processed.
-  // Stripe can take 2–15 s to deliver; we retry every 3 s up to 8 times.
+  // After a Stripe payment redirect, call sync-payment to confirm the Stripe
+  // session server-side (idempotent — safe if webhook already ran), then poll
+  // until the DB reflects the payment. Stripe webhooks can take 2–15 s.
   useEffect(() => {
     if (paymentResult !== "success") return;
 
@@ -265,7 +266,21 @@ function TrackerPageContent() {
       if (attempt < MAX_ATTEMPTS) setTimeout(poll, 3000);
     }
 
-    const initial = setTimeout(poll, 3000);
+    async function syncThenPoll() {
+      if (stopped) return;
+      const { data: { session } } = await supabase.auth.getSession();
+      // Confirm the Stripe session server-side so DB is updated even if the
+      // webhook hasn't fired yet. Idempotent — safe to call multiple times.
+      try {
+        await fetch(`/api/orders/${order_id}/sync-payment`, {
+          method: "POST",
+          headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
+        });
+      } catch { /* best-effort — poll will still run */ }
+      await poll();
+    }
+
+    const initial = setTimeout(syncThenPoll, 1500);
     return () => { stopped = true; clearTimeout(initial); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paymentResult, order_id]);
