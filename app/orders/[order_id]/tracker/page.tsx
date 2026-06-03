@@ -203,16 +203,21 @@ function TrackerPageContent() {
   const supabase     = supabaseRef.current;
   const tenant       = useTenant();
 
-  // Capture payment result once from the URL, then immediately clear the param
-  // so a stale ?payment=success from the deposit redirect can't falsely trigger
-  // the balance confirmation card when the client later revisits at bulk production.
-  const [paymentResult] = useState<string | null>(() => searchParams.get("payment"));
-  const mockupFeePaid  = searchParams.get("mockup_fee") === "paid";
+  // Reactive: used for UI banners/confirmation cards. Goes null as soon as
+  // router.replace strips ?payment from the URL, so stale params don't
+  // permanently hide the payment button.
+  const paymentResult = searchParams.get("payment");
+  const mockupFeePaid = searchParams.get("mockup_fee") === "paid";
 
-  // Strip ?payment from the URL after capturing it so it doesn't persist across
-  // navigation and falsely retrigger payment confirmation cards on future visits.
+  // Non-reactive ref: captures the value at mount so the polling effect can
+  // complete even after the URL is stripped (webhooks can take 2–15 s).
+  const paymentResultRef = useRef(searchParams.get("payment"));
+
+  // Strip ?payment immediately after mount so the param can't persist across
+  // navigation. The reactive paymentResult above updates via searchParams,
+  // clearing banners and restoring the payment button for stale redirects.
   useEffect(() => {
-    if (!searchParams.get("payment")) return;
+    if (!paymentResultRef.current) return;
     const next = new URLSearchParams(searchParams.toString());
     next.delete("payment");
     const qs = next.toString();
@@ -262,8 +267,9 @@ function TrackerPageContent() {
   // After a Stripe payment redirect, call sync-payment to confirm the Stripe
   // session server-side (idempotent — safe if webhook already ran), then poll
   // until the DB reflects the payment. Stripe webhooks can take 2–15 s.
+  // Uses paymentResultRef (not reactive) so polling survives the URL strip.
   useEffect(() => {
-    if (paymentResult !== "success") return;
+    if (paymentResultRef.current !== "success") return;
 
     let stopped = false;
     let attempt = 0;
@@ -302,7 +308,7 @@ function TrackerPageContent() {
     const initial = setTimeout(syncThenPoll, 1500);
     return () => { stopped = true; clearTimeout(initial); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paymentResult, order_id]);
+  }, [order_id]);
 
   // After mockup design fee Stripe redirect, poll until stage advances
   useEffect(() => {
