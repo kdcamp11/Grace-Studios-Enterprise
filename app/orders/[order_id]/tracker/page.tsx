@@ -519,11 +519,12 @@ function TrackerPageContent() {
 
           </div>
 
-          {/* ── Payment CTA — deposit (step 2) or final balance (step 6) ──────── */}
+          {/* ── Payment CTA — deposit (step 2) or final balance (steps 5-6) ──── */}
           {order.invoice && (() => {
             const inv = order.invoice!;
             const needsDeposit = currentIndex === 2 && !milestones.firstPaymentPaid;
-            const needsBalance = currentIndex === 6 && milestones.qcComplete && !milestones.finalPaymentPaid;
+            // Show final balance from bulk production (5) through quality check (6) — before shipment
+            const needsBalance = currentIndex >= 5 && currentIndex <= 6 && !milestones.finalPaymentPaid;
 
             // When the client just returned from Stripe (paymentResult=success) but the
             // webhook hasn't written to the DB yet, show a confirmation card so they don't
@@ -558,7 +559,9 @@ function TrackerPageContent() {
             const label  = needsDeposit ? "First Production Payment Due" : "Final Production Payment Due";
             const sub    = needsDeposit
               ? "50% deposit required to begin supplier production."
-              : "Final 50% balance required to release your shipment.";
+              : currentIndex === 5
+                ? "Final 50% balance required before your order can be shipped."
+                : "Final 50% balance required to release your shipment.";
             return (
               <div className="border border-amber-400/50 bg-amber-400/5 rounded-xl p-5 space-y-4">
                 <div className="flex items-start gap-4">
