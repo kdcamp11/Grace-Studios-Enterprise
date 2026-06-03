@@ -187,10 +187,12 @@ export async function PATCH(
 
   const { order_id } = params;
 
-  // Verify this order belongs to the caller's tenant
+  // Verify this order belongs to the caller's tenant; also fetch current stage
+  // so stage transitions validate against the authoritative DB value, not stale
+  // client-provided from_stage.
   const { data: ownership } = await serviceSupabase
     .from("orders")
-    .select("id")
+    .select("id, stage")
     .eq("id", order_id)
     .eq("tenant_id", ctx.tenant.id)
     .single();
@@ -212,7 +214,18 @@ export async function PATCH(
       return NextResponse.json({ error: "stage and from_stage are required" }, { status: 400 });
     }
 
-    if (!isAllowedTransition(from_stage, stage) && !force) {
+    // Use the DB's current stage as the authoritative source for the transition
+    // check — the client-provided from_stage can be stale (e.g., admin page
+    // loaded before client approved the mockup, so local state still shows the
+    // old stage while the DB has already advanced).
+    const dbStage = (ownership as { stage?: string }).stage ?? from_stage;
+
+    // Idempotent: if already at the target stage, return success.
+    if (dbStage === stage) {
+      return NextResponse.json({ success: true, already_at_stage: true });
+    }
+
+    if (!isAllowedTransition(dbStage, stage) && !force) {
       return NextResponse.json(
         { warning: true, message: "This transition skips expected workflow steps. Send { force: true } to override." },
         { status: 409 },
@@ -259,7 +272,7 @@ export async function PATCH(
     const { error: logError } = await serviceSupabase.from("stage_log").insert({
       order_id,
       tenant_id:  ctx.tenant.id,
-      from_stage,
+      from_stage: dbStage,
       to_stage:   stage,
       changed_by: "admin",
       note:       force ? "Forced override — skipped expected workflow steps" : null,
