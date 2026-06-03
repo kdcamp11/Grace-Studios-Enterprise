@@ -1,18 +1,16 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { assertAdminTenant, isErrorResponse } from "@/lib/api/assert-admin-tenant";
+import { resolveTimeline, stepForIndex, TIMELINE_STEPS } from "@/lib/order-milestones";
+import { normalizeStage, stageLabel } from "@/lib/order-stages";
 import type { OrderStage } from "@/lib/supabase/types";
 
 const TERMINAL_STAGES: OrderStage[] = ["complete", "delivered"];
 
-// Stages that belong to production phase or later — if an order hasn't reached
-// one of these but has production_choice="production", it's logically in Mockup.
-const PRODUCTION_STAGE_NAMES = new Set([
-  "mockup_in_progress", "mockup_review", "mockup_revision",
-  "production_files_prep", "sent_to_supplier",
-  "files_sent", "first_piece_in_progress", "first_piece_revision", "first_piece_review",
-  "bulk_production", "qc_verified", "shipped", "delivered", "complete",
-]);
+/** Human label for each production phase key (from TIMELINE_STEPS — canonical source). */
+const PRODUCTION_PHASE_LABEL: Record<string, string> = Object.fromEntries(
+  TIMELINE_STEPS.map((s) => [s.key, s.label])
+);
 
 export async function GET() {
   const ctx = await assertAdminTenant();
@@ -25,12 +23,13 @@ export async function GET() {
   const [ordersRes, clientsRes, invoicesRes, conceptsRes] = await Promise.all([
     admin
       .from("orders")
-      .select("id, stage, created_at, client_id, deposit_paid, balance_paid, production_choice")
+      .select("id, stage, created_at, client_id, deposit_paid, balance_paid, production_choice, tracking_number, supplier_user_id, production_file_url")
       .eq("tenant_id", tenantId),
     admin
       .from("clients")
       .select("id, name, sport, created_at")
       .eq("tenant_id", tenantId),
+    // total_amount is stored in dollars; multiply ×100 for cent-based display helpers
     admin
       .from("invoices")
       .select("total_amount, status, created_at")
@@ -47,10 +46,90 @@ export async function GET() {
   const invoices = invoicesRes.data ?? [];
   const concepts = conceptsRes.data ?? [];
 
+  const orderIds = orders.map((o) => o.id);
+
+  // ── Milestone signals: same data the workflow board resolves ──
+  // Fetched in parallel; each query uses .catch() so a missing
+  // table (migration not yet applied) degrades to empty maps.
+  const mockupCountMap    = new Map<string, number>();
+  const prodFilesCountMap = new Map<string, number>();
+  const fpStatsMap        = new Map<string, { total: number; client_approved: number }>();
+
+  if (orderIds.length > 0) {
+    await Promise.all([
+      admin
+        .from("order_mockups")
+        .select("order_id")
+        .in("order_id", orderIds)
+        .then(({ data }) => {
+          for (const m of data ?? []) {
+            mockupCountMap.set(m.order_id, (mockupCountMap.get(m.order_id) ?? 0) + 1);
+          }
+        })
+        .catch(() => { /* migration 025 not yet applied */ }),
+
+      admin
+        .from("order_files")
+        .select("order_id, label")
+        .in("order_id", orderIds)
+        .then(({ data }) => {
+          for (const f of data ?? []) {
+            if ((f.label ?? "").toLowerCase().includes("production")) {
+              prodFilesCountMap.set(f.order_id, (prodFilesCountMap.get(f.order_id) ?? 0) + 1);
+            }
+          }
+        })
+        .catch(() => {}),
+
+      admin
+        .from("first_piece_media")
+        .select("order_id, client_visible, client_approved")
+        .in("order_id", orderIds)
+        .then(({ data }) => {
+          for (const m of data ?? []) {
+            const s = fpStatsMap.get(m.order_id) ?? { total: 0, client_approved: 0 };
+            if (m.client_visible) s.total++;
+            if (m.client_approved === true) s.client_approved++;
+            fpStatsMap.set(m.order_id, s);
+          }
+        })
+        .catch(() => {}),
+    ]);
+  }
+
+  /**
+   * Canonical phase for an order — mirrors resolveTimeline() in the workflow board
+   * so the dashboard and board always agree on lifecycle position.
+   *
+   * Production orders: resolveTimeline() with full milestone signals.
+   * Creative orders:   normalized DB stage (resolveTimeline returns inProduction=false).
+   */
+  function computePhase(o: typeof orders[0]): string {
+    const productionChoice  = (o as Record<string, unknown>).production_choice as string | null ?? null;
+    const supplierUserId    = (o as Record<string, unknown>).supplier_user_id  as string | null ?? null;
+    const productionFileUrl = (o as Record<string, unknown>).production_file_url as string | null ?? null;
+    const trackingNumber    = (o as Record<string, unknown>).tracking_number   as string | null ?? null;
+
+    const derived = resolveTimeline({
+      stage:                   o.stage,
+      production_choice:       productionChoice,
+      deposit_paid:            o.deposit_paid,
+      balance_paid:            o.balance_paid,
+      tracking_number:         trackingNumber,
+      mockupUploaded:          (mockupCountMap.get(o.id) ?? 0) > 0,
+      productionFilesUploaded: (prodFilesCountMap.get(o.id) ?? 0) > 0 || !!productionFileUrl,
+      supplierAssigned:        !!supplierUserId,
+      firstPieceUploaded:      (fpStatsMap.get(o.id)?.total ?? 0) > 0,
+      firstPieceApproved:      (fpStatsMap.get(o.id)?.client_approved ?? 0) > 0,
+    });
+
+    if (!derived.inProduction) return normalizeStage(o.stage);
+    return stepForIndex(derived.currentIndex)?.key ?? "mockup_in_progress";
+  }
+
   // ── KPIs ──────────────────────────────────────────────────
   const totalOrders  = orders.length;
   const activeOrders = orders.filter((o) => !TERMINAL_STAGES.includes(o.stage as OrderStage)).length;
-  // total_amount is stored in dollars; multiply ×100 for cent-based display helpers
   const totalRevenue = invoices.reduce((n, i) => n + Math.round((i.total_amount ?? 0) * 100), 0);
   const totalClients = clients.length;
 
@@ -60,23 +139,16 @@ export async function GET() {
     ? Math.round((selectedConcepts / ordersWithConcepts) * 100)
     : null;
 
-  // ── Pipeline funnel (active only) ────────────────────────
-  // Orders where production_choice="production" but DB stage is still a creative
-  // stage are logically in Mockup — count them as mockup_in_progress so the
-  // dashboard pipeline groups match the admin order detail view.
-  const stageCounts = new Map<string, number>();
+  // ── Pipeline counts: keyed by canonical phase ─────────────
+  const phaseCounts = new Map<string, number>();
   for (const o of orders) {
     if (!TERMINAL_STAGES.includes(o.stage as OrderStage)) {
-      const productionChoice = (o as Record<string, unknown>).production_choice;
-      const effectiveStage =
-        productionChoice === "production" && !PRODUCTION_STAGE_NAMES.has(o.stage)
-          ? "mockup_in_progress"
-          : o.stage;
-      stageCounts.set(effectiveStage, (stageCounts.get(effectiveStage) ?? 0) + 1);
+      const phase = computePhase(o);
+      phaseCounts.set(phase, (phaseCounts.get(phase) ?? 0) + 1);
     }
   }
 
-  // ── Revenue by month (last 6 months) ────────────────────
+  // ── Revenue by month (last 6 months) ─────────────────────
   const now    = new Date();
   const months: { label: string; amount: number }[] = [];
   for (let i = 5; i >= 0; i--) {
@@ -103,20 +175,20 @@ export async function GET() {
     .sort((a, b) => b.orders - a.orders)
     .slice(0, 5);
 
-  // ── Recent orders ─────────────────────────────────────────
+  // ── Recent orders: enrich with canonical phase + label ────
   const clientMap = new Map(clients.map((c) => [c.id, c]));
   const recentOrders = [...orders]
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     .slice(0, 8)
     .map((o) => {
-      const productionChoice = (o as Record<string, unknown>).production_choice;
-      const effectiveStage =
-        productionChoice === "production" && !PRODUCTION_STAGE_NAMES.has(o.stage)
-          ? "mockup_in_progress"
-          : o.stage;
+      const phase       = computePhase(o);
+      // Production phase label from TIMELINE_STEPS; creative label from canonical stageLabel()
+      const phase_label = PRODUCTION_PHASE_LABEL[phase] ?? stageLabel(phase);
       return {
         id:          o.id,
-        stage:       effectiveStage,
+        stage:       o.stage,
+        phase,
+        phase_label,
         created_at:  o.created_at,
         client_name: clientMap.get(o.client_id)?.name ?? "—",
         sport:       clientMap.get(o.client_id)?.sport ?? null,
@@ -124,8 +196,8 @@ export async function GET() {
     });
 
   return NextResponse.json({
-    kpis: { totalOrders, activeOrders, totalRevenue, totalClients, approvalRate },
-    stageCounts: Object.fromEntries(stageCounts),
+    kpis:           { totalOrders, activeOrders, totalRevenue, totalClients, approvalRate },
+    phaseCounts:    Object.fromEntries(phaseCounts),
     revenueByMonth: months,
     topClients,
     recentOrders,

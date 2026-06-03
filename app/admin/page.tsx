@@ -25,6 +25,10 @@ interface TopClient { id: string; name: string; sport: string | null; orders: nu
 interface RecentOrder {
   id: string;
   stage: OrderStage;
+  /** Canonical workflow phase — matches resolveTimeline() used by the workflow board. */
+  phase: string;
+  /** Human label for the phase, pre-computed server-side from TIMELINE_STEPS / stageLabel(). */
+  phase_label: string;
   created_at: string;
   client_name: string;
   sport: string | null;
@@ -42,41 +46,32 @@ interface AdminOrder {
 
 // ── Constants ─────────────────────────────────────────────────
 
-const STAGE_LABELS: Record<string, string> = {
-  // Creative
-  onboarding:              "Brief Submitted",
-  design_confirmed:        "Concepts Generating",
-  creative_started:        "Creative Started",
-  creative_submitted:      "Creative Submitted",
-  payment_pending:         "Payment Pending",
-  paid:                    "Paid",
-  creative_in_review:      "Creative In Review",
-  revision_requested:      "Revision Requested",
-  creative_approved:       "Creative Approved",
-  ready_for_production:    "Ready for Production",
-  // Mockup
-  mockup_in_progress:      "Mockup In Progress",
-  mockup_review:           "Mockup Review",
-  mockup_revision:         "Mockup Revision",
-  // Production Files
-  production_files_prep:   "Production Files Prep",
-  sent_to_supplier:        "Sent to Supplier",
-  // First Piece
-  files_sent:              "Files Sent",
-  first_piece_in_progress: "First Piece",
-  first_piece_revision:    "First Piece Revision",
-  first_piece_review:      "First Piece Review",
-  // Bulk & QC
-  bulk_production:         "Bulk Production",
-  qc_verified:             "QC Verified",
-  // Fulfillment
-  shipped:                 "Shipped",
-  delivered:               "Delivered",
-  complete:                "Complete",
+// Badge colors keyed by canonical phase (matches TIMELINE_STEPS phase keys for
+// production orders; normalized stage keys for creative orders).
+const PHASE_COLOR: Record<string, string> = {
+  // Creative stages — amber/orange
+  creative_started:          "bg-amber-50 text-amber-700 border border-amber-200",
+  creative_submitted:        "bg-amber-50 text-amber-700 border border-amber-200",
+  payment_pending:           "bg-orange-50 text-orange-700 border border-orange-200",
+  paid:                      "bg-amber-50 text-amber-700 border border-amber-200",
+  creative_in_review:        "bg-amber-50 text-amber-700 border border-amber-200",
+  revision_requested:        "bg-orange-50 text-orange-700 border border-orange-200",
+  creative_approved:         "bg-amber-50 text-amber-700 border border-amber-200",
+  ready_for_production:      "bg-amber-50 text-amber-700 border border-amber-200",
+  // Production phase keys (TIMELINE_STEPS keys, not DB stage names)
+  mockup_in_progress:        "bg-blue-50 text-blue-700 border border-blue-200",
+  mockup_review:             "bg-blue-50 text-blue-700 border border-blue-200",
+  production_files:          "bg-indigo-50 text-indigo-700 border border-indigo-200",
+  first_piece_in_production: "bg-purple-50 text-purple-700 border border-purple-200",
+  first_piece_review:        "bg-purple-50 text-purple-800 border border-purple-300",
+  bulk_production:           "bg-teal-50 text-teal-700 border border-teal-200",
+  quality_check:             "bg-teal-50 text-teal-700 border border-teal-200",
+  shipped:                   "bg-cyan-50 text-cyan-700 border border-cyan-200",
+  delivered:                 "bg-green-50 text-green-700 border border-green-200",
 };
 
+// Colors for the All Orders table — keyed by raw DB stage (different API endpoint).
 const STAGE_COLOR: Record<string, string> = {
-  // Creative — amber
   onboarding:              "bg-amber-50 text-amber-700 border border-amber-200",
   design_confirmed:        "bg-amber-50 text-amber-700 border border-amber-200",
   creative_started:        "bg-amber-50 text-amber-700 border border-amber-200",
@@ -87,35 +82,32 @@ const STAGE_COLOR: Record<string, string> = {
   revision_requested:      "bg-orange-50 text-orange-700 border border-orange-200",
   creative_approved:       "bg-amber-50 text-amber-700 border border-amber-200",
   ready_for_production:    "bg-amber-50 text-amber-700 border border-amber-200",
-  // Mockup — blue
   mockup_in_progress:      "bg-blue-50 text-blue-700 border border-blue-200",
   mockup_review:           "bg-blue-50 text-blue-700 border border-blue-200",
   mockup_revision:         "bg-blue-50 text-blue-700 border border-blue-200",
-  // Production Files — indigo
   production_files_prep:   "bg-indigo-50 text-indigo-700 border border-indigo-200",
   sent_to_supplier:        "bg-indigo-50 text-indigo-700 border border-indigo-200",
-  // First Piece — purple
   files_sent:              "bg-purple-50 text-purple-700 border border-purple-200",
   first_piece_in_progress: "bg-purple-50 text-purple-700 border border-purple-200",
   first_piece_revision:    "bg-purple-50 text-purple-700 border border-purple-200",
   first_piece_review:      "bg-purple-50 text-purple-800 border border-purple-300",
-  // Bulk & QC — teal
   bulk_production:         "bg-teal-50 text-teal-700 border border-teal-200",
   qc_verified:             "bg-teal-50 text-teal-700 border border-teal-200",
-  // Fulfillment — green
   shipped:                 "bg-cyan-50 text-cyan-700 border border-cyan-200",
   delivered:               "bg-green-50 text-green-700 border border-green-200",
   complete:                "bg-green-100 text-green-800 border border-green-300",
 };
 
-// Pipeline groups — each group maps to one funnel row showing the combined count.
-const PIPELINE_GROUPS: { label: string; stages: string[] }[] = [
-  { label: "Creative",         stages: ["onboarding", "design_confirmed", "creative_started", "creative_submitted", "payment_pending", "paid", "creative_in_review", "revision_requested", "creative_approved", "ready_for_production"] },
-  { label: "Mockup",           stages: ["mockup_in_progress", "mockup_review", "mockup_revision"] },
-  { label: "Production Prep",  stages: ["production_files_prep", "sent_to_supplier"] },
-  { label: "First Piece",      stages: ["files_sent", "first_piece_in_progress", "first_piece_revision", "first_piece_review"] },
-  { label: "Bulk Production",  stages: ["bulk_production"] },
-  { label: "QC & Shipping",    stages: ["qc_verified", "shipped", "delivered"] },
+// Pipeline groups — keyed by canonical phase (TIMELINE_STEPS keys for production,
+// normalized stage keys for creative). Counts come from the dashboard API which
+// runs resolveTimeline() per order — same logic as the workflow board.
+const PIPELINE_GROUPS: { label: string; phases: string[] }[] = [
+  { label: "Creative",          phases: ["creative_started", "creative_submitted", "payment_pending", "paid", "creative_in_review", "revision_requested", "creative_approved", "ready_for_production"] },
+  { label: "Mockup",            phases: ["mockup_in_progress", "mockup_review"] },
+  { label: "Production Files",  phases: ["production_files"] },
+  { label: "First Piece",       phases: ["first_piece_in_production", "first_piece_review"] },
+  { label: "Bulk Production",   phases: ["bulk_production"] },
+  { label: "QC & Shipping",     phases: ["quality_check", "shipped", "delivered"] },
 ];
 
 // ── Helpers ───────────────────────────────────────────────────
@@ -181,7 +173,7 @@ export default function AdminPage() {
   const supabase    = supabaseRef.current;
 
   const [kpis, setKpis]                   = useState<KPIs | null>(null);
-  const [stageCounts, setStageCounts]     = useState<Record<string, number>>({});
+  const [phaseCounts, setPhaseCounts]     = useState<Record<string, number>>({});
   const [revenueByMonth, setRevenueByMonth] = useState<MonthRevenue[]>([]);
   const [topClients, setTopClients]       = useState<TopClient[]>([]);
   const [recentOrders, setRecentOrders]   = useState<RecentOrder[]>([]);
@@ -212,7 +204,7 @@ export default function AdminPage() {
       if (dashRes.ok) {
         const d = await dashRes.json();
         setKpis(d.kpis);
-        setStageCounts(d.stageCounts ?? {});
+        setPhaseCounts(d.phaseCounts ?? {});
         setRevenueByMonth(d.revenueByMonth ?? []);
         setTopClients(d.topClients ?? []);
         setRecentOrders(d.recentOrders ?? []);
@@ -236,7 +228,7 @@ export default function AdminPage() {
     return matchesStage && matchesSearch;
   });
 
-  const groupCounts = PIPELINE_GROUPS.map((g) => g.stages.reduce((n, s) => n + (stageCounts[s] ?? 0), 0));
+  const groupCounts = PIPELINE_GROUPS.map((g) => g.phases.reduce((n, p) => n + (phaseCounts[p] ?? 0), 0));
   const pipelineMax = Math.max(...groupCounts, 1);
 
   if (loading) {
@@ -372,8 +364,8 @@ export default function AdminPage() {
                       <p className="text-sm font-barlow font-medium text-brand-text truncate">{o.client_name}</p>
                       {o.sport && <p className="text-[10px] text-brand-muted capitalize">{o.sport}</p>}
                     </div>
-                    <span className={`flex-shrink-0 inline-block px-2.5 py-1 rounded-full text-xs font-display uppercase tracking-wider ${STAGE_COLOR[o.stage] ?? ""}`}>
-                      {STAGE_LABELS[o.stage] ?? stageLabel(o.stage)}
+                    <span className={`flex-shrink-0 inline-block px-2.5 py-1 rounded-full text-xs font-display uppercase tracking-wider ${PHASE_COLOR[o.phase] ?? ""}`}>
+                      {o.phase_label}
                     </span>
                     <p className="flex-shrink-0 text-xs text-brand-muted hidden sm:block">{fmtDate(o.created_at)}</p>
                     <span className="text-brand-muted text-xs">→</span>
@@ -405,8 +397,8 @@ export default function AdminPage() {
                 className="bg-brand-surface border border-brand-border rounded-lg px-4 py-2.5 text-brand-text font-barlow text-sm focus:outline-none focus:border-brand-primary transition-colors cursor-pointer"
               >
                 <option value="all">All Stages</option>
-                {Object.entries(STAGE_LABELS).map(([stage, label]) => (
-                  <option key={stage} value={stage}>{label}</option>
+                {Object.keys(STAGE_COLOR).map((stage) => (
+                  <option key={stage} value={stage}>{stageLabel(stage)}</option>
                 ))}
               </select>
             </div>
@@ -444,7 +436,7 @@ export default function AdminPage() {
                         <td className="px-5 py-4 text-brand-muted hidden sm:table-cell capitalize">{order.sport}</td>
                         <td className="px-5 py-4">
                           <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-display uppercase tracking-wider ${STAGE_COLOR[order.stage] ?? "bg-gray-800 text-gray-400"}`}>
-                            {STAGE_LABELS[order.stage] ?? stageLabel(order.stage)}
+                            {stageLabel(order.stage)}
                           </span>
                         </td>
                         <td className="px-5 py-4 text-brand-muted text-xs hidden md:table-cell">
