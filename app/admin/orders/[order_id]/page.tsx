@@ -10,7 +10,7 @@ import type { OrderStage } from "@/types/database";
 import { resolveTimeline, stepForIndex, TIMELINE_STEPS } from "@/lib/order-milestones";
 import type { SupplierWithPortfolio } from "@/app/api/admin/suppliers/route";
 import { formatCurrency, getPaymentThresholdInfo } from "@/lib/payments/thresholds";
-import { PRODUCTION_PRICING_TIERS, calcProductionPricing, formatCents } from "@/lib/payments/supplier-pricing";
+import { PRODUCTION_PRICING_TIERS, calcProductionPricing, formatCents, stripMarkup } from "@/lib/payments/supplier-pricing";
 import type { ProductionPricingTier } from "@/lib/payments/supplier-pricing";
 
 interface MediaItem {
@@ -161,6 +161,9 @@ interface OrderDetail {
   production_total_cents:   number | null;
   production_deposit_cents: number | null;
   production_balance_cents: number | null;
+  // Supplier payout tracking (migration 028)
+  supplier_deposit_paid_at: string | null;
+  supplier_balance_paid_at: string | null;
 }
 
 function DetailRow({ label, value }: { label: string; value: string | null | undefined }) {
@@ -280,6 +283,9 @@ export default function AdminOrderPage() {
   const [pricingSaving, setPricingSaving] = useState(false);
   const [pricingSaved, setPricingSaved]   = useState(false);
   const [pricingError, setPricingError]   = useState<string | null>(null);
+
+  // Supplier payout state
+  const [payoutSaving, setPayoutSaving]   = useState<"deposit" | "balance" | null>(null);
   const [orderFiles, setOrderFiles] = useState<OrderFile[]>([]);
   const [fileLabel, setFileLabel] = useState("Print-Ready Files");
   const [fileUploading, setFileUploading] = useState(false);
@@ -492,6 +498,29 @@ export default function AdminOrderPage() {
       setPricingError(e instanceof Error ? e.message : "Network error");
     } finally {
       setPricingSaving(false);
+    }
+  }
+
+  async function markSupplierPayout(which: "deposit" | "balance") {
+    if (!order) return;
+    setPayoutSaving(which);
+    try {
+      const res = await fetch(`/api/admin/orders/${order_id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "supplier_payout", which }),
+      });
+      const json = await res.json() as { paid_at?: string; error?: string };
+      if (res.ok && json.paid_at) {
+        setOrder((prev) => prev ? {
+          ...prev,
+          ...(which === "deposit"
+            ? { supplier_deposit_paid_at: json.paid_at! }
+            : { supplier_balance_paid_at: json.paid_at! }),
+        } : prev);
+      }
+    } finally {
+      setPayoutSaving(null);
     }
   }
 
@@ -1271,6 +1300,107 @@ export default function AdminOrderPage() {
                 </div>
               );
             })}
+          </div>
+          )}
+
+          {/* ── Supplier Payout — visible when production pricing is set ─────── */}
+          {atOrPastWs("production_files") && !!order.production_total_cents && (
+          <div className="bg-brand-surface border border-brand-border rounded-xl p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-display uppercase tracking-widest text-brand-primary">Supplier Payout</p>
+              <span className="text-[10px] font-barlow text-brand-muted">Grace margin: 10%</span>
+            </div>
+
+            {/* Payout breakdown */}
+            <div className="bg-brand-bg border border-brand-border rounded-lg px-4 py-3 space-y-2">
+              <div className="flex items-center justify-between text-[10px] font-display uppercase tracking-wider text-brand-muted">
+                <span>Client Total</span>
+                <span>{formatCents(order.production_total_cents)}</span>
+              </div>
+              <div className="flex items-center justify-between text-[10px] font-display uppercase tracking-wider text-brand-muted">
+                <span>Grace Margin (10%)</span>
+                <span>− {formatCents(Math.round(order.production_total_cents - stripMarkup(order.production_total_cents / 100) * 100))}</span>
+              </div>
+              <div className="border-t border-brand-border pt-2 flex items-center justify-between text-sm font-display font-bold text-brand-text">
+                <span>Supplier Total</span>
+                <span>{formatCents(Math.round(stripMarkup(order.production_total_cents / 100) * 100))}</span>
+              </div>
+            </div>
+
+            {/* Two payout rows */}
+            <div className="space-y-3">
+              {/* Deposit payout */}
+              {(() => {
+                const supplierDepositCents = Math.round(stripMarkup(order.production_deposit_cents! / 100) * 100);
+                const paid = !!order.supplier_deposit_paid_at;
+                return (
+                  <div className={`flex items-center justify-between gap-4 px-4 py-3 rounded-lg border ${
+                    paid ? "border-green-500/30 bg-green-500/5" : "border-brand-border bg-brand-bg"
+                  }`}>
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-display uppercase tracking-wider text-brand-muted">Deposit Payout</p>
+                      <p className="text-sm font-display font-bold text-brand-text">{formatCents(supplierDepositCents)}</p>
+                      <p className="text-[10px] font-barlow text-brand-muted">Pay when sending order to production</p>
+                      {paid && (
+                        <p className="text-[10px] font-barlow text-green-400 mt-0.5">
+                          Paid {new Date(order.supplier_deposit_paid_at!).toLocaleDateString()}
+                        </p>
+                      )}
+                    </div>
+                    {paid ? (
+                      <span className="flex-shrink-0 text-[10px] font-display uppercase tracking-wider px-2.5 py-1 rounded-full border border-green-500/30 text-green-400">
+                        Paid ✓
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => markSupplierPayout("deposit")}
+                        disabled={payoutSaving === "deposit"}
+                        className="flex-shrink-0 px-3 py-2 rounded-lg font-display font-bold text-xs uppercase tracking-widest bg-brand-primary/10 text-brand-primary border border-brand-primary/30 hover:bg-brand-primary/20 disabled:opacity-40 transition-all"
+                      >
+                        {payoutSaving === "deposit" ? "Saving…" : "Mark Paid →"}
+                      </button>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* Balance payout */}
+              {(() => {
+                const supplierBalanceCents = Math.round(stripMarkup(order.production_balance_cents! / 100) * 100);
+                const paid = !!order.supplier_balance_paid_at;
+                return (
+                  <div className={`flex items-center justify-between gap-4 px-4 py-3 rounded-lg border ${
+                    paid ? "border-green-500/30 bg-green-500/5" : "border-brand-border bg-brand-bg"
+                  }`}>
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-display uppercase tracking-wider text-brand-muted">Balance Payout</p>
+                      <p className="text-sm font-display font-bold text-brand-text">{formatCents(supplierBalanceCents)}</p>
+                      <p className="text-[10px] font-barlow text-brand-muted">Pay before supplier ships the order</p>
+                      {paid && (
+                        <p className="text-[10px] font-barlow text-green-400 mt-0.5">
+                          Paid {new Date(order.supplier_balance_paid_at!).toLocaleDateString()}
+                        </p>
+                      )}
+                    </div>
+                    {paid ? (
+                      <span className="flex-shrink-0 text-[10px] font-display uppercase tracking-wider px-2.5 py-1 rounded-full border border-green-500/30 text-green-400">
+                        Paid ✓
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => markSupplierPayout("balance")}
+                        disabled={payoutSaving === "balance"}
+                        className="flex-shrink-0 px-3 py-2 rounded-lg font-display font-bold text-xs uppercase tracking-widest bg-brand-primary/10 text-brand-primary border border-brand-primary/30 hover:bg-brand-primary/20 disabled:opacity-40 transition-all"
+                      >
+                        {payoutSaving === "balance" ? "Saving…" : "Mark Paid →"}
+                      </button>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
           </div>
           )}
 

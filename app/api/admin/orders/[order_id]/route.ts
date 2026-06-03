@@ -161,8 +161,26 @@ export async function GET(
     // Migration 027 not yet applied — skip gracefully
   }
 
+  // Migration 028: supplier payout timestamps — graceful fallback.
+  let supplierPayouts: {
+    supplier_deposit_paid_at: string | null;
+    supplier_balance_paid_at: string | null;
+  } = { supplier_deposit_paid_at: null, supplier_balance_paid_at: null };
+  try {
+    const { data: payoutRow } = await serviceSupabase
+      .from("orders")
+      .select("supplier_deposit_paid_at, supplier_balance_paid_at")
+      .eq("id", order_id)
+      .single();
+    if (payoutRow) {
+      supplierPayouts = payoutRow as typeof supplierPayouts;
+    }
+  } catch {
+    // Migration 028 not yet applied — skip gracefully
+  }
+
   return NextResponse.json({
-    order: { ...order, ...productionPricing },
+    order: { ...order, ...productionPricing, ...supplierPayouts },
     brief:     briefRow   ?? null,
     concepts:  concepts   ?? [],
     media:     media      ?? [],
@@ -386,6 +404,38 @@ export async function PATCH(
     } catch {
       return NextResponse.json({ error: "Production pricing columns not available. Apply migration 027." }, { status: 500 });
     }
+  }
+
+  // ── Supplier payout ───────────────────────────────────────────────────
+  if (action === "supplier_payout") {
+    const { which } = body as { action: string; which: "deposit" | "balance" };
+    if (which !== "deposit" && which !== "balance") {
+      return NextResponse.json({ error: 'which must be "deposit" or "balance"' }, { status: 400 });
+    }
+
+    const col = which === "deposit" ? "supplier_deposit_paid_at" : "supplier_balance_paid_at";
+    const now = new Date().toISOString();
+
+    try {
+      const { error } = await serviceSupabase
+        .from("orders")
+        .update({ [col]: now })
+        .eq("id", order_id);
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch {
+      return NextResponse.json({ error: "Supplier payout columns not available. Apply migration 028." }, { status: 500 });
+    }
+
+    const label = which === "deposit" ? "deposit" : "balance";
+    await logActivity({
+      tenantId: ctx.tenant.id, orderId: order_id,
+      actorUserId: ctx.userId, actorRole: "admin",
+      eventType: "stage_changed",
+      eventMessage: `Supplier ${label} payout marked as paid to production partner.`,
+      metadata: { payout: which, paid_at: now },
+    });
+
+    return NextResponse.json({ success: true, paid_at: now });
   }
 
   // ── Supplier assignment ────────────────────────────────────────────────
