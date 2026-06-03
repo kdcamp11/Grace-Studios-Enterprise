@@ -713,7 +713,7 @@ GARMENT TYPE: Premium athletic windbreaker jacket — zip-front nylon shell. Vin
 
 SILHOUETTE: Relaxed, slightly boxy. Hip length or below. Straight drop from shoulders. No waist cinching. Slightly cropped proportions with fashion-forward elongated feel.
 
-MATERIAL: Smooth woven nylon shell. Subtle sheen, soft light reflections, natural crinkle in folds. Slightly matte windbreaker surface — like vintage Nike Team or Adidas Team warmup fabric. Real and wearable, not futuristic.
+MATERIAL: Smooth woven nylon shell. Subtle sheen, soft light reflections, natural crinkle in folds. Slightly matte windbreaker surface — premium vintage athletic warmup jacket quality. Real and wearable, not futuristic.
 
 AVOID IN THIS RENDER: skinny fit, techwear look, futuristic paneling, compression styling, ribbed cuffs, elastic ankle cuffs, AI-looking textures.
 
@@ -734,7 +734,7 @@ GARMENT TYPE: Premium athletic wide-leg nylon trousers — windbreaker shell fab
 
 SILHOUETTE: Relaxed and wide from hip to floor. Full-volume nylon shape. Natural stacking and fabric collapse at ankle. Long and flowing — fashion-forward elongated proportions.
 
-MATERIAL: Smooth woven nylon shell. Subtle sheen, soft light reflections, natural drape in folds. Slightly matte windbreaker surface — vintage Nike Team / Adidas Team warmup fabric quality. Real and wearable, not futuristic.
+MATERIAL: Smooth woven nylon shell. Subtle sheen, soft light reflections, natural drape in folds. Slightly matte windbreaker surface — premium vintage athletic warmup trouser quality. Real and wearable, not futuristic.
 
 AVOID IN THIS RENDER: tapered legs, jogger silhouette, slim fit, techwear aesthetics, elastic ankle cuffs, ribbed ankle bands, futuristic paneling, AI-looking textures.
 
@@ -1002,6 +1002,9 @@ function buildGarmentPrompt(
       : `CRITICAL — ABSOLUTELY ZERO on the shorts: text, numbers, logos, brand marks, wordmarks, watermarks, graphic overlays, or symbols of any kind. All panels must be completely clean fabric.`;
 
   return [
+    // ── ABSOLUTE BRAND PROHIBITION — must be first so the model sees it before all else ──
+    `⚠️ ABSOLUTE PROHIBITION — NO COMMERCIAL BRAND LOGOS ⚠️ Do NOT render, imply, or replicate any commercial sportswear brand mark, wordmark, icon, or symbol of any kind. This includes but is not limited to: Nike swoosh, Adidas three-stripe logo or trefoil, Jordan jumpman silhouette, Under Armour UA logo, Puma cat, Champion C, New Balance N, Lululemon logo, Reebok vector, Asics stripes, or any shape or motif that resembles or is associated with a commercial athletic brand. The ONLY logos or marks permitted on the garment are: (1) the client's own uploaded team logo if provided, and (2) the team name wordmark text as specified. Any other mark is FORBIDDEN.`,
+
     // ── CLIENT VISION — injected first so it dominates the model's attention ──
     // This must appear before everything else. LLM/image models weight early
     // tokens more heavily; vision notes placed at the top ensure specific

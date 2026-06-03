@@ -376,7 +376,7 @@ export default function ReferencePage() {
                   type="text"
                   value={sponsorText}
                   onChange={(e) => setSponsorText(e.target.value)}
-                  placeholder="e.g. Powered by Nike"
+                  placeholder="e.g. Powered by Grace Athletics"
                   className="w-full bg-brand-surface border border-brand-border rounded-lg px-4 py-3 text-brand-text font-barlow text-sm placeholder-brand-muted focus:outline-none focus:border-brand-primary transition-colors"
                 />
               </div>
