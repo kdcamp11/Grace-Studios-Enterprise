@@ -58,33 +58,56 @@ export async function bypassDesignDeposit(
 ): Promise<string | null> {
   const admin = createAdminClient();
 
-  const { data: design } = await admin
+  const { data: design, error: designErr } = await admin
     .from("designs")
     .select("tenant_id, client_id, kind")
     .eq("id", designId)
     .single();
 
-  if (!design) return null;
+  if (!design) {
+    console.error("[test-bypass] design not found:", designId, designErr?.message);
+    return null;
+  }
 
   const effectiveTenantId = tenantId ?? design.tenant_id;
 
-  const { data: order, error } = await admin
+  // If an order already exists for this design (e.g. partial previous bypass), reuse it
+  const { data: existing } = await admin
     .from("orders")
-    .insert({
-      tenant_id:       effectiveTenantId,
-      client_id:       design.client_id,
-      stage:           "creative_in_review",
-      design_fee_paid: true,
-      concept_source:  design.kind === "upload" || design.kind === "builder"
-                         ? "client_provided"
-                         : null,
-    })
     .select("id")
-    .single();
+    .eq("tenant_id", effectiveTenantId)
+    .eq("client_id", design.client_id)
+    .not("stage", "eq", "onboarding")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
-  if (error || !order) return null;
+  let orderId: string;
 
-  const orderId = order.id;
+  if (existing?.id) {
+    orderId = existing.id;
+    await admin.from("orders").update({ design_fee_paid: true }).eq("id", orderId);
+  } else {
+    const { data: order, error } = await admin
+      .from("orders")
+      .insert({
+        tenant_id:       effectiveTenantId,
+        client_id:       design.client_id,
+        stage:           "creative_in_review",
+        design_fee_paid: true,
+        concept_source:  design.kind === "upload" || design.kind === "builder"
+                           ? "client_provided"
+                           : null,
+      })
+      .select("id")
+      .single();
+
+    if (error || !order) {
+      console.error("[test-bypass] order insert failed:", error?.message, error?.details);
+      return null;
+    }
+    orderId = order.id;
+  }
 
   await Promise.all([
     admin.from("briefs").update({ order_id: orderId }).eq("design_id", designId),
