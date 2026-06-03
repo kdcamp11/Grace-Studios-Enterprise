@@ -53,6 +53,8 @@ interface Order {
   production_deposit_cents?: number | null;
   production_balance_cents?: number | null;
   production_quantity?:      number | null;
+  deposit_paid?: boolean | null;
+  balance_paid?: boolean | null;
 }
 
 interface SavedDesign {
@@ -539,10 +541,19 @@ function ProductionCard({ order, index, onOpen }: { order: Order; index: number;
             <span className="text-[10px] font-barlow text-brand-muted">
               {fmt(order.production_total_cents)} total
             </span>
-            <span className="text-[10px] text-brand-border">·</span>
-            <span className="text-[10px] font-barlow text-amber-400/80">
-              {fmt(order.production_deposit_cents)} deposit due
-            </span>
+            {order.deposit_paid ? (
+              <>
+                <span className="text-[10px] text-brand-border">·</span>
+                <span className="text-[10px] font-barlow text-green-400/80">Deposit paid</span>
+              </>
+            ) : order.production_deposit_cents ? (
+              <>
+                <span className="text-[10px] text-brand-border">·</span>
+                <span className="text-[10px] font-barlow text-amber-400/80">
+                  {fmt(order.production_deposit_cents)} deposit due
+                </span>
+              </>
+            ) : null}
           </div>
         ) : null}
         <p className="text-[11px] text-brand-muted font-barlow">

@@ -331,12 +331,14 @@ function TrackerPageContent() {
   // A step can only be complete when every prior dependency is satisfied, so the
   // timeline can never show a later stage done while an earlier one is missing.
   //
-  // Supplier assignment is inferred from the stage: if the order has reached
-  // sent_to_supplier or beyond, the admin must have assigned a supplier to advance.
+  // Once the order reaches sent_to_supplier or beyond, production files were
+  // prepared and a supplier was assigned — otherwise the admin couldn't advance.
+  // We infer both gates from stage so the client timeline advances correctly.
   const SUPPLIER_STAGES: ReadonlySet<string> = new Set([
     "sent_to_supplier", "files_sent", "first_piece_in_progress", "first_piece_review",
     "first_piece_revision", "bulk_production", "qc_verified", "shipped", "delivered", "complete",
   ]);
+  const inSupplierStage = SUPPLIER_STAGES.has(normalizeStage(order.stage));
   const timeline = deriveTimeline({
     stage:               order.stage,
     production_choice:   order.production_choice,
@@ -346,7 +348,9 @@ function TrackerPageContent() {
     mockups:             order.mockups,
     media:               order.media,
     files:               order.files,
-    supplier_user_id:    SUPPLIER_STAGES.has(normalizeStage(order.stage)) ? "assigned" : null,
+    // Infer from stage: admin couldn't reach sent_to_supplier without production files
+    production_file_url: inSupplierStage ? "stage-inferred" : undefined,
+    supplier_user_id:    inSupplierStage ? "assigned" : null,
   });
   const { steps, currentIndex, milestones } = timeline;
 
@@ -461,6 +465,33 @@ function TrackerPageContent() {
             const inv = order.invoice!;
             const needsDeposit = currentIndex === 2 && !milestones.firstPaymentPaid;
             const needsBalance = currentIndex === 6 && milestones.qcComplete && !milestones.finalPaymentPaid;
+
+            // When the client just returned from Stripe (paymentResult=success) but the
+            // webhook hasn't written to the DB yet, show a confirmation card so they don't
+            // see a still-active payment button. The polling loop will update the real state.
+            if ((needsDeposit || needsBalance) && paymentResult === "success") {
+              const confirmLabel = needsDeposit
+                ? "First Production Payment Received"
+                : "Final Production Payment Received";
+              return (
+                <div className="border border-green-400/40 bg-green-400/5 rounded-xl p-5">
+                  <div className="flex items-start gap-4">
+                    <div className="w-9 h-9 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="font-display font-bold uppercase tracking-wide text-sm text-green-400">{confirmLabel}</p>
+                      <p className="text-xs text-brand-muted font-barlow mt-1 leading-relaxed">
+                        No additional payment is required at this time. Your order has moved into production.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+
             if (!needsDeposit && !needsBalance) return null;
             const isPaid = inv.status === "paid";
             if (isPaid) return null;

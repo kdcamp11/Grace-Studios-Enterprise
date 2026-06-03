@@ -293,21 +293,27 @@ async function refreshInvoiceStatus(
     newStatus = "pending_payment";
   }
 
-  console.log(`[stripe webhook] invoice ${invoiceId} status: ${invoice.status} → ${newStatus} (paid=${paid}, total=${invoice.total_amount}, deposit=${invoice.deposit_amount})`);
+  const paymentType = paid >= invoice.total_amount ? "full" : paid >= invoice.deposit_amount ? "deposit" : "partial";
+  console.log(`[stripe webhook] invoice ${invoiceId}: type=${paymentType} status=${invoice.status} → ${newStatus} (paid=${paid}, total=${invoice.total_amount}, deposit=${invoice.deposit_amount})`);
 
-  await admin.from("invoices").update({ status: newStatus }).eq("id", invoiceId);
+  const { error: invUpdateErr } = await admin.from("invoices").update({ status: newStatus }).eq("id", invoiceId);
+  if (invUpdateErr) console.error("[stripe webhook] invoice update failed:", invUpdateErr);
 
   // Update payment flags on orders so milestone signals stay in sync
   if (newStatus === "paid") {
-    await admin
+    const { error: ordUpdateErr } = await admin
       .from("orders")
       .update({ deposit_paid: true, balance_paid: true })
       .eq("id", orderId);
+    if (ordUpdateErr) console.error("[stripe webhook] order payment flags update failed:", ordUpdateErr);
+    else console.log(`[stripe webhook] order ${orderId}: deposit_paid=true balance_paid=true`);
   } else if (newStatus === "partially_paid") {
-    await admin
+    const { error: ordUpdateErr } = await admin
       .from("orders")
       .update({ deposit_paid: true })
       .eq("id", orderId);
+    if (ordUpdateErr) console.error("[stripe webhook] order deposit_paid update failed:", ordUpdateErr);
+    else console.log(`[stripe webhook] order ${orderId}: deposit_paid=true`);
   }
 
   // Auto-advance order stage based on the payment milestone just reached.
@@ -342,8 +348,10 @@ async function refreshInvoiceStatus(
       }
 
       if (nextStage) {
-        console.log(`[stripe webhook] advancing order ${orderId}: ${ord.stage} → ${nextStage}`);
-        await admin.from("orders").update({ stage: nextStage }).eq("id", orderId);
+        console.log(`[stripe webhook] advancing order ${orderId}: stage ${ord.stage} → ${nextStage}`);
+        const { error: stageErr } = await admin.from("orders").update({ stage: nextStage }).eq("id", orderId);
+        if (stageErr) console.error("[stripe webhook] stage update failed:", stageErr);
+        else console.log(`[stripe webhook] order ${orderId}: stage updated to ${nextStage}`);
         await admin.from("stage_log").insert({
           order_id:   orderId,
           tenant_id:  ord.tenant_id,
