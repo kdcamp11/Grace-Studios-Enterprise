@@ -3,6 +3,7 @@ import { stripe } from "@/lib/payments/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { planForPriceId } from "@/lib/payments/plans";
 import { createSupplierTransfer } from "@/lib/payments/supplier-transfer";
+import { createDesignerTransfer } from "@/lib/payments/designer-transfer";
 import type Stripe from "stripe";
 
 async function createConnectTransfer(
@@ -82,6 +83,8 @@ export async function POST(req: NextRequest) {
       const session = event.data.object as Stripe.Checkout.Session;
       if (session.mode === "subscription") {
         await handleSubscriptionCheckoutCompleted(session);
+      } else if (session.metadata?.payment_type === "mockup_design_fee") {
+        await handleMockupDesignFeeCompleted(session);
       } else if (session.metadata?.payment_type === "design_deposit") {
         await handleDesignDepositCompleted(session);
       } else {
@@ -374,6 +377,46 @@ async function refreshInvoiceStatus(
       }
     }
   }
+}
+
+async function handleMockupDesignFeeCompleted(session: Stripe.Checkout.Session) {
+  const orderId  = session.metadata?.order_id;
+  const tenantId = session.metadata?.tenant_id;
+  if (!orderId) {
+    console.error("[stripe webhook] mockup_design_fee: missing order_id");
+    return;
+  }
+
+  const admin = createAdminClient();
+  const paymentIntentId = typeof session.payment_intent === "string"
+    ? session.payment_intent
+    : session.payment_intent?.id ?? null;
+
+  // Mark fee paid and advance stage
+  await admin
+    .from("orders")
+    .update({ mockup_fee_paid: true, stage: "production_files_prep" })
+    .eq("id", orderId);
+
+  // Log stage transition
+  await admin.from("stage_log").insert({
+    order_id:   orderId,
+    tenant_id:  tenantId ?? null,
+    from_stage: "mockup_review",
+    to_stage:   "production_files_prep",
+    changed_by: "system",
+    note:       "Mockup design fee paid — advancing to production files",
+  }).catch(() => {});
+
+  // Pay the designer 90%
+  if (paymentIntentId) {
+    const amountCents = session.amount_total ?? 0;
+    await createDesignerTransfer(orderId, amountCents, paymentIntentId, admin).catch((err) =>
+      console.error("[stripe webhook] designer transfer failed:", err)
+    );
+  }
+
+  console.log(`[stripe webhook] mockup_design_fee completed: order=${orderId}`);
 }
 
 async function handleDesignDepositCompleted(session: Stripe.Checkout.Session) {

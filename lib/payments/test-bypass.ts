@@ -134,3 +134,36 @@ export async function bypassDesignDeposit(
 
   return `${appUrl}/designs/${designId}/activated`;
 }
+
+/**
+ * Bypass for the mockup design fee payment.
+ * Marks the order as mockup_fee_paid, advances stage to production_files_prep.
+ */
+export async function bypassMockupFee(
+  orderId: string,
+  appUrl: string,
+): Promise<string> {
+  const admin = createAdminClient();
+
+  const { data: order } = await admin
+    .from("orders")
+    .select("tenant_id, stage")
+    .eq("id", orderId)
+    .single();
+
+  await admin
+    .from("orders")
+    .update({ mockup_fee_paid: true, stage: "production_files_prep" })
+    .eq("id", orderId);
+
+  await admin.from("stage_log").insert({
+    order_id:   orderId,
+    tenant_id:  order?.tenant_id ?? null,
+    from_stage: order?.stage ?? "mockup_review",
+    to_stage:   "production_files_prep",
+    changed_by: "system",
+    note:       "Mockup design fee bypassed — test user / zero fee",
+  }).catch(() => {});
+
+  return `${appUrl}/orders/${orderId}/tracker?mockup_fee=paid`;
+}

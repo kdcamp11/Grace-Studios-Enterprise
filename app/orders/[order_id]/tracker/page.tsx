@@ -181,6 +181,7 @@ interface OrderData {
   deposit_paid: boolean | null;
   balance_paid: boolean | null;
   invoice: InvoiceSummary | null;
+  mockup_fee_paid: boolean;
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -201,7 +202,8 @@ function TrackerPageContent() {
   const supabase     = supabaseRef.current;
   const tenant       = useTenant();
 
-  const paymentResult = searchParams.get("payment");
+  const paymentResult  = searchParams.get("payment");
+  const mockupFeePaid  = searchParams.get("mockup_fee") === "paid";
 
   const [order, setOrder]             = useState<OrderData | null>(null);
   const [loading, setLoading]         = useState(true);
@@ -287,6 +289,31 @@ function TrackerPageContent() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paymentResult, order_id]);
 
+  // After mockup design fee Stripe redirect, poll until stage advances
+  useEffect(() => {
+    if (!mockupFeePaid) return;
+    let stopped = false;
+    let attempt = 0;
+    const MAX_ATTEMPTS = 8;
+    async function poll() {
+      if (stopped) return;
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`/api/portal/order-detail?order_id=${order_id}`, {
+        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
+      });
+      if (stopped || !res.ok) return;
+      const { order: o } = await res.json() as { order: OrderData };
+      if (!o || stopped) return;
+      setOrder({ ...o, stage: o.stage as OrderStage, mockups: o.mockups ?? [], mockup_revision_used: o.mockup_revision_used ?? false });
+      if (o.mockup_fee_paid) return; // stop polling once paid
+      attempt++;
+      if (attempt < MAX_ATTEMPTS) setTimeout(poll, 3000);
+    }
+    const initial = setTimeout(poll, 1500);
+    return () => { stopped = true; clearTimeout(initial); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mockupFeePaid, order_id]);
+
   async function signOut() {
     await supabase.auth.signOut();
     router.replace("/login");
@@ -324,6 +351,21 @@ function TrackerPageContent() {
       setMockupReviewDone(true);
     }
     setMockupSubmitting(false);
+  }
+
+  async function startMockupCheckout() {
+    setMockupSubmitting(true);
+    try {
+      const res = await fetch(`/api/orders/${order_id}/mockup-checkout`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) {
+        setMockupSubmitting(false);
+        return;
+      }
+      window.location.href = data.url;
+    } catch {
+      setMockupSubmitting(false);
+    }
   }
 
   // ─── Loading / error states ────────────────────────────────────────────────
@@ -689,13 +731,13 @@ function TrackerPageContent() {
                     <div className="space-y-3">
                       <p className="text-xs font-barlow text-brand-muted">
                         {mockupAction === "approve"
-                          ? "Approve this mockup and move into production?"
+                          ? "Approve this mockup and pay the design fee to move into production."
                           : "Request a revision — your designer will update the mockup."}
                       </p>
                       <div className="flex gap-2">
                         <button
                           type="button"
-                          onClick={() => submitMockupReview(mockupAction)}
+                          onClick={() => mockupAction === "approve" ? startMockupCheckout() : submitMockupReview(mockupAction)}
                           disabled={mockupSubmitting}
                           className={`flex-1 py-3 rounded-lg font-display font-bold text-xs uppercase tracking-widest disabled:opacity-40 transition-all ${
                             mockupAction === "approve"
@@ -703,7 +745,11 @@ function TrackerPageContent() {
                               : "bg-amber-500/20 text-amber-400 border border-amber-400/40 hover:bg-amber-500/30"
                           }`}
                         >
-                          {mockupSubmitting ? "Submitting…" : mockupAction === "approve" ? "Confirm Approval" : "Confirm Revision Request"}
+                          {mockupSubmitting
+                            ? (mockupAction === "approve" ? "Redirecting…" : "Submitting…")
+                            : mockupAction === "approve"
+                              ? `Pay & Approve${tenant.design_fee > 0 ? ` — $${tenant.design_fee.toFixed(0)}` : ""}`
+                              : "Confirm Revision Request"}
                         </button>
                         <button
                           type="button"
