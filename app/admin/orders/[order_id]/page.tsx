@@ -381,17 +381,17 @@ export default function AdminOrderPage() {
     });
   }, [supabase, order_id, router]);
 
-  async function updateStage(newStage: OrderStage) {
-    if (!order || newStage === order.stage) return;
+  async function updateStage(newStage: OrderStage, force?: boolean) {
+    if (!order) return;
     setStageSaving(true);
     setStageError(null);
     try {
       const res = await fetch(`/api/admin/orders/${order_id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "stage", stage: newStage, from_stage: order.stage }),
+        body: JSON.stringify({ action: "stage", stage: newStage, from_stage: order.stage, ...(force ? { force: true } : {}) }),
       });
-      const json = await res.json() as { error?: string; message?: string };
+      const json = await res.json() as { error?: string; message?: string; already_at_stage?: boolean };
       if (!res.ok) {
         setStageError(json.error ?? json.message ?? `Stage update failed (${res.status})`);
       } else {
@@ -1998,7 +1998,7 @@ export default function AdminOrderPage() {
               {/* CTA */}
               <button
                 type="button"
-                onClick={() => updateStage(action.stage)}
+                onClick={() => updateStage(action.stage, true)}
                 disabled={stageSaving || blocked}
                 className={`flex-shrink-0 px-6 py-3 rounded-xl font-display font-bold text-sm uppercase tracking-widest transition-all ${
                   blocked
