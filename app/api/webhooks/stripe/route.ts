@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/payments/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { planForPriceId } from "@/lib/payments/plans";
+import { createSupplierTransfer } from "@/lib/payments/supplier-transfer";
 import type Stripe from "stripe";
 
 async function createConnectTransfer(
@@ -51,6 +52,7 @@ async function createConnectTransfer(
   });
 }
 
+
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
@@ -99,6 +101,9 @@ export async function POST(req: NextRequest) {
       break;
     case "invoice.payment_failed":
       await handleInvoicePaymentFailed(event.data.object as Stripe.Invoice);
+      break;
+    case "account.updated":
+      await handleConnectAccountUpdated(event.data.object as Stripe.Account);
       break;
   }
 
@@ -261,6 +266,12 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   // Auto-transfer net to tenant's Connect account if configured
   await createConnectTransfer(payment.tenant_id, Number(payment.amount), paymentIntentId, admin).catch(
     (err) => console.error("[stripe webhook] connect transfer failed:", err)
+  );
+
+  // Automatically pay the supplier their 90% cut via Stripe Connect
+  const isDeposit = session.metadata?.pay_deposit === "true";
+  await createSupplierTransfer(payment.order_id, Number(payment.amount), paymentIntentId, isDeposit, admin).catch(
+    (err) => console.error("[stripe webhook] supplier transfer failed:", err)
   );
 }
 
@@ -520,6 +531,18 @@ async function handleDesignDepositFromOrder(
       (err) => console.error("[stripe webhook] design deposit connect transfer failed:", err),
     );
   }
+}
+
+async function handleConnectAccountUpdated(account: Stripe.Account) {
+  if (!account.charges_enabled) return;
+
+  const admin = createAdminClient();
+  await admin
+    .from("profiles")
+    .update({ stripe_account_onboarded: true })
+    .eq("stripe_account_id", account.id);
+
+  console.log(`[stripe webhook] supplier account onboarded: ${account.id}`);
 }
 
 // Export for reuse in admin route

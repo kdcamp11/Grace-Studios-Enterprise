@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createServerClient } from "@/lib/supabase/server";
 import { stripe } from "@/lib/payments/stripe";
+import { createSupplierTransfer } from "@/lib/payments/supplier-transfer";
 
 export async function POST(
   req: NextRequest,
@@ -71,6 +72,12 @@ export async function POST(
 
       // Recompute invoice status and advance order stage (same logic as webhook)
       await processInvoice(payment.invoice_id as string, payment.order_id as string, admin);
+
+      // Automatically pay supplier their 90% cut (idempotent — skips if already paid)
+      const isDeposit = session.metadata?.pay_deposit === "true";
+      await createSupplierTransfer(payment.order_id as string, Number(payment.amount), paymentIntentId, isDeposit, admin).catch(
+        (err) => console.error("[sync-payment] supplier transfer failed:", err)
+      );
 
       synced = true;
     } catch (err) {

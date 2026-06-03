@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { getProfile } from "@/lib/profile";
 import TenantLogo from "@/components/TenantLogo";
@@ -18,13 +18,16 @@ interface SupplierProfile {
   enabled_sports: string[];
   enabled_products: string[];
   email: string;
+  stripe_account_id: string | null;
+  stripe_account_onboarded: boolean;
 }
 
 export default function SupplierSettingsPage() {
-  const router      = useRouter();
-  const supabaseRef = useRef(createClient());
-  const supabase    = supabaseRef.current;
-  const logoInputRef = useRef<HTMLInputElement>(null);
+  const router        = useRouter();
+  const searchParams  = useSearchParams();
+  const supabaseRef   = useRef(createClient());
+  const supabase      = supabaseRef.current;
+  const logoInputRef  = useRef<HTMLInputElement>(null);
 
   const [profile, setProfile]       = useState<SupplierProfile | null>(null);
   const [loading, setLoading]       = useState(true);
@@ -33,6 +36,10 @@ export default function SupplierSettingsPage() {
   const [error, setError]           = useState("");
   const [logoUploading, setLogoUploading] = useState(false);
   const [logoError, setLogoError]   = useState("");
+
+  // Stripe Connect
+  const [connectLoading, setConnectLoading] = useState(false);
+  const connectStatus = searchParams.get("connect");
 
   // Editable state
   const [fullName, setFullName]         = useState("");
@@ -58,7 +65,11 @@ export default function SupplierSettingsPage() {
       const res = await fetch("/api/supplier/settings");
       if (res.ok) {
         const { profile: sp } = await res.json();
-        setProfile(sp);
+        setProfile({
+          ...sp,
+          stripe_account_id:       sp.stripe_account_id       ?? null,
+          stripe_account_onboarded: sp.stripe_account_onboarded ?? false,
+        });
         setFullName(sp.full_name ?? "");
         setCompany(sp.company ?? "");
         setLogoUrl(sp.logo_url ?? null);
@@ -150,6 +161,18 @@ export default function SupplierSettingsPage() {
     if (err) { setPwError(err.message); }
     else     { setPwSaved(true); setNewPw(""); setConfirmPw(""); setTimeout(() => setPwSaved(false), 3000); }
     setPwSaving(false);
+  }
+
+  async function connectToStripe() {
+    setConnectLoading(true);
+    try {
+      const res = await fetch("/api/supplier/connect", { method: "POST" });
+      const { url, error: err } = await res.json();
+      if (err || !url) { setConnectLoading(false); return; }
+      window.location.href = url;
+    } catch {
+      setConnectLoading(false);
+    }
   }
 
   async function signOut() {
@@ -321,6 +344,77 @@ export default function SupplierSettingsPage() {
               {saved ? "Saved ✓" : saving ? "Saving…" : "Save Settings"}
             </button>
           </form>
+
+          {/* ── Stripe Payouts ──────────────────────────────────── */}
+          <div className="bg-brand-surface border border-brand-border rounded-xl p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-display uppercase tracking-widest text-brand-primary">Stripe Payouts</p>
+                <p className="text-[11px] font-barlow text-brand-muted mt-1">
+                  Connect your Stripe account to receive automatic payments when clients pay.
+                </p>
+              </div>
+              {profile?.stripe_account_onboarded && (
+                <span className="flex-shrink-0 text-[10px] font-display uppercase tracking-wider px-2.5 py-1 rounded-full border border-green-500/30 text-green-400">
+                  Connected ✓
+                </span>
+              )}
+            </div>
+
+            {/* Return from Stripe onboarding */}
+            {connectStatus === "success" && (
+              <div className="bg-green-500/10 border border-green-500/20 rounded-lg px-4 py-3">
+                <p className="text-sm font-barlow text-green-400">
+                  Stripe account connected. You&apos;ll receive payouts automatically when clients pay.
+                </p>
+              </div>
+            )}
+            {connectStatus === "refresh" && (
+              <div className="bg-amber-400/10 border border-amber-400/20 rounded-lg px-4 py-3">
+                <p className="text-sm font-barlow text-amber-400">
+                  Your Stripe onboarding link expired. Click below to restart.
+                </p>
+              </div>
+            )}
+
+            {profile?.stripe_account_onboarded ? (
+              <div className="bg-brand-bg border border-brand-border rounded-lg px-4 py-3 space-y-1">
+                <p className="text-[10px] font-display uppercase tracking-wider text-brand-muted">Status</p>
+                <p className="text-sm font-barlow text-brand-text">Active — receiving automatic payouts</p>
+                <p className="text-[11px] font-barlow text-brand-muted">Grace Studios sends your 90% share directly to your Stripe account when each client payment is processed.</p>
+                <button
+                  type="button"
+                  onClick={connectToStripe}
+                  disabled={connectLoading}
+                  className="mt-2 text-[10px] font-display uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors disabled:opacity-40"
+                >
+                  {connectLoading ? "Loading…" : "Update Stripe settings ↗"}
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="bg-brand-bg border border-brand-border rounded-lg px-4 py-3 space-y-1">
+                  <p className="text-[10px] font-display uppercase tracking-wider text-brand-muted">How it works</p>
+                  <ul className="space-y-1 mt-1">
+                    {["Client pays Grace Studios for their order.", "Stripe automatically sends your 90% share to your account.", "Grace Studios retains 10% as the platform fee."].map((line) => (
+                      <li key={line} className="flex items-start gap-2">
+                        <span className="w-1 h-1 rounded-full bg-brand-muted mt-1.5 flex-shrink-0" />
+                        <p className="text-[11px] font-barlow text-brand-muted">{line}</p>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <button
+                  type="button"
+                  onClick={connectToStripe}
+                  disabled={connectLoading}
+                  className="w-full py-3 rounded-lg font-display font-bold text-sm uppercase tracking-widest bg-brand-primary text-white hover:bg-brand-secondary disabled:opacity-40 transition-all"
+                >
+                  {connectLoading ? "Loading…" : profile?.stripe_account_id ? "Continue Stripe Setup →" : "Connect to Stripe →"}
+                </button>
+              </div>
+            )}
+          </div>
 
           {/* ── Password ─────────────────────────────────────────── */}
           <form onSubmit={changePassword} className="bg-brand-surface border border-brand-border rounded-xl p-6 space-y-4">

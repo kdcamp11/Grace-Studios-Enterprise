@@ -12,7 +12,7 @@ async function assertSupplier() {
   if (!user) return null;
   const { data: profile } = await createAdminClient()
     .from("profiles")
-    .select("id, role, full_name, company, logo_url, enabled_sports, enabled_products, email")
+    .select("id, role, full_name, company, logo_url, enabled_sports, enabled_products, email, stripe_account_id, stripe_account_onboarded")
     .eq("id", user.id)
     .single();
   if (!profile) return null;
