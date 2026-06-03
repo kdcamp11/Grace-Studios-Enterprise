@@ -921,8 +921,8 @@ export default function AdminOrderPage() {
 
           </div>
 
-          {/* ── Mockup Upload — visible in mockup phase only */}
-          {atOrPastWs("mockup") && !atOrPastWs("production_files") && (
+          {/* ── Mockup Upload — visible in mockup workspace only */}
+          {currentWorkspace === "mockup" && (
             <div className="bg-brand-surface border border-brand-border rounded-xl p-5 space-y-4">
               <div className="flex items-center justify-between">
                 <p className="text-xs font-display uppercase tracking-widest text-brand-primary">2D Mockup</p>
@@ -994,8 +994,8 @@ export default function AdminOrderPage() {
             </div>
           )}
 
-          {/* ── Production Pricing — visible from production_files phase onwards */}
-          {atOrPastWs("production_files") && (
+          {/* ── Production Pricing — visible in production_files workspace */}
+          {currentWorkspace === "production_files" && (
           <div className="bg-brand-surface border border-brand-border rounded-xl p-5 space-y-4">
             <div className="flex items-center justify-between">
               <p className="text-xs font-display uppercase tracking-widest text-brand-primary">Production Pricing</p>
@@ -1086,8 +1086,8 @@ export default function AdminOrderPage() {
           </div>
           )}
 
-          {/* ── Invoice / Payment Panel — visible from production_files phase onwards */}
-          {atOrPastWs("production_files") && (
+          {/* ── Invoice / Payment Panel — visible in production_files and fulfillment workspaces */}
+          {(currentWorkspace === "production_files" || currentWorkspace === "fulfillment") && (
           <div className="bg-brand-surface border border-brand-border rounded-xl p-5 space-y-4">
             <div className="flex items-center justify-between">
               <p className="text-xs font-display uppercase tracking-widest text-brand-primary">Invoice & Payment</p>
@@ -1322,221 +1322,257 @@ export default function AdminOrderPage() {
           </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Brief details */}
-            {order.brief && (
-              <div className="bg-brand-surface border border-brand-border rounded-xl p-5">
-                <p className="text-xs font-display uppercase tracking-widest text-brand-primary mb-3">Brief</p>
-                <DetailRow label="Design System" value={order.brief.design_system} />
-                <DetailRow label="Cut" value={order.brief.jersey_cut} />
-                <DetailRow label="Construction" value={order.brief.sublimated === true ? "Sublimated" : order.brief.sublimated === false ? "Tackle Twill" : null} />
-                <DetailRow label="Logo Placement" value={order.brief.logo_placement?.replace("_", " ")} />
-                <DetailRow label="Number Style" value={order.brief.number_style} />
-                <DetailRow label="Logos" value={order.brief.logos_to_include} />
-                <DetailRow label="Sponsor" value={order.brief.sponsor_text} />
-                <DetailRow label="Avoid" value={order.brief.negative_references} />
-                <DetailRow label="Vision" value={order.brief.vision_prompt} />
-                {order.brief.logo_url && (
-                  <div className="pt-3">
-                    <p className="text-xs font-display uppercase tracking-wider text-brand-muted mb-2">Team Logo</p>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={order.brief.logo_url} alt="Team logo" className="h-16 object-contain" />
-                  </div>
-                )}
-                {order.brief.ai_prompt && (
-                  <div className="pt-3 border-t border-brand-border">
-                    <p className="text-xs font-display uppercase tracking-wider text-brand-muted mb-3">AI Design Brief</p>
-                    <AiDesignBrief raw={order.brief.ai_prompt} />
-                  </div>
-                )}
-              </div>
-            )}
+          {/* ── Order Details — always visible ─────────────────────────────── */}
+          <div className="space-y-4">
+            <div className="bg-brand-surface border border-brand-border rounded-xl p-5 space-y-4">
+              <p className="text-xs font-display uppercase tracking-widest text-brand-primary">Order Details</p>
 
-            {/* Operational fields */}
-            <div className="space-y-4">
-              <div className="bg-brand-surface border border-brand-border rounded-xl p-5 space-y-4">
-                <p className="text-xs font-display uppercase tracking-widest text-brand-primary">Order Details</p>
-
-                {/* Supplier assignment — visible from production_files phase */}
-                {atOrPastWs("production_files") && (
-                <div>
-                  <label className="block text-xs font-display uppercase tracking-wider text-brand-muted mb-1.5">
-                    Production Partner
-                  </label>
-                  {order.supplier_user_id ? (
-                    <div className="flex items-center justify-between gap-3 bg-brand-bg border border-brand-border rounded-lg px-4 py-3">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-8 h-8 rounded-full bg-brand-primary/10 border border-brand-primary/30 flex items-center justify-center flex-shrink-0 text-[11px] font-display font-bold text-brand-primary uppercase">
-                          {(suppliers.find((s) => s.id === order.supplier_user_id)?.company ?? suppliers.find((s) => s.id === order.supplier_user_id)?.full_name ?? "?")[0]}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-sm font-barlow text-brand-text truncate">
-                            {suppliers.find((s) => s.id === order.supplier_user_id)?.company ?? suppliers.find((s) => s.id === order.supplier_user_id)?.full_name ?? "Assigned"}
-                          </p>
-                          {supplierSaved && <p className="text-[10px] font-barlow text-green-400">Saved ✓</p>}
-                        </div>
+              {/* Supplier assignment — visible from production_files phase */}
+              {atOrPastWs("production_files") && (
+              <div>
+                <label className="block text-xs font-display uppercase tracking-wider text-brand-muted mb-1.5">
+                  Production Partner
+                </label>
+                {order.supplier_user_id ? (
+                  <div className="flex items-center justify-between gap-3 bg-brand-bg border border-brand-border rounded-lg px-4 py-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-8 h-8 rounded-full bg-brand-primary/10 border border-brand-primary/30 flex items-center justify-center flex-shrink-0 text-[11px] font-display font-bold text-brand-primary uppercase">
+                        {(suppliers.find((s) => s.id === order.supplier_user_id)?.company ?? suppliers.find((s) => s.id === order.supplier_user_id)?.full_name ?? "?")[0]}
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => setShowSupplierModal(true)}
-                        className="text-[10px] font-display uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors flex-shrink-0"
-                      >
-                        Change
-                      </button>
+                      <div className="min-w-0">
+                        <p className="text-sm font-barlow text-brand-text truncate">
+                          {suppliers.find((s) => s.id === order.supplier_user_id)?.company ?? suppliers.find((s) => s.id === order.supplier_user_id)?.full_name ?? "Assigned"}
+                        </p>
+                        {supplierSaved && <p className="text-[10px] font-barlow text-green-400">Saved ✓</p>}
+                      </div>
                     </div>
-                  ) : (
                     <button
                       type="button"
                       onClick={() => setShowSupplierModal(true)}
-                      className="w-full py-3 rounded-lg border border-dashed border-brand-border text-sm font-display uppercase tracking-wider text-brand-muted hover:border-brand-primary hover:text-brand-primary transition-all"
+                      className="text-[10px] font-display uppercase tracking-wider text-brand-muted hover:text-brand-primary transition-colors flex-shrink-0"
                     >
-                      + Assign Production Partner
+                      Change
                     </button>
-                  )}
-                </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setShowSupplierModal(true)}
+                    className="w-full py-3 rounded-lg border border-dashed border-brand-border text-sm font-display uppercase tracking-wider text-brand-muted hover:border-brand-primary hover:text-brand-primary transition-all"
+                  >
+                    + Assign Production Partner
+                  </button>
                 )}
+              </div>
+              )}
 
-                {/* Designer assignment */}
-                <div>
-                  <label className="block text-xs font-display uppercase tracking-wider text-brand-muted mb-1.5">
-                    Assigned Designer
-                  </label>
-                  {designers.length === 0 ? (
-                    <p className="text-xs font-barlow text-brand-muted italic">
-                      No designers on this tenant yet.{" "}
-                      <a href="/admin/team" className="underline hover:text-brand-primary">Invite one →</a>
-                    </p>
-                  ) : order?.assigned_designer_id ? (
-                    <div className="flex items-center justify-between gap-3 bg-brand-bg border border-brand-border rounded-lg px-4 py-3">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-8 h-8 rounded-full bg-violet-400/10 border border-violet-400/30 flex items-center justify-center flex-shrink-0 text-[11px] font-display font-bold text-violet-400 uppercase">
-                          {(designers.find((d) => d.id === order.assigned_designer_id)?.full_name ?? designers.find((d) => d.id === order.assigned_designer_id)?.email ?? "?")[0]}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-sm font-barlow text-brand-text truncate">
-                            {designers.find((d) => d.id === order.assigned_designer_id)?.full_name ?? designers.find((d) => d.id === order.assigned_designer_id)?.email ?? "Assigned"}
-                          </p>
-                          {designerSaved && <p className="text-[10px] font-barlow text-green-400">Saved ✓</p>}
-                        </div>
+              {/* Designer assignment */}
+              <div>
+                <label className="block text-xs font-display uppercase tracking-wider text-brand-muted mb-1.5">
+                  Assigned Designer
+                </label>
+                {designers.length === 0 ? (
+                  <p className="text-xs font-barlow text-brand-muted italic">
+                    No designers on this tenant yet.{" "}
+                    <a href="/admin/team" className="underline hover:text-brand-primary">Invite one →</a>
+                  </p>
+                ) : order?.assigned_designer_id ? (
+                  <div className="flex items-center justify-between gap-3 bg-brand-bg border border-brand-border rounded-lg px-4 py-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-8 h-8 rounded-full bg-violet-400/10 border border-violet-400/30 flex items-center justify-center flex-shrink-0 text-[11px] font-display font-bold text-violet-400 uppercase">
+                        {(designers.find((d) => d.id === order.assigned_designer_id)?.full_name ?? designers.find((d) => d.id === order.assigned_designer_id)?.email ?? "?")[0]}
                       </div>
-                      <div className="flex items-center gap-3 flex-shrink-0">
-                        <select
-                          value={order.assigned_designer_id}
-                          onChange={(e) => assignDesigner(e.target.value || null)}
-                          disabled={designerSaving}
-                          className="text-xs font-barlow bg-brand-bg border border-brand-border rounded-lg px-2 py-1.5 text-brand-muted focus:outline-none focus:border-brand-primary disabled:opacity-40"
-                        >
-                          {designers.map((d) => (
-                            <option key={d.id} value={d.id}>
-                              {d.full_name ?? d.email}
-                            </option>
-                          ))}
-                        </select>
-                        <button
-                          type="button"
-                          onClick={() => assignDesigner(null)}
-                          disabled={designerSaving}
-                          className="text-[10px] font-display uppercase tracking-wider text-brand-muted hover:text-[#C41E1E] transition-colors disabled:opacity-40"
-                        >
-                          Unassign
-                        </button>
+                      <div className="min-w-0">
+                        <p className="text-sm font-barlow text-brand-text truncate">
+                          {designers.find((d) => d.id === order.assigned_designer_id)?.full_name ?? designers.find((d) => d.id === order.assigned_designer_id)?.email ?? "Assigned"}
+                        </p>
+                        {designerSaved && <p className="text-[10px] font-barlow text-green-400">Saved ✓</p>}
                       </div>
                     </div>
-                  ) : (
-                    <select
-                      defaultValue=""
-                      onChange={(e) => { if (e.target.value) assignDesigner(e.target.value); }}
-                      disabled={designerSaving}
-                      className="w-full bg-brand-bg border border-brand-border rounded-lg px-3 py-2.5 text-brand-text font-barlow text-sm focus:outline-none focus:border-brand-primary disabled:opacity-40 transition-colors"
-                    >
-                      <option value="" disabled>Select a designer…</option>
-                      {designers.map((d) => (
-                        <option key={d.id} value={d.id}>
-                          {d.full_name ?? d.email}
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                </div>
-
-                {atOrPastWs("fulfillment") && (
-                <div>
-                  <label className="block text-xs font-display uppercase tracking-wider text-brand-muted mb-1.5">Tracking Number</label>
-                  <input
-                    type="text"
-                    value={trackingInput}
-                    onChange={(e) => setTrackingInput(e.target.value)}
-                    placeholder="e.g. 1Z999AA10123456784"
-                    className="w-full bg-brand-bg border border-brand-border rounded-lg px-3 py-2.5 text-brand-text font-barlow text-sm placeholder-brand-muted focus:outline-none focus:border-brand-primary transition-colors"
-                  />
-                </div>
-                )}
-                {atOrPastWs("fulfillment") && (
-                <div>
-                  <label className="block text-xs font-display uppercase tracking-wider text-brand-muted mb-1.5">Estimated Delivery</label>
-                  <input
-                    type="date"
-                    value={deliveryInput}
-                    onChange={(e) => setDeliveryInput(e.target.value)}
-                    className="w-full bg-brand-bg border border-brand-border rounded-lg px-3 py-2.5 text-brand-text font-barlow text-sm focus:outline-none focus:border-brand-primary transition-colors"
-                  />
-                </div>
-                )}
-                <div>
-                  <label className="block text-xs font-display uppercase tracking-wider text-brand-muted mb-1.5">Internal Notes</label>
-                  <textarea
-                    value={notesInput}
-                    onChange={(e) => setNotesInput(e.target.value)}
-                    rows={3}
-                    placeholder="Any internal notes about this order…"
-                    className="w-full bg-brand-bg border border-brand-border rounded-lg px-3 py-2.5 text-brand-text font-barlow text-sm placeholder-brand-muted focus:outline-none focus:border-brand-primary transition-colors resize-none"
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={saveDetails}
-                  disabled={saving}
-                  className="w-full py-2.5 rounded-lg font-display font-bold text-sm uppercase tracking-widest bg-brand-primary text-brand-bg hover:bg-brand-secondary disabled:opacity-40 transition-all"
-                >
-                  {saved ? "Saved ✓" : saving ? "Saving…" : "Save Details"}
-                </button>
-              </div>
-
-              {/* Timestamps */}
-              <div className="bg-brand-surface border border-brand-border rounded-xl p-5 space-y-2">
-                <p className="text-xs font-display uppercase tracking-widest text-brand-primary mb-3">Timestamps</p>
-                <DetailRow label="Submitted" value={new Date(order.created_at).toLocaleString()} />
-                {order.approved_at && <DetailRow label="Approved" value={new Date(order.approved_at).toLocaleString()} />}
-              </div>
-
-              {/* Production File */}
-              {order.production_file_url && (
-                <div className="bg-brand-surface border border-brand-border rounded-xl p-5">
-                  <p className="text-xs font-display uppercase tracking-widest text-brand-primary mb-3">Production File</p>
-                  <p className="text-xs font-barlow text-brand-muted mb-3 leading-relaxed">
-                    Auto-generated on client approval. Contains flat jersey + shorts template with all 7 color zones and CMYK specifications.
-                  </p>
-                  <a
-                    href={order.production_file_url}
-                    download
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-brand-primary text-brand-bg text-xs font-display font-bold uppercase tracking-widest hover:bg-brand-secondary transition-colors"
+                    <div className="flex items-center gap-3 flex-shrink-0">
+                      <select
+                        value={order.assigned_designer_id}
+                        onChange={(e) => assignDesigner(e.target.value || null)}
+                        disabled={designerSaving}
+                        className="text-xs font-barlow bg-brand-bg border border-brand-border rounded-lg px-2 py-1.5 text-brand-muted focus:outline-none focus:border-brand-primary disabled:opacity-40"
+                      >
+                        {designers.map((d) => (
+                          <option key={d.id} value={d.id}>
+                            {d.full_name ?? d.email}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        onClick={() => assignDesigner(null)}
+                        disabled={designerSaving}
+                        className="text-[10px] font-display uppercase tracking-wider text-brand-muted hover:text-[#C41E1E] transition-colors disabled:opacity-40"
+                      >
+                        Unassign
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <select
+                    defaultValue=""
+                    onChange={(e) => { if (e.target.value) assignDesigner(e.target.value); }}
+                    disabled={designerSaving}
+                    className="w-full bg-brand-bg border border-brand-border rounded-lg px-3 py-2.5 text-brand-text font-barlow text-sm focus:outline-none focus:border-brand-primary disabled:opacity-40 transition-colors"
                   >
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                    </svg>
-                    Download SVG Template
-                  </a>
+                    <option value="" disabled>Select a designer…</option>
+                    {designers.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.full_name ?? d.email}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
+              {currentWorkspace === "fulfillment" && (
+              <div>
+                <label className="block text-xs font-display uppercase tracking-wider text-brand-muted mb-1.5">Tracking Number</label>
+                <input
+                  type="text"
+                  value={trackingInput}
+                  onChange={(e) => setTrackingInput(e.target.value)}
+                  placeholder="e.g. 1Z999AA10123456784"
+                  className="w-full bg-brand-bg border border-brand-border rounded-lg px-3 py-2.5 text-brand-text font-barlow text-sm placeholder-brand-muted focus:outline-none focus:border-brand-primary transition-colors"
+                />
+              </div>
+              )}
+              {currentWorkspace === "fulfillment" && (
+              <div>
+                <label className="block text-xs font-display uppercase tracking-wider text-brand-muted mb-1.5">Estimated Delivery</label>
+                <input
+                  type="date"
+                  value={deliveryInput}
+                  onChange={(e) => setDeliveryInput(e.target.value)}
+                  className="w-full bg-brand-bg border border-brand-border rounded-lg px-3 py-2.5 text-brand-text font-barlow text-sm focus:outline-none focus:border-brand-primary transition-colors"
+                />
+              </div>
+              )}
+              <div>
+                <label className="block text-xs font-display uppercase tracking-wider text-brand-muted mb-1.5">Internal Notes</label>
+                <textarea
+                  value={notesInput}
+                  onChange={(e) => setNotesInput(e.target.value)}
+                  rows={3}
+                  placeholder="Any internal notes about this order…"
+                  className="w-full bg-brand-bg border border-brand-border rounded-lg px-3 py-2.5 text-brand-text font-barlow text-sm placeholder-brand-muted focus:outline-none focus:border-brand-primary transition-colors resize-none"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={saveDetails}
+                disabled={saving}
+                className="w-full py-2.5 rounded-lg font-display font-bold text-sm uppercase tracking-widest bg-brand-primary text-brand-bg hover:bg-brand-secondary disabled:opacity-40 transition-all"
+              >
+                {saved ? "Saved ✓" : saving ? "Saving…" : "Save Details"}
+              </button>
+            </div>
+
+            {/* Timestamps */}
+            <div className="bg-brand-surface border border-brand-border rounded-xl p-5 space-y-2">
+              <p className="text-xs font-display uppercase tracking-widest text-brand-primary mb-3">Timestamps</p>
+              <DetailRow label="Submitted" value={new Date(order.created_at).toLocaleString()} />
+              {order.approved_at && <DetailRow label="Approved" value={new Date(order.approved_at).toLocaleString()} />}
+            </div>
+
+            {/* Production File */}
+            {order.production_file_url && (
+              <div className="bg-brand-surface border border-brand-border rounded-xl p-5">
+                <p className="text-xs font-display uppercase tracking-widest text-brand-primary mb-3">Production File</p>
+                <p className="text-xs font-barlow text-brand-muted mb-3 leading-relaxed">
+                  Auto-generated on client approval. Contains flat jersey + shorts template with all 7 color zones and CMYK specifications.
+                </p>
+                <a
+                  href={order.production_file_url}
+                  download
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-brand-primary text-brand-bg text-xs font-display font-bold uppercase tracking-widest hover:bg-brand-secondary transition-colors"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  Download SVG Template
+                </a>
+              </div>
+            )}
+          </div>
+
+          {/* ── History: Design Brief ───────────────────────────────────────── */}
+          {order.brief && (
+          <details className="bg-brand-surface border border-brand-border rounded-xl overflow-hidden group">
+            <summary className="flex items-center justify-between px-5 py-4 cursor-pointer list-none hover:bg-brand-bg/30 transition-colors">
+              <p className="text-xs font-display uppercase tracking-widest text-brand-primary">Design Brief</p>
+              <svg className="w-4 h-4 text-brand-muted transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </summary>
+            <div className="px-5 pb-5 pt-2 border-t border-brand-border">
+              <DetailRow label="Design System" value={order.brief.design_system} />
+              <DetailRow label="Cut" value={order.brief.jersey_cut} />
+              <DetailRow label="Construction" value={order.brief.sublimated === true ? "Sublimated" : order.brief.sublimated === false ? "Tackle Twill" : null} />
+              <DetailRow label="Logo Placement" value={order.brief.logo_placement?.replace("_", " ")} />
+              <DetailRow label="Number Style" value={order.brief.number_style} />
+              <DetailRow label="Logos" value={order.brief.logos_to_include} />
+              <DetailRow label="Sponsor" value={order.brief.sponsor_text} />
+              <DetailRow label="Avoid" value={order.brief.negative_references} />
+              <DetailRow label="Vision" value={order.brief.vision_prompt} />
+              {order.brief.logo_url && (
+                <div className="pt-3">
+                  <p className="text-xs font-display uppercase tracking-wider text-brand-muted mb-2">Team Logo</p>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={order.brief.logo_url} alt="Team logo" className="h-16 object-contain" />
+                </div>
+              )}
+              {order.brief.ai_prompt && (
+                <div className="pt-3 border-t border-brand-border">
+                  <p className="text-xs font-display uppercase tracking-wider text-brand-muted mb-3">AI Design Brief</p>
+                  <AiDesignBrief raw={order.brief.ai_prompt} />
+                </div>
+              )}
+              {(order.brief.primary_colors || order.brief.secondary_colors || order.brief.accent_color) && (
+                <div className="pt-3 border-t border-brand-border">
+                  <p className="text-xs font-display uppercase tracking-widest text-brand-primary mb-3">Colors</p>
+                  <div className="flex flex-wrap gap-3">
+                    {[
+                      { label: "Primary",   value: order.brief.primary_colors },
+                      { label: "Secondary", value: order.brief.secondary_colors },
+                      { label: "Accent",    value: order.brief.accent_color },
+                    ].filter((c) => c.value).map((c) =>
+                      c.value!.split(",").map((hex) => hex.trim()).filter(Boolean).map((hex) => (
+                        <div key={`${c.label}-${hex}`} className="flex items-center gap-2">
+                          <div
+                            className="w-7 h-7 rounded-lg border border-brand-border flex-shrink-0"
+                            style={{ background: hex.startsWith("#") ? hex : `#${hex}` }}
+                          />
+                          <div>
+                            <p className="text-[9px] font-display uppercase tracking-wider text-brand-muted">{c.label}</p>
+                            <p className="text-xs font-mono text-brand-text">{hex}</p>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
                 </div>
               )}
             </div>
-          </div>
+          </details>
+          )}
 
-          {/* Concepts */}
+          {/* ── History: Concepts ───────────────────────────────────────────── */}
           {order.concepts.length > 0 && (
-            <div>
-              <p className="text-xs font-display uppercase tracking-widest text-brand-primary mb-4">Concepts</p>
+          <details className="bg-brand-surface border border-brand-border rounded-xl overflow-hidden group">
+            <summary className="flex items-center justify-between px-5 py-4 cursor-pointer list-none hover:bg-brand-bg/30 transition-colors">
+              <p className="text-xs font-display uppercase tracking-widest text-brand-primary">Concepts</p>
+              <svg className="w-4 h-4 text-brand-muted transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </summary>
+            <div className="px-5 pb-5 pt-4 border-t border-brand-border">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {order.concepts.map((c) => (
                   <div key={c.id} className={`rounded-xl overflow-hidden border ${c.selected ? "border-brand-primary" : "border-brand-border"}`}>
@@ -1551,75 +1587,50 @@ export default function AdminOrderPage() {
                 ))}
               </div>
             </div>
+          </details>
           )}
 
-          {/* ── Colors ──────────────────────────────────────────────────────── */}
-          {order.brief && (order.brief.primary_colors || order.brief.secondary_colors || order.brief.accent_color) && (
-            <div>
-              <p className="text-xs font-display uppercase tracking-widest text-brand-primary mb-3">Colors</p>
-              <div className="flex flex-wrap gap-3">
-                {[
-                  { label: "Primary",   value: order.brief.primary_colors },
-                  { label: "Secondary", value: order.brief.secondary_colors },
-                  { label: "Accent",    value: order.brief.accent_color },
-                ].filter((c) => c.value).map((c) =>
-                  c.value!.split(",").map((hex) => hex.trim()).filter(Boolean).map((hex) => (
-                    <div key={`${c.label}-${hex}`} className="flex items-center gap-2">
-                      <div
-                        className="w-7 h-7 rounded-lg border border-brand-border flex-shrink-0"
-                        style={{ background: hex.startsWith("#") ? hex : `#${hex}` }}
-                      />
-                      <div>
-                        <p className="text-[9px] font-display uppercase tracking-wider text-brand-muted">{c.label}</p>
-                        <p className="text-xs font-mono text-brand-text">{hex}</p>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* ── Roster ───────────────────────────────────────────────────────── */}
+          {/* ── History: Player Roster ──────────────────────────────────────── */}
           {order.brief?.player_roster && order.brief.player_roster.length > 0 && (
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-xs font-display uppercase tracking-widest text-brand-primary">
-                  Player Roster
-                </p>
-                <span className="text-[10px] font-display uppercase tracking-wider text-brand-muted">
-                  {order.brief.player_roster.length} players
-                </span>
-              </div>
-              <div className="border border-brand-border rounded-xl overflow-hidden">
-                <table className="w-full text-sm font-barlow">
-                  <thead>
-                    <tr className="bg-brand-surface border-b border-brand-border">
-                      {["#", "Name", "Number", "Size", "Cut"].map((h) => (
-                        <th key={h} className="text-left px-4 py-2.5 text-[10px] font-display uppercase tracking-wider text-brand-muted">
-                          {h}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {order.brief.player_roster.map((player, i) => (
-                      <tr key={i} className="border-b border-brand-border/50 last:border-0 hover:bg-brand-surface/40">
-                        <td className="px-4 py-2.5 text-brand-muted text-xs">{i + 1}</td>
-                        <td className="px-4 py-2.5 text-brand-text font-medium">{player.name || "—"}</td>
-                        <td className="px-4 py-2.5 text-brand-text">{player.number || "—"}</td>
-                        <td className="px-4 py-2.5 text-brand-text">{player.size || "—"}</td>
-                        <td className="px-4 py-2.5 text-brand-muted capitalize">{player.cut || "—"}</td>
-                      </tr>
+          <details className="bg-brand-surface border border-brand-border rounded-xl overflow-hidden group">
+            <summary className="flex items-center justify-between px-5 py-4 cursor-pointer list-none hover:bg-brand-bg/30 transition-colors">
+              <p className="text-xs font-display uppercase tracking-widest text-brand-primary">Player Roster</p>
+              <span className="flex items-center gap-3">
+                <span className="text-[10px] font-display uppercase tracking-wider text-brand-muted">{order.brief.player_roster.length} players</span>
+                <svg className="w-4 h-4 text-brand-muted transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+              </span>
+            </summary>
+            <div className="border-t border-brand-border overflow-hidden">
+              <table className="w-full text-sm font-barlow">
+                <thead>
+                  <tr className="bg-brand-surface border-b border-brand-border">
+                    {["#", "Name", "Number", "Size", "Cut"].map((h) => (
+                      <th key={h} className="text-left px-4 py-2.5 text-[10px] font-display uppercase tracking-wider text-brand-muted">
+                        {h}
+                      </th>
                     ))}
-                  </tbody>
-                </table>
-              </div>
+                  </tr>
+                </thead>
+                <tbody>
+                  {order.brief.player_roster.map((player, i) => (
+                    <tr key={i} className="border-b border-brand-border/50 last:border-0 hover:bg-brand-surface/40">
+                      <td className="px-4 py-2.5 text-brand-muted text-xs">{i + 1}</td>
+                      <td className="px-4 py-2.5 text-brand-text font-medium">{player.name || "—"}</td>
+                      <td className="px-4 py-2.5 text-brand-text">{player.number || "—"}</td>
+                      <td className="px-4 py-2.5 text-brand-text">{player.size || "—"}</td>
+                      <td className="px-4 py-2.5 text-brand-muted capitalize">{player.cut || "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
+          </details>
           )}
 
-          {/* ── First Piece Review — visible in first_piece phase or beyond, or if media already exists */}
-          {atOrPastWs("first_piece") && (
+          {/* ── First Piece Review — visible in first_piece workspace */}
+          {currentWorkspace === "first_piece" && (
           <div className="bg-brand-surface border border-brand-border rounded-xl p-5">
             <div className="flex items-center justify-between mb-4">
               <p className="text-xs font-display uppercase tracking-widest text-brand-primary">First Piece Review</p>
@@ -1766,8 +1777,8 @@ export default function AdminOrderPage() {
           </div>
           )}
 
-          {/* ── Final Files — visible from production_files phase onwards */}
-          {atOrPastWs("production_files") && (
+          {/* ── Final Files — visible in production_files workspace */}
+          {currentWorkspace === "production_files" && (
           <div className="bg-brand-surface border border-brand-border rounded-xl p-5 space-y-4">
             <p className="text-xs font-display uppercase tracking-widest text-brand-primary">Final Production Files</p>
             <p className="text-[11px] font-barlow text-brand-muted">
