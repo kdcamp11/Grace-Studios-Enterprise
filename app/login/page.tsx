@@ -555,7 +555,7 @@ export default function LoginPage() {
                     <span className="text-[9px] font-display font-bold uppercase tracking-[0.2em] px-2.5 py-1 rounded border text-brand-primary bg-brand-primary/10 border-brand-primary/30">Full Service</span>
                     <span className="text-[9px] font-display uppercase tracking-widest text-brand-muted/60">Fully Managed</span>
                   </div>
-                  <p className="font-display font-bold uppercase tracking-wide text-brand-text leading-snug" style={{ fontSize: "clamp(0.85rem, 1.1vw, 0.95rem)" }}>Creative Direction. Managed to Delivery.</p>
+                  <p className="font-display font-bold uppercase tracking-wide text-brand-text leading-snug" style={{ fontSize: "clamp(0.85rem, 1.1vw, 0.95rem)" }}>Elevated Apparel Development. Concept Through Delivery.</p>
                   <ul className="space-y-1.5 flex-1">
                     {PATH_CARDS[0].bullets.map((item) => (
                       <li key={item} className="flex items-start gap-2">
@@ -591,7 +591,7 @@ export default function LoginPage() {
                     >
                       <div className="flex items-start gap-2 min-w-0">
                         <span className="w-1.5 h-1.5 rounded-full bg-brand-primary flex-shrink-0 mt-0.5" />
-                        <span className="text-[10px] font-barlow text-brand-muted leading-snug"><span className="text-brand-text font-medium">Design Brief</span>: submit your vision, we build the concept</span>
+                        <span className="text-[10px] font-barlow text-brand-muted leading-snug"><span className="text-brand-text font-medium">Design Brief</span>: define your direction, we develop the concept</span>
                       </div>
                       <svg className="w-3 h-3 text-brand-muted/50 group-hover/sp:text-brand-primary flex-shrink-0 transition-colors mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
@@ -603,7 +603,7 @@ export default function LoginPage() {
                     >
                       <div className="flex items-start gap-2 min-w-0">
                         <span className="w-1.5 h-1.5 rounded-full bg-brand-primary flex-shrink-0 mt-0.5" />
-                        <span className="text-[10px] font-barlow text-brand-muted leading-snug"><span className="text-brand-text font-medium">Jersey Builder</span>: color every zone, selections drive the brief</span>
+                        <span className="text-[10px] font-barlow text-brand-muted leading-snug"><span className="text-brand-text font-medium">Jersey Builder</span>: select your colorway, your choices build the brief</span>
                       </div>
                       <svg className="w-3 h-3 text-brand-muted/50 group-hover/sp:text-brand-primary flex-shrink-0 transition-colors mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
@@ -621,7 +621,7 @@ export default function LoginPage() {
                     <span className="text-[9px] font-display font-bold uppercase tracking-[0.2em] px-2.5 py-1 rounded border text-brand-muted bg-brand-muted/10 border-brand-muted/30">Production Files</span>
                     <span className="text-[9px] font-display uppercase tracking-widest text-brand-muted/60">Your Artwork</span>
                   </div>
-                  <p className="font-display font-bold uppercase tracking-wide text-brand-text leading-snug" style={{ fontSize: "clamp(0.85rem, 1.1vw, 0.95rem)" }}>Your Files. Our Production Network.</p>
+                  <p className="font-display font-bold uppercase tracking-wide text-brand-text leading-snug" style={{ fontSize: "clamp(0.85rem, 1.1vw, 0.95rem)" }}>Your Files. Managed to Delivery.</p>
                   <ul className="space-y-1.5 flex-1">
                     {PATH_CARDS[2].bullets.map((item) => (
                       <li key={item} className="flex items-start gap-2">
@@ -631,7 +631,7 @@ export default function LoginPage() {
                     ))}
                   </ul>
                   <p className="text-[9px] font-barlow text-brand-muted/50 italic border-t border-brand-border pt-3 leading-snug">
-                    Have a sketch or concept? Creative Direction is the right starting point.
+                    Have a concept in progress? Creative Direction is the right starting point.
                   </p>
                 </div>
                 <Link href="/signup?path=upload"
