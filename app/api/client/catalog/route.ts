@@ -39,13 +39,11 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
   }
 
-  const { data, error } = await createAdminClient()
+  const { error } = await createAdminClient()
     .from("profiles")
     .update(updates)
-    .eq("id", user.id)
-    .select("enabled_sports, enabled_products")
-    .single();
+    .eq("id", user.id);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ profile: data });
+  return NextResponse.json({ ok: true });
 }
