@@ -26,70 +26,74 @@ export async function POST(
   req: NextRequest,
   { params }: { params: { design_id: string } },
 ) {
-  const limited = rateLimit(req, { limit: 5, windowMs: 60_000 });
-  if (limited) return limited;
-
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() { return req.cookies.getAll(); },
-        setAll() {},
-      },
-    },
-  );
-
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user?.email) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const admin = createAdminClient();
-
-  // Verify ownership
-  const { data: design } = await admin
-    .from("designs")
-    .select("id, client_id, tenant_id, kind, status, clients(email, user_id)")
-    .eq("id", params.design_id)
-    .single();
-
-  if (!design) {
-    return NextResponse.json({ error: "Design not found" }, { status: 404 });
-  }
-
-  const clientRaw = Array.isArray(design.clients)
-    ? design.clients[0]
-    : (design.clients as { email: string; user_id: string | null } | null);
-
-  const emailMatch  = (clientRaw?.email ?? "").toLowerCase() === user.email.toLowerCase();
-  const userIdMatch = clientRaw?.user_id != null && clientRaw.user_id === user.id;
-  if (!emailMatch && !userIdMatch) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-
-  if (design.status === "converted") {
-    return NextResponse.json({ error: "Design already activated" }, { status: 400 });
-  }
-
-  // ── Test bypass — skip Stripe for approved test accounts ─────────────────
-  if (isTestBypassEmail(user.email)) {
-    const proto  = req.headers.get("x-forwarded-proto") ?? "https";
-    const host   = req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? "localhost:3000";
-    const appUrl = `${proto}://${host}`;
-    const redirectUrl = await bypassDesignDeposit(params.design_id, design.tenant_id, appUrl);
-    if (redirectUrl) return NextResponse.json({ url: redirectUrl });
-    // Bypass failed (e.g. design not found) — fall through to real Stripe
-  }
-
-  if (!process.env.STRIPE_SECRET_KEY) {
-    return NextResponse.json(
-      { error: "Payments are not yet configured. STRIPE_SECRET_KEY is missing." },
-      { status: 503 },
-    );
-  }
-
   try {
+    const limited = rateLimit(req, { limit: 5, windowMs: 60_000 });
+    if (limited) return limited;
+
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() { return req.cookies.getAll(); },
+          setAll() {},
+        },
+      },
+    );
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user?.email) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const admin = createAdminClient();
+
+    // Verify ownership
+    const { data: design } = await admin
+      .from("designs")
+      .select("id, client_id, tenant_id, kind, status, clients(email, user_id)")
+      .eq("id", params.design_id)
+      .single();
+
+    if (!design) {
+      return NextResponse.json({ error: "Design not found" }, { status: 404 });
+    }
+
+    const clientRaw = Array.isArray(design.clients)
+      ? design.clients[0]
+      : (design.clients as { email: string; user_id: string | null } | null);
+
+    const emailMatch  = (clientRaw?.email ?? "").toLowerCase() === user.email.toLowerCase();
+    const userIdMatch = clientRaw?.user_id != null && clientRaw.user_id === user.id;
+    if (!emailMatch && !userIdMatch) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    if (design.status === "converted") {
+      return NextResponse.json({ error: "Design already activated" }, { status: 400 });
+    }
+
+    // ── Test bypass — skip Stripe for approved test accounts ─────────────────
+    if (isTestBypassEmail(user.email)) {
+      const proto  = req.headers.get("x-forwarded-proto") ?? "https";
+      const host   = req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? "localhost:3000";
+      const appUrl = `${proto}://${host}`;
+      const redirectUrl = await bypassDesignDeposit(params.design_id, design.tenant_id, appUrl);
+      if (redirectUrl) return NextResponse.json({ url: redirectUrl });
+      // Bypass failed (e.g. design not found) — fall through to real Stripe
+    }
+
+    const stripeKey = process.env.STRIPE_MODE === "test"
+      ? (process.env.STRIPE_TEST_SECRET_KEY ?? process.env.STRIPE_SECRET_KEY)
+      : process.env.STRIPE_SECRET_KEY;
+
+    if (!stripeKey) {
+      return NextResponse.json(
+        { error: "Payments are not yet configured. Please contact support." },
+        { status: 503 },
+      );
+    }
+
     const hostname =
       req.headers.get("x-hostname") ??
       req.headers.get("x-forwarded-host") ??
@@ -98,7 +102,7 @@ export async function POST(
 
     const tenant = await resolveTenant(hostname);
     if (!tenant) {
-      return NextResponse.json({ error: "Tenant not found" }, { status: 400 });
+      return NextResponse.json({ error: "Studio configuration not found. Please contact support." }, { status: 400 });
     }
 
     const proto  = req.headers.get("x-forwarded-proto") ?? "https";
@@ -125,7 +129,7 @@ export async function POST(
         payment_type: "design_deposit",
         design_id:    params.design_id,
         tenant_id:    design.tenant_id,
-        kind:         design.kind,
+        kind:         design.kind ?? "",
       },
       customer_email:              user.email,
       success_url:                 `${appUrl}/designs/${params.design_id}/activated`,
