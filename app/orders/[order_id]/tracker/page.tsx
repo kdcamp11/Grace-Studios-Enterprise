@@ -220,10 +220,12 @@ function TrackerPageContent() {
   useEffect(() => {
     async function load() {
       await sessionReady();
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) { router.replace("/login"); return; }
+
       const profile = await getProfile();
-      if (!profile) { router.replace("/login"); return; }
-      if (profile.role === "supplier") { router.replace("/supplier"); return; }
-      if (profile.role === "admin" || profile.role === "super_admin") setIsAdminView(true);
+      if (profile?.role === "supplier") { router.replace("/supplier"); return; }
+      if (profile?.role === "admin" || profile?.role === "super_admin") setIsAdminView(true);
 
       const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch(`/api/portal/order-detail?order_id=${order_id}`, {
