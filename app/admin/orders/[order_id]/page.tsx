@@ -66,6 +66,9 @@ interface Brief {
   primary_colors: string | null;
   secondary_colors: string | null;
   accent_color: string | null;
+  client_concept_url: string | null;
+  client_photo_url: string | null;
+  client_concept_notes: string | null;
 }
 
 interface Concept {
@@ -145,6 +148,7 @@ interface OrderDetail {
   supplier_user_id: string | null;
   assigned_designer_id: string | null;
   notes: string | null;
+  concept_source: string | null;
   production_choice?: string | null;
   production_file_url: string | null;
   deposit_paid?: boolean | null;
@@ -832,6 +836,66 @@ export default function AdminOrderPage() {
               Client View ↗
             </a>
           </div>
+
+          {/* ── Client Upload (production file orders) ───────────────────── */}
+          {order.brief?.client_concept_url && (
+            <div className="bg-brand-surface border border-brand-primary/30 rounded-xl p-5 space-y-4">
+              <p className="text-xs font-display uppercase tracking-widest text-brand-primary">Client Upload</p>
+
+              {/* Design file */}
+              <div className="flex items-center justify-between gap-4 bg-brand-bg rounded-lg border border-brand-border px-4 py-3">
+                <div className="min-w-0">
+                  <p className="text-xs font-display uppercase tracking-wider text-brand-muted mb-0.5">Production File</p>
+                  <p className="text-sm font-barlow text-brand-text truncate">
+                    {order.brief.client_concept_url.split("/").pop()?.split("?")[0] ?? "design-file"}
+                  </p>
+                </div>
+                <a
+                  href={order.brief.client_concept_url}
+                  download
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-shrink-0 px-4 py-2 rounded-lg bg-brand-primary text-white font-display font-bold text-xs uppercase tracking-widest hover:bg-brand-secondary transition-colors"
+                >
+                  Download ↓
+                </a>
+              </div>
+
+              {/* Reference photo */}
+              {order.brief.client_photo_url && (
+                <div className="space-y-2">
+                  <p className="text-xs font-display uppercase tracking-wider text-brand-muted">Reference Photo</p>
+                  <div className="flex items-start gap-4">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={order.brief.client_photo_url}
+                      alt="Client reference"
+                      className="h-24 w-auto rounded-lg border border-brand-border object-contain bg-brand-bg"
+                    />
+                    <a
+                      href={order.brief.client_photo_url}
+                      download
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs font-barlow text-brand-muted underline hover:text-brand-primary transition-colors mt-1"
+                    >
+                      Download photo
+                    </a>
+                  </div>
+                </div>
+              )}
+
+              {/* Client notes */}
+              {order.brief.client_concept_notes && (
+                <div>
+                  <p className="text-xs font-display uppercase tracking-wider text-brand-muted mb-1">Client Notes</p>
+                  <p className="text-sm font-barlow text-brand-text leading-relaxed whitespace-pre-wrap">
+                    {order.brief.client_concept_notes}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* ── Design Brief ────────────────────────────────────────────────── */}
           {order.brief && (
