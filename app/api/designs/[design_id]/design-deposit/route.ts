@@ -78,8 +78,8 @@ export async function POST(
     const host   = req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? "localhost:3000";
     const appUrl = `${proto}://${host}`;
     const redirectUrl = await bypassDesignDeposit(params.design_id, design.tenant_id, appUrl);
-    if (!redirectUrl) return NextResponse.json({ error: "Bypass failed" }, { status: 500 });
-    return NextResponse.json({ url: redirectUrl });
+    if (redirectUrl) return NextResponse.json({ url: redirectUrl });
+    // Bypass failed (e.g. design not found) — fall through to real Stripe
   }
 
   if (!process.env.STRIPE_SECRET_KEY) {
