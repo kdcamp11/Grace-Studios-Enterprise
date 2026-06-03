@@ -1921,15 +1921,24 @@ export default function AdminOrderPage() {
             stage:   "mockup_review" as OrderStage,
             reasons: !hasMockup ? ["Upload at least one mockup image first."] : [],
           },
-          production_files: {
-            label:   "Submit to Supplier — Advance to First Piece →",
-            stage:   "first_piece_in_progress" as OrderStage,
-            reasons: [
-              !hasProductionFiles && "Upload a production file.",
-              !hasPricing         && "Save production pricing.",
-              !hasSupplier        && "Assign a production partner.",
-            ].filter(Boolean) as string[],
-          },
+          production_files: (() => {
+            // Stage sequence within this phase: prep → sent_to_supplier → files_sent → first_piece.
+            // Target the correct next stage so isAllowedTransition doesn't reject the advance.
+            const stageConfig: { stage: OrderStage; label: string } =
+              order.stage === "files_sent"
+                ? { stage: "first_piece_in_progress" as OrderStage, label: "Files Confirmed — Advance to First Piece →" }
+                : order.stage === "sent_to_supplier"
+                ? { stage: "files_sent" as OrderStage, label: "Confirm Files Sent to Supplier →" }
+                : { stage: "sent_to_supplier" as OrderStage, label: "Submit to Supplier →" };
+            return {
+              ...stageConfig,
+              reasons: [
+                !hasProductionFiles && "Upload a production file.",
+                !hasPricing         && "Save production pricing.",
+                !hasSupplier        && "Assign a production partner.",
+              ].filter(Boolean) as string[],
+            };
+          })(),
           first_piece_in_production: {
             label:   "First Piece Submitted — Advance to Review →",
             stage:   "first_piece_review" as OrderStage,
