@@ -235,6 +235,16 @@ export async function GET() {
 
     const supplierUserId = o.supplier_user_id as string | null ?? null;
 
+    // When the order is at or past sent_to_supplier, the admin explicitly
+    // advanced it — infer all production_files gates as satisfied so
+    // resolveTimeline places the order in the correct downstream phase
+    // even when deposit_paid hasn't been written to the DB yet.
+    const SUPPLIER_STAGES = new Set([
+      "sent_to_supplier", "files_sent", "first_piece_in_progress", "first_piece_review",
+      "first_piece_revision", "bulk_production", "qc_verified", "shipped", "delivered", "complete",
+    ]);
+    const inSupplierStage = SUPPLIER_STAGES.has(o.stage);
+
     // Derived lifecycle phase — same calculation and same signals as the client
     // portal (/api/portal/orders) so both views always agree.
     // Key: firstPieceUploaded uses fp.total which is client_visible=true only,
@@ -242,12 +252,12 @@ export async function GET() {
     const derived = resolveTimeline({
       stage:             o.stage,
       production_choice: (o as Record<string, unknown>).production_choice as string | null ?? null,
-      deposit_paid:      o.deposit_paid,
+      deposit_paid:      inSupplierStage || o.deposit_paid,
       balance_paid:      o.balance_paid,
       tracking_number:   (o as Record<string, unknown>).tracking_number as string | null ?? null,
       mockupUploaded:          mockupCount > 0,
-      productionFilesUploaded: prodFiles > 0 || !!((o as Record<string, unknown>).production_file_url),
-      supplierAssigned:        !!supplierUserId,
+      productionFilesUploaded: inSupplierStage || prodFiles > 0 || !!((o as Record<string, unknown>).production_file_url),
+      supplierAssigned:        inSupplierStage || !!supplierUserId,
       firstPieceUploaded:      fp.total > 0,      // client_visible only — matches portal
       firstPieceApproved:      fp.client_approved > 0,
     });

@@ -725,20 +725,31 @@ export default function AdminOrderPage() {
     delivered:                 "delivered",
   };
 
+  // When the order is at or past sent_to_supplier, the admin explicitly advanced
+  // it — infer all production_files gates as satisfied so resolveTimeline places
+  // the order in the correct downstream phase even when deposit_paid hasn't been
+  // written to the DB yet (e.g., after a force-advance or before webhook fires).
+  const SUPPLIER_STAGES_ADMIN: ReadonlySet<string> = new Set([
+    "sent_to_supplier", "files_sent", "first_piece_in_progress", "first_piece_review",
+    "first_piece_revision", "bulk_production", "qc_verified", "shipped", "delivered", "complete",
+  ]);
+  const inSupplierStageAdmin = SUPPLIER_STAGES_ADMIN.has(order.stage);
+
   // Derive actual milestone completion so green checkmarks reflect real work done,
   // not just the raw DB stage array position (which can be jumped without completing
   // prerequisite artifacts like mockups or production files).
   const derived = resolveTimeline({
     stage:             order.stage,
     production_choice: order.production_choice ?? null,
-    deposit_paid:      order.deposit_paid,
+    deposit_paid:      inSupplierStageAdmin || order.deposit_paid,
     balance_paid:      order.balance_paid,
     tracking_number:   order.tracking_number,
     mockupUploaded:          mockups.length > 0,
     productionFilesUploaded:
+      inSupplierStageAdmin ||
       !!order.production_file_url ||
       orderFiles.some((f) => (f.label ?? "").toLowerCase().includes("production")),
-    supplierAssigned:        !!order.supplier_user_id,
+    supplierAssigned:        inSupplierStageAdmin || !!order.supplier_user_id,
     firstPieceUploaded:      order.media.filter((m) => m.client_visible).length > 0,
     firstPieceApproved:      order.media.some((m) => m.client_approved === true),
   });
