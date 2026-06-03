@@ -833,6 +833,133 @@ export default function AdminOrderPage() {
             </a>
           </div>
 
+          {/* ── Design Brief ────────────────────────────────────────────────── */}
+          {order.brief && (
+          <details className="bg-brand-surface border border-brand-border rounded-xl overflow-hidden group">
+            <summary className="flex items-center justify-between px-5 py-4 cursor-pointer list-none hover:bg-brand-bg/30 transition-colors">
+              <p className="text-xs font-display uppercase tracking-widest text-brand-primary">Design Brief</p>
+              <svg className="w-4 h-4 text-brand-muted transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </summary>
+            <div className="px-5 pb-5 pt-2 border-t border-brand-border">
+              <DetailRow label="Design System" value={order.brief.design_system} />
+              <DetailRow label="Cut" value={order.brief.jersey_cut} />
+              <DetailRow label="Construction" value={order.brief.sublimated === true ? "Sublimated" : order.brief.sublimated === false ? "Tackle Twill" : null} />
+              <DetailRow label="Logo Placement" value={order.brief.logo_placement?.replace("_", " ")} />
+              <DetailRow label="Number Style" value={order.brief.number_style} />
+              <DetailRow label="Logos" value={order.brief.logos_to_include} />
+              <DetailRow label="Sponsor" value={order.brief.sponsor_text} />
+              <DetailRow label="Avoid" value={order.brief.negative_references} />
+              <DetailRow label="Vision" value={order.brief.vision_prompt} />
+              {order.brief.logo_url && (
+                <div className="pt-3">
+                  <p className="text-xs font-display uppercase tracking-wider text-brand-muted mb-2">Team Logo</p>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={order.brief.logo_url} alt="Team logo" className="h-16 object-contain" />
+                </div>
+              )}
+              {order.brief.ai_prompt && (
+                <div className="pt-3 border-t border-brand-border">
+                  <p className="text-xs font-display uppercase tracking-wider text-brand-muted mb-3">AI Design Brief</p>
+                  <AiDesignBrief raw={order.brief.ai_prompt} />
+                </div>
+              )}
+              {(order.brief.primary_colors || order.brief.secondary_colors || order.brief.accent_color) && (
+                <div className="pt-3 border-t border-brand-border">
+                  <p className="text-xs font-display uppercase tracking-widest text-brand-primary mb-3">Colors</p>
+                  <div className="flex flex-wrap gap-3">
+                    {[
+                      { label: "Primary",   value: order.brief.primary_colors },
+                      { label: "Secondary", value: order.brief.secondary_colors },
+                      { label: "Accent",    value: order.brief.accent_color },
+                    ].filter((c) => c.value).map((c) =>
+                      c.value!.split(",").map((hex) => hex.trim()).filter(Boolean).map((hex) => (
+                        <div key={`${c.label}-${hex}`} className="flex items-center gap-2">
+                          <div
+                            className="w-7 h-7 rounded-lg border border-brand-border flex-shrink-0"
+                            style={{ background: hex.startsWith("#") ? hex : `#${hex}` }}
+                          />
+                          <div>
+                            <p className="text-[9px] font-display uppercase tracking-wider text-brand-muted">{c.label}</p>
+                            <p className="text-xs font-mono text-brand-text">{hex}</p>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </details>
+          )}
+
+          {/* ── Concepts ────────────────────────────────────────────────────── */}
+          {order.concepts.length > 0 && (
+          <details className="bg-brand-surface border border-brand-border rounded-xl overflow-hidden group" open>
+            <summary className="flex items-center justify-between px-5 py-4 cursor-pointer list-none hover:bg-brand-bg/30 transition-colors">
+              <p className="text-xs font-display uppercase tracking-widest text-brand-primary">Concepts</p>
+              <svg className="w-4 h-4 text-brand-muted transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </summary>
+            <div className="px-5 pb-5 pt-4 border-t border-brand-border">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {order.concepts.map((c) => (
+                  <div key={c.id} className={`rounded-xl overflow-hidden border ${c.selected ? "border-brand-primary" : "border-brand-border"}`}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={c.image_url} alt={`Concept ${c.concept_number}`} className="w-full aspect-square object-cover" />
+                    <div className={`px-3 py-2 flex items-center gap-1.5 ${c.selected ? "bg-brand-primary/10" : "bg-brand-surface"}`}>
+                      {c.selected && <span className="w-1.5 h-1.5 rounded-full bg-brand-primary" />}
+                      <span className="text-xs font-barlow text-brand-muted">Concept {c.concept_number}</span>
+                      {c.selected && <span className="text-xs font-barlow text-brand-primary ml-auto">Selected</span>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </details>
+          )}
+
+          {/* ── Player Roster ────────────────────────────────────────────────── */}
+          {order.brief?.player_roster && order.brief.player_roster.length > 0 && (
+          <details className="bg-brand-surface border border-brand-border rounded-xl overflow-hidden group">
+            <summary className="flex items-center justify-between px-5 py-4 cursor-pointer list-none hover:bg-brand-bg/30 transition-colors">
+              <p className="text-xs font-display uppercase tracking-widest text-brand-primary">Player Roster</p>
+              <span className="flex items-center gap-3">
+                <span className="text-[10px] font-display uppercase tracking-wider text-brand-muted">{order.brief.player_roster.length} players</span>
+                <svg className="w-4 h-4 text-brand-muted transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+              </span>
+            </summary>
+            <div className="border-t border-brand-border overflow-hidden">
+              <table className="w-full text-sm font-barlow">
+                <thead>
+                  <tr className="bg-brand-surface border-b border-brand-border">
+                    {["#", "Name", "Number", "Size", "Cut"].map((h) => (
+                      <th key={h} className="text-left px-4 py-2.5 text-[10px] font-display uppercase tracking-wider text-brand-muted">
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {order.brief.player_roster.map((player, i) => (
+                    <tr key={i} className="border-b border-brand-border/50 last:border-0 hover:bg-brand-surface/40">
+                      <td className="px-4 py-2.5 text-brand-muted text-xs">{i + 1}</td>
+                      <td className="px-4 py-2.5 text-brand-text font-medium">{player.name || "—"}</td>
+                      <td className="px-4 py-2.5 text-brand-text">{player.number || "—"}</td>
+                      <td className="px-4 py-2.5 text-brand-text">{player.size || "—"}</td>
+                      <td className="px-4 py-2.5 text-brand-muted capitalize">{player.cut || "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </details>
+          )}
+
           {/* Stage pipeline — 9 canonical steps shared with the client timeline */}
           <div className="bg-brand-surface border border-brand-border rounded-xl p-5">
             <div className="flex items-center justify-between mb-4">
@@ -1583,133 +1710,6 @@ export default function AdminOrderPage() {
               </div>
             )}
           </div>
-
-          {/* ── History: Design Brief ───────────────────────────────────────── */}
-          {order.brief && (
-          <details className="bg-brand-surface border border-brand-border rounded-xl overflow-hidden group">
-            <summary className="flex items-center justify-between px-5 py-4 cursor-pointer list-none hover:bg-brand-bg/30 transition-colors">
-              <p className="text-xs font-display uppercase tracking-widest text-brand-primary">Design Brief</p>
-              <svg className="w-4 h-4 text-brand-muted transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-              </svg>
-            </summary>
-            <div className="px-5 pb-5 pt-2 border-t border-brand-border">
-              <DetailRow label="Design System" value={order.brief.design_system} />
-              <DetailRow label="Cut" value={order.brief.jersey_cut} />
-              <DetailRow label="Construction" value={order.brief.sublimated === true ? "Sublimated" : order.brief.sublimated === false ? "Tackle Twill" : null} />
-              <DetailRow label="Logo Placement" value={order.brief.logo_placement?.replace("_", " ")} />
-              <DetailRow label="Number Style" value={order.brief.number_style} />
-              <DetailRow label="Logos" value={order.brief.logos_to_include} />
-              <DetailRow label="Sponsor" value={order.brief.sponsor_text} />
-              <DetailRow label="Avoid" value={order.brief.negative_references} />
-              <DetailRow label="Vision" value={order.brief.vision_prompt} />
-              {order.brief.logo_url && (
-                <div className="pt-3">
-                  <p className="text-xs font-display uppercase tracking-wider text-brand-muted mb-2">Team Logo</p>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={order.brief.logo_url} alt="Team logo" className="h-16 object-contain" />
-                </div>
-              )}
-              {order.brief.ai_prompt && (
-                <div className="pt-3 border-t border-brand-border">
-                  <p className="text-xs font-display uppercase tracking-wider text-brand-muted mb-3">AI Design Brief</p>
-                  <AiDesignBrief raw={order.brief.ai_prompt} />
-                </div>
-              )}
-              {(order.brief.primary_colors || order.brief.secondary_colors || order.brief.accent_color) && (
-                <div className="pt-3 border-t border-brand-border">
-                  <p className="text-xs font-display uppercase tracking-widest text-brand-primary mb-3">Colors</p>
-                  <div className="flex flex-wrap gap-3">
-                    {[
-                      { label: "Primary",   value: order.brief.primary_colors },
-                      { label: "Secondary", value: order.brief.secondary_colors },
-                      { label: "Accent",    value: order.brief.accent_color },
-                    ].filter((c) => c.value).map((c) =>
-                      c.value!.split(",").map((hex) => hex.trim()).filter(Boolean).map((hex) => (
-                        <div key={`${c.label}-${hex}`} className="flex items-center gap-2">
-                          <div
-                            className="w-7 h-7 rounded-lg border border-brand-border flex-shrink-0"
-                            style={{ background: hex.startsWith("#") ? hex : `#${hex}` }}
-                          />
-                          <div>
-                            <p className="text-[9px] font-display uppercase tracking-wider text-brand-muted">{c.label}</p>
-                            <p className="text-xs font-mono text-brand-text">{hex}</p>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          </details>
-          )}
-
-          {/* ── History: Concepts ───────────────────────────────────────────── */}
-          {order.concepts.length > 0 && (
-          <details className="bg-brand-surface border border-brand-border rounded-xl overflow-hidden group">
-            <summary className="flex items-center justify-between px-5 py-4 cursor-pointer list-none hover:bg-brand-bg/30 transition-colors">
-              <p className="text-xs font-display uppercase tracking-widest text-brand-primary">Concepts</p>
-              <svg className="w-4 h-4 text-brand-muted transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-              </svg>
-            </summary>
-            <div className="px-5 pb-5 pt-4 border-t border-brand-border">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {order.concepts.map((c) => (
-                  <div key={c.id} className={`rounded-xl overflow-hidden border ${c.selected ? "border-brand-primary" : "border-brand-border"}`}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={c.image_url} alt={`Concept ${c.concept_number}`} className="w-full aspect-square object-cover" />
-                    <div className={`px-3 py-2 flex items-center gap-1.5 ${c.selected ? "bg-brand-primary/10" : "bg-brand-surface"}`}>
-                      {c.selected && <span className="w-1.5 h-1.5 rounded-full bg-brand-primary" />}
-                      <span className="text-xs font-barlow text-brand-muted">Concept {c.concept_number}</span>
-                      {c.selected && <span className="text-xs font-barlow text-brand-primary ml-auto">Selected</span>}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </details>
-          )}
-
-          {/* ── History: Player Roster ──────────────────────────────────────── */}
-          {order.brief?.player_roster && order.brief.player_roster.length > 0 && (
-          <details className="bg-brand-surface border border-brand-border rounded-xl overflow-hidden group">
-            <summary className="flex items-center justify-between px-5 py-4 cursor-pointer list-none hover:bg-brand-bg/30 transition-colors">
-              <p className="text-xs font-display uppercase tracking-widest text-brand-primary">Player Roster</p>
-              <span className="flex items-center gap-3">
-                <span className="text-[10px] font-display uppercase tracking-wider text-brand-muted">{order.brief.player_roster.length} players</span>
-                <svg className="w-4 h-4 text-brand-muted transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                </svg>
-              </span>
-            </summary>
-            <div className="border-t border-brand-border overflow-hidden">
-              <table className="w-full text-sm font-barlow">
-                <thead>
-                  <tr className="bg-brand-surface border-b border-brand-border">
-                    {["#", "Name", "Number", "Size", "Cut"].map((h) => (
-                      <th key={h} className="text-left px-4 py-2.5 text-[10px] font-display uppercase tracking-wider text-brand-muted">
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {order.brief.player_roster.map((player, i) => (
-                    <tr key={i} className="border-b border-brand-border/50 last:border-0 hover:bg-brand-surface/40">
-                      <td className="px-4 py-2.5 text-brand-muted text-xs">{i + 1}</td>
-                      <td className="px-4 py-2.5 text-brand-text font-medium">{player.name || "—"}</td>
-                      <td className="px-4 py-2.5 text-brand-text">{player.number || "—"}</td>
-                      <td className="px-4 py-2.5 text-brand-text">{player.size || "—"}</td>
-                      <td className="px-4 py-2.5 text-brand-muted capitalize">{player.cut || "—"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </details>
-          )}
 
           {/* ── First Piece Review — visible in first_piece workspace */}
           {currentWorkspace === "first_piece" && (
