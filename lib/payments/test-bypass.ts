@@ -88,12 +88,15 @@ export async function bypassDesignDeposit(
     orderId = existing.id;
     await admin.from("orders").update({ design_fee_paid: true }).eq("id", orderId);
   } else {
+    const isUploadPath = design.kind === "upload";
+    const initialStage = isUploadPath ? "production_files_prep" : "creative_in_review";
+
     const { data: order, error } = await admin
       .from("orders")
       .insert({
         tenant_id:       effectiveTenantId,
         client_id:       design.client_id,
-        stage:           "creative_in_review",
+        stage:           initialStage,
         design_fee_paid: true,
         concept_source:  design.kind === "upload" || design.kind === "builder"
                            ? "client_provided"
@@ -115,13 +118,16 @@ export async function bypassDesignDeposit(
     admin.from("designs").update({ status: "converted", order_id: orderId }).eq("id", designId),
   ]);
 
+  const isUploadKind = design.kind === "upload";
   await admin.from("stage_log").insert({
     order_id:   orderId,
     tenant_id:  effectiveTenantId,
     from_stage: "onboarding",
-    to_stage:   "creative_in_review",
+    to_stage:   isUploadKind ? "production_files_prep" : "creative_in_review",
     changed_by: "system",
-    note:       "Creative Activation bypassed — test user",
+    note:       isUploadKind
+      ? "Creative Activation bypassed — production file upload starts at production_files_prep"
+      : "Creative Activation bypassed — test user",
   }).catch(() => {});
 
   await admin.from("design_deposit_sessions").insert({

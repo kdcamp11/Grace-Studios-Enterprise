@@ -130,12 +130,11 @@ export function resolveTimeline(s: MilestoneSignals): DerivedTimeline {
   const rank = floorRank(s.stage);
   const atOrPast = (st: OrderStage) => rank >= 0 && rank >= PROD_FLOOR.indexOf(st);
 
-  // Mockup approval is recorded by the client's approve action, which advances
-  // the stage past the mockup phase. Reaching production_files_prep+ requires a
-  // real client approval (or explicit admin override) — choose-production no
-  // longer skips into it. Gated by mockupUploaded so a jumped stage with no
-  // mockup artifact can never read as approved.
-  const mockupApproved = s.mockupUploaded && atOrPast("production_files_prep");
+  // Stage reaching production_files_prep is the proof that the mockup phase is
+  // complete — either a client approved an uploaded mockup, an admin overrode it,
+  // or the order is a client-upload path that legitimately starts here with no
+  // separate mockup artifact.
+  const mockupApproved = atOrPast("production_files_prep");
   const firstPaymentPaid = s.deposit_paid === true;
   const bulkComplete     = atOrPast("qc_verified");   // bulk finished → moved to QC
   const qcComplete       = atOrPast("shipped");        // QC passed → moved to shipping
@@ -157,7 +156,7 @@ export function resolveTimeline(s: MilestoneSignals): DerivedTimeline {
   // Step 2 now requires supplier assignment so "First Piece In Production"
   // cannot become the current step until files, payment, AND supplier are all set.
   const complete: boolean[] = [
-    s.mockupUploaded,                                                    // 1 Mockup In Progress
+    s.mockupUploaded || mockupApproved,                                  // 1 Mockup In Progress
     mockupApproved,                                                      // 2 Mockup Review
     s.productionFilesUploaded && firstPaymentPaid && s.supplierAssigned, // 3 Production Files
     s.firstPieceUploaded,                                                // 4 First Piece In Production

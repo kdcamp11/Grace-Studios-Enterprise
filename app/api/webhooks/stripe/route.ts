@@ -460,12 +460,17 @@ async function handleDesignDepositFromDesign(
   const effectiveTenantId = tenantId ?? design.tenant_id;
 
   // Mint the order from the design
+  // Upload-path orders skip the mockup phase entirely — the client's uploaded
+  // file IS their design, so we start directly at production_files_prep.
+  const isUploadPath = design.kind === "upload";
+  const initialStage = isUploadPath ? "production_files_prep" : "creative_in_review";
+
   const { data: order, error: orderError } = await admin
     .from("orders")
     .insert({
       tenant_id:       effectiveTenantId,
       client_id:       design.client_id,
-      stage:           "creative_in_review",
+      stage:           initialStage,
       design_fee_paid: true,
       concept_source:  design.kind === "upload" || design.kind === "builder"
                          ? "client_provided"
@@ -498,9 +503,11 @@ async function handleDesignDepositFromDesign(
     order_id:   orderId,
     tenant_id:  effectiveTenantId,
     from_stage: "onboarding",
-    to_stage:   "creative_in_review",
+    to_stage:   initialStage,
     changed_by: "system",
-    note:       "Creative Activation paid — order minted from design",
+    note:       isUploadPath
+      ? "Creative Activation paid — production file upload order starts at production_files_prep"
+      : "Creative Activation paid — order minted from design",
   }).catch((err) => console.error("[stripe webhook] stage_log insert failed:", err));
 
   // Record the deposit session now that we have an order_id
