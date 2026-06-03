@@ -1,35 +1,75 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createServerClient } from "@/lib/supabase/server";
 import { assertAdminTenant, isErrorResponse } from "@/lib/api/assert-admin-tenant";
+import { getRequestTenant } from "@/lib/tenant/get-request-tenant";
 import { getPaymentThresholdInfo, generateInvoiceNumber } from "@/lib/payments/thresholds";
 
 /**
  * GET /api/invoices?order_id=xxx
- * Admin-only: list invoices for a given order.
+ * Admins: all invoices for the order.
+ * Clients: invoices for orders they own (verified via clients table).
  */
 export async function GET(req: NextRequest) {
-  const ctx = await assertAdminTenant();
-  if (isErrorResponse(ctx)) return ctx;
-
   const orderId = req.nextUrl.searchParams.get("order_id");
   if (!orderId) return NextResponse.json({ error: "order_id required" }, { status: 400 });
 
   const admin = createAdminClient();
 
-  // Verify order belongs to tenant
-  const { data: order } = await admin
+  // Try admin auth first
+  const ctx = await assertAdminTenant();
+  if (!isErrorResponse(ctx)) {
+    const { data: order } = await admin
+      .from("orders")
+      .select("id")
+      .eq("id", orderId)
+      .eq("tenant_id", ctx.tenant.id)
+      .single();
+    if (!order) return NextResponse.json({ error: "Order not found" }, { status: 404 });
+
+    const { data: invoices } = await admin
+      .from("invoices")
+      .select("*, payments(*)")
+      .eq("order_id", orderId)
+      .eq("tenant_id", ctx.tenant.id)
+      .order("created_at", { ascending: false });
+
+    return NextResponse.json({ invoices: invoices ?? [] });
+  }
+
+  // Fall back to client auth with ownership check
+  const serverClient = createServerClient();
+  const { data: { user } } = await serverClient.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const tenant = await getRequestTenant();
+  if (!tenant) return NextResponse.json({ error: "Tenant not found" }, { status: 400 });
+
+  // Verify the client owns this order (by user_id or email)
+  const { data: orderRow } = await admin
     .from("orders")
-    .select("id")
+    .select("id, client_id, clients(email, user_id)")
     .eq("id", orderId)
-    .eq("tenant_id", ctx.tenant.id)
+    .eq("tenant_id", tenant.id)
     .single();
-  if (!order) return NextResponse.json({ error: "Order not found" }, { status: 404 });
+
+  if (!orderRow) return NextResponse.json({ error: "Order not found" }, { status: 404 });
+
+  const clientRaw = Array.isArray(orderRow.clients)
+    ? orderRow.clients[0]
+    : (orderRow.clients as { email: string; user_id: string | null } | null);
+
+  const emailMatch  = (clientRaw?.email ?? "").toLowerCase() === (user.email ?? "").toLowerCase();
+  const userIdMatch = clientRaw?.user_id != null && clientRaw.user_id === user.id;
+  if (!emailMatch && !userIdMatch) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   const { data: invoices } = await admin
     .from("invoices")
     .select("*, payments(*)")
     .eq("order_id", orderId)
-    .eq("tenant_id", ctx.tenant.id)
+    .eq("tenant_id", tenant.id)
     .order("created_at", { ascending: false });
 
   return NextResponse.json({ invoices: invoices ?? [] });
