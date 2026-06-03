@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createServerClient } from "@/lib/supabase/server";
 import { getRequestTenant } from "@/lib/tenant/get-request-tenant";
@@ -91,4 +91,51 @@ export async function GET() {
   });
 
   return NextResponse.json({ designs: result });
+}
+
+/**
+ * DELETE /api/portal/designs?design_id=xxx
+ * Deletes a draft or submitted design owned by the authenticated client.
+ * Converted designs (status = "converted") cannot be deleted here.
+ */
+export async function DELETE(req: NextRequest) {
+  const serverClient = createServerClient();
+  const { data: { user } } = await serverClient.auth.getUser();
+  if (!user?.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const tenant = await getRequestTenant();
+  if (!tenant) return NextResponse.json({ error: "Tenant not found" }, { status: 400 });
+
+  const designId = req.nextUrl.searchParams.get("design_id");
+  if (!designId) return NextResponse.json({ error: "design_id required" }, { status: 400 });
+
+  const admin = createAdminClient();
+
+  // Find the client row for this user
+  const { data: client } = await admin
+    .from("clients")
+    .select("id")
+    .eq("tenant_id", tenant.id)
+    .or(`email.eq.${user.email.toLowerCase()},user_id.eq.${user.id}`)
+    .maybeSingle();
+
+  if (!client) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  // Verify ownership and that design is not yet converted
+  const { data: design } = await admin
+    .from("designs")
+    .select("id, status")
+    .eq("id", designId)
+    .eq("client_id", client.id)
+    .eq("tenant_id", tenant.id)
+    .single();
+
+  if (!design) return NextResponse.json({ error: "Design not found" }, { status: 404 });
+  if (design.status === "converted") {
+    return NextResponse.json({ error: "Cannot delete an activated design" }, { status: 400 });
+  }
+
+  await admin.from("designs").delete().eq("id", designId);
+
+  return NextResponse.json({ ok: true });
 }

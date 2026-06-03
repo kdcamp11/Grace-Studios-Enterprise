@@ -276,7 +276,12 @@ function PortalContent() {
                   ) : (
                     <div className="space-y-3">
                       {designs.map((d, i) => (
-                        <SavedDesignCard key={d.id} design={d} index={i} />
+                        <SavedDesignCard
+                          key={d.id}
+                          design={d}
+                          index={i}
+                          onDelete={(id) => setDesigns((prev) => prev.filter((x) => x.id !== id))}
+                        />
                       ))}
                     </div>
                   )
@@ -617,7 +622,10 @@ function DesignThumbnail({ design }: { design: SavedDesign }) {
   );
 }
 
-function SavedDesignCard({ design, index }: { design: SavedDesign; index: number }) {
+function SavedDesignCard({ design, index, onDelete }: { design: SavedDesign; index: number; onDelete: (id: string) => void }) {
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
   function continueHref(): string {
     if (design.kind === "upload") {
       return design.hasFile
@@ -631,6 +639,17 @@ function SavedDesignCard({ design, index }: { design: SavedDesign; index: number
     return design.hasBrief
       ? `/designs/${design.id}/concepts`
       : `/brief/${design.id}/style`;
+  }
+
+  async function handleDelete() {
+    setDeleting(true);
+    const res = await fetch(`/api/portal/designs?design_id=${design.id}`, { method: "DELETE" });
+    if (res.ok) {
+      onDelete(design.id);
+    } else {
+      setDeleting(false);
+      setConfirmDelete(false);
+    }
   }
 
   return (
@@ -668,22 +687,50 @@ function SavedDesignCard({ design, index }: { design: SavedDesign; index: number
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            <a
-              href={continueHref()}
-              className="px-3 py-1.5 rounded-lg font-display font-bold text-[10px] uppercase tracking-widest border border-brand-border text-brand-muted hover:text-brand-text hover:border-brand-muted transition-colors"
-            >
-              Continue
-            </a>
-            {design.status === "submitted" && (
-              <a
-                href={`/designs/${design.id}/checkout`}
-                className="px-3 py-1.5 rounded-lg font-display font-bold text-[10px] uppercase tracking-widest bg-brand-primary text-white hover:bg-brand-secondary transition-colors"
+          {confirmDelete ? (
+            <div className="flex items-center gap-2">
+              <p className="text-[11px] font-barlow text-red-400 flex-1">Delete this design?</p>
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={deleting}
+                className="px-3 py-1.5 rounded-lg font-display font-bold text-[10px] uppercase tracking-widest bg-red-500/10 text-red-400 border border-red-400/30 hover:bg-red-500/20 transition-colors disabled:opacity-40"
               >
-                Activate — $149 →
+                {deleting ? "Deleting…" : "Confirm"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmDelete(false)}
+                className="px-3 py-1.5 rounded-lg font-display font-bold text-[10px] uppercase tracking-widest border border-brand-border text-brand-muted hover:text-brand-text transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              <a
+                href={continueHref()}
+                className="px-3 py-1.5 rounded-lg font-display font-bold text-[10px] uppercase tracking-widest border border-brand-border text-brand-muted hover:text-brand-text hover:border-brand-muted transition-colors"
+              >
+                Continue
               </a>
-            )}
-          </div>
+              {design.status === "submitted" && (
+                <a
+                  href={`/designs/${design.id}/checkout`}
+                  className="px-3 py-1.5 rounded-lg font-display font-bold text-[10px] uppercase tracking-widest bg-brand-primary text-white hover:bg-brand-secondary transition-colors"
+                >
+                  Activate — $149 →
+                </a>
+              )}
+              <button
+                type="button"
+                onClick={() => setConfirmDelete(true)}
+                className="px-3 py-1.5 rounded-lg font-display font-bold text-[10px] uppercase tracking-widest border border-red-400/20 text-red-400/60 hover:text-red-400 hover:border-red-400/40 transition-colors"
+              >
+                Delete
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
