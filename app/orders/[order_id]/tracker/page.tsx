@@ -657,8 +657,8 @@ function TrackerPageContent() {
                 ))}
               </div>
 
-              {/* Action buttons — only shown when stage is mockup_review and not yet reviewed */}
-              {order.stage === "mockup_review" && !mockupReviewDone && (
+              {/* Action buttons — shown when timeline is at Mockup Review step (index 1) and revision is not in progress */}
+              {currentIndex === 1 && normalizeStage(order.stage) !== "mockup_revision" && !mockupReviewDone && (
                 <div className="border border-amber-400/30 rounded-xl p-4 bg-brand-surface space-y-3">
                   <p className="text-xs font-display uppercase tracking-wider text-amber-400">Your Review Required</p>
                   {mockupAction === null ? (
