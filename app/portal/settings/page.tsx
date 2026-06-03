@@ -78,9 +78,8 @@ export default function PortalSettingsPage() {
       }
 
       // Load profile catalog preferences (from profiles table)
-      const catRes = await fetch("/api/supplier/settings");
+      const catRes = await fetch("/api/client/catalog");
       if (catRes.ok) {
-        // This endpoint works for any role
         const { profile: sp } = await catRes.json();
         setEnabledSports(sp?.enabled_sports ?? []);
         setEnabledProducts(sp?.enabled_products ?? []);
@@ -151,7 +150,7 @@ export default function PortalSettingsPage() {
           })
         : Promise.resolve(null),
       // Save catalog preferences to profiles
-      fetch("/api/supplier/settings", {
+      fetch("/api/client/catalog", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ enabled_sports: enabledSports, enabled_products: enabledProducts }),
@@ -265,8 +264,23 @@ export default function PortalSettingsPage() {
                     className={`flex items-center gap-4 border border-dashed border-brand-border rounded-xl px-5 py-4 transition-colors ${logoUploading ? "opacity-60 cursor-wait" : "cursor-pointer hover:border-brand-primary"}`}
                   >
                     {logoUrl ? (
-                      /* eslint-disable-next-line @next/next/no-img-element */
-                      <img src={logoUrl} alt="Team logo" className="h-10 w-auto object-contain rounded flex-shrink-0" />
+                      <>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={logoUrl} alt="Team logo" className="h-10 w-auto object-contain rounded flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-barlow text-brand-text">
+                            {logoUploading ? "Uploading…" : "Logo uploaded"}
+                          </p>
+                          <p className="text-xs font-barlow text-brand-muted mt-0.5">Click to replace</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setLogoUrl(null); }}
+                          className="ml-auto flex-shrink-0 text-brand-muted hover:text-red-400 transition-colors text-xs font-barlow underline"
+                        >
+                          Remove
+                        </button>
+                      </>
                     ) : (
                       <div className="w-10 h-10 rounded-lg bg-brand-border/40 flex items-center justify-center flex-shrink-0">
                         <svg className="w-5 h-5 text-brand-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -274,14 +288,16 @@ export default function PortalSettingsPage() {
                         </svg>
                       </div>
                     )}
-                    <div>
-                      <p className="text-sm font-barlow text-brand-text">
-                        {logoUploading ? "Uploading…" : logoUrl ? "Logo uploaded" : "Upload logo"}
-                      </p>
-                      <p className="text-xs font-barlow text-brand-muted mt-0.5">
-                        {logoUrl ? "Click to replace" : "PNG, JPG, SVG, shown in your client profile"}
-                      </p>
-                    </div>
+                    {!logoUrl && (
+                      <div>
+                        <p className="text-sm font-barlow text-brand-text">
+                          {logoUploading ? "Uploading…" : "Upload logo"}
+                        </p>
+                        <p className="text-xs font-barlow text-brand-muted mt-0.5">
+                          PNG, JPG, SVG, shown in your client profile
+                        </p>
+                      </div>
+                    )}
                   </div>
                   {logoError && <p className="text-xs text-red-500 mt-1.5">{logoError}</p>}
                 </div>
