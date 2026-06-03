@@ -603,7 +603,7 @@ function TrackerPageContent() {
                     <video src={item.media_url} controls className="w-full aspect-video bg-black" />
                   ) : (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={item.media_url} alt={item.caption ?? "First piece"} className="w-full object-cover max-h-80" />
+                    <img src={item.media_url} alt={item.caption ?? "First piece"} className="w-full object-contain max-h-[600px] bg-brand-bg" />
                   )}
                   <div className="p-4 space-y-3">
                     {item.caption && <p className="text-sm font-barlow text-brand-text">{item.caption}</p>}
