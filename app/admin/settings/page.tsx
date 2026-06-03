@@ -168,10 +168,17 @@ export default function AdminSettingsPage() {
                   <>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={form.logo_url} alt="Logo" className="h-10 w-auto object-contain rounded flex-shrink-0" />
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <p className="text-sm font-barlow text-brand-text">{uploading ? "Uploading…" : "Logo uploaded"}</p>
                       <p className="text-xs text-brand-muted font-barlow mt-0.5">Click to replace</p>
                     </div>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); set("logo_url", null); }}
+                      className="ml-auto flex-shrink-0 text-brand-muted hover:text-red-400 transition-colors text-xs font-barlow underline"
+                    >
+                      Remove
+                    </button>
                   </>
                 ) : (
                   <div className="flex items-center gap-3 w-full">
