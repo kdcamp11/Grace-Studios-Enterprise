@@ -91,6 +91,13 @@ export async function POST(
     return NextResponse.json({ url: redirectUrl });
   }
 
+  if (!process.env.STRIPE_SECRET_KEY) {
+    return NextResponse.json(
+      { error: "Payments are not yet configured. STRIPE_SECRET_KEY is missing." },
+      { status: 503 },
+    );
+  }
+
   try {
     // ── Tenant — resolve from request headers directly (no next/headers) ─────
     const hostname =
