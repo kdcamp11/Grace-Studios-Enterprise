@@ -264,9 +264,6 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   );
 }
 
-// Production-file adjacent stages where a deposit payment releases the order.
-const PROD_FILES_STAGES = ["production_files_prep", "sent_to_supplier", "files_sent"];
-
 async function refreshInvoiceStatus(
   invoiceId: string,
   orderId: string,
@@ -327,12 +324,17 @@ async function refreshInvoiceStatus(
       let nextStage: string | null = null;
       let note = "";
 
-      if (PROD_FILES_STAGES.includes(ord.stage)) {
-        // Deposit (or full) payment at the production-files gate — release to first piece
-        nextStage = "first_piece_in_progress";
+      if (ord.stage === "production_files_prep") {
+        // Deposit paid while prepping files — advance to sent_to_supplier so admin
+        // can coordinate file handoff to the production partner.
+        nextStage = "sent_to_supplier";
         note = newStatus === "partially_paid"
-          ? "Production deposit paid — order released to first piece production"
-          : "Full production payment received — order released to first piece production";
+          ? "Production deposit paid — order sent to supplier"
+          : "Full production payment received — order sent to supplier";
+      } else if (ord.stage === "sent_to_supplier" || ord.stage === "files_sent") {
+        // Payment confirmed after files were already sent — release to first piece.
+        nextStage = "first_piece_in_progress";
+        note = "Deposit confirmed — order released to first piece production";
       } else if (newStatus === "paid" && ord.stage === "qc_verified") {
         // Final balance payment at QC — release shipment
         nextStage = "shipped";

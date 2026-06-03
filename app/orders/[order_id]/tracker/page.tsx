@@ -240,20 +240,33 @@ function TrackerPageContent() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [order_id]);
 
-  // After a Stripe payment redirect, re-fetch after a short delay so the webhook
-  // has time to process and the updated deposit_paid / stage are reflected.
+  // After a Stripe payment redirect, poll until the webhook has processed.
+  // Stripe can take 2–15 s to deliver; we retry every 3 s up to 8 times.
   useEffect(() => {
     if (paymentResult !== "success") return;
-    const timer = setTimeout(async () => {
+
+    let stopped = false;
+    let attempt = 0;
+    const MAX_ATTEMPTS = 8;
+
+    async function poll() {
+      if (stopped) return;
       const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch(`/api/portal/order-detail?order_id=${order_id}`, {
         headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
       });
-      if (!res.ok) return;
+      if (stopped || !res.ok) return;
       const { order: o } = await res.json() as { order: OrderData };
-      if (o) setOrder({ ...o, stage: o.stage as OrderStage, mockups: o.mockups ?? [], mockup_revision_used: o.mockup_revision_used ?? false });
-    }, 3500);
-    return () => clearTimeout(timer);
+      if (!o || stopped) return;
+      setOrder({ ...o, stage: o.stage as OrderStage, mockups: o.mockups ?? [], mockup_revision_used: o.mockup_revision_used ?? false });
+      // Stop once payment is reflected in the DB
+      if (o.deposit_paid || o.balance_paid || o.invoice?.status === "partially_paid" || o.invoice?.status === "paid") return;
+      attempt++;
+      if (attempt < MAX_ATTEMPTS) setTimeout(poll, 3000);
+    }
+
+    const initial = setTimeout(poll, 3000);
+    return () => { stopped = true; clearTimeout(initial); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paymentResult, order_id]);
 
@@ -317,6 +330,13 @@ function TrackerPageContent() {
   // Derive the timeline from REAL workflow conditions, not the raw stage enum.
   // A step can only be complete when every prior dependency is satisfied, so the
   // timeline can never show a later stage done while an earlier one is missing.
+  //
+  // Supplier assignment is inferred from the stage: if the order has reached
+  // sent_to_supplier or beyond, the admin must have assigned a supplier to advance.
+  const SUPPLIER_STAGES: ReadonlySet<string> = new Set([
+    "sent_to_supplier", "files_sent", "first_piece_in_progress", "first_piece_review",
+    "first_piece_revision", "bulk_production", "qc_verified", "shipped", "delivered", "complete",
+  ]);
   const timeline = deriveTimeline({
     stage:               order.stage,
     production_choice:   order.production_choice,
@@ -326,6 +346,7 @@ function TrackerPageContent() {
     mockups:             order.mockups,
     media:               order.media,
     files:               order.files,
+    supplier_user_id:    SUPPLIER_STAGES.has(normalizeStage(order.stage)) ? "assigned" : null,
   });
   const { steps, currentIndex, milestones } = timeline;
 
