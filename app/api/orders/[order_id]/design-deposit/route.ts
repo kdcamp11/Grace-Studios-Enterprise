@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/auth-helpers-nextjs";
-import { stripe } from "@/lib/payments/stripe";
+import { stripe, stripeConfigured } from "@/lib/payments/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveTenant } from "@/lib/tenant/resolve";
 import { rateLimit } from "@/lib/rate-limit";
@@ -91,9 +91,9 @@ export async function POST(
     return NextResponse.json({ url: redirectUrl });
   }
 
-  if (!process.env.STRIPE_SECRET_KEY) {
+  if (!stripeConfigured) {
     return NextResponse.json(
-      { error: "Payments are not yet configured. STRIPE_SECRET_KEY is missing." },
+      { error: "Payments are not yet configured. Please contact support." },
       { status: 503 },
     );
   }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/auth-helpers-nextjs";
-import { stripe } from "@/lib/payments/stripe";
+import { stripe, stripeConfigured } from "@/lib/payments/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveTenant } from "@/lib/tenant/resolve";
 import { rateLimit } from "@/lib/rate-limit";
@@ -83,11 +83,7 @@ export async function POST(
       // Bypass failed (e.g. design not found) — fall through to real Stripe
     }
 
-    const stripeKey = process.env.STRIPE_MODE === "test"
-      ? (process.env.STRIPE_TEST_SECRET_KEY ?? process.env.STRIPE_SECRET_KEY)
-      : process.env.STRIPE_SECRET_KEY;
-
-    if (!stripeKey) {
+    if (!stripeConfigured) {
       return NextResponse.json(
         { error: "Payments are not yet configured. Please contact support." },
         { status: 503 },

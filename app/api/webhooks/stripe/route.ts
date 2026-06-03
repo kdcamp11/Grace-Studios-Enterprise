@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Missing stripe-signature header" }, { status: 400 });
   }
 
-  const webhookSecret = process.env.STRIPE_MODE === "test"
+  const webhookSecret = process.env.STRIPE_MODE !== "live"
     ? (process.env.STRIPE_TEST_WEBHOOK_SECRET ?? process.env.STRIPE_WEBHOOK_SECRET)
     : process.env.STRIPE_WEBHOOK_SECRET;
   if (!webhookSecret) {
