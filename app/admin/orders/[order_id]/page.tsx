@@ -7,8 +7,7 @@ import { getProfile } from "@/lib/profile";
 import AdminHeader from "@/components/AdminHeader";
 import type { RosterPlayer } from "@/types/database";
 import type { OrderStage } from "@/types/database";
-import { stageLabel } from "@/lib/order-stages";
-import { resolveTimeline, stepForIndex } from "@/lib/order-milestones";
+import { resolveTimeline, stepForIndex, TIMELINE_STEPS } from "@/lib/order-milestones";
 import type { SupplierWithPortfolio } from "@/app/api/admin/suppliers/route";
 import { formatCurrency, getPaymentThresholdInfo } from "@/lib/payments/thresholds";
 import { PRODUCTION_PRICING_TIERS, calcProductionPricing, formatCents } from "@/lib/payments/supplier-pricing";
@@ -35,44 +34,18 @@ interface MockupItem {
   revision_round: number;
 }
 
-const PIPELINE: OrderStage[] = [
-  "onboarding",
-  "design_confirmed",
-  "mockup_in_progress",
-  "mockup_review",
-  "mockup_revision",
-  "production_files_prep",
-  "sent_to_supplier",
-  "files_sent",
-  "first_piece_in_progress",
-  "first_piece_review",
-  "first_piece_revision",
-  "bulk_production",
-  "qc_verified",
-  "shipped",
-  "delivered",
-  "complete",
-];
-
-// Partial: PIPELINE only renders these legacy/production stages; new creative
-// stages fall back to stageLabel() at the call site (see lib/order-stages.ts).
-const STAGE_LABELS: Partial<Record<OrderStage, string>> = {
-  onboarding:              "Brief Submitted",
-  design_confirmed:        "Concepts",
-  mockup_in_progress:      "Mockup",
-  mockup_review:           "Mockup Review",
-  mockup_revision:         "Mockup Rev.",
-  production_files_prep:   "Prod. Prep",
-  sent_to_supplier:        "To Supplier",
-  files_sent:              "Design OK",
-  first_piece_in_progress: "First Piece",
-  first_piece_review:      "1st Piece Review",
-  first_piece_revision:    "1st Piece Rev.",
-  bulk_production:         "Bulk",
-  qc_verified:             "QC",
-  shipped:                 "Shipped",
-  delivered:               "Delivered",
-  complete:                "Complete",
+// Maps each canonical TIMELINE_STEPS key to the representative DB stage used
+// when an admin clicks a pipeline tile to force-advance the order.
+const CANONICAL_TO_STAGE: Partial<Record<string, OrderStage>> = {
+  mockup_in_progress:        "mockup_in_progress",
+  mockup_review:             "mockup_review",
+  production_files:          "production_files_prep",
+  first_piece_in_production: "first_piece_in_progress",
+  first_piece_review:        "first_piece_review",
+  bulk_production:           "bulk_production",
+  quality_check:             "qc_verified",
+  shipped:                   "shipped",
+  delivered:                 "delivered",
 };
 
 interface Brief {
@@ -710,21 +683,6 @@ export default function AdminOrderPage() {
     );
   }
 
-  // Maps derived TIMELINE_STEPS phase key → the closest PIPELINE stage, so the
-  // pipeline breadcrumb highlights the actual current milestone rather than a raw
-  // DB stage that may have been manually advanced ahead of completed work.
-  const PHASE_TO_PIPELINE_STAGE: Partial<Record<string, OrderStage>> = {
-    mockup_in_progress:        "mockup_in_progress",
-    mockup_review:             "mockup_review",
-    production_files:          "production_files_prep",
-    first_piece_in_production: "first_piece_in_progress",
-    first_piece_review:        "first_piece_review",
-    bulk_production:           "bulk_production",
-    quality_check:             "qc_verified",
-    shipped:                   "shipped",
-    delivered:                 "delivered",
-  };
-
   // When the order is at or past sent_to_supplier, the admin explicitly advanced
   // it — infer all production_files gates as satisfied so resolveTimeline places
   // the order in the correct downstream phase even when deposit_paid hasn't been
@@ -755,18 +713,9 @@ export default function AdminOrderPage() {
   });
   const { milestones } = derived;
 
-  // Derived phase key — matches the workflow board column keys (TIMELINE_STEPS).
-  // Used to gate workspace sections and the "Next" hint so they reflect the
-  // actual milestone state rather than a raw DB stage that may have been jumped.
+  // Derived phase key — matches TIMELINE_STEPS keys (9 canonical production phases).
+  // Used to gate workspace sections, the "Next" hint, and the pipeline display.
   const derivedPhaseKey = stepForIndex(derived.currentIndex)?.key ?? null;
-
-  // The PIPELINE stage that the derived phase maps to — used for isCurrent and
-  // the counter display. Falls back to order.stage if the phase has no mapping
-  // (e.g., early creative stages before mockup).
-  const derivedCurrentStage: OrderStage =
-    (derivedPhaseKey ? PHASE_TO_PIPELINE_STAGE[derivedPhaseKey] : undefined) ?? order.stage;
-
-  const currentStageIndex = PIPELINE.indexOf(derivedCurrentStage);
 
   // Derive which admin workspace is active from the derived phase key so each
   // phase section is only shown when the order is actually in that phase.
@@ -792,28 +741,6 @@ export default function AdminOrderPage() {
   // Returns true when the current phase is at or past the given workspace —
   // used to gate sections so only relevant phase content is shown.
   const atOrPastWs = (ws: AdminWorkspace) => wsRank >= WORKSPACE_RANK[ws];
-
-  const stageDone = (s: OrderStage): boolean => {
-    switch (s) {
-      case "onboarding":
-      case "design_confirmed":   return derived.inProduction;
-      case "mockup_in_progress": return milestones.mockupUploaded;
-      case "mockup_review":
-      case "mockup_revision":    return milestones.mockupApproved;
-      case "production_files_prep":
-      case "sent_to_supplier":   return milestones.productionFilesUploaded;
-      case "files_sent":         return milestones.productionFilesUploaded && milestones.firstPaymentPaid;
-      case "first_piece_in_progress": return milestones.firstPieceUploaded;
-      case "first_piece_review":
-      case "first_piece_revision":    return milestones.firstPieceApproved;
-      case "bulk_production":    return milestones.bulkComplete;
-      case "qc_verified":        return milestones.qcComplete && milestones.finalPaymentPaid;
-      case "shipped":            return milestones.trackingUploaded;
-      case "delivered":
-      case "complete":           return milestones.delivered;
-      default:                   return false;
-    }
-  };
 
   const STAGE_NEXT: Partial<Record<OrderStage, string>> = {
     onboarding:              "Concepts are generating. Check back soon or trigger manually.",
@@ -877,23 +804,34 @@ export default function AdminOrderPage() {
             </a>
           </div>
 
-          {/* Stage pipeline */}
+          {/* Stage pipeline — 9 canonical steps shared with the client timeline */}
           <div className="bg-brand-surface border border-brand-border rounded-xl p-5">
             <div className="flex items-center justify-between mb-4">
               <p className="text-xs font-display uppercase tracking-widest text-brand-primary">Pipeline Stage</p>
               <span className="text-[10px] font-display uppercase tracking-wider text-brand-muted">
-                {currentStageIndex + 1} / {PIPELINE.length}
+                {derived.currentIndex >= 0
+                  ? `${derived.currentIndex + 1} / ${TIMELINE_STEPS.length}`
+                  : `— / ${TIMELINE_STEPS.length}`}
               </span>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-              {PIPELINE.map((stage, i) => {
-                const isCurrent = stage === derivedCurrentStage;
-                const isDone    = !isCurrent && stageDone(stage);
+              {TIMELINE_STEPS.map((step, i) => {
+                const isCurrent = step.key === derivedPhaseKey;
+                const isDone    = derived.currentIndex > i;
+                // Sub-state badge: revision and intermediate stages within a canonical phase
+                const subLabel = isCurrent ? (
+                  order.stage === "mockup_revision"      ? "Revision In Progress" :
+                  order.stage === "first_piece_revision" ? "Revision In Progress" :
+                  order.stage === "sent_to_supplier"     ? "Sent to Supplier"     :
+                  order.stage === "files_sent"           ? "Files Sent"           :
+                  null
+                ) : null;
+                const targetStage = CANONICAL_TO_STAGE[step.key];
                 return (
                   <button
-                    key={stage}
+                    key={step.key}
                     type="button"
-                    onClick={() => updateStage(stage)}
+                    onClick={() => targetStage && updateStage(targetStage, true)}
                     disabled={stageSaving}
                     className={`relative text-left p-3 rounded-lg border text-xs font-display uppercase tracking-wide transition-all disabled:cursor-wait
                       ${isCurrent
@@ -916,7 +854,10 @@ export default function AdminOrderPage() {
                         <span className="w-1.5 h-1.5 rounded-full bg-brand-primary animate-pulse" />
                       )}
                     </span>
-                    {STAGE_LABELS[stage] ?? stageLabel(stage)}
+                    <span className="block">{step.label}</span>
+                    {subLabel && (
+                      <span className="block text-[9px] font-barlow normal-case tracking-normal mt-0.5 text-amber-400/80">{subLabel}</span>
+                    )}
                   </button>
                 );
               })}

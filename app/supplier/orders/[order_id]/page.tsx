@@ -8,6 +8,7 @@ import TenantLogo from "@/components/TenantLogo";
 import MobileDropdown from "@/components/MobileDropdown";
 import { useTenant } from "@/lib/tenant/context";
 import type { RosterPlayer } from "@/types/database";
+import { WORKFLOW_STAGE_MAP } from "@/lib/workflow/stage-map";
 
 interface Brief {
   design_system: string | null;
@@ -489,18 +490,9 @@ export default function SupplierOrderPage() {
   const roster = order.brief?.player_roster ?? [];
   const rejectedMedia = order.media.filter((m) => m.admin_approved === false);
 
-  const STAGE_LABEL: Record<string, string> = {
-    sent_to_supplier:        "Awaiting Production Release",
-    files_sent:              "Files Sent — Ready to Start",
-    first_piece_in_progress: "First Piece In Production",
-    first_piece_revision:    "First Piece — Revision Requested",
-    first_piece_review:      "First Piece — Under Review",
-    bulk_production:         "Bulk Production",
-    qc_verified:             "Supplier QC",
-    shipped:                 "Shipped",
-    delivered:               "Delivered",
-    complete:                "Complete",
-  };
+  // Use the canonical supplier labels from the shared workflow stage map.
+  const stageDisplayLabel = (stage: string): string =>
+    WORKFLOW_STAGE_MAP[stage]?.supplierLabel ?? WORKFLOW_STAGE_MAP[stage]?.adminLabel ?? stage;
 
   return (
     <div className="min-h-screen bg-brand-bg flex flex-col">
@@ -551,7 +543,7 @@ export default function SupplierOrderPage() {
           </p>
           <div className="flex flex-wrap items-center gap-2 mt-2">
             <span className="inline-block text-[10px] font-display uppercase tracking-wider px-2.5 py-1 rounded-full border border-brand-primary/30 bg-brand-primary/10 text-brand-primary">
-              {STAGE_LABEL[order.stage] ?? order.stage}
+              {stageDisplayLabel(order.stage)}
             </span>
             {!order.deposit_paid && (
               <span className="text-[10px] font-display uppercase tracking-wider px-2.5 py-1 rounded-full border border-amber-400/30 bg-amber-400/10 text-amber-400">
