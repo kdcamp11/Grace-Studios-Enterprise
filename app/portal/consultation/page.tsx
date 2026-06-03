@@ -212,11 +212,10 @@ export default function ConsultationPage() {
             <span className="text-[10px] font-display font-bold uppercase tracking-[0.3em] text-brand-primary">Full Service</span>
           </div>
           <h1 className="font-display font-bold uppercase tracking-tight text-brand-text leading-none mb-3" style={{ fontSize: "clamp(1.4rem, 2.5vw, 2.4rem)" }}>
-            Work Directly<br />with Grace Studios.
+            Apparel Development.<br />Built Around Your Program.
           </h1>
           <p className="text-sm font-barlow text-brand-muted max-w-[480px] leading-relaxed mb-14">
-            Our full-service creative direction path is for programs that want a custom design built around their identity,
-            not selected from a library. You brief us, we design, you approve at every step.
+            Grace Studios partners with programs to develop elevated apparel systems from concept through delivery — strategy, design, and managed production in one relationship.
           </p>
 
           <div className="grid lg:grid-cols-[1fr_480px] gap-14 lg:gap-20 items-start">
