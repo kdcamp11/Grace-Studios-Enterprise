@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef, Suspense } from "react";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useParams, useRouter, useSearchParams, usePathname } from "next/navigation";
 import { createClient, sessionReady } from "@/lib/supabase/client";
 import { getProfile } from "@/lib/profile";
 import OrgLogo from "@/components/OrgLogo";
@@ -197,13 +197,28 @@ export default function TrackerPage() {
 function TrackerPageContent() {
   const { order_id } = useParams<{ order_id: string }>();
   const router       = useRouter();
+  const pathname     = usePathname();
   const searchParams = useSearchParams();
   const supabaseRef  = useRef(createClient());
   const supabase     = supabaseRef.current;
   const tenant       = useTenant();
 
-  const paymentResult  = searchParams.get("payment");
+  // Capture payment result once from the URL, then immediately clear the param
+  // so a stale ?payment=success from the deposit redirect can't falsely trigger
+  // the balance confirmation card when the client later revisits at bulk production.
+  const [paymentResult] = useState<string | null>(() => searchParams.get("payment"));
   const mockupFeePaid  = searchParams.get("mockup_fee") === "paid";
+
+  // Strip ?payment from the URL after capturing it so it doesn't persist across
+  // navigation and falsely retrigger payment confirmation cards on future visits.
+  useEffect(() => {
+    if (!searchParams.get("payment")) return;
+    const next = new URLSearchParams(searchParams.toString());
+    next.delete("payment");
+    const qs = next.toString();
+    router.replace(pathname + (qs ? `?${qs}` : ""), { scroll: false });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const [order, setOrder]             = useState<OrderData | null>(null);
   const [loading, setLoading]         = useState(true);
