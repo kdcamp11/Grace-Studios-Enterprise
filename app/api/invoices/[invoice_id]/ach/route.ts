@@ -54,9 +54,17 @@ export async function POST(
     pay_deposit?: boolean;
   };
 
-  const method   = body.method ?? "ach";
-  const payDeposit = !!body.pay_deposit && invoice.deposit_amount > 0;
-  const amount   = body.amount ?? (payDeposit ? invoice.deposit_amount : invoice.total_amount);
+  const method      = body.method ?? "ach";
+  const payDeposit  = !!body.pay_deposit && invoice.deposit_amount > 0;
+  const isPartiallyPaid = invoice.status === "partially_paid";
+
+  // When deposit is already paid, record only the remaining balance amount.
+  const defaultAmount = (isPartiallyPaid && invoice.deposit_amount > 0)
+    ? (invoice.total_amount - invoice.deposit_amount)
+    : payDeposit
+      ? invoice.deposit_amount
+      : invoice.total_amount;
+  const amount = body.amount ?? defaultAmount;
 
   // Insert payment record
   const { error: payError } = await admin.from("payments").insert({

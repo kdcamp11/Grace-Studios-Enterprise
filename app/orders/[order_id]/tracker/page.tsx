@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useEffect, useState, useRef, Suspense } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { createClient, sessionReady } from "@/lib/supabase/client";
 import { getProfile } from "@/lib/profile";
 import OrgLogo from "@/components/OrgLogo";
@@ -186,11 +186,22 @@ interface OrderData {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function TrackerPage() {
+  return (
+    <Suspense>
+      <TrackerPageContent />
+    </Suspense>
+  );
+}
+
+function TrackerPageContent() {
   const { order_id } = useParams<{ order_id: string }>();
   const router       = useRouter();
+  const searchParams = useSearchParams();
   const supabaseRef  = useRef(createClient());
   const supabase     = supabaseRef.current;
   const tenant       = useTenant();
+
+  const paymentResult = searchParams.get("payment");
 
   const [order, setOrder]             = useState<OrderData | null>(null);
   const [loading, setLoading]         = useState(true);
@@ -228,6 +239,23 @@ export default function TrackerPage() {
     load();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [order_id]);
+
+  // After a Stripe payment redirect, re-fetch after a short delay so the webhook
+  // has time to process and the updated deposit_paid / stage are reflected.
+  useEffect(() => {
+    if (paymentResult !== "success") return;
+    const timer = setTimeout(async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`/api/portal/order-detail?order_id=${order_id}`, {
+        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
+      });
+      if (!res.ok) return;
+      const { order: o } = await res.json() as { order: OrderData };
+      if (o) setOrder({ ...o, stage: o.stage as OrderStage, mockups: o.mockups ?? [], mockup_revision_used: o.mockup_revision_used ?? false });
+    }, 3500);
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paymentResult, order_id]);
 
   async function signOut() {
     await supabase.auth.signOut();
@@ -352,6 +380,23 @@ export default function TrackerPage() {
 
       <main className="flex-1 flex flex-col items-center px-4 py-10">
         <div className="w-full max-w-xl space-y-6">
+
+          {/* Payment success banner */}
+          {paymentResult === "success" && (
+            <div className="bg-green-400/10 border border-green-400/30 rounded-xl px-5 py-4 flex items-start gap-4">
+              <div className="w-8 h-8 rounded-full bg-green-400/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <svg className="w-4 h-4 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <div>
+                <p className="font-display font-bold uppercase tracking-wide text-green-400 text-sm">Payment Received</p>
+                <p className="text-xs font-barlow text-brand-muted mt-0.5 leading-relaxed">
+                  Your payment has been processed. Your order is moving forward — the timeline below will update shortly.
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Order header */}
           <div className="space-y-0.5">

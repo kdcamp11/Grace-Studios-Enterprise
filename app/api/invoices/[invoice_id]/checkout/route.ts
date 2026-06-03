@@ -57,12 +57,34 @@ export async function POST(
 
   const body = await req.json().catch(() => ({})) as { pay_deposit?: boolean };
   const payDeposit = !!body.pay_deposit && invoice.deposit_amount > 0;
-  const amount = payDeposit ? invoice.deposit_amount : invoice.total_amount;
+  const isPartiallyPaid = invoice.status === "partially_paid";
+
+  // Guard: can't pay deposit again if it's already been paid
+  if (isPartiallyPaid && payDeposit) {
+    return NextResponse.json({ error: "Deposit has already been paid" }, { status: 400 });
+  }
+
+  // When deposit is already paid, charge only the remaining balance.
+  // Otherwise: charge deposit (if selected) or full total.
+  let amount: number;
+  let lineItemName: string;
+  if (isPartiallyPaid && invoice.deposit_amount > 0) {
+    amount = invoice.total_amount - invoice.deposit_amount;
+    lineItemName = `${tenant.name} — Balance ${invoice.invoice_number}`;
+  } else if (payDeposit) {
+    amount = invoice.deposit_amount;
+    lineItemName = `${tenant.name} — Deposit ${invoice.invoice_number}`;
+  } else {
+    amount = invoice.total_amount;
+    lineItemName = `${tenant.name} — Invoice ${invoice.invoice_number}`;
+  }
 
   const host  = req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? "localhost:3000";
   const proto = req.headers.get("x-forwarded-proto") ?? "https";
   const appUrl = `${proto}://${host}`;
-  const successUrl = `${appUrl}/orders/${invoice.order_id}/invoice?payment=success&session_id={CHECKOUT_SESSION_ID}`;
+  // On success, redirect to order tracker (not the invoice page) so the
+  // client lands on a meaningful status screen instead of a payment form.
+  const successUrl = `${appUrl}/orders/${invoice.order_id}/tracker?payment=success`;
   const cancelUrl  = `${appUrl}/orders/${invoice.order_id}/invoice?payment=canceled`;
 
   const clientName = (() => {
@@ -81,7 +103,7 @@ export async function POST(
           currency:     invoice.currency ?? "usd",
           unit_amount:  Math.round(amount * 100),
           product_data: {
-            name: `${tenant.name} — ${payDeposit ? "Deposit" : "Invoice"} ${invoice.invoice_number}`,
+            name:        lineItemName,
             description: `Order for ${clientName}`,
           },
         },
@@ -99,6 +121,8 @@ export async function POST(
     cancel_url:     cancelUrl,
   });
 
+  console.log(`[invoice checkout] created session ${session.id} for invoice ${invoice.id} order ${invoice.order_id} amount=${amount} status=${invoice.status}`);
+
   // Record a pending payment row so we can match the webhook
   await admin.from("payments").insert({
     tenant_id:                   tenant.id,
@@ -112,3 +136,4 @@ export async function POST(
 
   return NextResponse.json({ url: session.url });
 }
+

@@ -226,6 +226,8 @@ async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
 async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   const admin = createAdminClient();
 
+  console.log(`[stripe webhook] handleCheckoutCompleted: session=${session.id}`);
+
   // Find the payment row by session id
   const { data: payment } = await admin
     .from("payments")
@@ -238,28 +240,32 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     return;
   }
 
+  console.log(`[stripe webhook] matched payment: id=${payment.id} invoice=${payment.invoice_id} order=${payment.order_id} amount=${payment.amount}`);
+
+  const paymentIntentId = typeof session.payment_intent === "string"
+    ? session.payment_intent
+    : session.payment_intent?.id ?? null;
+
   // Mark payment as paid
   await admin
     .from("payments")
     .update({
       status:                   "paid",
-      stripe_payment_intent_id: typeof session.payment_intent === "string"
-        ? session.payment_intent
-        : session.payment_intent?.id ?? null,
+      stripe_payment_intent_id: paymentIntentId,
     })
     .eq("id", payment.id);
 
-  // Recompute invoice status
+  // Recompute invoice status and auto-advance order stage
   await refreshInvoiceStatus(payment.invoice_id, payment.order_id, admin);
 
   // Auto-transfer net to tenant's Connect account if configured
-  const paymentIntentId = typeof session.payment_intent === "string"
-    ? session.payment_intent
-    : session.payment_intent?.id ?? null;
   await createConnectTransfer(payment.tenant_id, Number(payment.amount), paymentIntentId, admin).catch(
     (err) => console.error("[stripe webhook] connect transfer failed:", err)
   );
 }
+
+// Production-file adjacent stages where a deposit payment releases the order.
+const PROD_FILES_STAGES = ["production_files_prep", "sent_to_supplier", "files_sent"];
 
 async function refreshInvoiceStatus(
   invoiceId: string,
@@ -290,10 +296,11 @@ async function refreshInvoiceStatus(
     newStatus = "pending_payment";
   }
 
+  console.log(`[stripe webhook] invoice ${invoiceId} status: ${invoice.status} → ${newStatus} (paid=${paid}, total=${invoice.total_amount}, deposit=${invoice.deposit_amount})`);
+
   await admin.from("invoices").update({ status: newStatus }).eq("id", invoiceId);
 
-  // If fully paid or deposit paid — allow production to proceed
-  // We update the legacy deposit_paid / balance_paid flags on orders for compatibility
+  // Update payment flags on orders so milestone signals stay in sync
   if (newStatus === "paid") {
     await admin
       .from("orders")
@@ -304,6 +311,47 @@ async function refreshInvoiceStatus(
       .from("orders")
       .update({ deposit_paid: true })
       .eq("id", orderId);
+  }
+
+  // Auto-advance order stage based on the payment milestone just reached.
+  // This keeps the workflow stage in sync so all portals reflect the new phase
+  // without requiring manual admin action.
+  if (newStatus === "partially_paid" || newStatus === "paid") {
+    const { data: ord } = await admin
+      .from("orders")
+      .select("stage, tenant_id")
+      .eq("id", orderId)
+      .single();
+
+    if (ord) {
+      let nextStage: string | null = null;
+      let note = "";
+
+      if (PROD_FILES_STAGES.includes(ord.stage)) {
+        // Deposit (or full) payment at the production-files gate — release to first piece
+        nextStage = "first_piece_in_progress";
+        note = newStatus === "partially_paid"
+          ? "Production deposit paid — order released to first piece production"
+          : "Full production payment received — order released to first piece production";
+      } else if (newStatus === "paid" && ord.stage === "qc_verified") {
+        // Final balance payment at QC — release shipment
+        nextStage = "shipped";
+        note = "Final balance paid — order released for shipment";
+      }
+
+      if (nextStage) {
+        console.log(`[stripe webhook] advancing order ${orderId}: ${ord.stage} → ${nextStage}`);
+        await admin.from("orders").update({ stage: nextStage }).eq("id", orderId);
+        await admin.from("stage_log").insert({
+          order_id:   orderId,
+          tenant_id:  ord.tenant_id,
+          from_stage: ord.stage,
+          to_stage:   nextStage,
+          changed_by: "system",
+          note,
+        }).catch((err) => console.error("[stripe webhook] stage_log insert failed:", err));
+      }
+    }
   }
 }
 

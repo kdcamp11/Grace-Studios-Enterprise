@@ -179,9 +179,15 @@ function InvoicePageContent() {
   const isPaid      = invoice.status === "paid";
   const isPending   = invoice.status === "pending_verification";
   const isPartial   = invoice.status === "partially_paid";
-  // "Pay Full" pays the entire invoice total; "Deposit Only" pays just the deposit.
-  // balance_due is the remainder after the deposit, NOT the full amount.
-  const payableAmt  = payDeposit && invoice.deposit_amount > 0 ? invoice.deposit_amount : invoice.total_amount;
+
+  // When deposit is already paid, the only remaining action is the balance.
+  // Avoid charging total_amount again — compute just the outstanding balance.
+  const balanceAmt = invoice.balance_due ?? (invoice.total_amount - invoice.deposit_amount);
+  const payableAmt = isPartial
+    ? balanceAmt
+    : payDeposit && invoice.deposit_amount > 0
+      ? invoice.deposit_amount
+      : invoice.total_amount;
 
   const hasBankDetails = !!(invoice.bank_routing || invoice.bank_account || invoice.bank_name);
 
@@ -285,6 +291,18 @@ function InvoicePageContent() {
             </div>
           )}
         </div>
+
+        {/* Deposit-paid notice — shown when balance is still owed */}
+        {isPartial && (
+          <div className="bg-brand-primary/5 border border-brand-primary/20 rounded-xl px-5 py-4 space-y-1">
+            <p className="text-[10px] font-display uppercase tracking-wider text-brand-primary">Deposit Received</p>
+            <p className="text-sm font-barlow text-brand-muted">
+              Your deposit has been paid. The remaining balance of{" "}
+              <span className="text-brand-text font-medium">{formatCurrency(balanceAmt, invoice.currency)}</span>{" "}
+              is due before your order ships.
+            </p>
+          </div>
+        )}
 
         {/* Payment options — only when action is needed */}
         {!isPaid && !isPending && (
