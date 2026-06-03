@@ -122,25 +122,23 @@ function ActionPanel({
         .from("first-piece-media")
         .getPublicUrl(path);
 
-      const { data: row, error: dbErr } = await supabase
-        .from("first_piece_media")
-        .insert({
-          order_id: order.id,
-          uploaded_by: user.id,
-          media_url: publicUrl,
+      const mediaRes = await fetch(`/api/supplier/orders/${order.id}/media`, {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({
+          media_url:  publicUrl,
           media_type: isVideo ? "video" : "photo",
-          caption: caption || null,
-        })
-        .select()
-        .single();
-
-      if (dbErr) {
-        setUploadError(`Database error: ${dbErr.message}`);
+          caption:    caption || null,
+        }),
+      });
+      const mediaJson = await mediaRes.json() as { media?: MediaItem; error?: string };
+      if (!mediaRes.ok) {
+        setUploadError(mediaJson.error ?? "Failed to record upload. Please try again.");
         setBusy(false);
         return;
       }
 
-      inserted.push(row as MediaItem);
+      inserted.push(mediaJson.media as MediaItem);
     }
 
     onUploadComplete(inserted);
