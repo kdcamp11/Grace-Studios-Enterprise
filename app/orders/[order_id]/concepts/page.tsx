@@ -754,7 +754,7 @@ export default function ConceptsPage() {
                       href={`/orders/${order_id}/checkout`}
                       className="flex-shrink-0 px-5 py-2.5 rounded-xl font-display font-bold text-xs uppercase tracking-widest bg-brand-primary text-white hover:bg-brand-secondary transition-all whitespace-nowrap"
                     >
-                      Unlock →
+                      Activate Your Project →
                     </a>
                   </div>
 

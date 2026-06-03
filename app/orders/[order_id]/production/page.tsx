@@ -222,7 +222,7 @@ export default function ProductionChoicePage() {
               Choose Your Path
             </p>
 
-            {/* Option 1 — Design File Only */}
+            {/* Option 1 — Design Package */}
             <button
               type="button"
               onClick={() => setSelected("design_file")}
