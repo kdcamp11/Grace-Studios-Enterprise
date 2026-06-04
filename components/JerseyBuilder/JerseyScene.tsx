@@ -177,10 +177,11 @@ interface SplitSceneProps {
   isPlacing: boolean;
   onMeshReady?: (mesh: THREE.Mesh | null) => void;
   onCenterY?: (y: number) => void;
+  groupVisible?: boolean;
 }
 
 function SplitScene({
-  glbPath, colors, artworks, onSurfaceClick, isPlacing, onMeshReady, onCenterY,
+  glbPath, colors, artworks, onSurfaceClick, isPlacing, onMeshReady, onCenterY, groupVisible = true,
 }: SplitSceneProps) {
   const { scene } = useGLTF(glbPath);
   const centerOffset = useCenterOffset(scene);
@@ -230,13 +231,13 @@ function SplitScene({
   };
 
   return (
-    <group>
+    <group visible={groupVisible}>
       <primitive
         object={scene}
         position={centerOffset}
-        onClick={handleClick}
-        onPointerOver={isPlacing ? () => { document.body.style.cursor = "crosshair"; } : undefined}
-        onPointerOut={isPlacing  ? () => { document.body.style.cursor = "auto"; }      : undefined}
+        onClick={groupVisible ? handleClick : undefined}
+        onPointerOver={isPlacing && groupVisible ? () => { document.body.style.cursor = "crosshair"; } : undefined}
+        onPointerOut={isPlacing && groupVisible  ? () => { document.body.style.cursor = "auto"; }      : undefined}
       />
       <ArtworkPlanes artworks={artworks} />
     </group>
@@ -346,45 +347,48 @@ export default function JerseyScene({
   onJerseyTopReady, onShortsReady, onGroupCenters,
 }: Props) {
 
-  // Separate-GLB callbacks bridge into the unified onGroupCenters API.
-  // Both GLBs are centred at Y≈0 by useCenterOffset, so 0 is a safe stub
-  // for whichever tab isn't currently active.
+  // Accumulate both Y centres so neither overwrites the other when both
+  // SplitScenes are mounted simultaneously.
+  const jerseyTopYRef = useRef(0);
+  const shortsYRef    = useRef(0);
   const handleJerseyTopY = (y: number) => {
-    onGroupCenters?.({ jerseyTopY: y, shortsY: 0 });
+    jerseyTopYRef.current = y;
+    onGroupCenters?.({ jerseyTopY: y, shortsY: shortsYRef.current });
   };
   const handleShortsY = (y: number) => {
-    onGroupCenters?.({ jerseyTopY: 0, shortsY: y });
+    shortsYRef.current = y;
+    onGroupCenters?.({ jerseyTopY: jerseyTopYRef.current, shortsY: y });
   };
 
   if (separateGlbs) {
     return (
       <>
-        {activeView === "jersey" && (
-          <Suspense fallback={null}>
-            <SplitScene
-              glbPath="/JerseyTop.glb"
-              colors={colors}
-              artworks={artworks}
-              onSurfaceClick={onSurfaceClick}
-              isPlacing={isPlacing}
-              onMeshReady={onJerseyTopReady}
-              onCenterY={handleJerseyTopY}
-            />
-          </Suspense>
-        )}
-        {activeView === "shorts" && (
-          <Suspense fallback={null}>
-            <SplitScene
-              glbPath="/Shorts.glb"
-              colors={colors}
-              artworks={artworks}
-              onSurfaceClick={onSurfaceClick}
-              isPlacing={isPlacing}
-              onMeshReady={onShortsReady}
-              onCenterY={handleShortsY}
-            />
-          </Suspense>
-        )}
+        {/* Both scenes stay mounted so THREE.js never re-parses the GLB or
+            re-clones materials on tab switch — visibility does the work. */}
+        <Suspense fallback={null}>
+          <SplitScene
+            glbPath="/JerseyTop.glb"
+            colors={colors}
+            artworks={activeView === "jersey" ? artworks : []}
+            onSurfaceClick={onSurfaceClick}
+            isPlacing={isPlacing}
+            onMeshReady={onJerseyTopReady}
+            onCenterY={handleJerseyTopY}
+            groupVisible={activeView === "jersey"}
+          />
+        </Suspense>
+        <Suspense fallback={null}>
+          <SplitScene
+            glbPath="/Shorts.glb"
+            colors={colors}
+            artworks={activeView === "shorts" ? artworks : []}
+            onSurfaceClick={onSurfaceClick}
+            isPlacing={isPlacing}
+            onMeshReady={onShortsReady}
+            onCenterY={handleShortsY}
+            groupVisible={activeView === "shorts"}
+          />
+        </Suspense>
       </>
     );
   }
