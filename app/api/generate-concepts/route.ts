@@ -136,7 +136,7 @@ let _watermarkStamp: Buffer | null = null;
 async function getWatermarkStamp(): Promise<Buffer> {
   if (_watermarkStamp) return _watermarkStamp;
 
-  const logoPath = path.join(process.cwd(), "public", "logo.png");
+  const logoPath = path.join(process.cwd(), "public", "grace-enterprise-logo.jpeg");
   const logoSrc  = await fsPromises.readFile(logoPath);
 
   const LOGO_W = 200; // rendered width of each stamp in the tiled grid
