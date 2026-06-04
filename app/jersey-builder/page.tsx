@@ -37,11 +37,11 @@ import JerseyScene, {
 // ── Zone definitions split by tab ─────────────────────────────────────────────
 
 const JERSEY_ZONES = [
-  { key: "jerseyTop",          label: "Jersey Body"        },
-  { key: "collar",             label: "Collar & Trim"      },
-  { key: "jerseySidePanels",   label: "Side Panels"        },
-  { key: "jerseyLowerPanels",  label: "Lower Panels"       },
-  { key: "sleevePanels",       label: "Sleeve Panels"      },
+  { key: "jerseyTop",          label: "Jersey Body"   },
+  { key: "collar",             label: "Collar & Trim" },
+  { key: "sleevePanels",       label: "Sleeve Panels" },
+  { key: "jerseySidePanels",   label: "Side Panels"   },
+  { key: "jerseyLowerPanels",  label: "Lower Panels"  },
 ] as const;
 
 const SHORTS_ZONES = [
@@ -165,23 +165,228 @@ function buildLogoTexture(src: string): Promise<THREE.Texture> {
   });
 }
 
-// ── Colour swatch / picker ────────────────────────────────────────────────────
+// ── Colour utilities ──────────────────────────────────────────────────────────
+
+function hexToHsv(hex: string): [number, number, number] {
+  const r = parseInt(hex.slice(1, 3), 16) / 255;
+  const g = parseInt(hex.slice(3, 5), 16) / 255;
+  const b = parseInt(hex.slice(5, 7), 16) / 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
+  let h = 0;
+  if (d > 0) {
+    if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+    else if (max === g) h = ((b - r) / d + 2) / 6;
+    else h = ((r - g) / d + 4) / 6;
+  }
+  return [h * 360, max === 0 ? 0 : d / max, max];
+}
+
+function hsvToHex(h: number, s: number, v: number): string {
+  h /= 360;
+  const i = Math.floor(h * 6), f = h * 6 - i;
+  const p = v * (1 - s), q = v * (1 - f * s), t = v * (1 - (1 - f) * s);
+  const ch = ([[v,t,p],[q,v,p],[p,v,t],[p,q,v],[t,p,v],[v,p,q]] as [number,number,number][])[i % 6];
+  return "#" + ch.map((x) => Math.round(x * 255).toString(16).padStart(2, "0")).join("");
+}
+
+// ── HEX-first colour picker popover ──────────────────────────────────────────
+
+function ColorPickerPopover({
+  value,
+  onChange,
+  onClose,
+}: {
+  value: string;
+  onChange: (hex: string) => void;
+  onClose: () => void;
+}) {
+  const safe = value.length === 7 ? value : "#000000";
+  const init = hexToHsv(safe);
+  const [hue, setHue] = useState(init[0]);
+  const [sat, setSat] = useState(init[1]);
+  const [val, setVal] = useState(init[2]);
+  const [hexInput, setHexInput] = useState(safe.replace("#", "").toUpperCase());
+  const hueRef = useRef(init[0]);
+  const squareRef = useRef<HTMLDivElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const isDragging = useRef(false);
+
+  function applyHsv(h: number, s: number, v: number) {
+    hueRef.current = h;
+    const hex = hsvToHex(h, s, v);
+    setHue(h); setSat(s); setVal(v);
+    setHexInput(hex.replace("#", "").toUpperCase());
+    onChange(hex);
+  }
+
+  useEffect(() => {
+    function onDown(e: MouseEvent) {
+      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) onClose();
+    }
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [onClose]);
+
+  useEffect(() => {
+    function onMove(e: MouseEvent) {
+      if (!isDragging.current || !squareRef.current) return;
+      const rect = squareRef.current.getBoundingClientRect();
+      const s = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+      const v = Math.min(1, Math.max(0, 1 - (e.clientY - rect.top) / rect.height));
+      applyHsv(hueRef.current, s, v);
+    }
+    function onUp() { isDragging.current = false; }
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => { window.removeEventListener("mousemove", onMove); window.removeEventListener("mouseup", onUp); };
+  }, []); // reads hueRef — no stale-closure risk
+
+  function handleHexInput(raw: string) {
+    const cleaned = raw.replace(/[^0-9a-fA-F]/g, "").slice(0, 6);
+    setHexInput(cleaned.toUpperCase());
+    if (cleaned.length === 6) {
+      const hex = `#${cleaned}`;
+      const [h, s, v] = hexToHsv(hex);
+      hueRef.current = h;
+      setHue(h); setSat(s); setVal(v);
+      onChange(hex);
+    }
+  }
+
+  const pureHue = hsvToHex(hue, 1, 1);
+  const current = hsvToHex(hue, sat, val);
+
+  return (
+    <div
+      ref={popoverRef}
+      className="absolute z-50 top-full right-0 mt-1.5 bg-white rounded-xl shadow-2xl border border-gray-200 p-3 w-[220px]"
+      onMouseDown={(e) => e.stopPropagation()}
+    >
+      {/* Saturation / brightness square */}
+      <div
+        ref={squareRef}
+        className="relative w-full rounded-lg cursor-crosshair select-none mb-3 overflow-hidden"
+        style={{ height: 140, background: `linear-gradient(to right, #fff, ${pureHue})` }}
+        onMouseDown={(e) => {
+          isDragging.current = true;
+          const rect = e.currentTarget.getBoundingClientRect();
+          applyHsv(hue, Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width)), Math.min(1, Math.max(0, 1 - (e.clientY - rect.top) / rect.height)));
+          e.preventDefault();
+        }}
+      >
+        <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, transparent, #000)" }} />
+        <div
+          className="absolute w-[14px] h-[14px] rounded-full border-2 border-white shadow-md pointer-events-none"
+          style={{ left: `${sat * 100}%`, top: `${(1 - val) * 100}%`, transform: "translate(-50%, -50%)", backgroundColor: current }}
+        />
+      </div>
+
+      {/* Hue slider */}
+      <div
+        className="relative w-full h-3 rounded-full mb-3 cursor-pointer select-none"
+        style={{ background: "linear-gradient(to right,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00)" }}
+        onMouseDown={(e) => {
+          const rect = e.currentTarget.getBoundingClientRect();
+          applyHsv(Math.min(360, Math.max(0, ((e.clientX - rect.left) / rect.width) * 360)), sat, val);
+        }}
+      >
+        <div
+          className="absolute top-1/2 w-4 h-4 rounded-full border-2 border-white shadow-md pointer-events-none"
+          style={{ left: `${(hue / 360) * 100}%`, transform: "translate(-50%, -50%)", backgroundColor: pureHue }}
+        />
+      </div>
+
+      {/* HEX input row */}
+      <div className="flex items-center gap-2 bg-gray-50 rounded-lg px-2.5 py-2 border border-gray-200">
+        <div className="w-5 h-5 rounded flex-shrink-0 border border-gray-300" style={{ backgroundColor: current }} />
+        <span className="text-[11px] font-mono text-gray-400 select-none">#</span>
+        <input
+          type="text" value={hexInput} onChange={(e) => handleHexInput(e.target.value)}
+          maxLength={6} spellCheck={false}
+          className="flex-1 min-w-0 bg-transparent text-[11px] font-mono text-gray-700 focus:outline-none uppercase tracking-wider"
+        />
+        <span className="text-[9px] font-bold uppercase tracking-widest text-gray-400 select-none">HEX</span>
+      </div>
+    </div>
+  );
+}
+
+// ── Artwork color swatch (hex input + popover) ────────────────────────────────
+
+function ArtworkColorSwatch({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const [hexInput, setHexInput] = useState(value.replace("#", ""));
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => { setHexInput(value.replace("#", "")); }, [value]);
+
+  function handleHexChange(raw: string) {
+    const cleaned = raw.replace(/[^0-9a-fA-F]/g, "").slice(0, 6);
+    setHexInput(cleaned);
+    if (cleaned.length === 6) onChange(`#${cleaned}`);
+  }
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className="text-[9px] font-barlow text-brand-muted/60 font-mono">#</span>
+      <input
+        type="text" value={hexInput} onChange={(e) => handleHexChange(e.target.value)}
+        maxLength={6}
+        className="w-[40px] text-[9px] font-barlow font-mono text-brand-text bg-brand-surface border border-brand-border rounded px-1 py-0.5 focus:outline-none focus:border-brand-primary uppercase"
+      />
+      <div className="relative flex-shrink-0">
+        <div
+          className="w-7 h-7 rounded cursor-pointer border border-brand-border"
+          style={{ backgroundColor: value }}
+          onClick={() => setOpen((o) => !o)}
+        />
+        {open && <ColorPickerPopover value={value} onChange={onChange} onClose={() => setOpen(false)} />}
+      </div>
+    </div>
+  );
+}
+
+// ── Zone color control row ────────────────────────────────────────────────────
 
 function ColorControl({
   label, value, onChange,
 }: { label: string; value: string; onChange: (v: string) => void }) {
+  const [hexInput, setHexInput] = useState(value.replace("#", ""));
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => { setHexInput(value.replace("#", "")); }, [value]);
+
+  function handleHexChange(raw: string) {
+    const cleaned = raw.replace(/[^0-9a-fA-F]/g, "").slice(0, 6);
+    setHexInput(cleaned);
+    if (cleaned.length === 6) onChange(`#${cleaned}`);
+  }
+
   return (
     <div className="flex items-center justify-between gap-3">
       <label className="text-[10px] font-display font-bold uppercase tracking-[0.15em] text-brand-muted whitespace-nowrap">
         {label}
       </label>
-      <div className="flex items-center gap-2 flex-shrink-0">
-        <span className="text-[10px] font-barlow text-brand-muted font-mono">{value.toUpperCase()}</span>
+      <div className="flex items-center gap-1.5 flex-shrink-0">
+        <span className="text-[10px] font-barlow text-brand-muted/60 font-mono">#</span>
         <input
-          type="color" value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="w-8 h-8 rounded cursor-pointer border border-brand-border bg-transparent"
+          type="text" value={hexInput} onChange={(e) => handleHexChange(e.target.value)}
+          maxLength={6}
+          className="w-[52px] text-[10px] font-barlow font-mono text-brand-text bg-brand-surface border border-brand-border rounded px-1.5 py-0.5 focus:outline-none focus:border-brand-primary uppercase"
         />
+        <div className="relative flex-shrink-0">
+          <div
+            className="w-8 h-8 rounded cursor-pointer border border-brand-border"
+            style={{ backgroundColor: value }}
+            onClick={() => setOpen((o) => !o)}
+          />
+          {open && <ColorPickerPopover value={value} onChange={onChange} onClose={() => setOpen(false)} />}
+        </div>
       </div>
     </div>
   );
@@ -1187,19 +1392,11 @@ function JerseyBuilderInner() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[9px] font-display uppercase tracking-widest text-brand-muted mb-1">Fill</label>
-                  <div className="flex items-center gap-2">
-                    <input type="color" value={textColor} onChange={(e) => setTextColor(e.target.value)}
-                      className="w-8 h-8 rounded cursor-pointer border border-brand-border" />
-                    <span className="text-[9px] font-barlow font-mono text-brand-muted">{textColor.toUpperCase()}</span>
-                  </div>
+                  <ArtworkColorSwatch value={textColor} onChange={setTextColor} />
                 </div>
                 <div>
                   <label className="block text-[9px] font-display uppercase tracking-widest text-brand-muted mb-1">Outline</label>
-                  <div className="flex items-center gap-2">
-                    <input type="color" value={outlineColor} onChange={(e) => setOutlineColor(e.target.value)}
-                      className="w-8 h-8 rounded cursor-pointer border border-brand-border" />
-                    <span className="text-[9px] font-barlow font-mono text-brand-muted">{outlineColor.toUpperCase()}</span>
-                  </div>
+                  <ArtworkColorSwatch value={outlineColor} onChange={setOutlineColor} />
                 </div>
               </div>
             </section>
@@ -1521,27 +1718,11 @@ function JerseyBuilderInner() {
                               <div className="grid grid-cols-2 gap-2">
                                 <div>
                                   <label className="block text-[9px] font-display uppercase tracking-widest text-brand-muted mb-1.5">Fill</label>
-                                  <div className="flex items-center gap-2">
-                                    <input
-                                      type="color"
-                                      value={art.textColor}
-                                      onChange={(e) => updateArtworkColor(art.id, "textColor", e.target.value)}
-                                      className="w-8 h-8 rounded cursor-pointer border border-brand-border bg-transparent"
-                                    />
-                                    <span className="text-[9px] font-barlow font-mono text-brand-muted">{art.textColor.toUpperCase()}</span>
-                                  </div>
+                                  <ArtworkColorSwatch value={art.textColor} onChange={(v) => updateArtworkColor(art.id, "textColor", v)} />
                                 </div>
                                 <div>
                                   <label className="block text-[9px] font-display uppercase tracking-widest text-brand-muted mb-1.5">Outline</label>
-                                  <div className="flex items-center gap-2">
-                                    <input
-                                      type="color"
-                                      value={art.outlineColor}
-                                      onChange={(e) => updateArtworkColor(art.id, "outlineColor", e.target.value)}
-                                      className="w-8 h-8 rounded cursor-pointer border border-brand-border bg-transparent"
-                                    />
-                                    <span className="text-[9px] font-barlow font-mono text-brand-muted">{art.outlineColor.toUpperCase()}</span>
-                                  </div>
+                                  <ArtworkColorSwatch value={art.outlineColor} onChange={(v) => updateArtworkColor(art.id, "outlineColor", v)} />
                                 </div>
                               </div>
                             </>
