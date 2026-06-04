@@ -172,7 +172,7 @@ export async function POST(
       metadata: {
         payment_type: "design_deposit",
         order_id: params.order_id,
-        tenant_id: orderData.tenant_id,
+        tenant_id: orderData.tenant_id ?? "",
         concept_source: orderData.concept_source ?? "ai",
       },
       customer_email: user.email,
@@ -195,9 +195,10 @@ export async function POST(
 
     return NextResponse.json({ url: session.url });
   } catch (err) {
-    console.error("[design-deposit] unhandled error:", err);
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[design-deposit] unhandled error:", msg);
     return NextResponse.json(
-      { error: "Unable to start checkout. Please try again." },
+      { error: msg || "Unable to start checkout. Please try again." },
       { status: 500 },
     );
   }

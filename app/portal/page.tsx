@@ -127,19 +127,31 @@ function PortalContent() {
         if (cp && !cp.is_prefill) setHasProfile(true);
       }
 
+      let fetchedOrders: Order[] = [];
+      let fetchedDesigns: SavedDesign[] = [];
+
       if (ordersRes.ok) {
-        const { orders: fetchedOrders } = await ordersRes.json();
-        setOrders(
-          (fetchedOrders ?? []).map((o: Order & { stage: string }) => ({
-            ...o,
-            stage: o.stage as OrderStage,
-          }))
-        );
+        const { orders: o } = await ordersRes.json();
+        fetchedOrders = (o ?? []).map((ord: Order & { stage: string }) => ({
+          ...ord,
+          stage: ord.stage as OrderStage,
+        }));
+        setOrders(fetchedOrders);
       }
 
       if (designsRes.ok) {
-        const { designs: fetchedDesigns } = await designsRes.json();
-        setDesigns(fetchedDesigns ?? []);
+        const { designs: d } = await designsRes.json();
+        fetchedDesigns = d ?? [];
+        setDesigns(fetchedDesigns);
+      }
+
+      // Auto-select the first tab that has content so users aren't stranded on
+      // an empty "Creative" tab when their work is in "Saved Designs".
+      const creativeCount = fetchedOrders.filter(isCreative).length;
+      if (creativeCount === 0 && fetchedDesigns.length > 0) {
+        setTab("designs");
+      } else if (creativeCount === 0 && fetchedOrders.filter((o) => !isCreative(o)).length > 0) {
+        setTab("production");
       }
 
       setLoading(false);
