@@ -32,12 +32,14 @@ export async function bypassOrderDeposit(
     .update({ design_fee_paid: true })
     .eq("id", orderId);
 
-  await admin.from("design_deposit_sessions").insert({
-    order_id:     orderId,
-    amount_cents: 0,
-    status:       "paid",
-    stripe_checkout_session_id: `bypass_${orderId}_${Date.now()}`,
-  }).catch(() => {});
+  try {
+    await admin.from("design_deposit_sessions").insert({
+      order_id:     orderId,
+      amount_cents: 0,
+      status:       "paid",
+      stripe_checkout_session_id: `bypass_${orderId}_${Date.now()}`,
+    });
+  } catch { /* non-fatal — session record is best-effort */ }
 
   const isClientProvided = conceptSource === "client_provided";
   return isClientProvided
@@ -119,24 +121,28 @@ export async function bypassDesignDeposit(
   ]);
 
   const isUploadKind = design.kind === "upload";
-  await admin.from("stage_log").insert({
-    order_id:   orderId,
-    tenant_id:  effectiveTenantId,
-    from_stage: "onboarding",
-    to_stage:   isUploadKind ? "production_files_prep" : "creative_in_review",
-    changed_by: "system",
-    note:       isUploadKind
-      ? "Creative Activation bypassed — production file upload starts at production_files_prep"
-      : "Creative Activation bypassed — test user",
-  }).catch(() => {});
+  try {
+    await admin.from("stage_log").insert({
+      order_id:   orderId,
+      tenant_id:  effectiveTenantId,
+      from_stage: "onboarding",
+      to_stage:   isUploadKind ? "production_files_prep" : "creative_in_review",
+      changed_by: "system",
+      note:       isUploadKind
+        ? "Creative Activation bypassed — production file upload starts at production_files_prep"
+        : "Creative Activation bypassed — test user",
+    });
+  } catch { /* non-fatal */ }
 
-  await admin.from("design_deposit_sessions").insert({
-    tenant_id:                  effectiveTenantId,
-    order_id:                   orderId,
-    amount_cents:               0,
-    status:                     "paid",
-    stripe_checkout_session_id: `bypass_${designId}_${Date.now()}`,
-  }).catch(() => {});
+  try {
+    await admin.from("design_deposit_sessions").insert({
+      tenant_id:                  effectiveTenantId,
+      order_id:                   orderId,
+      amount_cents:               0,
+      status:                     "paid",
+      stripe_checkout_session_id: `bypass_${designId}_${Date.now()}`,
+    });
+  } catch { /* non-fatal */ }
 
   return `${appUrl}/designs/${designId}/activated`;
 }
@@ -162,14 +168,16 @@ export async function bypassMockupFee(
     .update({ mockup_fee_paid: true, stage: "production_files_prep" })
     .eq("id", orderId);
 
-  await admin.from("stage_log").insert({
-    order_id:   orderId,
-    tenant_id:  order?.tenant_id ?? null,
-    from_stage: order?.stage ?? "mockup_review",
-    to_stage:   "production_files_prep",
-    changed_by: "system",
-    note:       "Mockup design fee bypassed — test user / zero fee",
-  }).catch(() => {});
+  try {
+    await admin.from("stage_log").insert({
+      order_id:   orderId,
+      tenant_id:  order?.tenant_id ?? null,
+      from_stage: order?.stage ?? "mockup_review",
+      to_stage:   "production_files_prep",
+      changed_by: "system",
+      note:       "Mockup design fee bypassed — test user / zero fee",
+    });
+  } catch { /* non-fatal */ }
 
   return `${appUrl}/orders/${orderId}/tracker?mockup_fee=paid`;
 }
