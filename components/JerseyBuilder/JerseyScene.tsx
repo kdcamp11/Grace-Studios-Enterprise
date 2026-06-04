@@ -404,5 +404,6 @@ export default function JerseyScene({
   );
 }
 
-// Preload the combined GLB; separate GLBs are preloaded on demand via Suspense
 useGLTF.preload("/Jersey.glb");
+useGLTF.preload("/JerseyTop.glb");
+useGLTF.preload("/Shorts.glb");
