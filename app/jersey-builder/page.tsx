@@ -210,13 +210,20 @@ function ColorPickerPopover({
   const squareRef = useRef<HTMLDivElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
+  const rafRef = useRef<number | null>(null);
+
+  // Cleanup any pending RAF on unmount
+  useEffect(() => () => { if (rafRef.current !== null) cancelAnimationFrame(rafRef.current); }, []);
 
   function applyHsv(h: number, s: number, v: number) {
     hueRef.current = h;
     const hex = hsvToHex(h, s, v);
     setHue(h); setSat(s); setVal(v);
     setHexInput(hex.replace("#", "").toUpperCase());
-    onChange(hex);
+    // Throttle parent updates to one per animation frame so THREE.js
+    // material updates don't fire faster than the display can refresh.
+    if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+    rafRef.current = requestAnimationFrame(() => { onChange(hex); rafRef.current = null; });
   }
 
   useEffect(() => {
