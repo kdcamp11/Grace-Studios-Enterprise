@@ -32,6 +32,11 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: tenant ? `${tenant.name} Partner Platform` : "Partner Platform",
     description: "Custom uniform design and fulfillment for sports programs",
+    icons: {
+      icon:             "/icon-512.png",
+      shortcut:         "/favicon.ico",
+      apple:            "/apple-icon.png",
+    },
   };
 }
 
