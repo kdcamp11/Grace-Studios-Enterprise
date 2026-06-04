@@ -37,11 +37,11 @@ import JerseyScene, {
 // ── Zone definitions split by tab ─────────────────────────────────────────────
 
 const JERSEY_ZONES = [
-  { key: "jerseyTop",          label: "Jersey Body"        },
-  { key: "collar",             label: "Collar & Trim"      },
-  { key: "jerseySidePanels",   label: "Side Panels"        },
-  { key: "jerseyLowerPanels",  label: "Lower Panels"       },
-  { key: "sleevePanels",       label: "Sleeve Panels"      },
+  { key: "jerseyTop",          label: "Jersey Body"   },
+  { key: "collar",             label: "Collar & Trim" },
+  { key: "sleevePanels",       label: "Sleeve Panels" },
+  { key: "jerseySidePanels",   label: "Side Panels"   },
+  { key: "jerseyLowerPanels",  label: "Lower Panels"  },
 ] as const;
 
 const SHORTS_ZONES = [
@@ -170,18 +170,47 @@ function buildLogoTexture(src: string): Promise<THREE.Texture> {
 function ColorControl({
   label, value, onChange,
 }: { label: string; value: string; onChange: (v: string) => void }) {
+  const pickerRef = useRef<HTMLInputElement>(null);
+  const [hexInput, setHexInput] = useState(value.replace("#", ""));
+
+  useEffect(() => {
+    setHexInput(value.replace("#", ""));
+  }, [value]);
+
+  function handleHexChange(raw: string) {
+    const cleaned = raw.replace(/[^0-9a-fA-F]/g, "").slice(0, 6);
+    setHexInput(cleaned);
+    if (cleaned.length === 6) onChange(`#${cleaned}`);
+  }
+
   return (
     <div className="flex items-center justify-between gap-3">
       <label className="text-[10px] font-display font-bold uppercase tracking-[0.15em] text-brand-muted whitespace-nowrap">
         {label}
       </label>
-      <div className="flex items-center gap-2 flex-shrink-0">
-        <span className="text-[10px] font-barlow text-brand-muted font-mono">{value.toUpperCase()}</span>
+      <div className="flex items-center gap-1.5 flex-shrink-0">
+        <span className="text-[10px] font-barlow text-brand-muted/60 font-mono">#</span>
         <input
-          type="color" value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="w-8 h-8 rounded cursor-pointer border border-brand-border bg-transparent"
+          type="text"
+          value={hexInput}
+          onChange={(e) => handleHexChange(e.target.value)}
+          maxLength={6}
+          className="w-[52px] text-[10px] font-barlow font-mono text-brand-text bg-brand-surface border border-brand-border rounded px-1.5 py-0.5 focus:outline-none focus:border-brand-primary uppercase"
         />
+        <div
+          className="w-8 h-8 rounded cursor-pointer border border-brand-border flex-shrink-0 relative overflow-hidden"
+          style={{ backgroundColor: value }}
+          onClick={() => pickerRef.current?.click()}
+        >
+          <input
+            ref={pickerRef}
+            type="color"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+            tabIndex={-1}
+          />
+        </div>
       </div>
     </div>
   );
