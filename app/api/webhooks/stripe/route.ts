@@ -394,6 +394,16 @@ async function handleMockupDesignFeeCompleted(session: Stripe.Checkout.Session) 
     ? session.payment_intent
     : session.payment_intent?.id ?? null;
 
+  // Fetch current stage for accurate stage_log entry
+  const { data: orderRow } = await admin
+    .from("orders")
+    .select("stage, tenant_id")
+    .eq("id", orderId)
+    .single();
+
+  const effectiveTenantId = tenantId ?? orderRow?.tenant_id ?? null;
+  const fromStage = orderRow?.stage ?? "mockup_review";
+
   // Mark fee paid and advance stage
   await admin
     .from("orders")
@@ -403,8 +413,8 @@ async function handleMockupDesignFeeCompleted(session: Stripe.Checkout.Session) 
   // Log stage transition
   await admin.from("stage_log").insert({
     order_id:   orderId,
-    tenant_id:  tenantId ?? null,
-    from_stage: "mockup_review",
+    tenant_id:  effectiveTenantId,
+    from_stage: fromStage,
     to_stage:   "production_files_prep",
     changed_by: "system",
     note:       "Mockup design fee paid — advancing to production files",

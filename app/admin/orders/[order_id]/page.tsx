@@ -2072,6 +2072,15 @@ export default function AdminOrderPage() {
             stage:   "mockup_review" as OrderStage,
             reasons: !hasMockup ? ["Upload at least one mockup image first."] : [],
           },
+          mockup_review: {
+            label: order.stage === "mockup_revision"
+              ? "Send Revised Mockup to Client →"
+              : "Advance to Production Files →",
+            stage: (order.stage === "mockup_revision" ? "mockup_review" : "production_files_prep") as OrderStage,
+            reasons: order.stage === "mockup_revision" && !hasMockup
+              ? ["Upload at least one revised mockup image first."]
+              : [],
+          },
           production_files: (() => {
             // Stage sequence within this phase: prep → sent_to_supplier → files_sent → first_piece.
             // Target the correct next stage so isAllowedTransition doesn't reject the advance.
