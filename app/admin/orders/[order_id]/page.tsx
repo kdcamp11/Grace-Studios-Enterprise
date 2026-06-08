@@ -601,6 +601,11 @@ export default function AdminOrderPage() {
         setMockupUploadError(json.error ?? `Upload failed (${res.status})`);
       } else if (json.row) {
         setMockups((prev) => [...prev, json.row!]);
+        // Revised mockup uploaded — automatically advance back to mockup_review
+        // so the client sees the Approve button without needing a manual stage change.
+        if (order.stage === "mockup_revision") {
+          await updateStage("mockup_review", true);
+        }
       }
     } catch (e) {
       setMockupUploadError(`Upload failed: ${e instanceof Error ? e.message : "network error"}`);

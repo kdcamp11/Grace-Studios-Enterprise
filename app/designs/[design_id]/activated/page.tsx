@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import OrgLogo from "@/components/OrgLogo";
 
 /**
@@ -19,6 +20,13 @@ export default function DesignActivatedPage() {
   const router        = useRouter();
   const attempts      = useRef(0);
   const MAX_ATTEMPTS  = 30; // 30 × 2s = 60s max wait
+  const [showFallback, setShowFallback] = useState(false);
+
+  // Show a manual escape hatch after 5s in case the user doesn't notice the auto-redirect
+  useEffect(() => {
+    const t = setTimeout(() => setShowFallback(true), 5000);
+    return () => clearTimeout(t);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -84,8 +92,17 @@ export default function DesignActivatedPage() {
           Activating Your Project
         </h1>
         <p className="text-sm text-brand-muted font-barlow leading-relaxed max-w-xs">
-          Setting up your order now. This takes just a moment.
+          Setting up your order now. You&apos;ll be redirected automatically in a moment.
         </p>
+
+        {showFallback && (
+          <Link
+            href="/portal"
+            className="mt-8 inline-block px-6 py-3 rounded-lg bg-brand-primary text-white font-display font-bold text-xs uppercase tracking-widest hover:bg-brand-secondary transition-colors"
+          >
+            Continue to My Portal →
+          </Link>
+        )}
       </main>
     </div>
   );
