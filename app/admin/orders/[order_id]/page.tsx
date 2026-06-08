@@ -2056,7 +2056,7 @@ export default function AdminOrderPage() {
       {/* ── Sticky phase-advance action bar ───────────────────────────────────
           Always visible at bottom of screen when an actionable phase is active.
           Shows the next stage label, all unmet prerequisites, and the CTA. */}
-      {derivedPhaseKey && (() => {
+      {(() => {
         const hasProductionFiles = orderFiles.length > 0 || !!order.production_file_url;
         const hasPricing         = !!order.production_total_cents;
         const hasSupplier        = !!order.supplier_user_id;
@@ -2066,6 +2066,22 @@ export default function AdminOrderPage() {
         const hasMockup          = mockups.length > 0;
 
         type AdvanceEntry = { label: string; stage: OrderStage; reasons: string[] };
+
+        // Pre-production stages — keyed by DB stage (derivedPhaseKey is null for these)
+        const preProdMap: Partial<Record<string, AdvanceEntry>> = {
+          onboarding:           { label: "Start Creative Work →",       stage: "creative_started"    as OrderStage, reasons: [] },
+          design_confirmed:     { label: "Start Creative Work →",       stage: "creative_started"    as OrderStage, reasons: [] },
+          creative_started:     { label: "Submit for Review →",         stage: "creative_submitted"  as OrderStage, reasons: [] },
+          creative_submitted:   { label: "Move to Creative Review →",   stage: "creative_in_review"  as OrderStage, reasons: [] },
+          payment_pending:      { label: "Mark as Paid →",              stage: "paid"                as OrderStage, reasons: [] },
+          paid:                 { label: "Move to Creative Review →",   stage: "creative_in_review"  as OrderStage, reasons: [] },
+          creative_in_review:   { label: "Approve Creative →",          stage: "creative_approved"   as OrderStage, reasons: [] },
+          revision_requested:   { label: "Return to Creative Review →", stage: "creative_in_review"  as OrderStage, reasons: [] },
+          creative_approved:    { label: "Ready for Production →",      stage: "ready_for_production" as OrderStage, reasons: [] },
+          ready_for_production: { label: "Start Mockup Phase →",        stage: "mockup_in_progress"  as OrderStage, reasons: [] },
+        };
+
+        // Production stages — keyed by derivedPhaseKey (canonical TIMELINE_STEPS key)
         const advanceMap: Partial<Record<string, AdvanceEntry>> = {
           mockup_in_progress: {
             label:   mockupRevisionUsed ? "Send Revised Mockup to Client →" : "Send Mockup to Client for Review →",
@@ -2131,7 +2147,8 @@ export default function AdminOrderPage() {
           },
         };
 
-        const action = advanceMap[derivedPhaseKey];
+        // For production stages use derivedPhaseKey; for pre-production use DB stage directly
+        const action = derivedPhaseKey ? advanceMap[derivedPhaseKey] : preProdMap[order.stage];
         if (!action) return null;
         const blocked = action.reasons.length > 0;
 
