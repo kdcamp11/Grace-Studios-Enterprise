@@ -753,6 +753,12 @@ export default function AdminOrderPage() {
   ]);
   const inSupplierStageAdmin = SUPPLIER_STAGES_ADMIN.has(order.stage);
 
+  // When the order is at or past shipped, the admin explicitly advanced through QC —
+  // infer balance_paid so the timeline doesn't get stuck on quality_check.
+  const SHIPPED_STAGES_ADMIN: ReadonlySet<string> = new Set([
+    "shipped", "delivered", "complete",
+  ]);
+
   // Stage inference sets: if the order is already at or past these stages,
   // infer that the prior milestone must have been completed (admin force-advance or
   // webhook already wrote the correct state).
@@ -771,7 +777,7 @@ export default function AdminOrderPage() {
     stage:             order.stage,
     production_choice: order.production_choice ?? null,
     deposit_paid:      inSupplierStageAdmin || order.deposit_paid,
-    balance_paid:      order.balance_paid,
+    balance_paid:      SHIPPED_STAGES_ADMIN.has(order.stage) || order.balance_paid,
     tracking_number:   order.tracking_number,
     mockupUploaded:          mockups.length > 0,
     productionFilesUploaded:

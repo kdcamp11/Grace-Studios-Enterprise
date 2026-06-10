@@ -263,6 +263,12 @@ export async function PATCH(
       stageUpdate.deposit_paid = true;
     }
 
+    // When admin advances to shipped or beyond, mark final balance as paid so the
+    // client tracker doesn't show a stale "Final Production Payment" CTA.
+    if (stage === "shipped" || stage === "delivered" || stage === "complete") {
+      stageUpdate.balance_paid = true;
+    }
+
     // Auto-route to preferred supplier when GE releases production.
     // Only applies when moving to sent_to_supplier and no supplier is already set.
     if (stage === "sent_to_supplier") {
