@@ -82,17 +82,42 @@ function ActionPanel({
   const supabase = useRef(createClient()).current;
   const fileRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
-  const [caption, setCaption] = useState("");
-  const [trackingInput, setTrackingInput] = useState(order.tracking_number ?? "");
   const [uploadError, setUploadError] = useState("");
   const [uploadDone, setUploadDone] = useState(0);
+  // Queue: files staged for upload, each with its own caption
+  const [queue, setQueue] = useState<{ file: File; caption: string; preview: string }[]>([]);
+  const [trackingInput, setTrackingInput] = useState(order.tracking_number ?? "");
 
   const { stage, deposit_paid, balance_paid } = order;
 
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    const incoming = Array.from(files).map((file) => ({
+      file,
+      caption: "",
+      preview: file.type.startsWith("video/") ? "" : URL.createObjectURL(file),
+    }));
+    setQueue((prev) => [...prev, ...incoming]);
+    if (fileRef.current) fileRef.current.value = "";
+  }
+
+  function removeQueued(idx: number) {
+    setQueue((prev) => {
+      const next = [...prev];
+      if (next[idx].preview) URL.revokeObjectURL(next[idx].preview);
+      next.splice(idx, 1);
+      return next;
+    });
+  }
+
+  function updateCaption(idx: number, value: string) {
+    setQueue((prev) => prev.map((item, i) => i === idx ? { ...item, caption: value } : item));
+  }
+
   async function handleUpload(e: React.FormEvent) {
     e.preventDefault();
-    const files = fileRef.current?.files;
-    if (!files || files.length === 0) return;
+    if (queue.length === 0) return;
 
     setBusy(true);
     setUploadError("");
@@ -103,7 +128,8 @@ function ActionPanel({
 
     const inserted: MediaItem[] = [];
 
-    for (const file of Array.from(files)) {
+    for (const item of queue) {
+      const { file, caption } = item;
       const isVideo = file.type.startsWith("video/");
       const ext = file.name.split(".").pop();
       const path = `${order.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
@@ -141,9 +167,10 @@ function ActionPanel({
       inserted.push(mediaJson.media as MediaItem);
     }
 
+    // Revoke preview object URLs to avoid memory leaks
+    queue.forEach((item) => { if (item.preview) URL.revokeObjectURL(item.preview); });
+    setQueue([]);
     onUploadComplete(inserted);
-    setCaption("");
-    if (fileRef.current) fileRef.current.value = "";
     setBusy(false);
     setUploadDone(inserted.length);
     setTimeout(() => setUploadDone(0), 5000);
@@ -203,52 +230,115 @@ function ActionPanel({
           )}
         </div>
 
+        {/* Already-uploaded thumbnails (inline) */}
+        {order.media.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-[10px] font-display uppercase tracking-wider text-brand-muted">
+              Uploaded ({order.media.length}) — add more below or submit when ready
+            </p>
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+              {order.media.map((item) => (
+                <div key={item.id} className="relative rounded-lg overflow-hidden border border-brand-border aspect-square bg-brand-bg">
+                  {item.media_type === "video" ? (
+                    <video src={item.media_url} className="w-full h-full object-cover" />
+                  ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={item.media_url} alt={item.caption ?? ""} className="w-full h-full object-cover" />
+                  )}
+                  {item.caption && (
+                    <div className="absolute bottom-0 inset-x-0 bg-black/60 px-1.5 py-1">
+                      <p className="text-[9px] font-barlow text-white leading-tight truncate">{item.caption}</p>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Upload form */}
         <form onSubmit={handleUpload} className="space-y-4">
+
+          {/* File picker */}
           <div>
-            <label className="block text-[10px] font-display uppercase tracking-wider text-brand-muted mb-2">
-              Select Files (photos or video, up to 5)
-            </label>
             <input
               ref={fileRef}
               type="file"
               accept="image/*,video/*"
               multiple
-              required
-              className="w-full text-sm font-barlow text-brand-muted file:mr-3 file:py-2 file:px-4
-                file:rounded-lg file:border file:border-brand-border file:bg-brand-surface
-                file:text-xs file:font-display file:uppercase file:tracking-wider file:text-brand-text
-                file:cursor-pointer hover:file:border-brand-primary hover:file:text-brand-primary
-                file:transition-all cursor-pointer"
+              className="hidden"
+              onChange={handleFileSelect}
             />
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              className="w-full py-3 rounded-lg border border-dashed border-brand-border text-sm font-display uppercase tracking-wider text-brand-muted hover:border-brand-primary hover:text-brand-primary transition-all"
+            >
+              + Add Photos or Videos
+            </button>
+            <p className="text-[10px] font-barlow text-brand-muted/60 text-center mt-1">
+              Select as many files as needed — photos and video both supported
+            </p>
           </div>
-          <div>
-            <label className="block text-[10px] font-display uppercase tracking-wider text-brand-muted mb-2">
-              Caption (optional)
-            </label>
-            <input
-              type="text"
-              value={caption}
-              onChange={(e) => setCaption(e.target.value)}
-              placeholder="e.g. Front view, size L sample"
-              className="w-full bg-brand-bg border border-brand-border rounded-lg px-4 py-3 text-brand-text font-barlow text-sm placeholder-brand-muted/60 focus:outline-none focus:border-brand-primary transition-colors"
-            />
-          </div>
+
+          {/* Queued files — each with its own caption input */}
+          {queue.length > 0 && (
+            <div className="space-y-3">
+              <p className="text-[10px] font-display uppercase tracking-wider text-brand-muted">
+                Ready to upload ({queue.length})
+              </p>
+              {queue.map((item, idx) => (
+                <div key={idx} className="flex gap-3 items-start bg-brand-bg border border-brand-border rounded-lg p-3">
+                  {/* Thumbnail or video icon */}
+                  <div className="flex-shrink-0 w-14 h-14 rounded-lg overflow-hidden bg-brand-surface border border-brand-border flex items-center justify-center">
+                    {item.preview ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={item.preview} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-[10px] font-display text-brand-muted uppercase tracking-wider">Video</span>
+                    )}
+                  </div>
+                  {/* Caption + remove */}
+                  <div className="flex-1 min-w-0 space-y-1.5">
+                    <p className="text-xs font-barlow text-brand-text truncate">{item.file.name}</p>
+                    <input
+                      type="text"
+                      value={item.caption}
+                      onChange={(e) => updateCaption(idx, e.target.value)}
+                      placeholder="Caption (optional) — e.g. Front view"
+                      className="w-full bg-brand-surface border border-brand-border rounded-lg px-3 py-2 text-brand-text font-barlow text-xs placeholder-brand-muted/60 focus:outline-none focus:border-brand-primary transition-colors"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeQueued(idx)}
+                    className="flex-shrink-0 text-[10px] font-display uppercase tracking-wider text-brand-muted hover:text-[#C41E1E] transition-colors mt-1"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
           {uploadError && (
             <p className="text-[#C41E1E] text-sm font-barlow bg-[#C41E1E]/10 border border-[#C41E1E]/30 rounded-lg px-4 py-3">{uploadError}</p>
           )}
-          {uploadDone && (
+          {!!uploadDone && (
             <p className="text-green-400 text-sm font-barlow bg-green-400/10 border border-green-400/30 rounded-lg px-4 py-3">
               ✓ {uploadDone} file{uploadDone !== 1 ? "s" : ""} uploaded. Add more or submit for review below.
             </p>
           )}
-          <button
-            type="submit"
-            disabled={busy}
-            className="w-full py-3 rounded-lg font-display font-bold text-xs uppercase tracking-widest border border-brand-border text-brand-muted hover:border-brand-primary hover:text-brand-primary disabled:opacity-40 transition-all"
-          >
-            {busy ? "Uploading…" : "Upload Files"}
-          </button>
+
+          {queue.length > 0 && (
+            <button
+              type="submit"
+              disabled={busy}
+              className="w-full py-3 rounded-lg font-display font-bold text-xs uppercase tracking-widest border border-brand-border text-brand-muted hover:border-brand-primary hover:text-brand-primary disabled:opacity-40 transition-all"
+            >
+              {busy ? "Uploading…" : `Upload ${queue.length} File${queue.length !== 1 ? "s" : ""}`}
+            </button>
+          )}
         </form>
 
         {/* Divider */}
@@ -756,8 +846,8 @@ export default function SupplierOrderPage() {
           </div>
         )}
 
-        {/* First Piece Media Gallery */}
-        {order.media.length > 0 && (
+        {/* First Piece Media Gallery — shown when NOT in upload stage */}
+        {order.media.length > 0 && order.stage !== "first_piece_in_progress" && order.stage !== "first_piece_revision" && (
           <div className="bg-brand-surface border border-brand-border rounded-xl p-6">
             <p className="text-xs font-display uppercase tracking-widest text-brand-primary mb-4">
               Submitted Media ({order.media.length})
