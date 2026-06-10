@@ -319,6 +319,7 @@ export default function AdminOrderPage() {
   const [invError, setInvError]     = useState("");
   const [verifyingPayment, setVerifyingPayment] = useState<string | null>(null);
   const [verifyNote, setVerifyNote] = useState("");
+  const [depositPaidSaving, setDepositPaidSaving] = useState(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data: { user } }) => {
@@ -384,6 +385,21 @@ export default function AdminOrderPage() {
       setStageError(e instanceof Error ? e.message : "Stage update failed");
     } finally {
       setStageSaving(false);
+    }
+  }
+
+  async function markDepositPaid() {
+    if (!order) return;
+    setDepositPaidSaving(true);
+    try {
+      await fetch(`/api/admin/orders/${order_id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "mark_deposit_paid" }),
+      });
+      setOrder((prev) => prev ? { ...prev, deposit_paid: true } : prev);
+    } finally {
+      setDepositPaidSaving(false);
     }
   }
 
@@ -1798,6 +1814,26 @@ export default function AdminOrderPage() {
               </div>
             )}
           </div>
+
+          {/* ── Deposit not paid warning — first_piece workspace ─────────────── */}
+          {currentWorkspace === "first_piece" && !order.deposit_paid && (
+            <div className="bg-amber-400/5 border border-amber-400/30 rounded-xl px-5 py-4 flex items-center justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-[10px] font-display uppercase tracking-[0.18em] text-amber-500 mb-0.5">Production Deposit</p>
+                <p className="text-xs font-barlow text-amber-700 leading-relaxed">
+                  Deposit not yet marked paid. The client tracker shows a payment required step until this is confirmed.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={markDepositPaid}
+                disabled={depositPaidSaving}
+                className="flex-shrink-0 px-4 py-2 rounded-lg bg-amber-500 text-white text-[11px] font-display uppercase tracking-wider hover:bg-amber-400 transition-colors disabled:opacity-50"
+              >
+                {depositPaidSaving ? "Saving…" : "Mark Paid"}
+              </button>
+            </div>
+          )}
 
           {/* ── First Piece Review — visible in first_piece workspace */}
           {currentWorkspace === "first_piece" && (

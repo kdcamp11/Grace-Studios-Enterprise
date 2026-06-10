@@ -253,6 +253,16 @@ export async function PATCH(
 
     const stageUpdate: Record<string, unknown> = { stage };
 
+    // When admin manually advances to supplier stages, mark deposit as paid so the
+    // client tracker doesn't show a stale "First Production Payment" CTA.
+    const SUPPLIER_STAGES = new Set([
+      "sent_to_supplier", "files_sent", "first_piece_in_progress", "first_piece_review",
+      "first_piece_revision", "bulk_production", "qc_verified", "shipped", "delivered", "complete",
+    ]);
+    if (SUPPLIER_STAGES.has(stage)) {
+      stageUpdate.deposit_paid = true;
+    }
+
     // Auto-route to preferred supplier when GE releases production.
     // Only applies when moving to sent_to_supplier and no supplier is already set.
     if (stage === "sent_to_supplier") {
@@ -317,6 +327,24 @@ export async function PATCH(
     });
 
     return NextResponse.json({ success: true, auto_assigned_supplier: !!stageUpdate.supplier_user_id });
+  }
+
+  // ── Mark deposit paid (manual confirmation for offline/bank payments) ──
+  if (action === "mark_deposit_paid") {
+    const { balance_paid } = body as { balance_paid?: boolean };
+    const flags: Record<string, boolean> = { deposit_paid: true };
+    if (balance_paid) flags.balance_paid = true;
+    const { error } = await serviceSupabase.from("orders").update(flags).eq("id", order_id);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    await logActivity({
+      tenantId: ctx.tenant.id, orderId: order_id,
+      actorUserId: ctx.userId, actorRole: "admin",
+      eventType: "payment_confirmed",
+      eventMessage: balance_paid
+        ? "Deposit and final balance manually marked as paid by admin."
+        : "Production deposit manually marked as paid by admin.",
+    });
+    return NextResponse.json({ success: true });
   }
 
   // ── Production pricing ─────────────────────────────────────────────────
