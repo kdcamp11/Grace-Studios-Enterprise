@@ -2182,7 +2182,11 @@ export default function AdminOrderPage() {
           first_piece_review: {
             label:   "First Piece Approved — Advance to Bulk →",
             stage:   "bulk_production" as OrderStage,
-            reasons: !hasClientApproval ? ["Awaiting client approval of the first piece."] : [],
+            reasons: !hasAdminApprovedMedia
+              ? ["Click Review → Approve on the photo above to send it to the client."]
+              : !hasClientApproval
+              ? ["Photo sent to client — awaiting their approval."]
+              : [],
           },
           bulk_production: {
             label:   "Bulk Complete — Advance to QC →",
