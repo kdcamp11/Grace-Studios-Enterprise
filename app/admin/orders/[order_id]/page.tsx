@@ -435,6 +435,12 @@ export default function AdminOrderPage() {
       };
     });
 
+    // When admin approves a first piece photo, auto-advance stage to first_piece_review
+    // so the client portal reflects the update and the timeline moves forward.
+    if (approved && order && order.stage === "first_piece_in_progress") {
+      await updateStage("first_piece_review", true);
+    }
+
     // Fire email notifications
     if (approved) {
       fetch("/api/notify", {
@@ -731,6 +737,17 @@ export default function AdminOrderPage() {
   ]);
   const inSupplierStageAdmin = SUPPLIER_STAGES_ADMIN.has(order.stage);
 
+  // Stage inference sets: if the order is already at or past these stages,
+  // infer that the prior milestone must have been completed (admin force-advance or
+  // webhook already wrote the correct state).
+  const FIRST_PIECE_REVIEW_STAGES: ReadonlySet<string> = new Set([
+    "first_piece_review", "first_piece_revision", "bulk_production", "qc_verified",
+    "shipped", "delivered", "complete",
+  ]);
+  const BULK_PROD_STAGES: ReadonlySet<string> = new Set([
+    "bulk_production", "qc_verified", "shipped", "delivered", "complete",
+  ]);
+
   // Derive actual milestone completion so green checkmarks reflect real work done,
   // not just the raw DB stage array position (which can be jumped without completing
   // prerequisite artifacts like mockups or production files).
@@ -746,8 +763,10 @@ export default function AdminOrderPage() {
       !!order.production_file_url ||
       orderFiles.some((f) => (f.label ?? "").toLowerCase().includes("production")),
     supplierAssigned:        inSupplierStageAdmin || !!order.supplier_user_id,
-    firstPieceUploaded:      order.media.filter((m) => m.client_visible).length > 0,
-    firstPieceApproved:      order.media.some((m) => m.client_approved === true),
+    firstPieceUploaded:      order.media.filter((m) => m.client_visible).length > 0
+                               || FIRST_PIECE_REVIEW_STAGES.has(order.stage),
+    firstPieceApproved:      order.media.some((m) => m.client_approved === true)
+                               || BULK_PROD_STAGES.has(order.stage),
   });
   const { milestones } = derived;
 
@@ -2060,8 +2079,9 @@ export default function AdminOrderPage() {
         const hasProductionFiles = orderFiles.length > 0 || !!order.production_file_url;
         const hasPricing         = !!order.production_total_cents;
         const hasSupplier        = !!order.supplier_user_id;
-        const hasFirstPieceMedia = order.media.length > 0;
-        const hasClientApproval  = order.media.some((m) => m.client_approved === true);
+        const hasFirstPieceMedia       = order.media.length > 0;
+        const hasAdminApprovedMedia    = order.media.some((m) => m.admin_approved === true);
+        const hasClientApproval        = order.media.some((m) => m.client_approved === true);
         const hasTracking        = !!(order.tracking_number || trackingInput.trim());
         const hasMockup          = mockups.length > 0;
 
@@ -2116,9 +2136,12 @@ export default function AdminOrderPage() {
             };
           })(),
           first_piece_in_production: {
-            label:   "First Piece Submitted — Advance to Review →",
+            label:   "Send First Piece to Client for Review →",
             stage:   "first_piece_review" as OrderStage,
-            reasons: !hasFirstPieceMedia ? ["Upload first piece photos first."] : [],
+            reasons: [
+              !hasFirstPieceMedia    && "Upload first piece photos first.",
+              !hasAdminApprovedMedia && "Review and approve photos using the Review button above.",
+            ].filter(Boolean) as string[],
           },
           first_piece_review: {
             label:   "First Piece Approved — Advance to Bulk →",
