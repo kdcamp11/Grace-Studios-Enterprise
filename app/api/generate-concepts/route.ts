@@ -114,11 +114,11 @@ function extractDirectColors(
 }
 
 /**
- * Generates a single photorealistic garment render via OpenAI gpt-image-1.
+ * Generates a single photorealistic garment render via OpenAI gpt-image-2.
  *
  * LOGO INTEGRATION PATH (jersey views when logoUrl provided):
  *   Fetches the uploaded logo and passes it as an image[] reference input to the
- *   images/edits endpoint. gpt-image-1 uses the provided images as visual context
+ *   images/edits endpoint. gpt-image-2 uses the provided images as visual context
  *   for generation — the model sees the actual logo shape/colors and integrates it
  *   naturally into the jersey fabric with realistic lighting and texture.
  *
@@ -247,7 +247,7 @@ async function generateGarmentRender(
       // Garment reference first → establishes correct construction baseline.
       // Logo second → team branding to integrate naturally into the fabric.
       const form = new FormData();
-      form.append("model",   "gpt-image-1");
+      form.append("model",   "gpt-image-2");
       if (garmentRefBuffer) {
         // Visual construction reference — shows the model correct cuff/hem construction
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -277,7 +277,7 @@ async function generateGarmentRender(
           "Content-Type":  "application/json",
         },
         body: JSON.stringify({
-          model:   "gpt-image-1",
+          model:   "gpt-image-2",
           prompt,
           n:       1,
           size:    "1024x1024",
